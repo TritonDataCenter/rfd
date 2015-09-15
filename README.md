@@ -43,6 +43,7 @@ formal writing that it has come to represent.)
 ## Active Draft RFDs
 
 [RFD 1 Triton Container Naming Service](./rfd/0001/README.md)
+[RFD 2 Docker Logging in SDC](./rfd/0002/README.md)
 
 ## Published RFDs
 
