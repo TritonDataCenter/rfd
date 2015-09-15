@@ -10,7 +10,7 @@
 
 # Requests for Discussion
 
-Writing down ideas for system enhancement while they are still nascent 
+Writing down ideas for system enhancement while they are still nascent
 allows for important, actionable technical discussion.  We capture
 these in **Requests for Discussion**, which are documents in the original
 sprit of the [IETF Request for Comments](https://en.wikipedia.org/wiki/Request_for_Comments),
@@ -234,6 +234,6 @@ SmartOS.
 
 To submit a new RFD, please provide a git patch or a pull request that
 consists of a single squashed commit and we will incorporate it into the
-repsoitory or feel free to send out the document to the mailing list and
+repository or feel free to send out the document to the mailing list and
 as we discuss it, we can work together to pull it into the RFD
 repository.
