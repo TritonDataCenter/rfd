@@ -1,9 +1,7 @@
-```
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
 state: draft
 ---
-```
 
 # Note on terminology
 
@@ -48,6 +46,43 @@ we will be sending logs to 127.0.0.1 on the *host*. This is why they are using
 the unix driver (which we'll not support) by default and writing to the host's
 syslog socket. It is also why they support a journald driver which writes to
 systemd's journald in the host. We'll also not have that.
+
+
+# Triton Background
+
+This section includes some details that people were confused about in the first
+draft.
+
+## What is ZFD? (From Jerry)
+
+The zfd devs are streams driver instances and the general idea here is that
+dockerinit will setup the app in the zone so that stdin/out/err are hooked up
+properly to one or more zfd devices. This will vary based on how docker is
+being used and if the app is being run interactively or not. The streams are
+used to get stdio from the app out to the GZ and into zlogin.
+
+The new support adds 1 or 2 additional zfd devices into the zone and dockerinit
+can issue an ioctl which will cause the stdout/stderr from the app (via the
+original zfd devices) to tee into the new zfd devices. This is done internally
+as a streams multiplexer.
+
+Because this is streams there is some queueing/buffering that we get. The
+default queue size is 2k, which we could tweak, and because there can be
+various streams modules pushed onto the stream we can get multiple spots where
+queueing occurs.
+
+What I currently have in zfd is that I chose not to block the app's execution
+if the log stream gets full (which could happen if the logging process is slow
+or stuck). Thus the app will continue to run and if the log process resumes or
+catches up, then it will start getting any new stdout/err msgs that get queued
+onto the log stream. Intermediate stdout/stderr msgs are dropped.
+
+If the log process is not running for any reason, then the log stream is not
+open and nothing goes into that stream. Any stdout/err is thus not logged.
+
+I could explore stopping the primary stdout/err streams if the log stream gets
+full, but that will presumably stop the app from executing. We just need to
+settle on the behavior we want to see here.
 
 
 # How will it work for Triton?
@@ -165,3 +200,17 @@ However there are also a number of advantages which include:
    including all the imports and comments
  * it already basically works with what I did as a prototype
 
+
+# Notes from input already given
+
+ * we may want a knob for reliable/unreliable logging which determines whether
+   logging should block your app or not
+ * contracts are probably the way to go to ensure init dies when the logger
+   does (so the container can be restarted)
+ * we need to figure out what to do with the logs that are written as the
+   container exits
+
+# Related Open Tickets
+
+ * DOCKER-279 - Master ticket for logging
+ * DOCKER-535 - Rotating json-file logs to Manta
