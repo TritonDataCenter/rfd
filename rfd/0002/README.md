@@ -3,14 +3,16 @@ authors: Josh Wilsdon <jwilsdon@joyent.com>
 state: draft
 ---
 
-# Note on terminology
+# RFD 2 Docker Logging in SDC
+
+## Note on terminology
 
 In order to distinguish between Triton and Docker, I'll use 'Docker' when
 talking specifically about Docker Inc's docker, and 'docker' when referring to
 things that apply to both Triton and Docker.
 
 
-# What's --log-driver?
+## What's --log-driver?
 
 See: https://docs.docker.com/reference/logging/overview/
 
@@ -19,14 +21,14 @@ container's init process to a remote log sink in a number of formats: syslog,
 fluentd and gelf.
 
 
-# Don't we already have that?
+## Don't we already have that?
 
 Nope. We support the equivalent of `--log-driver json-file` not including the
 rotation options. We also (recently) support the `--log-driver none`. What we
 don't support is any of the network logging drivers.
 
 
-# How does it work in Docker?
+## How does it work in Docker?
 
 In Docker, the daemon itself is the parent process for all container processes.
 As such, it can connect stdout/stderr as a pipe in the non-tty case (one pipe
@@ -48,12 +50,12 @@ syslog socket. It is also why they support a journald driver which writes to
 systemd's journald in the host. We'll also not have that.
 
 
-# Triton Background
+## Triton Background
 
 This section includes some details that people were confused about in the first
 draft.
 
-## What is ZFD? (From Jerry)
+### What is ZFD? (From Jerry)
 
 The zfd devs are streams driver instances and the general idea here is that
 dockerinit will setup the app in the zone so that stdin/out/err are hooked up
@@ -85,7 +87,7 @@ full, but that will presumably stop the app from executing. We just need to
 settle on the behavior we want to see here.
 
 
-# How will it work for Triton?
+## How will it work for Triton?
 
 This represents the plan so far.
 
@@ -117,7 +119,7 @@ but this does mean that we'll be adding an extra process in the zone which may
 confuse some docker users and adds some of its own complexity.
 
 
-# What about rotation for json-file?
+## What about rotation for json-file?
 
 This will be left as a separate project as the current thinking is that this
 would be implemented through hermes, or something like it that runs in the GZ
@@ -127,16 +129,16 @@ off-box (Manta) since rotated logs are otherwise not accessible to the user. The
 rotated logs.
 
 
-# Open questions (input encouraged)
+## Open questions (input encouraged)
 
-## Handling failure
+### Handling failure
 
  * What should we do when the logger process dies?
     * kill the zone?
     * restart the logger? (adding a small restarter as its parent)
     * ignore the failure and stop logging until the container is restarted?
 
-## Handling backpressure
+### Handling backpressure
 
  * What should we do if the buffer for zfd is full?
     * drop the output?
@@ -146,7 +148,7 @@ For OS-4694 Jerry has implemented this such that it will drop data when the
 reader process doesn't read if for a while. If someone has other suggestions,
 please voice those soon.
 
-## Updates w/o platform rebuild
+### Updates w/o platform rebuild
 
 It has been requested that we attempt to build this feature in such a way that
 if docker adds log drivers, we can somehow roll these out without a platform
@@ -167,7 +169,7 @@ case adding a new driver would mean:
  * roll out the new /usr/docker/bin/logger to all CNs
  * enable the new driver via SAPI's metadata for the docker SAPI service
 
-## Go in the build?
+### Go in the build?
 
 When I explained to him what I was doing, Trent made an excellent suggestion
 which I tried out and seems like it will work well. What he suggested was to
@@ -201,7 +203,7 @@ However there are also a number of advantages which include:
  * it already basically works with what I did as a prototype
 
 
-# Notes from input already given
+## Notes from input already given
 
  * we may want a knob for reliable/unreliable logging which determines whether
    logging should block your app or not
@@ -210,7 +212,7 @@ However there are also a number of advantages which include:
  * we need to figure out what to do with the logs that are written as the
    container exits
 
-# Related Open Tickets
+## Related Open Tickets
 
  * DOCKER-279 - Master ticket for logging
  * DOCKER-535 - Rotating json-file logs to Manta
