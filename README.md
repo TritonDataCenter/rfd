@@ -40,12 +40,12 @@ acceptable for an RFD to serve only as a vector of discussion.
 Comments" to avoid conflation with the IETF construct -- and the more
 formal writing that it has come to represent.)
 
-## Active Draft RFDs
+## RFDs
 
-[RFD 1 Triton Container Naming Service](./rfd/0001/README.md)
-[RFD 2 Docker Logging in SDC](./rfd/0002/README.md)
-
-## Published RFDs
+| state | RFD |
+| ----- | --- |
+| draft | [RFD 1 Triton Container Naming Service](./rfd/0001/README.md) |
+| draft | [RFD 2 Docker Logging in SDC](./rfd/0002/README.md) |
 
 ## Contents of an RFD
 
@@ -172,18 +172,12 @@ following four states:
 1. publish
 1. abandoned
 
-While a document is in the `predraft` state, it does not need to be in
-the indexes earlier in this file. This will allow someone to work on
-something in phases and not have it be visible until such time as
-they're ready.
-
-The `draft` and `publish` states on the other hand, refer to something
-that will be rendered in the index.  While the discussion is still
-ongoing, an RFD should be left in the `draft` state. Once discussion has
-converged, then, it should be updated to the `publish` state. As part of
-changing the state, then you should go change or move it into the
-appropriate section for [Active Draft RFDs](#active-draft-rfds) and
-[Published RFDs](#published-rfds).
+While a document is in the `predraft` state, it indicates that the work is
+not yet ready for discussion, but the RFD is effectively a placeholder.
+Documents under active discussion should be in the `draft` state.  Once
+(or if) discussion has converged and the document has come to reflect
+reality rather than propose it, it should be updated to the `publish`
+state. 
 
 Note that just because something is in the `publish` state does not
 mean that it cannot be updated and corrected. See the "Touching up"
