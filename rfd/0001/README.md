@@ -529,8 +529,8 @@ zones quickly.
 
 ### Changes to SDC services
 
- * Need VMAPI change feeds -- [ZAPI-662](https://devhub.joyent.com/jira/browse/ZAPI-662)
- * Efficient way to query IP addresses and tags only -- [ZAPI-663](https://devhub.joyent.com/jira/browse/ZAPI-663)
+ * Need VMAPI change feeds -- [ZAPI-662](https://smartos.org/bugview/ZAPI-662)
+ * Efficient way to query IP addresses and tags only -- [ZAPI-663](https://smartos.org/bugview/ZAPI-663)
  * Tag updates need to be faster (currently triggers a WF job)
 
 ### Implementing `tcns` server
