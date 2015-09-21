@@ -46,6 +46,7 @@ formal writing that it has come to represent.)
 | ----- | --- |
 | draft | [RFD 1 Triton Container Naming Service](./rfd/0001/README.md) |
 | draft | [RFD 2 Docker Logging in SDC](./rfd/0002/README.md) |
+| draft | [RFD 3 SDC Compute Nodes Reboot](./rfd/0003/README.md) |
 
 ## Contents of an RFD
 
@@ -132,7 +133,7 @@ use the leading zeros.
 
 ```
 $ mkdir -p rfd/0042
-$ cp prototypes/prototype.md 0042/README.md
+$ cp prototypes/prototype.md rfd/0042/README.md
 $
 ```
 
