@@ -124,6 +124,22 @@ downloaded to the container. As the CNAPI zone does not have external access,
 we would need to download inside of the container or have a download service
 in which CNAPI could request from.
 
+# Caching
+
+We will roughly follow what docker/docker is doing for image caching (i.e. for
+each instruction in the dockerfile):
+
+ * https://docs.docker.com/articles/dockerfile_best-practices/#build-cache
+
+1. Images (layers) are stored in IMGAPI on a successful build.
+2. The Image config (json) contains the docker command details "# nop - RUN ..."
+   for example, along with the env variables, ports, ...
+3. We can lookup and compare (using IMGAPI parent/descendant relationship) if
+   a command in the dockerfile has a matching (image base, command name, env,
+   ports, etc...) and re-use that image as the build cache
+4. Files (from ADD/COPY) are compared (checksumed) between the build context and
+   what's actually inside the container
+
 # Dockerfile Quirks
 
 - Docker caches results of a previous build and continues on from the
