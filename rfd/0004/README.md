@@ -3,7 +3,7 @@ authors: Todd Whiteman <todd.whiteman@joyent.com>
 state: draft
 ---
 
-# RFD 3 Docker Build Implementation For Triton
+# RFD 4 Docker Build Implementation For Triton
 
 # Introduction
 
@@ -25,7 +25,7 @@ The docker client passes the build parameters and a context (tar) file to
 sdc-docker. Sdc-docker then creates a container and passes-on the build context
 to the Compute Node (CN) to do the building. The CN will process the Dockerfile
 commands and generate the required image. After a successful build the image(s)
-will be imported into imgapi - simple huh!?
+will be imported into IMGAPI - simple huh!?
 
 # Compute Node
 
@@ -33,7 +33,9 @@ will be imported into imgapi - simple huh!?
 - CN sets up a socket event stream back to sdc-docker
   - build output (and status) will be send back on this stream
 - Extracts the Dockerfile from the build context tar file
-- Parses Dockerfile and starts processing commands (from, copy, cmd, ...)
+- Parses Dockerfile
+  - we need to write a Node.js dockerfile parser
+- Processes commands (from, copy, cmd, ...)
   - There are two styles of commands - a modify config or a modify container
   - Each successful command creates a new image layer - really it's either a
     modification of the config file or a modification to the container
@@ -42,7 +44,7 @@ will be imported into imgapi - simple huh!?
   - This base image may need to be pulled into the system
     - This requires an admin endpoint on sdc-docker to do the docker pull
     - Once pulled, base images get installed locally using imgadm get
-- After all commands run successfully, exports the config/container to imgapi
+- After all commands run successfully, exports the config/container to IMGAPI
   - the export needs to go through sdc-docker end-point?
 
 # Image Config
@@ -56,13 +58,13 @@ will be imported into imgapi - simple huh!?
 - Modify container commands will utilize this config to know the current state
   of the container (workdir, user, env, ...)
 - When the build completes successfully - all images (layers) are exported
-  to imgapi
-  - when all layers are uploaded successfully, they can be made active in imgapi
+  to IMGAPI
+  - when all layers are uploaded successfully, they are made active in IMGAPI
 
 ## Commands
 
 These commands can occur multiple times (except MAINTAINER), so a current config
-state is needed to supply to the modify container commands.
+state is needed to supply to the modify container commands (e.g. workdir, env).
 
 - MAINTAINER
 - CMD
@@ -89,21 +91,27 @@ state is needed to supply to the modify container commands.
 These commands can occur multiple times (except FROM).
 
 - FROM
-  - Requires imgapi - pull in image (and dependents - streams back results)
+  - Requires IMGAPI - pull in image (and dependents - streams back results)
    - Trent tells me this pull should go through sdc-docker
   - 'FROM scratch' is a noop - an empty container - and doesn't create a new
     imgUuid.config
 - RUN
-  - all output from run is streamed back to the client
+  - all output from run is streamed back to the docker client
   - two forms, explicit executable+args or shell+args
 - COPY
   - add files/directories to container - files reside in the build context
 - ADD
-  - like COPY, but can specify remote URL
+  - like COPY, but can specify remote URL, Github URL, or a tar file
   - remote URL will need to be downloaded (not part of the context)
+   - see Networking for how download works
 - ONBUILD
   - special, only runs after all other commands complete successfuly
   - acts like a second docker file (has subcommands like RUN, COPY, ...)
+
+# IMGAPI
+
+**TODO** - how are docker images (tar files) created from a container in order
+to be uploaded to IMGAPI?
 
 # Networking
 
@@ -132,8 +140,8 @@ Why not Use docker/docker itself to build the images?
 We could re-use the existing docker code (go-lang) to build and export the
 image:
 
-  - requires an imgapi docker registry endpoint and push the built image to it
-    - once pushed to imgapi, it would be available (like it had been pulled)
+  - requires an IMGAPI docker registry endpoint and push the built image to it
+    - once pushed to IMGAPI, it would be available (like it had been pulled)
   - when I checked to see if we could re-use docker/docker for building
     - seems too many missing pieces (in lx zones) to support this
       - lxc, namespaces, cgroups, deep-kernel tie in
