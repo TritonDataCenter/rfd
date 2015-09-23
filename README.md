@@ -48,6 +48,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 2 Docker Logging in SDC](./rfd/0002/README.md) |
 | draft | [RFD 3 SDC Compute Nodes Reboot](./rfd/0003/README.md) |
 | draft | [RFD 4 Docker Build Implementation For Triton](./rfd/0004/README.md) |
+| predraft | [RFD 5 Triton Change Feed Support](./rfd/0005/README.md) |
 
 ## Contents of an RFD
 
@@ -179,7 +180,7 @@ not yet ready for discussion, but the RFD is effectively a placeholder.
 Documents under active discussion should be in the `draft` state.  Once
 (or if) discussion has converged and the document has come to reflect
 reality rather than propose it, it should be updated to the `publish`
-state. 
+state.
 
 Note that just because something is in the `publish` state does not
 mean that it cannot be updated and corrected. See the "Touching up"
