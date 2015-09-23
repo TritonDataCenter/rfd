@@ -120,7 +120,7 @@ experience.
    entries to the sdc-changefeed API in order of entry. The agent will mark and
    sweep entries to ensure durability and delivery.
 
- * The listner-agent provides client functionality for registering as a
+ * The listener-agent provides client functionality for registering as a
    listener with sdc-changefeed and a lightweight HTTP endpoint for receiving
    change feed notifications.
 
