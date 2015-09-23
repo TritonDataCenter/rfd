@@ -27,7 +27,7 @@ synchronously chained calls make them insufficient as a means of relaying state
 throughout the platform.
 
 For example, TCNS needs to know what IPs are allocated to a given customer at
-the moment the customer initiates a request to allocate a new TCNS entry.  
+the moment the customer initiates a request to allocate a new TCNS entry.
 Synchronously calling VMAPI every time a customer begins such a request creates
 delay and forces VMAPI to scale one to one with TCNS request rate.  Similarly,
 polling VMAPI frequently enough to give the appearance of being up to date,
@@ -95,7 +95,7 @@ experience.
    I took a pass.  However; its HTTP API for changes has inspired some of the
    proposed design.
 
-### Proposed solution
+## Proposed solution
 
  * Create a new repository to house an HTTP API called sdc-changefeed. This
    service will provide a bus for publishers to push state changes to and allow
@@ -120,11 +120,64 @@ experience.
    entries to the sdc-changefeed API in order of entry. The agent will mark and
    sweep entries to ensure durability and delivery.
 
- * The listener-agent provides client functionality for registering as a
-   listener with sdc-changefeed and a lightweight HTTP endpoint for receiving
-   change feed notifications.
+ * The listener-agent provides client functionality for long polling the
+   sdc-changefeed API for notifications.
+
+### Publisher requirements
+
+ * Node module which provides a lightweight abstraction between the change feed
+   bucket and the source system. Must allow for a source system update and a
+   change feed bucket update to be made in the same transaction. Provides the
+   notion of a sequence-id to the source system.
+
+### Publisher agent requirements
+
+ * A node process which runs outside of the source systems process but on the
+   same zone. Responsible for the housekeeping tasks with regard to the change
+   feed bucket (e.g. removing entries beyond the configured retention time) and
+   guaranteeing sequential delivery of state changes to sdc-changefeed API.
+   * Will have a configurable agent-id for use in marking change feed bucket
+     entries that are in process.
+   * Must scale horizontally (e.g. additional agents can be added to keep up
+     with the rate of insertion into the change feed bucket).
+   * Recover from a crash or restart gracefully (e.g. it should always leave
+     the bucket in a state that allows it to pickup where it left off).
+   * Registers the change feed source system with the sdc-changefeed API
+   * Can work with any persistence mechanism (e.g. Moray, SQLite, etc.)
+
+
+### Listener agent requirements
+
+ * Node module running in the listening source system. Responsible for long
+   polling sdc-changefeed API on behalf of the listening source system.
+   * Requires the listening source system to provide a storage mechanism(s) that
+     will be used for buffering change feed entries and maintaining a record of
+     the last successfully retrieved sequence-id.
+   * Handles buffering incoming change feed entries during a catch up scenario
+     when the listener agent must simultaneously accept new change feed entries
+     and request a contiguous chunk of sdc-changfeed entries it is currently
+     unaware of.
+   * Handles reaching out to the source system for a state snapshot when the
+     listeners state is beyond the retention period of sdc-changfeed API.
+
+
+### SDC-CHANGEFEED requirements
+
+ * A new zone residing on the headnode responsible for managing change feed
+   event publishers and listeners via HTTP and long polling. It is essentially
+   a change feed bus which keeps a chronologically correct log of all state
+   changes. Moray is it's backing store.
+   * Supports HTTP requests for entries between sequence-ids
+     (e.g. between retrieve sequence-ids between 123 and 456).
+   * Supports registering change feed entry publishers, listeners and the
+     audit trail of who is registered for what.
+   * Supports long polling for change feed entries and filtering for the kinds
+     of change feed entries desired.
+   * Supports posting new change feed entries by registered publishers.
+
 
 ### Flow
+
 
      s = step
 
@@ -246,13 +299,54 @@ experience.
      delivered.
 
 
-* Sdc-changefeed API is partitioned from its Moray
-  * If sdc-changefeed API is unable to persist entries, it must refuse all
-    incoming POSTs and respond with an HTTP 503 (Service unavailable).  The 503
-    response will be handled by the publisher-agent(s) in exactly the same way
-    as a partition between the publisher-agent and sdc-changefeed API
-    (See above scenario).
+ * Sdc-changefeed API is partitioned from its Moray
+   * If sdc-changefeed API is unable to persist entries, it must refuse all
+     incoming POSTs and respond with an HTTP 503 (Service unavailable).  The 503
+     response will be handled by the publisher-agent(s) in exactly the same way
+     as a partition between the publisher-agent and sdc-changefeed API
+     (See above scenario).
 
 
-* Sdc-changfeed API is partitioned from listener(s)
-  * // This is where it gets tricky... Retry vs offset fetches...
+ * Sdc-changfeed API is partitioned from listener(s)
+   * sdc-changefeed will continue to persist change feed entries without any
+     regard for its listener count. It is perfectly reasonable for sdc-changfeed
+     to have zero listeners.
+
+
+ * A listener-agent is partitioned from sdc-changefeed API and within the stored
+   sequence-id range
+   * listener-agents should attempt to reconnect to sdc-changefeed API with an
+     exponential back off. Additionally the agent is required to durably store
+     its last seen sequence-id. Storing the last seen sequence-id allows the
+     agent to pick up where it left off. Upon reconnecting to sdc-changefeed the
+     agent will get the latest sequence-id that sdc-changefeed is aware of.  If
+     the sdc-changefeed's sequence-id doesn't match the agent's last seen
+     sequence-id it will request all entries after its last seen sequence-id up
+     to the current sequence-id from sdc-changefeed API while buffering any
+     entries received from long polling.
+
+
+ * A listener-agent is partitioned from sdc-changefeed API and outside of the
+   stored sequence range
+   * Since it isn't reasonable, and perhaps infeasible, for sdc-changfeed API to
+     persist every event that has ever happened, it will only maintain a
+     configurable range of sequence-ids (e.g. 2 days worth).  In the scenario
+     where a listener-agent is partitioned from sdc-changefeed API longer than
+     the configurable range of sequence-ids can accommodate, the listener-agent
+     will need to fetch the current state of the world from the source system
+     (e.g VMAPI needs to produce a snapshot of what its state looks like at a
+     given sequence-id). Once the listener-agent has caught up with the source
+     system it can begin to apply any buffered entries and resume long polling.
+
+
+ * Sdc-changefeed receives a duplicate entry from a publisher-agent
+   * This is a state that realistically shouldn't ever exist. However, if this
+     scenario is encountered, sdc-changefeed API should refuse all new entries
+     from the publisher-agent in question and alarm loudly because this is a
+     state that will likely need manual intervention and inspection of the
+     change feed buckets in each subsystem.
+
+
+ * A listener-agent receives a duplicate entry from sdc-changefeed API
+   * The handling of duplicate events at the listener-agent is a correctness
+     issue that is left up to the consumer.
