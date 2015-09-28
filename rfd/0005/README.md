@@ -1,6 +1,6 @@
 ---
 authors: Richard Kiene <richard.kiene@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
@@ -53,19 +53,16 @@ experience.
  3. In the event of a partition, messages will not be lost and an automatic
     replay / catch-up mechanism should take over.
 
- 4. Producers should allow for a full state dump in order to hydrate new
-    consumers.
+ 4. Publishing systems should provide an API for retrieving state snapshots that
+    are tied to a sequence-id. This provides the ability to hydrate new
+    or significantly out of date consumers.
 
  5. Each step in the broadcast of a state change should be observable and
     debuggable.
 
+ 6. The design should support an HA configuration.
+
 ### Assumptions
-
- * Hydrating new or significantly out of date consumers is not in the scope of
-   the change feed bus.
-
- * Producers will provide a mechanism for hydrating new or significantly out of
-    date consumers.
 
  * Eventual consistency is acceptable.
 
@@ -132,14 +129,14 @@ experience.
 
    ```
    /*
-    * {number} sequence-id    - Marks this entries position in the log
+    * {string} sequence-id    - Marks this entries position in the log
     * {string} agent-id       - UUID of the publisher-agent (blank until marked)
     * {string} change-feed-id - Feed name, identifies the bucket and content
     * {bool}   processed      - Identifies if this entry has been processed
     * {object} changes        - Properties changed in this entry
     */
    {
-       "sequence-id": 63,
+       "sequence-id": "8HFaR8qWtRlGDHnO56",
        "agent-id": "",
        "change-feed-id": "vmapi::vm",
        "processed": false,
@@ -219,7 +216,9 @@ experience.
    ---
    {
        "agent-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
-       "change-feed-id": "vmapi::vm"
+       "change-feed-id": "vmapi::vm",
+       "retention-period": "1d",
+       "max-bucket-length": "1000000000"
    }
    ```
 
@@ -229,13 +228,13 @@ experience.
    POST /feeds/{change-feed-id}/entries
    ---
    /*
-    * {number} sequence-id    - Marks this entries position in the log
+    * {string} sequence-id    - Marks this entries position in the log
     * {string} agent-id       - UUID of the publisher-agent (blank until marked)
     * {string} change-feed-id - Feed name, identifies the bucket and content
     * {object} changes        - Properties changed in this entry
     */
    {
-       "sequence-id": 63,
+       "sequence-id": "8HFaR8qWtRlGDHnO56",
        "agent-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
        "change-feed-id": "vmapi::vm",
        "processed": false,
@@ -278,7 +277,7 @@ experience.
    {
        changes-list: [
        {
-           "sequence-id": 63,
+           "sequence-id": "8HFaR8qWtRlGDHnO57",
            "changes": {
                "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
                "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
@@ -297,7 +296,7 @@ experience.
            }
        },
        {
-           "sequence-id": 64,
+           "sequence-id": "8HFaR8qWtRlGDHnO56",
            "changes": {
                "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
                "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
@@ -325,12 +324,12 @@ experience.
    example sequence-id range query:
 
    ```
-   GET /feeds/{change-feed-id}/entries?beg-sequence-id=63&end-sequence-id=64
+   GET /feeds/{change-feed-id}/entries?beg-sequence-id=8HFaR8qWtRlGDHnO57&end-sequence-id=8HFaR8qWtRlGDHnO56
    ---
    {
        changes-list: [
        {
-           "sequence-id": 63,
+           "sequence-id": "8HFaR8qWtRlGDHnO57",
            "changes": {
                "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
                "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
@@ -349,7 +348,7 @@ experience.
            }
        },
        {
-           "sequence-id": 64,
+           "sequence-id": "8HFaR8qWtRlGDHnO56",
            "changes": {
                "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
                "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
@@ -595,20 +594,128 @@ experience.
      issue that is left up to the consumer.
 
 
-### Suggested mechanisms for snapshotting
+### Snapshots
 
- * When cfapi has gone beyond its retention time for a given feed and a consumer
-   needs to be caught up to the latest sequence-id, the publishing system will
-   need to provide a snapshot of its data that corresponds to a given
-   sequence-id. The publishing system can create snapshots on any interval, so
-   long as they happen more frequently than the retention time.
+ * Snapshots are a necessary component of the change feed system. Snapshots
+   provide a point in time recovery mechanism for consumers. Since we must
+   accommodate partitions, we must also account for the possibility that
+   listeners will be partitioned long enough that they cannot be caught up by
+   cfapi. In this case listeners will need to reach out to the source system and
+   obtain a snapshot, tied to a sequence-id, so they can resume or begin to
+   apply data from cfapi.
 
-### Future considerations
+ * Publishing systems can create snapshots on any interval, so
+   long as they happen more frequently than the cfapi retention time for their
+   feed. Ideally this is a runtime configurable setting.
 
- * HA serivce endpoints
-   * If we have multiple service endpoints for a publishing system there should
-     still only be one writer / publisher-agent
+ * The snapshot HTTP API is intentionally loosely defined, because each source
+   system will inevitably have different data and behavior. However an example
+   snapshot might look like the following:
 
- * Scaling the Publisher Agent
-   * Multiple Publisher Agent's are a nice way to scale out, however it presents
-     a concurrency challenge to keep the log in chronological order.
+   ```
+   GET /snapshots?sequence-id=8HFaR8qWtRlGDHnO57
+   ---
+   {
+       snapshot: [
+       {
+           "sequence-id": "8HFaR8qWtRlGDHnO57",
+           "changes": {
+               "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
+               "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
+               "alias": "rethink01",
+               "nics": [
+                {
+                  "interface": "net0",
+                  "mac": "32:4d:c5:55:a7:4d",
+                  "vlan_id": 0,
+                  "nic_tag": "external",
+                  "ip": "10.99.99.8",
+                  "netmask": "255.255.255.0",
+                  "primary": true
+                }
+              ]
+           }
+       },
+       {
+           ...
+       },
+       {
+           "sequence-id": "8HFaR8qWtRlGDHnO55",
+           "changes": {
+               "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
+               "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
+               "alias": "webscale99",
+               "nics": [
+                {
+                  "interface": "net0",
+                  "mac": "32:4d:c5:55:a7:4d",
+                  "vlan_id": 0,
+                  "nic_tag": "external",
+                  "ip": "10.99.99.8",
+                  "netmask": "255.255.255.0",
+                  "primary": true
+                }
+              ]
+           }
+       }
+       ]
+   }
+   ```
+
+### Garbage collection
+
+ * Publishers can garbage collect all processed change feed items immediately,
+   as long as a snapshot with enough history to catch-up listeners exists. If
+   a snapshot does not exist, the publisher must retain its local change feed
+   items until that requirement has been satisfied.
+
+ * When publishers register with cfapi, they must provide a retention period,
+   and a maximum bucket length. Cfapi can garbage collect it's bucket whenever
+   retention period is out of date, or the bucket length exceeds the max
+   bucket length value.
+
+ * Listeners can discard change feed entries as soon as they have made the
+   necessary changes in their local store.
+
+### High Availability
+
+ * Because the change feed system is designed to handle failure, an
+   active / active stateful high availability configuration for cfapi doesn't
+   appear to be worth the complexity tradeoff. Multiple cfapi writers would
+   likely require a consensus mechanism and introduce new edge conditions.
+
+ * The proposed high availability configuration for cfapi is active / passive
+   stateless. If a cfapi instance goes down, each actor in the system is already
+   able to cope with the unavailability of cfapi. A sample configuration might
+   use a VIP, Floating IP, or perhaps TCNS to provide actors with a virtual
+   endpoint that can be shared between cfapi instances. In the event of a
+   primary cfapi failure, the secondary can attach to the necessary Moray
+   buckets and take over the virtual endpoint address. The trigger mechanism and
+   election process is undefined at this time.
+
+### Back pressure
+
+ * Back pressure from cfapi to publishers will be handled via HTTP status codes
+   (e.g. 429 Too Many Requests, 503 Service Unavailable). When a publisher
+   receives a back pressure signal from cfapi, it should retry with exponential
+   back-off. While in a back-off scenario, publishers should make every attempt
+   to retain / buffer unprocessed change feed items. However, it may become
+   unsafe and / or impossible to retain all items depending on inflow and cfapi
+   busyness duration. If a publisher cannot guarantee the ordering and retention
+   of unprocessed change feed items, it should enter a read-only state and
+   signal back pressure as necessary.
+
+ * Back pressure from listeners to cfapi does not seem necessary. If a listener
+   is too busy, it can safely ignore any long polling change feed items, and
+   stop long polling cfapi. When a listener becomes available enough to long
+   poll cfapi again, it can buffer incoming change feed items and request a
+   range of change feed items based on its last processed sequence id from
+   cfapi.
+
+### Sequence IDs
+
+ * Sequence IDs are based on Flake IDs. Flake IDs do have the draw back of using
+   the system clock, but are otherwise ordered and can be uniquely generated by
+   any system.
+
+ * Publishers are responsible for sequence ID generation.
