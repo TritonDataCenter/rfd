@@ -174,20 +174,36 @@ As a result, the Triton Container Naming Service is designed along a DNS-centric
 approach, with consideration for the fact that it could be combined with a
 VXLAN-based load balancer service developed separately at a later date.
 
-### Not a load balancer, and not for HA
+### Not a load balancer
 
 It is important to note that an approach built around DNS round-robin can never
-provide true HA in the face of machine or network failure, nor can it provide
-true load balancing.
+provide "true" HA in the face of machine or network failure (in the sense of
+requests never failing), nor can it provide true load balancing (since it
+depends on client behaviour to spread the load out).
 
-We should be careful in marketing this approach to avoid these terms. TCNS is
-about grouping containers into services and discovering them. There is no
-provision for health checking, nor guarantees around request success or
-availability.
+That said, many "HA load balancer" solutions are in fact not as HA or as load-
+balancing as they claim or as users expect them to be. In particular, many
+designs (for performance reasons) depend on the results of periodic health
+checks whose information can be out of date by the time the packet redirection
+decision is made.
 
-What we can provide is the ability to map a name to a set of containers, and
-safely perform "blue-green" upgrades and deal with other kinds of expected,
-planned maintenance without downtime.
+As TCNS is designed for service discovery rather than load balancing, and
+clients connect directly to the service containers once discovery is complete,
+external health-checking is particularly unreliable. If a netsplit occurs that
+isolates the health checker node from a service container, but does not isolate
+a client from that container, we will fail to advertise an available container.
+This scenario can also happen the other way around, where we incorrectly
+advertise a container as running that is not available to the client.
+
+As a result, we depend only on container self-reporting for health checks.
+Containers can perform self-tests on their own service and report the results
+to TCNS. We can also augment this with data from the control plane of the CNs
+and the datacentre as a whole, to detect conditions where the container is
+definitely inaccessible regardless of self-test reporting.
+
+This design, and the focus on service discovery, still allows users to safely
+perform "blue-green" upgrades and deal with other kinds of expected, planned
+maintenance without downtime. These are the key features of TCNS.
 
 ## Proposal
 
@@ -221,9 +237,9 @@ frontdoor.svc.5450ee30-5352-11e5-a7b9-77da49db660f.us-east-1.triton-hosted.io
 ```
 
 Under the service DNS name, there will exist `A` and `AAAA` records that are the
-union of all the records for the containers that are a member of the service. In
-the same vein, `TXT` records will exist with the UUIDs of all member containers
-(see the explanation of individual container records below).
+union of all the records for the containers that are active members of the
+service. In the same vein, `TXT` records will exist with the UUIDs of all member
+containers (see the explanation of individual container records below).
 
 The `user` part of the service name will be the user's UUID. It may also be
 desirable to provide shorter or "friendlier" names than the whole UUID, but this
@@ -260,9 +276,10 @@ The `container` part of the DNS name is the UUID of the individual container in
 question, while the `user` part is as defined above.
 
 Once again, using the `alias` field would be nice, but is quite problematic.
-Container aliases are even less constrained than values of `login`, so it is unlikely we
-can come up with a perfect solution here -- although, at least, container
-aliases are easily changeable by the user to escape from a potential problem.
+Container aliases are even less constrained than values of `login`, so it is
+unlikely we can come up with a perfect solution here -- although, at least,
+container aliases are easily changeable by the user to escape from a potential
+problem.
 
 ### DNS zones, public and private addressing
 
@@ -306,6 +323,49 @@ the time of their being set by the end-user. In this way, the user will receive
 immediate feedback if the tag they attempt to set will not work. This kind of
 validation will likely be needed in future for other special Docker labels
 anyway, so the infrastructure and error codes can be shared.
+
+For members of a service to appear in DNS, they must write to their own metadata
+using the `mdata-put` tool, to indicate their status. They must write to the
+metadata key `triton.cns.status` with either `up` or `down` as the value. If
+this key is not present, `down` is assumed.
+
+The intent is for the container to write to this key when it has finished
+starting up (and perhaps passed any power-on tests desired), and again before
+it begins to shut down. This can be done by an SMF service or a startup/shutdown
+script of some kind.
+
+Containers have the (highly recommended) option of self-monitoring using this
+metadata interface -- they can write to this key if any health checks fail on
+the service while running, to remove it from DNS.
+
+A very simple service may also, if it wishes, simply write this metadata key
+once after it has been set up, and leave it set forever (running with the
+assumption that if the container is running, the service is accessible). This
+is perfectly acceptable.
+
+### Self-removal hysteresis
+
+In the particular case of containers that self-remove from DNS using the
+`triton.cns.status` metadata key, the TCNS system will apply a form of
+hysteresis to avoid cascading failures removing all service nodes from DNS in
+rapid succession.
+
+Proposed policy:
+
+No more than `max(floor(n/3), 1)` containers with a given service tag will be
+removed due to self-removal in any 60-second window. If the final container in a
+service tag sets its self-removal flag, it will be subject to a delay of 600
+seconds before this removal becomes effective.
+
+(these exact numbers are subject to change)
+
+Note that this hysteresis will be overruled by containers having their service
+tag removed, completely shutting down or being destroyed, a detected CN hardware
+failure, or any other kind of "hard" removal.
+
+The idea behind this is to allow self-monitoring to be used safely without
+concern that a faulty or flakey probe can completely take down a service in one
+fell swoop.
 
 ### Operation
 
