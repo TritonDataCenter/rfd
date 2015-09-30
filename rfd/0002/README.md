@@ -203,14 +203,15 @@ dockerinit so that it did not exec the application over itself. Instead,
 dockerinit would be the parent of the application, as well as the restarter for
 the logger, and when the application exits dockerinit would wait until the
 logger drained the zfd tee stream before it exited, halting the zone. However,
-this cannot work for all images since any image which provides its own "init"
-(e.g. systemd) requires that init to be pid 1 in the zone. Once the primal
-process exits the zone will halt immediately and any queued log data would be
-lost. It might be possible to stream the log data into a file and setup the
-logger to read from that file. If the zone restarted the logger could pickup
-where it left off in the file, but the docker model seems to assume "ephemeral"
-containers, so there is no guarantee that the zone will ever be restarted.
-In this case any unsent log data will still be lost.
+this cannot work because to be compatible with docker we need the user's process
+to be PID 1 so that their application can be or operate as a 'real' init process
+such as systemd, upstart, runnit, etc.  Once the primal process exits the zone
+will halt immediately and any queued log data would be lost. It might be
+possible to stream the log data into a file and setup the logger to read from
+that file. If the zone restarted the logger could pickup where it left off in
+the file, but the docker model seems to assume "ephemeral" containers, so there
+is no guarantee that the zone will ever be restarted.  In this case any unsent
+log data will still be lost.
 
 ### Updates w/o platform rebuild
 
