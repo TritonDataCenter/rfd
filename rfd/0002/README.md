@@ -184,12 +184,10 @@ reliable (in the sense that the logger is restarted and receives all stdout/err
 data).
 
 The first implication of this is that we should not use a contract to kill the
-zone if the logger dies. Instead, we need a restarter for the logger. We would
-not change the behavior when the application exits (the zone will still halt).
-Having a restarter for the logger implies that instead of two (or more)
-processes within the zone, there will be at least three. We might want to
-modify the lx procfs so that we have a mechansim to hide these 'infrastructure'
-processes from ps(1).
+zone if the logger dies. Instead, we need a restarter for the logger. Having a
+restarter for the logger implies that instead of two (or more) processes within
+the zone, there will be at least three. We might want to modify the lx procfs
+so that we have a mechansim to hide these 'infrastructure' processes from ps(1).
 
 The second implication is that we should change the zfd tee behavior so that
 we stop the flow in the primary stream when the tee is full and that we tee
@@ -200,7 +198,13 @@ logging should block your application or not.
 
 The third implication of this is that we need to figure out what to do with
 the log data that is waiting to be written if the application exits and the
-zone shuts down. There is currently no proposal for handling this case.
+zone shuts down. The only way to handle this is to change dockerinit so that
+it does not exec the application over itself. Instead, dockerinit will be the
+parent of the application as well as the restarter for the logger. When the
+application exits dockerinit must wait until the logger has drained the zfd
+tee stream before it kills the logger, exits and the zone can then halt. This
+also implies that the time for a zone to halt/reboot will now be indeterminate
+since the logger can be backed up on the net indefinitely.
 
 ### Updates w/o platform rebuild
 
