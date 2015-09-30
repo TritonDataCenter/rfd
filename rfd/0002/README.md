@@ -198,13 +198,19 @@ logging should block your application or not.
 
 The third implication of this is that we need to figure out what to do with
 the log data that is waiting to be written if the application exits and the
-zone shuts down. The only way to handle this is to change dockerinit so that
-it does not exec the application over itself. Instead, dockerinit will be the
-parent of the application as well as the restarter for the logger. When the
-application exits dockerinit must wait until the logger has drained the zfd
-tee stream before it kills the logger, exits and the zone can then halt. This
-also implies that the time for a zone to halt/reboot will now be indeterminate
-since the logger can be backed up on the net indefinitely.
+zone shuts down. An apparently simple way to handle this would be to change
+dockerinit so that it did not exec the application over itself. Instead,
+dockerinit would be the parent of the application, as well as the restarter for
+the logger, and when the application exits dockerinit would wait until the
+logger drained the zfd tee stream before it exited, halting the zone. However,
+this cannot work for all images since any image which provides its own "init"
+(e.g. systemd) requires that init to be pid 1 in the zone. Once the primal
+process exits the zone will halt immediately and any queued log data would be
+lost. It might be possible to stream the log data into a file and setup the
+logger to read from that file. If the zone restarted the logger could pickup
+where it left off in the file, but the docker model seems to assume "ephemeral"
+containers, so there is no guarantee that the zone will ever be restarted.
+In this case any unsent log data will still be lost.
 
 ### Updates w/o platform rebuild
 
