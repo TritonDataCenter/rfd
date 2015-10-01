@@ -160,11 +160,15 @@ messages before the zone halted.
 This will be left as a separate project as the current thinking is that this
 would be implemented through hermes, or something like it, that runs in the GZ
 and can rotate logs. Ultimately we need to rotate the logs to Manta since
-rotated logs are otherwise not accessible to the user. The `docker logs`
+rotated logs are otherwise not accessible to the user. In Docker, `docker logs`
 command only displays entries from the current log, ignoring the rotated logs.
 
+As an option, we may choose to diverge from docker and allow `docker logs` to
+work for all drivers and just return the logs out of manta or from the latest
+local file regardless of driver.
 
-## Alternative Approachs
+
+## Alternative Approaches
 
 This section captures the historical thinking around the behavior of the
 logging service in the face of errors. It is provided here to give context
