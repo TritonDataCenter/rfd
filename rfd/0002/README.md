@@ -23,7 +23,7 @@ fluentd and gelf.
 
 ## Don't we already have that?
 
-Nope. We support the equivalent of `--log-driver json-file` not including the
+No. We support the equivalent of `--log-driver json-file` not including the
 rotation options. We also (recently) support the `--log-driver none`. What we
 don't support is any of the network logging drivers.
 
@@ -63,12 +63,18 @@ systemd's journald in the host. We'll also not have that.
     a vector for security issues.
 
 
-## Triton Background
+## End-User uses for logging
 
-This section includes some details that people were confused about in the first
-draft.
+We believe that there are two high-level ways that logging is used.
 
-### How are ZFD(7D) devices used?
+ 1. For real-time monitoring or analytics of the application. Logging for these
+    cases is not critical and drops of some messages are ok.
+ 2. It is fundamental to the correct behavior of the overall system (e.g. for
+    billing). In these cases logging is expected to be reliable, drops are not
+    ok and all data is needed.
+
+
+## Triton Background - How are ZFD(7D) devices used?
 
 The zfd devices are streams driver instances and they are currently used by
 dockerinit to setup the app in the zone so that stdin/out/err are hooked up
@@ -77,34 +83,27 @@ being used and if the app is being run interactively or not. The streams are
 used to get stdio from the app out to the GZ and into zlogin, as well as the
 GZ log file.
 
-The new support adds 1 or 2 additional zfd devices into the zone and dockerinit
-can issue an ioctl which will cause the stdout/stderr from the app (via the
-original zfd devices) to tee into the new zfd devices. This is done internally
-as a streams multiplexer.
+We've added new support for one or two additional zfd devices in the zone and
+dockerinit can issue an ioctl which will cause the stdout/stderr from the app
+(via the original zfd devices) to tee into the new zfd devices. This is done
+internally as a streams multiplexer.
 
 These additional zfd instances can now be read by a logging process running
 inside the zone to obtain the application's stdout/stderr.
 
-Because this is streams there is some queueing/buffering that we get. The
-default queue size is 2k, which we could tweak, and because there can be
-various streams modules pushed onto the stream we can get multiple spots where
-queueing occurs.
-
-The way that the zfd tee devices currently behave (although this can be changed)
-is that they do not block the app's execution if the log stream gets full
-(which could happen if the logging process is slow or stuck). Thus the app will
-continue to run and if the log process resumes or catches up, then it will
-start getting any new stdout/err msgs that get queued onto the log stream.
-Intermediate stdout/stderr msgs that flow while the tee is full are dropped.
-
-If the log process is not running for any reason, then the log stream is not
-open and nothing goes into that stream. Any stdout/err is thus currently not
-logged, although again, this can be changed.
-
 
 ## How will logging work for Triton?
 
-This represents the plan so far.
+Because of the requirements listed above, the logger process must run inside
+the zone. There are several error cases which cause concern for how logging
+behaves.
+
+ 1. What happens if the logger dies?
+ 2. What happens to the application if the logger gets behind and can't keep up?
+ 3. What happens to in-flight messages when the application exits, perhaps
+    unexpectedly, and the zone halts?
+
+The design of the logging solution addresses these questions.
 
 In Triton's docker, the user's application process is the init process for the
 zone (exec'd by dockerinit). We don't have a GZ user-level process that is the
@@ -123,95 +122,106 @@ environment variables. This process will continue to read from the zfd devices
 and stream data to the remote log until the zone exits.
 
 Running the logger inside the zone does mean that we'll be adding an extra
-process in the zone which may confuse some docker users and adds some of its
-own complexity.
+process in the zone which may confuse some docker users. We'll handle this via
+separate lx proc work to make this appear as a system process.
 
-The current plan is to add a capability to setup the zone's init (dockerinit)
-contract(4) such that CT_PR_EV_EXIT will be part the contract's fatal event
-set. Because the application and the logger will be in the same process
-contract, if the logger dies, the contract will send SIGKILL to the
-application and the zone will halt. The existing behavior of halting the zone
-when the application exits will continue to be in effect.
+We will provide an option the user can specify on their docker log invocation
+which will control if the zfd log stream provides back pressure. If there
+is no back pressure and the logger gets backed up, the primary stream will
+continue to flow, the application will continue to run, but those messages
+will not be sent to the logger. If the option specifies back pressure and
+the logger gets backed up, the primary stream will be flow controlled, the
+application writes will block, and the application will stop running until
+the logger catches up and the primary stream can flow again.
+
+In order to ensure that a zone does not run for a long time if the logger dies
+we will add a capability to setup the zone's init (dockerinit) contract(4) such
+that CT_PR_EV_EXIT will be part the contract's fatal event set. Because the
+application and the logger will be in the same process contract, if the logger
+dies, the contract will send SIGKILL to the application and the zone will halt.
+This is similar to how the Docker deamon works. If its logger dies it will
+most likely take out the daemon and all containers will halt. The existing
+behavior of halting the zone when the application exits will continue to be in
+effect.
+
+This leaves the question of what happens if the application exits while log
+messages are in the stream but the logger hasn't handled them yet. Those
+messages will be lost to the logger because the zone will halt immediately.
+However, our view is that the "reliable" log path is the one that goes out to
+the global zone and into the JSON log file. We will always maintain that log
+path, even when in-zone logging is being used. We will rotate the GZ JSON log
+file to Manta on a regular basis and those logs should contain all of the zfd
+stream data, even in cases when the in-zone logger did not consume those
+messages before the zone halted.
 
 
-## What about rotation for the GZ json logfile?
+## What handles rotation for the GZ json logfile?
 
 This will be left as a separate project as the current thinking is that this
-would be implemented through hermes, or something like it that runs in the GZ
-and can rotate logs. Ultimately we will need to rotate the logs to somewhere
-off-box (Manta) since rotated logs are otherwise not accessible to the user. The
-`docker logs` command only displays entries from the current log, ignoring the
-rotated logs.
+would be implemented through hermes, or something like it, that runs in the GZ
+and can rotate logs. Ultimately we need to rotate the logs to Manta since
+rotated logs are otherwise not accessible to the user. The `docker logs`
+command only displays entries from the current log, ignoring the rotated logs.
 
+
+## Alternative Approachs
+
+This section captures the historical thinking around the behavior of the
+logging service in the face of errors. It is provided here to give context
+for the design choices we made.
+
+Should the logging service be reliable? That is, should capturing all log data
+take precedence over keeping the application running? It is important to be
+clear that we are talking about the presence of the log service and the data it
+receives, not what the logger does with the data. This breaks down into three
+questions:
+
+1. Handling failure
+
+   What should we do when the logger process dies?
+
+      * kill the zone? (the plan)
+      * restart the logger?
+      * ignore the failure and stop logging until the container is restarted?
+
+   We could have a simple restarter for the logger but this does not handle
+   the case when the zone halts. As described below, that case is much more
+   complex and if that case is not reliable, then there is not much gained by
+   having a restarter for the logger. Instead, we chose to kill the zone since
+   this is similar to the Docker behavior and ensures the zone is not running
+   indefinitely without a logger.
+
+2. Handling backpressure
+
+   What should we do if the buffer for the logging zfd is full? This could
+   easily happen if the logger is blocked trying to send data across the net.
+
+     * drop new output?
+     * block the application process?
+
+   We chose to make this a user-configurable option since either behavior can
+   be desirable.
+
+3. Handling application exit
+
+   What should we do when the application exits while messages are in-flight?
+
+     * nothing, the messages are lost?
+     * block zone halt until we somehow know the messages have been handled?
+
+   Blocking the halt implies that the zone shutdown or reboot is delayed
+   indefinitely. It also means that the application cannot be the initial
+   process inside the zone, but that there must instead be a "meta init" which
+   sticks around when the application exits. However, the application must
+   continue to behave like init, it must be pid 1 and it must inherit zombies,
+   otherwise applications such as systemd, upstart, runnit, etc. will not work
+   correctly. While we could add code to work around this, it would be complex.
+   Instead, while we recognize that these final messages can be critical, we
+   treat the GZ JSON logging as the reliable path. Thus, users will be able to
+   get those messages out of Manta.
 
 ## Open questions (input encouraged)
 
-### Should the logging service be reliable?
-
- That is, should capturing all log data take precedence over keeping the
- application running? It is important to be clear that we are talking about
- the presence of the log service and the data it receives, not what the logger
- does with the data. This breaks down into two questions:
-
-#### Handling failure
-
- * What should we do when the logger process dies?
-    * kill the zone? (the current plan)
-    * restart the logger? (this requires a small restarter as its parent)
-    * ignore the failure and stop logging until the container is restarted?
-
-For this question, as described above, the current plan is to use CT_PR_EV_EXIT
-in init's contract fatal event set so that if the logger dies, the contract
-will send SIGKILL to the application and the zone will halt.
-
-#### Handling backpressure
-
- * What should we do if the buffer for the logging zfd is full? This could
-   easily happen if the logger is blocked trying send data across the net.
-    * drop new output? (the current plan)
-    * block the application process?
-
-For this question, the current zfd(7D) implementation is such that the log tee
-is "best effort". That is, if no log process has the device open, the log tee
-gets nothing. Likewise, if the log tee is full, the primary application message
-stream will continue to flow and that output will be lost to the logger. Both
-of these behaviors can be changed.
-
-#### Alternative approach
-
-In discussion it has been suggested that logging is critical and should be made
-reliable (in the sense that the logger is restarted and receives all stdout/err
-data).
-
-The first implication of this is that we should not use a contract to kill the
-zone if the logger dies. Instead, we need a restarter for the logger. Having a
-restarter for the logger implies that instead of two (or more) processes within
-the zone, there will be at least three. We might want to modify the lx procfs
-so that we have a mechansim to hide these 'infrastructure' processes from ps(1).
-
-The second implication is that we should change the zfd tee behavior so that
-we stop the flow in the primary stream when the tee is full and that we tee
-even if the device is not open. This means that a blocked logger will block
-the application from executing once the log stream is full. We may want to
-consider a tunable for reliable/unreliable logging which determines whether
-logging should block your application or not.
-
-The third implication of this is that we need to figure out what to do with
-the log data that is waiting to be written if the application exits and the
-zone shuts down. An apparently simple way to handle this would be to change
-dockerinit so that it did not exec the application over itself. Instead,
-dockerinit would be the parent of the application, as well as the restarter for
-the logger, and when the application exits dockerinit would wait until the
-logger drained the zfd tee stream before it exited, halting the zone. However,
-this cannot work because to be compatible with docker we need the user's process
-to be PID 1 so that their application can be or operate as a 'real' init process
-such as systemd, upstart, runnit, etc.  Once the primal process exits the zone
-will halt immediately and any queued log data would be lost. It might be
-possible to stream the log data into a file and setup the logger to read from
-that file. If the zone restarted the logger could pickup where it left off in
-the file, but the docker model seems to assume "ephemeral" containers, so there
-is no guarantee that the zone will ever be restarted.  In this case any unsent
-log data will still be lost.
 
 ### Updates w/o platform rebuild
 
