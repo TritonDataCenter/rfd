@@ -111,16 +111,28 @@ experience.
 
  * Residing in the node-sdc-changefeed repository, the publisher module will
    abstract away some of the boilerplate necessary for simultaneously modifying
-   the publishers authoritative data store and sending events to listeners.
-   Furthermore, the publisher module is responsible for providing a websocket
-   interface that listeners can receive updates from and an HTTP interface that
-   listeners can register for events on. Lastly the publisher module will track
-   current listeners and what they are registered for.
+   the publishers authoritative data store, change feed bucket, and sending
+   events to listeners.
+
+ * The publisher module is responsible for providing a websocket interface that
+   listeners can receive updates from and an HTTP interface that listeners can
+   register for events on.
+
+ * The module will also track current listeners, what they are registered for,
+   and publish a collection of available change feed resources via HTTP.
+
+ * On startup the module will obtain the following settings from a configuration
+   file (e.g. config.js).
+     * The change feed bucket location.
+     * The maximum age of a change feed item in the change feed bucket.
+     * A list of resources that support change feeds and their respective
+       bootstrap routes.
+
 
  * Example registration payload (websocket):
 
    ```
-   /change-feed
+   /change-feeds
    ---
    /*
     * This will be sent by the listener to the change feed route
@@ -162,11 +174,11 @@ experience.
     * {string} resource-id - identifier of the root object that changed
     *
     * In this case we're saying that a VM identified by the given UUID had its
-    * nic_tag property changed. The listener would go fetch the VM from VMAPI
-    * using the changed-resource-id.
+    * nic property changed. The listener would go fetch the VM from VMAPI using
+    * the changed-resource-id.
     */
    {
-       "change-kind": "vm::nic::tag",
+       "change-kind": "vm::nic",
        "changed-resource-id": "78615996-1a0e-40ca-974e-8b484774711a"
    }
    ```
@@ -174,7 +186,7 @@ experience.
  * Example statistics request (HTTP):
 
    ```
-   GET /change-feed/stats
+   GET /change-feeds/stats
    ---
    {
        "listeners":63,
@@ -183,6 +195,29 @@ experience.
             "listener-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
             "listener-alias": "tcns",
             "change-kind": "vm::*"
+        }
+       ]
+   }
+   ```
+
+ * Example available change feed resources (HTTP):
+
+   ```
+   GET /change-feeds
+   ---
+   {
+       "resources": [
+        {
+            "resource": "vm",
+            "bootstrap-route": "/vms",
+            "sub-resources": [
+                {
+                    "sub-resource": "nic"
+                },
+                {
+                    "sub-resource": "alias"
+                }
+            ]
         }
        ]
    }
@@ -200,27 +235,28 @@ experience.
    changes it would like to be notified about, its UUID, and its alias
    (e.g. VMAPI).
 
- * After registering with a change feed the listener will be provided with a
+ * After registering with a change feed, the listener will be provided with a
    bootstrap route by the change feed source system. The listener must bootstrap
    itself by paging through the set of data returned by the bootstrap route.
    While the listener bootstraps itself it must also buffer incoming events from
-   the change feed websocket, so that they may be acted upon after bootstrapping
+   the change feed websocket so that they may be acted upon after bootstrapping
    completes.
 
  * The bootstrap and buffering process happens each time the listener connects.
 
  * When the listener receives new change feed items, it raises an event that can
    be handled by the listening system. The event will be associated with the
-   change that took place so that the listening system can act upon it
+   change that took place, so that the listening system can act upon it
    accordingly (e.g. fetch that resource from the source system).
 
  * The listener module has a configurable buffer kind. The default buffer kind
    is in-memory, but it could also be used with Redis, Memcached, etc. The
    buffer size is configurable via a setting in its config.js. The buffer is
    used in situations where the publisher is pushing change feed items to the
-   listener faster than it can handle and when bootstrapping. Under all
-   circumstances if the buffer cannot be maintained, the listener should abort
-   and re-initiate a registration with the publisher using exponential back off.
+   listener faster than it can handle and also when it is bootstrapping. Under
+   all circumstances if the buffer cannot be maintained, the listener should
+   abort and re-initiate a registration with the publisher using exponential
+   back off.
 
 ### Flow
 
@@ -230,34 +266,34 @@ experience.
       |                                                     |
       |           +---------+                               |
       |           |         |                               |
-      |           |  VMAPI  | <-+                           |
-      |           |         |   |                           |
-      |           +---------+   |                           |
-      |                |    ^   |                           |
-      |           +----+    |   |                           |
-      |   (Moray) |         |   |                           |
-      |           v         |   |                           |
-      |      +--------+     |   |                           |
-      |      |        |     |   |                           |
-      |      |   VM   |     |   |                           |
-      |      | BUCKET |     |   |                           |
-      |      |        |     |   |                           |
-      |      +--------+     |   |                           |
-      |                     |   |                           |
-      |                     |   |                           |
-      + - - - - - - - - - - | - | - - - - - - - - - - - - - +
-                            |   |
-            (r/w websocket) |   | (HTTP)
-                            |   |
-          TCNS              |   |
-      + - - - - - - - - - - | - | - - - - - - - - - - - - - +
-      |                     |   |                           |
-      |                     v   |                           |
-      |                  +--------+                         |
-      |                  |        |                         |
-      |                  |  TCNS  |                         |
-      |                  |        |                         |
-      |                  +--------+                         |
+      |           |  VMAPI  | <-----+                       |
+      |           |         | <-+   |                       |
+      |           +---------+   |   |                       |
+      |            |            |   |                       |
+      |      +-----+-----+      |   |                       |
+      |      |           |      |   |                       |
+      |      v           v      |   |                       |
+      | +--------+ +--------+   |   |                       |
+      | |        | |        |   |   |                       |
+      | |   VM   | |  FEED  |   |   |                       |
+      | | BUCKET | | BUCKET |   |   |                       |
+      | |        | |        |   |   |                       |
+      | +--------+ +--------+   |   |                       |
+      |                         |   |                       |
+      |                         |   |                       |
+      + - - - - - - - - - - - - | - | - - - - - - - - - - - +
+                                |   |
+                (r/w websocket) |   | (HTTP)
+                                |   |
+          TCNS                  |   |
+      + - - - - - - - - - - - - | - | - - - - - - - - - - - +
+      |                         |   |                       |
+      |                         v   |                       |
+      |                     +--------+                      |
+      |                     |        |                      |
+      |                     |  TCNS  |                      |
+      |                     |        |                      |
+      |                     +--------+                      |
       |                                                     |
       + - - - - - - - - - - - - - - - - - - - - - - - - - - +
 
@@ -274,9 +310,14 @@ experience.
     registered for, and fetches resource information from VMAPI via HTTP for
     each of the buffered change feed items received via websocket.
 
- 4. VMAPI simultaneously writes to its Moray bucket and sends change feed items
-    to TCNS via websocket. TCNS fetches information about the changed
-    resource(s) from VMAPI via HTTP.
+ 4. VMAPI simultaneously writes to its existing Moray bucket and its change feed
+    Moray bucket.
+
+ 5. VMAPI's publisher module polls its change feed Moray bucket for entries.
+    When entries are found it sends them to TCNS via websocket and deletes
+    entries from its change feed Moray bucket that are older than the maximum
+    age setting. It is important to note that the publisher module does not care
+    if the entry was successfully received by the TCNS listener.
 
 ### Failure scenarios
 
@@ -290,9 +331,9 @@ experience.
    Listeners will catch back up as a part of the normal bootstrapping process
    that is required after disconnect.
 
- * If during the bootstrapping process the listener exceeds its configured buffer
-   size (e.g. too many change feed items come in while paging via HTTP). The
-   listener should abort and retry with exponential back off.
+ * If during the bootstrapping process the listener exceeds its configured
+   buffer size (e.g. too many change feed items come in while paging via HTTP).
+   The listener should abort and retry with exponential back off.
 
 ### Registrations
 
@@ -301,30 +342,47 @@ experience.
    garbage collected.
 
  * Registrations use a tuple to specify the type of change feed items they would
-   like to receive. The are three part tuples that support wild cards (e.g.
+   like to receive. They are two part tuples that support wild cards (e.g.
    vm::* )
 
 ### High Availability
 
-* Because the publisher is just a websocket implementation of existing
-  functionality, it fits the existing and future HA plans of an API the same way
-  a publishing APIs HTTP endpoints do.
+ * Because the publisher is just a websocket implementation of existing
+   functionality, it fits the existing and future HA plans of an API the same way
+   a publishing APIs HTTP endpoints do.
 
-* Multiple listeners can exist for a single HA system. Without coordination by
-  the listening system, duplicate events may be received, and consequently
-  duplicate fetches may happen. There is not consequence for duplicate events.
+ * The polling mechanism of the publisher is also HA compatible because the
+   change feed bucket is shared by all publisher modules for a given system
+   (e.g. VMAPI).
+
+ * Multiple listeners can exist for a single HA system. Without coordination by
+   the listening system, duplicate events may be received, and consequently
+   duplicate fetches may happen. There is no correctness consequence for
+   duplicate events and fetches.
 
 ### Back pressure
 
-* Publishers should not care about the health of a listener.
+ * Publishers should not care about the health of a listener.
 
-* Listeners should make an attempt to buffer incoming change feed events if they
-  are unable to process them as fast as they are received. However, if the
-  listeners cannot successfully buffer the incoming change feed items, they
-  should abort and retry with exponential back off.
+ * Listeners should make an attempt to buffer incoming change feed events if
+   they are unable to process them as fast as they are received. However, if the
+   listeners cannot successfully buffer the incoming change feed items, they
+   should abort, clear the buffer, and retry with exponential back off.
+
+### Garbage collection
+
+ * There are two areas where garbage can accumulate, the publishers change feed
+   item bucket, and the listeners buffer.
+     * Listener garbage collection is handled as items are processed.
+       (i.e. The listener will remove items from the buffer as it processes
+       them.)
+     * Publisher garbage collection is handled by checking for change feed items
+       in the bucket that are older than the maximum age when polling for new
+       change feed items. (i.e. As a part of polling for new items, the
+       publisher also deletes objects it finds that are older than the max age.)
 
 ### Logging
 
-* In the interest of observability, publishers should log registration events,
-  listener counts, and listener disconnects. Additionally listeners should log
-  their connection attempts, buffer size, and back off status.
+ * In the interest of observability, publishers should log registration events,
+   listener counts, and listener disconnects. Additionally listeners should log
+   their connection attempts, buffer size, and back off status.
