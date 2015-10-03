@@ -32,7 +32,7 @@ Synchronously calling VMAPI every time a customer begins such a request creates
 delay and forces VMAPI to scale one to one with TCNS request rate.  Similarly,
 polling VMAPI frequently enough to give the appearance of being up to date,
 would introduce significant and unnecessary load.  Additionally, when taken to
-it's logical extreme, polling will hit an upper bound where the time it takes to
+its logical extreme, polling will hit an upper bound where the time it takes to
 complete a request to VMAPI will be slower than what is needed to keep the
 appearance of being up to date.
 
@@ -46,16 +46,16 @@ experience.
 ### Requirements
 
  1. An individual service should be able to broadcast a state change to an
-    arbitrary number of consumers with a single change feed entry.
+    arbitrary number of consumers.
 
- 2. Change feed data is chronologically ordered and eventually consistent.
+ 2. Change feed data is does not strictly depend on ordering and only informs
+    listeners that something about a resource changed, not exactly what changed.
 
- 3. In the event of a partition, messages will not be lost and an automatic
-    replay / catch-up mechanism should take over.
+ 3. In the event of a partition, listeners must reconnect and re-bootstrap.
 
- 4. Publishing systems should provide an API for retrieving state snapshots that
-    are tied to a sequence-id. This provides the ability to hydrate new
-    or significantly out of date consumers.
+ 4. Publishing systems should provide a paginated HTTP API for retrieving the
+    current state of a given resource(s). This provides the ability to hydrate
+    new or re-connecting listeners.
 
  5. Each step in the broadcast of a state change should be observable and
     debuggable.
@@ -63,6 +63,10 @@ experience.
  6. The design should support an HA configuration.
 
 ### Assumptions
+
+ * Fetching the entire state of a resource is an expensive operation, but it is
+   reasonable to expect that it is possible in a way that doesn't jeopardize the
+   system as a whole.
 
  * Eventual consistency is acceptable.
 
@@ -97,625 +101,230 @@ experience.
 ### The following new repositories will be created
 
  * node-sdc-changefeed
- * sdc-cf-agent
- * sdc-cfapi
 
+### The solution will consist of two main components
 
-### The solution will consist of four main components
+ 1. Publisher module
+ 2. Listener module
 
- 1. Publisher client module
- 2. Publisher agent
- 3. Change feed API
- 4. Listener agent
+### Publisher module
 
-### Publisher client module
+ * Residing in the node-sdc-changefeed repository, the publisher module will
+   abstract away some of the boilerplate necessary for simultaneously modifying
+   the publishers authoritative data store and sending events to listeners.
+   Furthermore, the publisher module is responsible for providing a websocket
+   interface that listeners can receive updates from and an HTTP interface that
+   listeners can register for events on. Lastly the publisher module will track
+   current listeners and what they are registered for.
 
- * Residing in the node-sdc-changefeed repository, the publisher client module
-   will abstract away some of the boilerplate necessary for simultaneously
-   modifying the publishers authoritative data store and its change feed
-   datastore in the same operation.
-
- * A change feed data store (which will usually be a Moray bucket) is a
-   publisher local (e.g. using the same Moray as its existing bucket) storage
-   mechanism used to represent a chronologically ordered log of state changes.
-   It is important that have the same availability characteristics as the
-   authoritative data store because data will either be persisted to both the
-   authoritative data store and the change feed data store, or not at all.
-   Having the change feed data store in a different location presents some
-   availability issues that are not desirable.
-
- * The change feed entry will look like the following (Note: this is a JSON
-   representation, but the client should be storage mechanism agnostic):
+ * Example registration payload (websocket):
 
    ```
-   /*
-    * {string} sequence-id    - Marks this entries position in the log
-    * {string} agent-id       - UUID of the publisher-agent (blank until marked)
-    * {string} change-feed-id - Feed name, identifies the bucket and content
-    * {bool}   processed      - Identifies if this entry has been processed
-    * {object} changes        - Properties changed in this entry
-    */
-   {
-       "sequence-id": "8HFaR8qWtRlGDHnO56",
-       "agent-id": "",
-       "change-feed-id": "vmapi::vm",
-       "processed": false,
-       "changes": {
-           "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
-           "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-           "alias": "shmeeny",
-           "nics": [
-            {
-              "interface": "net0",
-              "mac": "32:4d:c5:55:a7:4d",
-              "vlan_id": 0,
-              "nic_tag": "external",
-              "ip": "10.99.99.8",
-              "netmask": "255.255.255.0",
-              "primary": true
-            }
-          ]
-       }
-   }
-   ```
-
-
-### Publisher agent
-
- * Located in the sdc-cf-agent repository, the publisher agent is a standalone
-   node application that, by convention, lives in the same zone as the service
-   creating the published events.
-
- * The publisher agent listens for modifications to the publishers change feed
-   datastore, checks for entries that have not been marked processed, have an
-   empty agent-id or its agent-id (e.g. marked but unprocessed entries, see the
-   failure scenarios section for more detail).
-
- * When unprocessed entries are found, the agent first marks them with its
-   agent-id (this is for debugability and to prevent double processing if
-   multiple agents are used), and then POSTs the change feed entries to CFAPI.
-   If successful, the in process entries are marked processed.
-
- * The agent-id should is configurable via a config.js file, however it should
-   be considered permanent once used.  Also in the config.js file is a variable
-   for configuring the change feed entries retention time (e.g. 2 days). The
-   longer the retention period the less likely it is that a listener will need
-   to be bootstrapped by a snapshot. However the consequence of a long retention
-   time is more disk usage.
-
- * On startup the agent should act as if it has been notified of an entry and
-   select all appropriate entries in the bucket. This is an important function
-   that allows for automatic recovery from crash or restart.
-
- * Publisher agent should be datastore agnostic, but more benefit will come from
-   using Moray with LISTEN and NOTIFY support.
-
- * The agent is also responsible for sweeping entries older than the retention
-   time.
-
-### Change feed API
-
- * Located in the sdc-cfapi repository, the change feed API is a log entry bus
-   that leverages an HTTP API, long polling, and Moray buckets. This is a new
-   API that will live in a zone on the headnode just like other service API in
-   Triton / SDC.
-
- * The API maintains a Moray bucket per change-feed-id, and ensures that each
-   bucket is in chronological order.
-
- * Publishers will POST a registration to cfapi. Once registered they will be
-   able to POST change feed entries.  Cfapi will use HTTP status codes to
-   interact with publishers (e.g. status code 200 if an entry is successfully
-   POSTed, and status code 503 if the entry cannot be persisted due to cfapi
-   unavailability).
-
-   example registration payload:
-
-   ```
-   POST /publishers/register
-   ---
-   {
-       "agent-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
-       "change-feed-id": "vmapi::vm",
-       "retention-period": "1d",
-       "max-bucket-length": "1000000000"
-   }
-   ```
-
-   example change feed entry:
-
-   ```
-   POST /feeds/{change-feed-id}/entries
+   /change-feed
    ---
    /*
-    * {string} sequence-id    - Marks this entries position in the log
-    * {string} agent-id       - UUID of the publisher-agent (blank until marked)
-    * {string} change-feed-id - Feed name, identifies the bucket and content
-    * {object} changes        - Properties changed in this entry
+    * This will be sent by the listener to the change feed route
+    *
+    * {string} listener-id    - UUID of the listener / zone
+    * {string} listener-alias - Friendly name of the listener (e.g. TCNS)
+    * {string} change-kind    - Tuple expressing what types to listen for
     */
-   {
-       "sequence-id": "8HFaR8qWtRlGDHnO56",
-       "agent-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
-       "change-feed-id": "vmapi::vm",
-       "processed": false,
-       "changes": {
-           "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
-           "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-           "alias": "shmeeny",
-           "nics": [
-            {
-              "interface": "net0",
-              "mac": "32:4d:c5:55:a7:4d",
-              "vlan_id": 0,
-              "nic_tag": "external",
-              "ip": "10.99.99.8",
-              "netmask": "255.255.255.0",
-              "primary": true
-            }
-          ]
-       }
-   }
-   ```
-
- * Listeners will POST a registration to cfapi. Once registered the listener can
-   long poll for change feed entries to the registered change feed.
-
-   example registration payload:
-
-   ```
-   POST /listeners/register
-   ---
    {
        "listener-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
-       "change-feed-id": "vmapi::vm"
+       "listener-alias": "tcns",
+       "change-kind": "vm::*"
    }
    ```
 
-   example long poll result set:
+ * Example registration response (websocket):
 
    ```
+   /*
+    * This is sent to the listener in response to its registration
+    *
+    * {string} bootstrap-route - URI of the route to bootstrap the listener with
+    *
+    * Used by the listener each time it connects. Bootstrapping via walking the
+    * paginated list of data available ensures the listener is up to date.
+    */
+    {
+        "bootstrap-route": "/vms"
+    }
+   ```
+
+ * Example change feed item (websocket):
+
+   ```
+   /*
+    * When changes happen, listeners will receive an object such as this one
+    *
+    * {string} change-kind - Tuple expressing what type of resource changed
+    * {string} resource-id - identifier of the root object that changed
+    *
+    * In this case we're saying that a VM identified by the given UUID had its
+    * nic_tag property changed. The listener would go fetch the VM from VMAPI
+    * using the changed-resource-id.
+    */
    {
-       changes-list: [
-       {
-           "sequence-id": "8HFaR8qWtRlGDHnO57",
-           "changes": {
-               "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
-               "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-               "alias": "shmeeny",
-               "nics": [
-                {
-                  "interface": "net0",
-                  "mac": "32:4d:c5:55:a7:4d",
-                  "vlan_id": 0,
-                  "nic_tag": "external",
-                  "ip": "10.99.99.8",
-                  "netmask": "255.255.255.0",
-                  "primary": true
-                }
-              ]
-           }
-       },
-       {
-           "sequence-id": "8HFaR8qWtRlGDHnO56",
-           "changes": {
-               "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
-               "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-               "alias": "devNullDb01",
-               "nics": [
-                {
-                  "interface": "net0",
-                  "mac": "32:4d:c5:55:a7:4d",
-                  "vlan_id": 0,
-                  "nic_tag": "external",
-                  "ip": "10.99.99.8",
-                  "netmask": "255.255.255.0",
-                  "primary": true
-                }
-              ]
-           }
-       }
-       ]
+       "change-kind": "vm::nic::tag",
+       "changed-resource-id": "78615996-1a0e-40ca-974e-8b484774711a"
    }
    ```
 
- * Listeners can also ask for change feed items in a given sequence-id range.
-   This is useful on startup, and after a crash / partition.
-
-   example sequence-id range query:
+ * Example statistics request (HTTP):
 
    ```
-   GET /feeds/{change-feed-id}/entries?beg-sequence-id=8HFaR8qWtRlGDHnO57&end-sequence-id=8HFaR8qWtRlGDHnO56
+   GET /change-feed/stats
    ---
    {
-       changes-list: [
-       {
-           "sequence-id": "8HFaR8qWtRlGDHnO57",
-           "changes": {
-               "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
-               "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-               "alias": "shmeeny",
-               "nics": [
-                {
-                  "interface": "net0",
-                  "mac": "32:4d:c5:55:a7:4d",
-                  "vlan_id": 0,
-                  "nic_tag": "external",
-                  "ip": "10.99.99.8",
-                  "netmask": "255.255.255.0",
-                  "primary": true
-                }
-              ]
-           }
-       },
-       {
-           "sequence-id": "8HFaR8qWtRlGDHnO56",
-           "changes": {
-               "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
-               "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-               "alias": "devNullDb01",
-               "nics": [
-                {
-                  "interface": "net0",
-                  "mac": "32:4d:c5:55:a7:4d",
-                  "vlan_id": 0,
-                  "nic_tag": "external",
-                  "ip": "10.99.99.8",
-                  "netmask": "255.255.255.0",
-                  "primary": true
-                }
-              ]
-           }
-       }
+       "listeners":63,
+       "registrations": [
+        {
+            "listener-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
+            "listener-alias": "tcns",
+            "change-kind": "vm::*"
+        }
        ]
    }
    ```
 
+### Listener module
 
-### Listener agent
+ * The listener module provides client functionality for connecting to a change
+   feed via websocket. It is a part of the node-sdc-changefeed repository.
 
- * The listener-agent provides client functionality for long polling the
-   sdc-changefeed API for notifications. It is a part of the node-sdc-changefeed
-   repository. The listener-agent can be included in an existing system or run
-   as an agent on its own.
+ * When the listener starts up, it connects to the websocket endpoint specified
+   at runtime or specified statically by a configuration file. The listener
+   provides the change feed publisher with a registration. The registration
+   request contains an object consisting of a tuple representing the kind of
+   changes it would like to be notified about, its UUID, and its alias
+   (e.g. VMAPI).
 
- * After registering with sdc-cfapi, listener-agent long polls sdc-cfapi waiting
-   for new change feed entries. When the listener-agent receives new entries
-   from sdc-cfapi, it raises an event that can be handled by the consuming
-   application. Additionally, it is responsible for keeping track of the last
-   seen sequence-id and getting caught up if necessary (either by a range query
-   against sdc-cfapi or a snapshot from the publishing system if necessary).
+ * After registering with a change feed the listener will be provided with a
+   bootstrap route by the change feed source system. The listener must bootstrap
+   itself by paging through the set of data returned by the bootstrap route.
+   While the listener bootstraps itself it must also buffer incoming events from
+   the change feed websocket, so that they may be acted upon after bootstrapping
+   completes.
 
- * Listener-agent needs to be provided with a storage mechanism. It is data
-   store agnostic, but it would be wise to choose a durable data store. This is
-   used to persist the last seen sequence-id across restarts, crashes, etc.
+ * The bootstrap and buffering process happens each time the listener connects.
 
- * When the listener-agent is in an out of date state, it will buffer incoming
-   change feed items while querying sdc-cfapi for the missing range of items or
-   retrieving a snapshot from the publishing system.
+ * When the listener receives new change feed items, it raises an event that can
+   be handled by the listening system. The event will be associated with the
+   change that took place so that the listening system can act upon it
+   accordingly (e.g. fetch that resource from the source system).
 
-
-### The following modifications to Moray will be required
-
- * To avoid polling Moray for changes, support for PostgreSQL NOTIFY and LISTEN
-   operations will be added to Moray.  Database connection exhaustion is a real
-   concern here, so we need to expose the NOTIFY and LISTEN functionality to
-   Moray consumers via long polling or a similar mechanism.
-
-
-### The following modifications to publishers will be required
-
- * Support for a snapshot of the current state of the publishers data store with
-   a representative sequence-id.
-
+ * The listener module has a configurable buffer kind. The default buffer kind
+   is in-memory, but it could also be used with Redis, Memcached, etc. The
+   buffer size is configurable via a setting in its config.js. The buffer is
+   used in situations where the publisher is pushing change feed items to the
+   listener faster than it can handle and when bootstrapping. Under all
+   circumstances if the buffer cannot be maintained, the listener should abort
+   and re-initiate a registration with the publisher using exponential back off.
 
 ### Flow
 
 
-     s = step
-
             VMAPI
       + - - - - - - - - - - - - - - - - - - - - - - - - - - +
       |                                                     |
-      |           +---------+           +---------+         |
-      |           |         |           |         |         |
-      |           |  VMAPI  |           |   PUB   |         |
-      |           |         |           |  AGENT  |--+      |
-      |           +---------+           |         |  |      |
-      |                |                +---------+  |      |
-      |        s1 +----+----+            ^   |  |    |      |
-      |           |         |         s2 |   |  |    |      |
-      |           v         v            | s3|  |    |      |
-      |      +--------+ +--------+       |   |  |    |      |
-      |      |        | |        |-------+   |  |    |      |
-      |      |   VM   | | VMAPI  |<----------+  |    |      |
-      |      | BUCKET | | FEED   |              |    |      |
-      |      |        | | BUCKET |          s5a |    |      |
-      |      +--------+ |        |<-------------+    |      |
-      |                 +--------+                   |      |
-      |                                              |      |
-      + - - - - - - - - - - - - - - - - - - - - - - - - - - +
-                                                     |
-           CFAPI                                     |
-      + - - - - - - - - - - - - - - - - - - - - - - - - - - +
-      |                                           s4 |      |
-      |                 +---------------+            |      |
-      |                 |               |            |      |
-      |                 |     CFAPI     |<-----------+      |
-      |                 |               |                   |
-      |                 +---------------+                   |
-      |                s5b |         |                      |
-      |                    v         |                      |
-      |               +--------+     |                      |
-      |               |        |     |                      |
-      |               | STREAM |     |                      |
-      |               |  FEED  |     |                      |
-      |               | BUCKET |     |                      |
-      |               |        |     |                      |
-      |               +--------+     |                      |
-      |                              |                      |
-      + - - - - - - - - - - - - - - - - - - - - - - - - - - +
-                                     |
-                                  s6 |
-          TCNS                       |
-      + - - - - - - - - - - - - - - - - - - - - - - - - - - +
-      |                              |                      |
-      |                              v                      |
-      |                          +--------+                 |
-      |                          |        |                 |
-      |                          |  TCNS  |                 |
-      |                          |        |                 |
-      |                          +--------+                 |
+      |           +---------+                               |
+      |           |         |                               |
+      |           |  VMAPI  | <-+                           |
+      |           |         |   |                           |
+      |           +---------+   |                           |
+      |                |    ^   |                           |
+      |           +----+    |   |                           |
+      |   (Moray) |         |   |                           |
+      |           v         |   |                           |
+      |      +--------+     |   |                           |
+      |      |        |     |   |                           |
+      |      |   VM   |     |   |                           |
+      |      | BUCKET |     |   |                           |
+      |      |        |     |   |                           |
+      |      +--------+     |   |                           |
+      |                     |   |                           |
+      |                     |   |                           |
+      + - - - - - - - - - - | - | - - - - - - - - - - - - - +
+                            |   |
+            (r/w websocket) |   | (HTTP)
+                            |   |
+          TCNS              |   |
+      + - - - - - - - - - - | - | - - - - - - - - - - - - - +
+      |                     |   |                           |
+      |                     v   |                           |
+      |                  +--------+                         |
+      |                  |        |                         |
+      |                  |  TCNS  |                         |
+      |                  |        |                         |
+      |                  +--------+                         |
       |                                                     |
       + - - - - - - - - - - - - - - - - - - - - - - - - - - +
-
-
 
 
 ### Steps explained (happy path)
 
- 1. VMAPI persists updated information in its VM bucket(s) and inserts a new
-    change feed record into its change feed bucket (Ideally this is done in a
-    single transaction and the node-sdc-clients code can assist in that
-    behavior).  The data is either persisted to both the VM bucket and the
-    change feed bucket or everything is rolled back. Change feed entries, among
-    other things, will have a sequence-id, agent-id, and processed fields.
+ 1. TCNS registers with VMAPI `/change-feed` and establishes a read/write
+    websocket connection.
 
- 2. The publisher-agent, running in the same zone as VMAPI and using the same
-    Moray, is notified by Moray that a record has been inserted into the change
-    feed bucket.
+ 2. TCNS begins receiving change feed items from VMAPI via websocket, but must
+    buffer them until it has been fully bootstrapped.
 
- 3. The publisher-agent selects all entries with an empty agent-id and/or all
-    entries with an agent-id that matches the publisher-agent and a processed
-    field which is empty.  This ensures that an agent crash and restart does not
-    leave messages marked but unprocessed.
+ 3. TCNS pages via HTTP through all available data for the resource(s) it
+    registered for, and fetches resource information from VMAPI via HTTP for
+    each of the buffered change feed items received via websocket.
 
- 4. Publisher-agent POSTs the unprocessed entries to the sdc-changefeed API
-    (We'll cover failure scenarios in detail later, but suffice it to say that
-    HTTP response codes will be quite helpful).
-
- 5. (a) Assuming step 5 was successful, the publisher-agent will update the
-        entries in it's bucket as processed to prevent them from being replayed.
-    (b) Under the same assumption that step 5 was successful, sdc-changefeed API
-        will persist the change feed entries, in chronological order using the
-        sequence-id attached by the publisher-agent, to its own change feed
-        bucket.  Persisting each entry in sdc-changefeed API allows listeners to
-        ask sdc-changefeed API for a range of entries in the event that they
-        miss events due to a crash, restart, etc.  We'll cover more about that
-        in later sections.
- 6. Sdc-changefeed API notifies long polling listeners (in this case TCNS)
-    and provides a JSON payload with the entry(s).
+ 4. VMAPI simultaneously writes to its Moray bucket and sends change feed items
+    to TCNS via websocket. TCNS fetches information about the changed
+    resource(s) from VMAPI via HTTP.
 
 ### Failure scenarios
 
- * VMAPI is partitioned from Moray
-   * No writes to Moray from VMAPI will happen until the partition is
-     resolved. Thus no change feed entries will be produced.  Once the partition
-     is resolved VMAPI will begin storing data and publisher-agent will pick up
-     the changes and push them to Sdc-changefeed API.  VMAPI may need to true-up
-     with any VM-AGENT updates, but that is outside the scope of this document
-     because it relies on a different mechanism for updates. VM-AGENT should
-     eventually be updated to use sdc-changefeed API.
+ * If for any reason a listener is partitioned from a publisher, the publisher
+   will invalidate the registration. The listener must re-initiate registration
+   and the full bootstrapping process. An exponential back off should be used so
+   that listeners don't overwhelm the publisher.
 
+ * If for some reason the publisher cannot send a change feed item to a listener
+   it should not fail to persist the initiating change to its Moray bucket.
+   Listeners will catch back up as a part of the normal bootstrapping process
+   that is required after disconnect.
 
- * VMAPI's publisher-agent crashes
-   * Since publisher-agent entries are not considered processed until
-     sdc-changefeed has accepted them, we don't need to consider entries marked
-     processed that haven't actually been processed. What we do need to consider
-     is entries which happen during the time the publisher-agent is unavailable
-     and entries marked with the publisher-agent's id. Because we may have
-     missed notifications from Moray and the next notification event will happen
-     at a non-deterministic time, we should assume that we missed notifications
-     and have marked entries in the change feed bucket at agent startup. With
-     this behavior if the agent crashes or is restarted, any in process and/or
-     missed notifications will be processed at startup and which will result in
-     a delay, but maintain correctness and sequential ordering.
+ * If during the bootstrapping process the listener exceeds its configured buffer
+   size (e.g. too many change feed items come in while paging via HTTP). The
+   listener should abort and retry with exponential back off.
 
+### Registrations
 
- * VMAPI's publisher-agent is partitioned off from sdc-changefeed API
-   * the change feed bucket will continue to receive new entries and the
-     publisher-agent will continue marking entries which need to be processed.
-     The publisher-agent will continue attempts to publish to sdc-changefeed API
-     and use an exponential back-off.  When sdc-changefeed API becomes available
-     again, messages piled up on the publisher-agent's change feed bucket will
-     be delivered. The result is delayed, but sequentially correct events being
-     delivered.
+ * Registrations are always ephemeral. As soon as a registered listener
+   disconnects for any reason, the registration and associated data can be
+   garbage collected.
 
-
- * Sdc-changefeed API is partitioned from its Moray
-   * If sdc-changefeed API is unable to persist entries, it must refuse all
-     incoming POSTs and respond with an HTTP 503 (Service unavailable).  The 503
-     response will be handled by the publisher-agent(s) in exactly the same way
-     as a partition between the publisher-agent and sdc-changefeed API
-     (See above scenario).
-
-
- * Sdc-changfeed API is partitioned from listener(s)
-   * sdc-changefeed will continue to persist change feed entries without any
-     regard for its listener count. It is perfectly reasonable for sdc-changfeed
-     to have zero listeners.
-
-
- * A listener-agent is partitioned from sdc-changefeed API and within the stored
-   sequence-id range
-   * listener-agents should attempt to reconnect to sdc-changefeed API with an
-     exponential back off. Additionally the agent is required to durably store
-     its last seen sequence-id. Storing the last seen sequence-id allows the
-     agent to pick up where it left off. Upon reconnecting to sdc-changefeed the
-     agent will get the latest sequence-id that sdc-changefeed is aware of.  If
-     the sdc-changefeed's sequence-id doesn't match the agent's last seen
-     sequence-id it will request all entries after its last seen sequence-id up
-     to the current sequence-id from sdc-changefeed API while buffering any
-     entries received from long polling.
-
-
- * A listener-agent is partitioned from sdc-changefeed API and outside of the
-   stored sequence range
-   * Since it isn't reasonable, and perhaps infeasible, for sdc-changfeed API to
-     persist every event that has ever happened, it will only maintain a
-     configurable range of sequence-ids (e.g. 2 days worth).  In the scenario
-     where a listener-agent is partitioned from sdc-changefeed API longer than
-     the configurable range of sequence-ids can accommodate, the listener-agent
-     will need to fetch the current state of the world from the source system
-     (e.g VMAPI needs to produce a snapshot of what its state looks like at a
-     given sequence-id). Once the listener-agent has caught up with the source
-     system it can begin to apply any buffered entries and resume long polling.
-
-
- * Sdc-changefeed receives a duplicate entry from a publisher-agent
-   * This is a state that realistically shouldn't ever exist. However, if this
-     scenario is encountered, sdc-changefeed API should refuse all new entries
-     from the publisher-agent in question and alarm loudly because this is a
-     state that will likely need manual intervention and inspection of the
-     change feed buckets in each subsystem.
-
-
- * A listener-agent receives a duplicate entry from sdc-changefeed API
-   * The handling of duplicate events at the listener-agent is a correctness
-     issue that is left up to the consumer.
-
-
-### Snapshots
-
- * Snapshots are a necessary component of the change feed system. Snapshots
-   provide a point in time recovery mechanism for consumers. Since we must
-   accommodate partitions, we must also account for the possibility that
-   listeners will be partitioned long enough that they cannot be caught up by
-   cfapi. In this case listeners will need to reach out to the source system and
-   obtain a snapshot, tied to a sequence-id, so they can resume or begin to
-   apply data from cfapi.
-
- * Publishing systems can create snapshots on any interval, so
-   long as they happen more frequently than the cfapi retention time for their
-   feed. Ideally this is a runtime configurable setting.
-
- * The snapshot HTTP API is intentionally loosely defined, because each source
-   system will inevitably have different data and behavior. However an example
-   snapshot might look like the following:
-
-   ```
-   GET /snapshots?sequence-id=8HFaR8qWtRlGDHnO57
-   ---
-   {
-       snapshot: [
-       {
-           "sequence-id": "8HFaR8qWtRlGDHnO57",
-           "changes": {
-               "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
-               "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-               "alias": "rethink01",
-               "nics": [
-                {
-                  "interface": "net0",
-                  "mac": "32:4d:c5:55:a7:4d",
-                  "vlan_id": 0,
-                  "nic_tag": "external",
-                  "ip": "10.99.99.8",
-                  "netmask": "255.255.255.0",
-                  "primary": true
-                }
-              ]
-           }
-       },
-       {
-           ...
-       },
-       {
-           "sequence-id": "8HFaR8qWtRlGDHnO55",
-           "changes": {
-               "uuid": "78615996-1a0e-40ca-974e-8b484774711a",
-               "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-               "alias": "webscale99",
-               "nics": [
-                {
-                  "interface": "net0",
-                  "mac": "32:4d:c5:55:a7:4d",
-                  "vlan_id": 0,
-                  "nic_tag": "external",
-                  "ip": "10.99.99.8",
-                  "netmask": "255.255.255.0",
-                  "primary": true
-                }
-              ]
-           }
-       }
-       ]
-   }
-   ```
-
-### Garbage collection
-
- * Publishers can garbage collect all processed change feed items immediately,
-   as long as a snapshot with enough history to catch-up listeners exists. If
-   a snapshot does not exist, the publisher must retain its local change feed
-   items until that requirement has been satisfied.
-
- * When publishers register with cfapi, they must provide a retention period,
-   and a maximum bucket length. Cfapi can garbage collect it's bucket whenever
-   retention period is out of date, or the bucket length exceeds the max
-   bucket length value.
-
- * Listeners can discard change feed entries as soon as they have made the
-   necessary changes in their local store.
+ * Registrations use a tuple to specify the type of change feed items they would
+   like to receive. The are three part tuples that support wild cards (e.g.
+   vm::* )
 
 ### High Availability
 
- * Because the change feed system is designed to handle failure, an
-   active / active stateful high availability configuration for cfapi doesn't
-   appear to be worth the complexity tradeoff. Multiple cfapi writers would
-   likely require a consensus mechanism and introduce new edge conditions.
+* Because the publisher is just a websocket implementation of existing
+  functionality, it fits the existing and future HA plans of an API the same way
+  a publishing APIs HTTP endpoints do.
 
- * The proposed high availability configuration for cfapi is active / passive
-   stateless. If a cfapi instance goes down, each actor in the system is already
-   able to cope with the unavailability of cfapi. A sample configuration might
-   use a VIP, Floating IP, or perhaps TCNS to provide actors with a virtual
-   endpoint that can be shared between cfapi instances. In the event of a
-   primary cfapi failure, the secondary can attach to the necessary Moray
-   buckets and take over the virtual endpoint address. The trigger mechanism and
-   election process is undefined at this time.
+* Multiple listeners can exist for a single HA system. Without coordination by
+  the listening system, duplicate events may be received, and consequently
+  duplicate fetches may happen. There is not consequence for duplicate events.
 
 ### Back pressure
 
- * Back pressure from cfapi to publishers will be handled via HTTP status codes
-   (e.g. 429 Too Many Requests, 503 Service Unavailable). When a publisher
-   receives a back pressure signal from cfapi, it should retry with exponential
-   back-off. While in a back-off scenario, publishers should make every attempt
-   to retain / buffer unprocessed change feed items. However, it may become
-   unsafe and / or impossible to retain all items depending on inflow and cfapi
-   busyness duration. If a publisher cannot guarantee the ordering and retention
-   of unprocessed change feed items, it should enter a read-only state and
-   signal back pressure as necessary.
+* Publishers should not care about the health of a listener.
 
- * Back pressure from listeners to cfapi does not seem necessary. If a listener
-   is too busy, it can safely ignore any long polling change feed items, and
-   stop long polling cfapi. When a listener becomes available enough to long
-   poll cfapi again, it can buffer incoming change feed items and request a
-   range of change feed items based on its last processed sequence id from
-   cfapi.
+* Listeners should make an attempt to buffer incoming change feed events if they
+  are unable to process them as fast as they are received. However, if the
+  listeners cannot successfully buffer the incoming change feed items, they
+  should abort and retry with exponential back off.
 
-### Sequence IDs
+### Logging
 
- * Sequence IDs are based on Flake IDs. Flake IDs do have the draw back of using
-   the system clock, but are otherwise ordered and can be uniquely generated by
-   any system.
-
- * Publishers are responsible for sequence ID generation.
+* In the interest of observability, publishers should log registration events,
+  listener counts, and listener disconnects. Additionally listeners should log
+  their connection attempts, buffer size, and back off status.
