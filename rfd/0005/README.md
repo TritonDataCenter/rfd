@@ -137,14 +137,19 @@ experience.
    /*
     * This will be sent by the listener to the change feed route
     *
-    * {string} listener-id    - UUID of the listener / zone
-    * {string} listener-alias - Friendly name of the listener (e.g. TCNS)
-    * {string} change-kind    - Tuple expressing what types to listen for
+    * {string} instance       - UUID of the listener / zone
+    * {string} service        - Friendly name of the listening service
+    *                           (e.g. TCNS)
+    * {Object} change-kind    - Object expressing what resource and
+    *                           sub-resources to listen for.
     */
    {
-       "listener-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
-       "listener-alias": "tcns",
-       "change-kind": "vm::*"
+       "instance": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
+       "service": "tcns",
+       "change-kind": {
+            "resource": "vm",
+            "sub-resources": ["nic", "alias"]
+       }
    }
    ```
 
@@ -170,7 +175,8 @@ experience.
    /*
     * When changes happen, listeners will receive an object such as this one
     *
-    * {string} change-kind - Tuple expressing what type of resource changed
+    * {Object} change-kind - Object expressing what type of resource and
+    *                        sub-resource(s) changed.
     * {string} resource-id - identifier of the root object that changed
     *
     * In this case we're saying that a VM identified by the given UUID had its
@@ -178,7 +184,10 @@ experience.
     * the changed-resource-id.
     */
    {
-       "change-kind": "vm::nic",
+       "change-kind": {
+            "resource": "vm",
+            "sub-resources": ["nic"]
+           },
        "changed-resource-id": "78615996-1a0e-40ca-974e-8b484774711a"
    }
    ```
@@ -192,9 +201,12 @@ experience.
        "listeners":63,
        "registrations": [
         {
-            "listener-id": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
-            "listener-alias": "tcns",
-            "change-kind": "vm::*"
+            "instance": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
+            "service": "tcns",
+            "change-kind": {
+                "resource": "vm",
+                "sub-resources": ["nic", "alias"]
+            }
         }
        ]
    }
@@ -209,15 +221,8 @@ experience.
        "resources": [
         {
             "resource": "vm",
-            "bootstrap-route": "/vms",
-            "sub-resources": [
-                {
-                    "sub-resource": "nic"
-                },
-                {
-                    "sub-resource": "alias"
-                }
-            ]
+            "sub-resources": ["nic", "alias"],
+            "bootstrap-route": "/vms"
         }
        ]
    }
@@ -228,12 +233,15 @@ experience.
  * The listener module provides client functionality for connecting to a change
    feed via websocket. It is a part of the node-sdc-changefeed repository.
 
- * When the listener starts up, it connects to the websocket endpoint specified
-   at runtime or specified statically by a configuration file. The listener
-   provides the change feed publisher with a registration. The registration
-   request contains an object consisting of a tuple representing the kind of
-   changes it would like to be notified about, its UUID, and its alias
-   (e.g. VMAPI).
+ * When the listener starts up, it connects to the websocket endpoint of the API
+   (i.e. the publisher) that is the authoritative source for the events in
+   question (e.g. If a listener would like to know about VM change events, it
+   will use its existing configuration to talk with VMAPI). The listener sends a
+   registration payload to the publisher (see the above publisher module example
+   of a registration JSON payload). The registration request contains an object
+   consisting of a resource and sub-resources array representing the kind of
+   changes it would like to be notified about, its instance, and its service
+   name (e.g. TCNS).
 
  * After registering with a change feed, the listener will be provided with a
    bootstrap route by the change feed source system. The listener must bootstrap
@@ -249,14 +257,15 @@ experience.
    change that took place, so that the listening system can act upon it
    accordingly (e.g. fetch that resource from the source system).
 
- * The listener module has a configurable buffer kind. The default buffer kind
-   is in-memory, but it could also be used with Redis, Memcached, etc. The
-   buffer size is configurable via a setting in its config.js. The buffer is
-   used in situations where the publisher is pushing change feed items to the
-   listener faster than it can handle and also when it is bootstrapping. Under
-   all circumstances if the buffer cannot be maintained, the listener should
-   abort and re-initiate a registration with the publisher using exponential
-   back off.
+ * The listener module has a configurable buffer kind, defaulting to in-memory.
+   In the future the buffer could also be configured to use Redis, Memcached,
+   etc. The buffer size is configurable via a setting in its config.js.
+
+ * The listener buffer is used in situations where the publisher is pushing
+   change feed items to the listener faster than it can handle and also when it
+   is bootstrapping. Under all circumstances if the buffer cannot be maintained,
+   the listener should abort and re-initiate a registration with the publisher
+   using exponential back off.
 
 ### Flow
 
@@ -311,7 +320,10 @@ experience.
     each of the buffered change feed items received via websocket.
 
  4. VMAPI simultaneously writes to its existing Moray bucket and its change feed
-    Moray bucket.
+    Moray bucket. -- It's important to note that the change feed Moray bucket is
+    a dual purpose mechanism. It provides durability if the service should fail,
+    and it also allows for a single feed that multiple publishers can poll, thus
+    adding support for HA.
 
  5. VMAPI's publisher module polls its change feed Moray bucket for entries.
     When entries are found it sends them to TCNS via websocket and deletes
@@ -324,7 +336,9 @@ experience.
  * If for any reason a listener is partitioned from a publisher, the publisher
    will invalidate the registration. The listener must re-initiate registration
    and the full bootstrapping process. An exponential back off should be used so
-   that listeners don't overwhelm the publisher.
+   that listeners don't overwhelm the publisher. -- As a future consideration,
+   the publisher could also buffer change feed items for a configurable
+   duration, should bootstrapping become problematic.
 
  * If for some reason the publisher cannot send a change feed item to a listener
    it should not fail to persist the initiating change to its Moray bucket.
@@ -341,15 +355,18 @@ experience.
    disconnects for any reason, the registration and associated data can be
    garbage collected.
 
- * Registrations use a tuple to specify the type of change feed items they would
-   like to receive. They are two part tuples that support wild cards (e.g.
-   vm::* )
+ * Registrations use a change kind object to specify the type of change feed
+   items they would like to receive.
+
+ * Registrations are only for a single resource and its sub-resources. A new
+   registration and websocket will need to be created for each top level
+   resource kind.
 
 ### High Availability
 
  * Because the publisher is just a websocket implementation of existing
-   functionality, it fits the existing and future HA plans of an API the same way
-   a publishing APIs HTTP endpoints do.
+   functionality, it fits the existing and future HA plans of an API the same
+   way a publishing APIs HTTP endpoints do.
 
  * The polling mechanism of the publisher is also HA compatible because the
    change feed bucket is shared by all publisher modules for a given system
