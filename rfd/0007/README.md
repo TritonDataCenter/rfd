@@ -21,7 +21,7 @@ of information about link-layer metadata.
 
 ## Problems
 
-In SDC, we have a couple different problems that have led us to desire
+In SDC, we have a couple of different problems that have led us to desire
 new functionality and subsume some existing functionality.
 
 ### Datalink State
