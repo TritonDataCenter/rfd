@@ -55,7 +55,7 @@ as otherwise SmartOS will be incorrect.
 
 Today, SmartOS ships a basic link layer discover protocol (LLDP) daemon
 openlldp. The `lldpneighbors` command is useful today for being consumed
-by an operator; however, it does not something which we can easily
+by an operator; however, it is not something which we can easily
 consume from other programs. As part of what's been discussed in [RFD
 6](https://github.com/joyent/rfd/tree/master/rfd/0006) we'd like to
 start consuming this information in a more programmatic way and allowing
