@@ -259,7 +259,7 @@ take the docker logger code and use that. This way:
 
 The prototype I wrote up is at:
 
- https://github.com/joyent/dockerlogger
+ https://github.com/joyent/sdc-dockerlogger
 
 and does in fact work to write logs to syslog, fluentd and gelf targets. The
 only thing I'm waiting for before hooking it up in dockerinit is the OS-4694
