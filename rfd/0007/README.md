@@ -21,7 +21,7 @@ of information about link-layer metadata.
 
 ## Problems
 
-In SDC, we have a couple different problems that have led us to desire
+In SDC, we have a couple of different problems that have led us to desire
 new functionality and subsume some existing functionality.
 
 ### Datalink State
@@ -32,7 +32,7 @@ compute node is verifying that the compute node satisfies any nic tag
 requirements that exist. These nic tags are determined by looking at the
 reported sysinfo.
 
-In addition, to increase the liklihood of a successful provision, we
+In addition, to increase the likelihood of a successful provision, we
 currently will not provision to a compute node where the requsted nic
 tags are backed by downed datalinks. A datalink may be down because of
 a cable problem, an upstream switch failure, localized hardware failure,
@@ -55,7 +55,7 @@ as otherwise SmartOS will be incorrect.
 
 Today, SmartOS ships a basic link layer discover protocol (LLDP) daemon
 openlldp. The `lldpneighbors` command is useful today for being consumed
-by an operator; however, it does not something which we can easily
+by an operator; however, it is not something which we can easily
 consume from other programs. As part of what's been discussed in [RFD
 6](https://github.com/joyent/rfd/tree/master/rfd/0006) we'd like to
 start consuming this information in a more programmatic way and allowing
@@ -178,7 +178,7 @@ entirely. As such, keeping around and maintaining stale information
 during those times, even across crashes of the daemon or even reboots of
 the system may be desirable.
 
-If we do this, we should not that the information is stale and provide
+If we do this, we should note that the information is stale and provide
 an explicit command that can be used by an administrator to clear out
 the stale cache. The state could be as simple as an nvlist_t saved per
 datalink via librename.
@@ -208,7 +208,7 @@ This project will deliver the following components:
 ### Future Directions
 
 This work is expected to build upon part of the information that we
-discussed in [RFC
+discussed in [RFD
 6](https://github.com/joyent/rfd/tree/master/rfd/0006). It will be used
 as the foundation of the Ethernet RAS related sections and the
 combination of the datalink state and the LLDP information will be used
