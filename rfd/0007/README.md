@@ -33,7 +33,7 @@ requirements that exist. These nic tags are determined by looking at the
 reported sysinfo.
 
 In addition, to increase the likelihood of a successful provision, we
-currently will not provision to a compute node where the requsted nic
+currently will not provision to a compute node where the requested nic
 tags are backed by downed datalinks. A datalink may be down because of
 a cable problem, an upstream switch failure, localized hardware failure,
 or another problem.
@@ -62,54 +62,56 @@ start consuming this information in a more programmatic way and allowing
 it to help us get a sense of the data center or use it to better
 understand the impact of failures.
 
+In addition, because of how the current LLDP daemon works, it doesn't
+currently work on physical interfaces which are used in aggregations.
+
 ## Proposal
 
-To solve this, we'd like to introduce a new daemon that subscribes to
-state change notifications on physical datalinks and also participates
-in LLDP.
+To solve this, we'd like to tackle the problem in two different forms.
+To solve the first problem, we'd like to add a new class of sysevents to
+the kernel and combine that with a syseventd module which will consume
+the various notifications and end up launching the sysinfo update
+command with some amount of hysteresis.
 
-The daemon should be a simple libdlpi consumer to get notifications of
-the link's state and to participate in LLDP. The daemon should export a
-door server as a means for configuration commands and commands like
-lldpneighbors to function.
+To solve the issue of LLDP and state change notifications, we'd like to
+introduce a new daemon which uses libdlpi to participate in LLDP. The
+daemon will export a door server as a means for both configuration and
+for getting information like lldpneighbors. While it will keep track of
+link state and provide that information, it is not the one that will be
+in charge of it. In addition, we should consider having the LLDP daemon
+emit sysevents to indicate changes that occur.
 
-In addition, for reactions to link state change, we'd like to put
-together a plug-in interface that allows different modules to take
-various actions in the system. For example, one such plugin may trigger
-various updates to sysinfo or remove its cache. In addition, we'd leave
-it up to plugins to define their own approach to hysteresis. The
-implementation of the various door servers may be done in a plugin,
-whether or not that is the way that we should go down is yet to be seen.
+### Why are these problem separate?
 
-### Why combine these two problems?
+In earlier drafts of this proposal, we had called for these two issues
+to be solved by the same daemon. This proved to be untenable for a
+couple different, but important reasons.
 
-A rather obvious question is why should these properties be combined in
-a single daemon as opposed to having one daemon which is in charge of
-link state changes and another which is responsible solely for LLDP
-related actions. It may be that this is the approach which makes more
-sense. On the flip side, the state of the link is a reasonable part of
-the information that we should include in the LLDP snapshot. It may also
-be that as we further explore parts of the Ethernet related RAS features
-discussed in [RFD
-6](https://github.com/joyent/rfd/tree/master/rfd/0006), we'll find that
-we want some additional information and it makes sense to have a single
-daemon take care of this.
+The biggest issue is that when libdlpi holds open a device, it prevents
+the destruction of the device. This is generally what we want. For
+example, when an IP interface is plumbed up, it has the same semantics
+as with a libdlpi consumer, you won't be able to destroy the device
+while we're listening. While one could change the semantics of the
+libdlpi consumers, it's not necessarily the case that this makes sense
+for link state change notifications, which may be desirable for a larger
+set of devices than for those used by LLDP.
+
+While the lldpd daemon will want to know the state of a device, it can
+leverage the existing libdlpi interfaces for that, as it will have to
+have the device open in general.
 
 ### User land vs. Kernel
 
-Another question here is whether some of this should be handled by the
-user land or as part of the GLDv3 or other aspects. After all, the
-kernel already provides read-only snapshots of the link information.
+Ultimately, it makes sense to leverage the existing kernel data paths
+for generating the notifications to update sysinfo. The kernel already
+has these and it allows us to handle them in a way where we don't have
+to worry about keeping links open or not.
 
 Approaching this from the perspective of LLDP, it makes sense that we
 would not want to include that in the kernel. There's no reason that any
 of that is required there or that it's worth building up the protocol in
 there. The information and participation can be trivially driven from
 user land and it certainly simplifies the failure semantics.
-
-Because of that, if it makes sense to combine the two different purposes
-here, then it doesn't make sense for this to be driven by the kernel,
-but by a relatively simple user land daemon.
 
 ### Why not dlmgmtd? 
 
@@ -149,6 +151,10 @@ illumos deployments a physical device is passed directly for use inside
 of the zone. However, the default non-global zone configuration will be
 disabled.
 
+As part of this, we'd like to explore what it means to have these events
+be able to be delivered to a per-zone sysevent; however, it is not a
+required part of this project at this time.
+
 ### LLDP parameters
 
 From surveying several implementations and deliverables of LLDP daemons,
@@ -183,13 +189,30 @@ an explicit command that can be used by an administrator to clear out
 the stale cache. The state could be as simple as an nvlist_t saved per
 datalink via librename.
 
+### Challenges with Aggregations
+
+LLDP and link aggregations don't really work together very well at the
+moment. When a link aggregation is created, we end up not allowing any
+active use of the DLPI device, which means we specifically bind to the
+LLDP Ethertype.
+
+We'll need to investigate a new way of handling this, perhaps adding a
+way for an aggregation to forego subscribing to a given SAP and leaving
+it to the parent devices.
+
 ### Deliverables
 
 This project will deliver the following components:
 
-* A new daemon that manages both the lldp protocol and the datalink
-  state change logic. This daemon should be disabled by default in
-  illumos; however, it will be enabled by default in SmartOS.
+* A new series of sysevents that will be used to indicate that the state
+  of a datalink has changed.
+
+* A new syseventd plugin which will watch for the above system events,
+  perform hysteresis, and update sysinfo occasionally.
+
+* A new lldpd daemon which is responsible for participating in the lldp
+  protocol. This daemon should be disabled by default in illumos;
+  however, it will be enabled by default in SmartOS.
 
 * A client library that allows other software to explore and use the
   lldp information.
@@ -200,10 +223,6 @@ This project will deliver the following components:
 * A new configuration utility that will manipulate SMF properties of the
   lldp service to control various aspects of the aforementioned
   configuration.
-
-* A plugin that handles hysteresis and properly updates sysinfo. This
-  will help deal with and handle the issues that we've seen around stale
-  link information when make provisioning decisions.
 
 ### Future Directions
 
