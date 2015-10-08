@@ -81,10 +81,11 @@ provide the desired configuration.
 
 The `--coal` option available when running `sdcadm experimental fabrics` in
 COAL is not really needed in order to apply default COAL configuration instead
-of providing a configuration file. We can make `sdcadm post-setup fabrics`
-smart enough to apply default COAL configuration when nothing is given without
-the need of an additional configuration option. (Of course, only when running
-in COAL).
+of providing a configuration file.
+
+This option will be removed in order to do not introduce COAL specific
+functionality. Explanation on the recommended configuration for COAL will
+be provided as an example.
 
 ### Do not use to reprovision portolan
 
@@ -94,7 +95,7 @@ the portolan zone and reprovision it. Given `sdcadm update portolan` can handle
 that functionality, we'll remove such reprovisioning functionality for portolan
 from `sdcadm post-setup fabrics`.
 
-### Do not use to reconfigure fabrics
+### Rename --force option to something meaningful for fabrics reconfiguration
 
 The `--force` option for `sdcadm experimental fabrics` allows to re-run the
 command and makes an update of SAPI's `fabric_cfg` metadata for the `sdc`
@@ -107,18 +108,12 @@ such restart of `config-agent` will result into a restart of these services.
 The command doesn't provide any kind of warning or requests any confirmation
 from the user and, furthermore, didn't locks the DC.
 
-Proposal is to remove such "update configuration" functionality from
-`sdcadm post-setup fabrics` and use a new `sdcadm configure` command for such
-purpose if we plan to keep using sdcadm as a tool for SAPI updates of some
-known values, or a specific fabrics command like `sdcadm reconfigure-fabrics`
-which would also take care of restarting the required `config-agent` services
-here and there as needed. I'd personally go for `sdcadm reconfigure-fabrics`
-given we can always use `sapiadm update` for general purpose SAPI updates.
+Proposal will be to reword this option into a new `--reconfigure` option, which
+is clearer regarding the purpose or re-running the `sdcadm post-setup fabrics`
+command.
 
-In general, having a specific command to update fabrics configuration will make
-clear for the user that the command which is issuing will have effects over
-other services and that we can temporary put the SDC setup into maintenance.
+It will continue taking care of restarting the required `config-agent` services
+here and there as needed and will make clear to the user that the command which
+is issuing will have effects over other services and that we can temporary put
+the SDC setup into maintenance.
 
-Even on the case we decide to keep such functionality under
-`sdcadm post-setup fabrics` command, we should warn the user about the possible
-services restart when executing it.
