@@ -62,6 +62,9 @@ Also, the aforementioned docker service update when present will also
 take place when required, without any need for the operator to issue a
 separate step.
 
+The `nat` service will also be created during fabrics setup, including SAPI
+service creation, image import, ...
+
 The subcommand `sdcadm experimental default-fabric` will be moved out of
 experimental and remain available to create customers default fabrics.
 
