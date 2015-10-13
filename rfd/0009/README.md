@@ -1,6 +1,6 @@
 ----
 authors: Pedro Palazón Candel <pedro@joyent.com>
-state: draft
+state: publish
 ----
 
 <!--
