@@ -1,6 +1,6 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>, Jerry Jelinek <jerry@joyent.com>
-state: draft
+state: publish
 ---
 
 # RFD 2 Docker Logging in SDC
@@ -168,7 +168,7 @@ work for all drivers and just return the logs out of manta or from the latest
 local file regardless of driver.
 
 
-## Alternative Approaches
+## Alternative Approaches Considered
 
 This section captures the historical thinking around the behavior of the
 logging service in the face of errors. It is provided here to give context
@@ -224,31 +224,33 @@ questions:
    treat the GZ JSON logging as the reliable path. Thus, users will be able to
    get those messages out of Manta.
 
-## Open questions (input encouraged)
 
+## Other Considerations
 
 ### Updates w/o platform rebuild
 
 It has been requested that we attempt to build this feature in such a way that
 if docker adds log drivers, we can somehow roll these out without a platform
-reboot. At this point my thinking on how we could accomplish this is:
+reboot. At this point how we will accomplish this is:
 
- * have the logger be something like /usr/docker/bin/logger with /usr/docker
-   being mounted writable in the GZ (or whatever path with this property)
+ * have the logger be /lib/sdc/docker/logger
  * add an option to the dockerlogger which outputs a list of supported drivers
- * have another procedure for updating /usr/docker/bin/logger on all CNs
-   similar to agents updates or perhaps `sdcadm experimental update-docker`?
+ * build a dockerlogger shar which:
+     * installs the binary to /opt/smartdc/docker/bin
+     * installs an SMF service which copies from opt/smartdc/docker/bin
+       to /lib/sdc/docker on startup
+ * add an sdcadm procedure for installing the dockerlogger to CNs similar to
+   SDC agents.
 
-This way we could roll out a new /usr/docker/bin/logger to all CNs when new
-drivers are wanted. Already the list of drivers we want to allow has to be in
-SAPI's metadata for sdc-docker to allow those drivers to be used. So in this
-case adding a new driver would mean:
+The list of drivers we want to allow has to be in SAPI's metadata for sdc-docker
+to allow those drivers to be used. So in this case adding a new driver would
+mean:
 
  * update sdc-docker so it knows about validation for the new driver
- * roll out the new /usr/docker/bin/logger to all CNs
+ * roll out the new /lib/sdc/docker/logger to all CNs
  * enable the new driver via SAPI's metadata for the docker SAPI service
 
-### Go in the build?
+### Go in the build
 
 When I explained to him what I was doing, Trent made an excellent suggestion
 which I tried out and seems like it will work well. What he suggested was to
@@ -257,32 +259,25 @@ take the docker logger code and use that. This way:
  * we can support any of the drivers Docker does (that can work inside the zone)
  * we're using the same code so behavior will be (hopefully) more similar
 
-The prototype I wrote up is at:
+This now lives at:
 
  https://github.com/joyent/sdc-dockerlogger
 
-and does in fact work to write logs to syslog, fluentd and gelf targets. The
-only thing I'm waiting for before hooking it up in dockerinit is the OS-4694
-work. Once that's in I'll connect the prototype to that and do some testing.
+and does in fact work to write logs to syslog, fluentd and gelf targets.
 
-The problems with this approach include:
-
- * building the logger will then require Go in the build system somewhere
-     * though not necessarily in the platform if we ship the logger separately
- * not everybody here knows how to work with Go if something goes wrong
-
-However there are also a number of advantages which include:
+Building this does require a 64-bit zone with with golang installed, however
+there are also a number of advantages which include:
 
  * lower run-time memory usage than using node.js
  * single binary to drop in instead of a whack of .js and .node files
  * we won't have to try to find (or write) a good node implementation of the
    various logging protocols
- * there's very little code we have to write my prototype is only ~100 lines
+ * there's very little code we have to maintain
    including all the imports and comments
- * it already basically works with what I did as a prototype
+ * it works
 
 
 ## Related Open Tickets
 
- * DOCKER-279 - Master ticket for logging
- * DOCKER-535 - Rotating json-file logs to Manta
+ * DOCKER-279 - Master ticket for logging (other tickets will be dependents of
+   this)
