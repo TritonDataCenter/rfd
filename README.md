@@ -45,13 +45,14 @@ formal writing that it has come to represent.)
 | state | RFD |
 | ----- | --- |
 | draft | [RFD 1 Triton Container Naming Service](./rfd/0001/README.md) |
-| draft | [RFD 2 Docker Logging in SDC](./rfd/0002/README.md) |
+| publish | [RFD 2 Docker Logging in SDC](./rfd/0002/README.md) |
 | draft | [RFD 3 SDC Compute Nodes Reboot](./rfd/0003/README.md) |
 | draft | [RFD 4 Docker Build Implementation For Triton](./rfd/0004/README.md) |
 | draft | [RFD 5 Triton Change Feed Support](./rfd/0005/README.md) |
 | draft | [RFD 6 Improving SDC and Manta RAS Infrastructure](./rfd/0006/README.md) |
 | draft | [RFD 7 Datalink LLDP and State Tracking](./rfd/0007/README.md) |
 | publish | [RFD 9 sdcadm fabrics management]((./rfd/0009/README.md)) |
+| predraft | [RFD 10 Sending GZ Docker Logs to Manta](./rfd/0010/README.md) |
 ## Contents of an RFD
 
 The following is a way to help you think about and structure an RFD
