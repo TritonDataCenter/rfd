@@ -21,8 +21,14 @@ stands right now, without these changes, the GZ log file will continue to grow
 until it has exhausted the quota of the container's zoneroot filesystem.
 
 Since these log files are not accessible to customers any way other than `docker
-logs`, we wanted to instead put them in Manta so that customers could access all
-their logs. Per [RFD 0002](https://github.com/joyent/rfd/tree/master/rfd/0002),
+logs`, they cannot rotate them. So currently they can grow until they fill the
+zoneroot quota of the container. If we just rotated them in place, customers
+would not be able to access them as `docker logs` only provides access to the
+most recent log. In order to deal with these problems, we wanted to instead
+rotate the logs to Manta so that customers could access all their logs (using
+any Manta tools) and so that these logs will not fill up their container.
+
+Per [RFD 0002](https://github.com/joyent/rfd/tree/master/rfd/0002),
 these will be the main source of "reliable" logs, as such we would also like to
 get them into Manta in a timely manner.
 
