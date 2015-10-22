@@ -7,10 +7,10 @@ state: draft
 
 [node-smartdc](https://github.com/joyent/node-smartdc) is Joyent's current
 and venerable CLI for CloudAPI. It is pretty basic (UX-wise) and we want to
-replace it with the sexier -- i.e. more useful and usable --
-[node-triton](https://github.com/joyent/node-triton). That means we need
-full coverage of CloudAPI (along with rosetta stone docs, and general user
-docs, etc.). This RFD is about nailing down the work to get there.
+replace it with the more useful and usable
+[node-triton](https://github.com/joyent/node-triton). That means we need full
+coverage of CloudAPI (along with rosetta stone docs, and general user docs,
+etc.). This RFD is about nailing down the work to get there.
 
 
 ## `triton` coverage of CloudAPI
@@ -161,7 +161,8 @@ Notes:
 - RBAC: Feels a little generic: users, roles, roletags, policies. Perhaps
   these should all be under a 'triton rbac ...' or something. Some *single*
   widely used term should be prevalent in the CLI, APIs, Docs and UIs. For
-  AWS is it "IAM". For Triton, "RBAC"?
+  AWS is it "IAM". For Triton, "RBAC"? Relevant commands from node-smartdc
+  to re-used: sdc-chmod, sdc-info, sdc-policy, sdc-role, sdc-user.
 - CONFIG: 'Config' is a poor name, IMO. So generic. Should be called, perhaps,
   'Account Config'. Cloudapi rev to rename them? Endpoints can otherwise be the
   same.
