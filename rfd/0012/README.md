@@ -8,7 +8,9 @@ state: draft
 [node-smartdc](https://github.com/joyent/node-smartdc) is Joyent's current
 and venerable CLI for CloudAPI. It is pretty basic (UX-wise) and we want to
 replace it with the sexier -- i.e. more useful and usable --
-[node-triton](https://github.com/joyent/node-triton).
+[node-triton](https://github.com/joyent/node-triton). That means we need
+full coverage of CloudAPI (along with rosetta stone docs, and general user
+docs, etc.). This RFD is about nailing down the work to get there.
 
 
 ## `triton` coverage of CloudAPI
