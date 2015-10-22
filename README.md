@@ -54,6 +54,9 @@ formal writing that it has come to represent.)
 | publish | [RFD 9 sdcadm fabrics management]((./rfd/0009/README.md)) |
 | predraft | [RFD 10 Sending GZ Docker Logs to Manta](./rfd/0010/README.md) |
 | draft | [RFD 11 IPv6 and multiple IP addresses support in SDC]((./rfd/0011/README.md)) |
+| draft | [RFD 12 Bedtime for node-smartdc]((./rfd/0012/README.md)) |
+
+
 ## Contents of an RFD
 
 The following is a way to help you think about and structure an RFD
