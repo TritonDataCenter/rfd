@@ -250,6 +250,18 @@ container.
 With logs going into Manta, it has been suggested that people would want tools
 to manage these other than the m* tools. (mls, mget, mfind, etc.)
 
+### Knowing when all logs are uploaded
+
+Trent suggested a use case of wanting to be able to script knowing when a final
+log upload was complete. Ignore the "container didn't log" case where there
+will be no uploaded log files. The use case could theoretically be handled if
+the last log upload used the same timestamp [or a later one] as a 'destroy'
+time in the cloudapi MachineAudit.
+
+Josh points out that some VMs will never have any logs uploaded (if nothing
+ever got written to stdout/stderr) which means users may be waiting for a log
+>= destroy time that will never show up.
+
 ## Open Questions
 
  * what should the defaults be for `max-size` and `max-file`?
