@@ -51,7 +51,7 @@ that case, what we will do is use the same watcher agent as described below,
 but:
 
  * when the size of the log is >= max-size:
-     * move the log file to stdio.log.<YYYY><mm><dd>T<HH><MM><SS>Z
+     * move the log file to stdio.log.&lt;YYYY&gt;&lt;mm&gt;&lt;dd&gt;T&lt;HH&gt;&lt;MM&gt;&lt;SS&gt;Z
      * signal zoneadmd to re-open original log
      * if max-file is set, delete oldest until we're at count == max-file
      * nothing further
@@ -71,7 +71,7 @@ and:
  * watches all docker container's stdio.log files (probably w/ event ports)
  * when one of those files changes, do a stat and check against max-size
  * if size >= max-size:
-     * move log file to stdio.log.<YYYY><mm><dd>T<HH><MM><SS>Z
+     * move log file to stdio.log.&lt;YYYY&gt;&lt;mm&gt;&lt;dd&gt;T&lt;HH&gt;&lt;MM&gt;&lt;SS&gt;Z
      * signal zoneadmd to re-open original log
      * leave hermes to deal with uploading and max-file
  * when a container is deleted, upload the stdio.log file from the archive and
@@ -199,7 +199,7 @@ docker service used for logs in Manta. This was:
 /<login>/stor/.joyent/docker/logs/<vm_uuid>
 ```
 
-in our case we'd replace <vm_uuid> with <docker_id> since that's the id that
+in our case we'd replace &lt;vm_uuid&gt; with &lt;docker_id&gt; since that's the id that
 customers would see with their docker clients. And under this directory what I
 would propose is that we have files named something like:
 
@@ -236,7 +236,7 @@ last logs to upload for a container.
 ### Inspect Output
 
 One suggestion was made that we query sdc-docker at the time of rotation and get
-the /containers/<docker_id>/json output and add that to the root directory for
+the /containers/&lt;docker_id&gt;/json output and add that to the root directory for
 the container.
 
 If we did this, we would need to do something differently for destroyed
@@ -255,7 +255,7 @@ to manage these other than the m* tools. (mls, mget, mfind, etc.)
  * what should the defaults be for `max-size` and `max-file`?
      * for drivers other than json-file, we'll always only use these defaults
  * what path should we use?
-     * Original suggestion was /<login>/stor/.joyent/docker/logs/<docker_id>,
+     * Original suggestion was /&lt;login&gt;/stor/.joyent/docker/logs/&lt;docker_id&gt;,
        but others have suggested we *not* use that
  * do we want to include the inspect output with the container?
  * can we leave cli tools out of scope?
