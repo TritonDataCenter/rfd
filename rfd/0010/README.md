@@ -32,37 +32,119 @@ Per [RFD 0002](https://github.com/joyent/rfd/tree/master/rfd/0002),
 these will be the main source of "reliable" logs, as such we would also like to
 get them into Manta in a timely manner.
 
+With Docker, because all the data is going through the docker daemon, what they
+do for each log line is basically:
 
-## Questions that need to be answered
+ * stat the log file
+     * if the size is > max-size, rotate() and re-open
+ * write the new entry
 
-### Should we support `max-file` or `max-size` at all?
+The rotate() function here then checks the max-file and renames .8->.9, .7->.8,
+etc. and then renames the current log. This way when the write immediately
+following a file reaching max-size occurs, it'll be rotated immediately.
 
-In Docker, the `max-size` parameter can be set which will control how large the
-log file can get before it's rotated. The `max-file` parameter can be used to
-limit the number of old rotated files we keep for a given container. These
-options are only valid when `--log-driver` is set to `json-file`.
 
-The first problem then will be that unlike Docker, we're logging to this log
-with drivers other than `json-file`. If we want to allow `--log-opt max-file=3`
-for all drivers, it may be confusing for users. Since all other options for the
-various log drivers are prefixed with the driver name such as `syslog-address`.
+## Proposal (no-Manta)
 
-For our use-case where we want to write logs to Manta as soon as possible so
-that customers have access to their logs, it seems like the `max-size` parameter
-would get in the way if implemented. If a user sets `max-size=2g` and the log
-does not reach 2g but we have reached the time to send the data to Manta, it
-seems like we would want to send it to Manta and rotate it at that point which
-would make `max-size` irrelevant.
+If Manta is not available most of the rest of this discussion does not apply. In
+that case, what we will do is use the same watcher agent as described below,
+but:
 
-The `max-file` parameter is also irrelevant in our implementation unless we
-start using that as the number of files to keep in Manta. The reason it's
-irrelevant is that the way `docker logs` works is that it will show the data
-from the latest log file. If there are *any* rotated files (i.e. `max-file` >
-0), then those will be inaccessible to the user. Using this to limit the number
-of files in Manta will mean that each time we write a file we'll also need to
-check existing files and delete older ones.
+ * when the size of the log is >= max-size:
+     * move the log file to stdio.log.<YYYY><mm><dd>T<HH><MM><SS>Z
+     * signal zoneadmd to re-open original log
+     * if max-file is set, delete oldest until we're at count == max-file
+     * nothing further
 
-### What should rotate the logs?
+In this mode the zone will still fill up with logs unless the operator has setup
+some mechanism for archiving / deleting old log files.
+
+Notes:
+
+ * `max-size` and `max-file` are only available when `log-driver` is `json-file`
+
+## Proposal (Manta)
+
+We will write an agent that runs in the GZ, is installed with the other agents
+and:
+
+ * watches all docker container's stdio.log files (probably w/ event ports)
+ * when one of those files changes, do a stat and check against max-size
+ * if size >= max-size:
+     * move log file to stdio.log.<YYYY><mm><dd>T<HH><MM><SS>Z
+     * signal zoneadmd to re-open original log
+     * leave hermes to deal with uploading and max-file
+ * when a container is deleted, upload the stdio.log file from the archive and
+   delete it
+
+We will modify vmadm to include the stdio.log file in the files that get
+archived when a VM is deleted. On deletion the stdio.log file should also be
+renamed to match the timestamp pattern of the other rotated files (and those in
+Manta).
+
+We will modify hermes to support uploading to a customer's Manta area based on
+the owner_uuid of the container, and also to support a limited number of remote
+files. We will also make any other required modifications for hermes to pick up
+and upload these files.
+
+This will mean that:
+
+ * `docker logs` will be the primary way to access *recent* logs for your
+   container
+ * logs which have reached the maximum size or for containers which have been
+   destroyed will be available in Manta
+
+Notes:
+
+ * `max-size` and `max-file` are only available when `log-driver` is `json-file`
+
+## Things considered
+
+### Hermes
+
+Josh Clulow points out:
+
+```
+[...] I think we should use hermes to achieve the upload/archival portion
+of this.  It would probably require some modification to support the idea of
+uploading to an account other than "admin", but the actual upload engine
+already does basically everything that would be required:
+
+- Manta configuration through SAPI
+- upload parallelism
+- retries on failure
+- uploading through a DC-wide proxy
+- converting local rotated log file names into Manta paths
+  based on token expansion, mtime, etc
+- debouncing mtime to ensure we don't upload a file that's
+  still being written to
+- deleting files only once successfully uploaded, potentially
+  with a limited retention of already-uploaded files on the
+  local system
+```
+
+The Manta proposal above relies on the use of hermes.
+
+### Support for `max-file` or `max-size`
+
+There was some discussion on whether we should support these at all. If we were
+using a periodic scanner to do the uploading (e.g. something that ran every 5
+minutes and always uploaded if there was data) `max-size` would never make any
+sense. With Manta, unlike a local disk, storage space is less of a concern so
+it's not clear in this model that `max-file` is necessary either.
+
+Unlike Docker, we're logging to the GZ log with drivers other than `json-file`.
+If we want to allow `--log-opt max-file=3` for all drivers, it may be confusing
+for users. Since all other options for the various log drivers are prefixed with
+the driver name such as `syslog-address`.
+
+The most recent suggestion here is:
+
+ * support `max-size` and `max-file`, but only for the `json-file` driver
+ * for drivers other than json-file and when not specified, the max-size and
+   max-file will have default values (actual values TBD)
+
+### Rotation Strategy
 
 Given that we have a container and it has data written to:
 
@@ -79,11 +161,11 @@ a few questions arise:
  * how do we find the manta login for the owner_uuid of the VM? Mahi?
 
 One option would be to have a new agent that runs in the GZ of all nodes and
-periodically looks at /zones/*/logs/ for non-empty files, rotates them to .0 and
-then consumes the .0 while sending to Manta. Since this would be running in the
-GZ though, it would need to proxy through another zone (perhaps sdc zone) in
-order to talk to Manta. It would also need to find the owner_uuid's Manta login
-so that it knows the path to write the log.
+periodically looks at /zones/*/logs/ for non-empty files, rotates them and then
+consumes the file while sending to Manta. Since this would be running in the GZ
+though, it would need to proxy through another zone (perhaps sdc zone) in order
+to talk to Manta. It would also need to find the owner_uuid's Manta login so
+that it knows the path to write the log.
 
 Another option might be to have logadm rotate /zones/*/logs/stdio.log on some
 frequency and have another separate tool (or maybe hermes?) which takes the
@@ -92,14 +174,13 @@ the logs being written to disk and showing up in Manta minimal, it seems like
 for this mode we might need to have logadm and hermes run more frequently, as
 currently both run hourly.
 
-Additional problems also arise if we separate the rotation and the upload.
-These are surrounding cases where for some reason the upload stopped or got
-behind, but not the rotation. In that case we might move stdio.log.0 -> .1 and
-then .1 -> .2 and so forth, but if nothing is consuming them these will build up
-quickly. Especially if we're doing this rotation every 5 minutes. Unless we
-rotated an unlimted number of these, it seems we'd eventually lose data.
+A new option was raised after the initial draft of this, which was to have a new
+agent but have it watch files and rotate when they hit max-size. This behavior
+is much closer to Docker's and would allow us to upload files much less
+frequently to Manta on average. As such, it's what we've chosen for the current
+proposal above.
 
-Other considerations here:
+Other considerations here (apply to the first two options):
 
  * given that we can potentially have over 2000 containers per CN (assuming 128M
    containers and 256G CN) and we can have 1000 CNs per DC... How problematic is
@@ -109,29 +190,39 @@ Other considerations here:
  * if we're going to use logadm we may need to first fix OS-3097 and related
    tickets.
 
-### Where should the log files go in Manta?
+### Manta Paths
 
-Assuming that we will take the logs on some frequency > 1 minute to write to
-Manta, I was thinking we could use the same directory the old KVM-based docker
-service used for logs in Manta. This was:
+Original thinking was that we could use the same directory the old KVM-based
+docker service used for logs in Manta. This was:
 
 ```
 /<login>/stor/.joyent/docker/logs/<vm_uuid>
 ```
 
-in our case under this directory what I would propose is that we have files
-named something like:
+in our case we'd replace <vm_uuid> with <docker_id> since that's the id that
+customers would see with their docker clients. And under this directory what I
+would propose is that we have files named something like:
 
 ```
-.../<YYYY>/<MM>/<DD>/<HH>/<mm>.log
+.../<YYYY>/<mm>/<dd>/<HH>/stdio.log.<YYYY><mm><dd>T<HH><MM><SS>Z
 ```
 
 That's 4-digit year, 2-digit month, 2 digit day-of-month, 2 digit hour (00-23),
-and 2 digit minute. This would be UTC based on the mtime of file (or is it
-better to use the timestamp of the last log entry?).
+and additionally in the filename, the 2 digit minute and 2 digit second. This
+would be the UTC timestamp of the time the file was rotated.
 
-Any other suggestions? Is it better to use the dockerId instead of the vm_uuid?
-The dockerId is what they'll see in their docker client.
+One suggestion that was made was that we ensure the filename of the rotated
+files in the GZ of the CNs matches the directory and filename of the files in
+Manta for easier comparison during uploads. This seems quite reasonable so I've
+updated the rotation to use this format too.
+
+A suggestion has also been made that we make this configurable, potentially even
+configurable via cloudapi per-login using something like:
+
+ * https://mo.joyent.com/docs/cloudapi/master/#config
+
+and/or a SAPI metadata variable. Either of these would obviously add additional
+complexity.
 
 ### Container Deletion
 
@@ -141,3 +232,32 @@ order to prevent losing logs here, I'd suggest that we change the
 archive_on_delete feature such that it knows to also keep the stdio.log files
 in the archived data and have the thing doing rotation also look here for the
 last logs to upload for a container.
+
+### Inspect Output
+
+One suggestion was made that we query sdc-docker at the time of rotation and get
+the /containers/<docker_id>/json output and add that to the root directory for
+the container.
+
+If we did this, we would need to do something differently for destroyed
+containers as they would not show up in sdc-docker.
+
+We'd also need to figure out how to query sdc-docker as the owner of the
+container.
+
+### More Tools
+
+With logs going into Manta, it has been suggested that people would want tools
+to manage these other than the m* tools. (mls, mget, mfind, etc.)
+
+## Open Questions
+
+ * what should the defaults be for `max-size` and `max-file`?
+     * for drivers other than json-file, we'll always only use these defaults
+ * what path should we use?
+     * Original suggestion was /<login>/stor/.joyent/docker/logs/<docker_id>,
+       but others have suggested we *not* use that
+ * do we want to include the inspect output with the container?
+ * can we leave cli tools out of scope?
+ * any other major concerns that were missed?
+
