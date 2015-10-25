@@ -1,6 +1,6 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
-state: predraft
+state: draft
 ---
 
 # RFD 0010 Sending GZ Docker Logs to Manta
