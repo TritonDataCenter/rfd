@@ -70,7 +70,7 @@ GH issues for each non-trivial chunk of work here.
 | GetUserKey                       | -      |                |
 | CreateUserKey                    | -      |                |
 | DeleteUserKey                    | -      |                |
-| **CONFIG**                       | \*RBAC |                |
+| **CONFIG**                       | \*CONFIG |              |
 | GetConfig                        | NYI    | `triton account-config` |
 | UpdateConfig                     | NYI    | `triton account-config -e ...` |
 | **DATACENTERS**                  |        |                |

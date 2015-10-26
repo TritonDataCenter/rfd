@@ -51,10 +51,10 @@ formal writing that it has come to represent.)
 | draft | [RFD 5 Triton Change Feed Support](./rfd/0005/README.md) |
 | draft | [RFD 6 Improving SDC and Manta RAS Infrastructure](./rfd/0006/README.md) |
 | draft | [RFD 7 Datalink LLDP and State Tracking](./rfd/0007/README.md) |
-| publish | [RFD 9 sdcadm fabrics management]((./rfd/0009/README.md)) |
+| publish | [RFD 9 sdcadm fabrics management](./rfd/0009/README.md) |
 | draft | [RFD 10 Sending GZ Docker Logs to Manta](./rfd/0010/README.md) |
-| draft | [RFD 11 IPv6 and multiple IP addresses support in SDC]((./rfd/0011/README.md)) |
-| draft | [RFD 12 Bedtime for node-smartdc]((./rfd/0012/README.md)) |
+| draft | [RFD 11 IPv6 and multiple IP addresses support in SDC](./rfd/0011/README.md) |
+| draft | [RFD 12 Bedtime for node-smartdc](./rfd/0012/README.md) |
 
 
 ## Contents of an RFD
