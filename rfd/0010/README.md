@@ -1,6 +1,6 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
-state: draft
+state: publish
 ---
 
 # RFD 0010 Sending GZ Docker Logs to Manta
@@ -258,7 +258,7 @@ will be no uploaded log files. The use case could theoretically be handled if
 the last log upload used the same timestamp [or a later one] as a 'destroy'
 time in the cloudapi MachineAudit.
 
-Josh points out that some VMs will never have any logs uploaded (if nothing
+JoshW points out that some VMs will never have any logs uploaded (if nothing
 ever got written to stdout/stderr) which means users may be waiting for a log
 >= destroy time that will never show up.
 
@@ -273,3 +273,8 @@ ever got written to stdout/stderr) which means users may be waiting for a log
  * can we leave cli tools out of scope?
  * any other major concerns that were missed?
 
+## Tickets
+
+ * OS-4898 for archiving stdio.log when VM is destroyed
+ * AGENT-942 for agent that rotates logs
+ * AGENT-943 for having hermes know how to rotate these logs to Manta
