@@ -170,21 +170,22 @@ Generally, both keys and signatures are a small collection of large numbers (256
 to 4096 or more bits in length, depending on algorithm). The following table
 shows typical sizes of some signatures for common public-key algorithms:
 
-| Algorithm            | Signature size                     |
-| -------------------- | ---------------------------------- |
-| RSA (4096 bit key)   | 512 bytes (1x key-sized number)    |
-| RSA (2048 bit key)   | 256 bytes (1x key-sized number)    |
-| DSA (1024 bit key)   | 256 bytes (2x key-sized numbers)   |
-| ECDSA (256 bit key)  | 64 bytes (2x key-sized numbers)    |
-| EdDSA (256 bit key)  | 64 bytes (1x 2x-key-sized number)  |
+| Algorithm                          | Signature size                     |
+| ---------------------------------- | ---------------------------------- |
+| RSA (4096 bit key)                 | 512 bytes (1x key-sized number)    |
+| RSA (2048 bit key)                 | 256 bytes (1x key-sized number)    |
+| DSA (1024 bit key)                 | 256 bytes (2x key-sized numbers)   |
+| ECDSA on NIST P-256 (256 bit key)  | 64 bytes (2x key-sized numbers)    |
+| ECDSA on NIST P-384 (384 bit key)  | 96 bytes (2x key-sized numbers)    |
+| EdDSA on Curve25519 (256 bit key)  | 64 bytes (1x 2x-key-sized number)  |
 
 ## Design proposal
 
 Notice that, based on the above table and the structure of the DMU stream record
 headers, there is enough space left in the existing `dmu_replay_record_t` (168
-bytes) to accomodate either an ECDSA or EdDSA signature. In fact, after adding
-such a signature there would still be 104 remaining padding bytes in the largest
-of the record types (`drr_write_byref`).
+bytes) to accomodate either an ECDSA or EdDSA signature. In fact, after adding a
+64-byte signature there would still be 104 remaining padding bytes in the
+largest of the record types (`drr_write_byref`).
 
 It is desirable to keep the overall size of the `dmu_replay_record_t` unchanged,
 as this allows for much simpler compatibility with both previous and future
@@ -197,7 +198,7 @@ on each record, though, they will be kept in the nvlist following the
 `drr_begin` record, as other forms of extensible metadata already are (such as
 that belonging to resumable send streams).
 
-The proposed modified `dmu_replay_record_t` structure:
+The proposed modified `dmu_replay_record_t` structure (for EdDSA on 25519, ECDSA 256-bit curve, etc):
 
 <!--
 \begin{bytefield}[bitwidth=0.25em]{64}
@@ -224,6 +225,22 @@ And the new fields to be added to the `drr_begin` nvlist:
  * `key_fp` (`nvlist`)
    * `alg` (`string`) -- name of hash algorithm (`sha256`, `sha384` etc)
    * `hash` (`byte array`) -- hash of the public key
+
+The acceptable combinations of `alg` and `curve` in `signature`:
+
+| `alg`     | `curve` aliases     | `sizeof(drr_signature)` |
+| --------- | ------------------- | ----------------------- |
+| `'ecdsa'` | `'nistp256'`<br/>`'prime256v1'`<br/>`'1.2.840.10045.3.1.7'` | 64 |
+| `'ecdsa'` | `'nistp384'`<br/>`'secp384r1'`<br/>`'1.3.132.0.34'` | 96 |
+| `'eddsa'` | `'curve25519'`      | 64 |
+
+Note that the selection of `alg` and `curve` together determines the size that
+is used for the `drr_signature` member within all records in that stream.
+
+Only 256 and 384-bit curves are permitted, in order to allow space for expansion
+of the existing record header structures as needed. If 512-bit curves were
+allowed, this would reduce the available space reamining after a
+`drr_write_byref` to less than 36 bytes (4 words).
 
 ### User interface
 
@@ -277,4 +294,61 @@ default, and it will be an error to use `-k`.
 
 ### Security
 
+ * All the supported signature algorithms are considered "128-bit secure", i.e.
+   they have a security target >= 2<sup>128</sup> with the best known methods
+   today.
+ * The use of public-key algorithms for signing allows the fault domains for
+   key exposure to be more tightly contained than a symmetric key
+   infrastructure.
+     * In this case though it does not necessarily improve overall system 
+       security compared to using a symmetric HMAC key in the use case of
+       multi-tenant non-global zones. The weakest link here is the isolation of
+       the kernel keyring from the users.
+ * As long as no data is ever written to the pool before a signature covering it
+   has been validated, the only code that must be robust against malicious
+   input is the minimum parsing code necessary to find and validate each
+   signature.
+     * This, however, does include the nvlist parser. The `drr_begin` nvlist
+       payload must be opened to find the algorithm details and key to be used
+       for validation. As a result, the nvlist parser must be safe against
+       malicious input.
+ * The code parsing the additional structure around the DMU stream in userland
+   should be isolated using privilege separation techniques as much as possible.
+     * Bugs here will not enable kernel privilege escalation, unlike bugs
+       within the DMU stream proper, so not signing the whole package still
+       provides worthwhile benefits.
+
 ### Performance
+
+While performance will obviously depend on the implementation, Ed25519 is known
+to achieve 71000 verifications per second, or 109000 signatures per second, per
+core on a Nehalem-era Intel CPU. This is vastly smaller than the amount of time
+spent hashing the data to produce the signature.
+
+Proceeding with the Ed25519 example, which uses a SHA2-512 hash, we arrive at
+the following performance ceilings on a Nehalem-era Intel (a performance ceiling
+is the maximum possible rate we could produce a ZFS send stream at if we assume
+signing is the dominant process and all other code is negligible):
+
+| Assumed average record size | Estimated throughput ceiling |
+| --------------------------- | ---------------------------- |
+| 8KB                         | 290 MB/s                     |
+| 32KB                        | 479 MB/s                     |
+| 128KB                       | 572 MB/s                     |
+| 16MB                        | 612 MB/s                     |
+
+It seems reasonable to suppose that for extremely large amounts of data on
+systems with very high amounts of disk bandwidth (and network bandwidth if
+sending across one), it is likely this could become the limiting factor in ZFS
+send performance. However, for more regular, small systems it is likely that
+disk read bandwidth will still be more dominant than signing.
+
+One option to amend this proposal if this performance is found to be a problem
+is to use a faster hash algorithm on the actual data and sign only the
+concatenated signatures of all the records in the stream so far.
+
+Approaches based around making each signature cover more data (e.g. by only
+putting `drr_signature` in every Nth record) will however not improve
+performance significantly except with very very small records, as the
+performance ceiling otherwise is always dominated by the cost of hashing the
+data and not by the signature calculation itself.
