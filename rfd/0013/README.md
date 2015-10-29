@@ -7,9 +7,9 @@ state: draft
 
 ## Background
 
-Skip this section if you are already familiar with SDC or Manta RBAC. There are
+Skip this section if you are already familiar with CloudAPI or Manta RBAC. There are
 some rather detailed end-user docs (https://docs.joyent.com/public-cloud/rbac)
-if you want to pursue further.
+if you want to pursue further on the feature details.
 
 There are some key characteristics of the current RBAC model that are
 important to highlight here for the discussion on Docker subuser support:
@@ -37,7 +37,7 @@ important to highlight here for the discussion on Docker subuser support:
    KVM docker host and registry feature.
 6. Every time a CloudAPI call is issued, the caller (subuser) and the account
    logins are passed to mahi to get the roles and policies associated with
-   the caller. If the type of action is not covered by any of the subuser's
+   the caller. If the API endpoint is not authorized in any of the subuser's
    role policies or the resource involved is tagged to a role that the subuser
    doesn't have, an "NotAuthorized" error is returned to the caller.
 7. Once a subuser has passed authentication and authorization, the caller invokes
@@ -50,8 +50,8 @@ important to highlight here for the discussion on Docker subuser support:
 
 ## Current State of Docker Subuser Access
 
-Docker API doesn't allow subusers of an account to use sdc-docker API. The
-authentication is set up to work with sdc accounts only. The *workaround* at
+The setup script for sdc-docker currently does not support the use of subuser
+login. Authentication works with sdc accounts only. The *workaround* at
 this time is for the account owner to add the public keys of subusers to his
 account. The side effect of doing so is giving the subusers full access to
 all other resources in the account, including users and keys (essentially
@@ -70,10 +70,14 @@ There are a few wrinkles however:
   arguments. For containers, we have the option of leveraging `--label`
   to pass the role information. But such flexibility is absent for other
   resource types.
-- Docker actions will grow/change over time. It'll be a burden for us
-  (or users or both) to keep up.
+- A single command from Docker clients (CLI, Compose) can result in
+  multiple remote API calls. Users are not necessarily aware of the
+  actual API endpoints involved. It will be difficult for them to grant
+  the right set of permissions to cover one client action.
+- Docker remote API and client capabilities are still growing/changing rapidly.
+  It'll be a burden for us (or users or both) to keep up.
 - Docker operations overlap with many of the CloudAPI actions. Having
-  separate policy actions such as `listmachines` vs `docker-ps` is going
+  separate policy actions such as `listmachines` vs `getcontainers` is going
   to create a perfect storm for confusion. Having docker users learn to
   use our CloudAPI semantics is unlikely to be acceptable either.
 - Docker image layers are owned by admin. There is already some form of
