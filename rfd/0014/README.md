@@ -183,8 +183,8 @@ shows typical sizes of some signatures for common public-key algorithms:
 
 Notice that, based on the above table and the structure of the DMU stream record
 headers, there is enough space left in the existing `dmu_replay_record_t` (168
-bytes) to accomodate either an ECDSA or EdDSA signature. In fact, after adding a
-64-byte signature there would still be 104 remaining padding bytes in the
+bytes) to accommodate either an ECDSA or EdDSA signature. In fact, after adding
+a 64-byte signature there would still be 104 remaining padding bytes in the
 largest of the record types (`drr_write_byref`).
 
 It is desirable to keep the overall size of the `dmu_replay_record_t` unchanged,
@@ -238,9 +238,9 @@ Note that the selection of `alg` and `curve` together determines the size that
 is used for the `drr_signature` member within all records in that stream.
 
 Only 256 and 384-bit curves are permitted, in order to allow space for expansion
-of the existing record header structures as needed. If 512-bit curves were
-allowed, this would reduce the available space reamining after a
-`drr_write_byref` to less than 36 bytes (4 words).
+of the existing record header structures as needed. If 521-bit curves were
+allowed, this would reduce the available space remaining after a
+`drr_write_byref` to less than 4 words (36 bytes).
 
 ### User interface
 
