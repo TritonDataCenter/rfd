@@ -55,7 +55,7 @@ formal writing that it has come to represent.)
 | publish | [RFD 10 Sending GZ Docker Logs to Manta](./rfd/0010/README.md) |
 | draft | [RFD 11 IPv6 and multiple IP addresses support in SDC](./rfd/0011/README.md) |
 | draft | [RFD 12 Bedtime for node-smartdc](./rfd/0012/README.md) |
-
+| draft | [RFD 13 Docker Subuser Support](./rfd/0013/README.md) |
 
 ## Contents of an RFD
 
