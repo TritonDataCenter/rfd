@@ -36,10 +36,34 @@ as the ZPL). Such data would be blindly written into the pool by `zfs receive`,
 making it potentially un-importable (and possibly resulting in a kernel panic,
 and worse, allowing for the corruption of other data in the pool).
 
-One way to mitigate the problem somewhat is to enable administrators to make
-trust decisions based on the origin of a given ZFS send stream. In this
-document, we propose an enhancement to the stream format to allow the use of
-cryptographic signatures to verify the origin of a stream.
+This is particularly unfortunate for those offering Illumos zones or Linux
+containers with ZFS access to external entities who are only partly trusted and
+should have no ability to break their isolation from other zones or containers.
+
+Previous work in this area has mainly extended to separating the privilege of
+use of ZFS from the use of `zfs receive` -- such as the `PRIV_SYS_FS_IMPORT`
+privilege in Illumos. In this way, the partly trusted tenant zones can be denied
+entirely the ability to receive ZFS streams, the so-called "nuclear option".
+
+While in the long term, improving the validation performed by the DMU record
+parser is the clear solution to this, the problem is equivalent in complexity to
+writing a full `fsck` for ZFS. A full `fsck` is a project that has been brought
+up many times over the years but never implemented because of the vast amount of
+work involved, which makes this very long-term indeed.
+
+One shorter-term way to mitigate the problem somewhat is to enable the system to
+make trust decisions based on the origin of a given ZFS send stream. If the
+system can authenticate that the stream was originally produced by a legitimate
+`zfs send` on a known, trusted machine, then this limits the potential bad
+behavior that could be induced by the stream to match that which is already
+present on the trusted source machine. Any code which has its invariants broken
+by the stream's contents would also have them broken on the source machine,
+which is a far narrower scope for problems.
+
+In this document, we propose an enhancement to the stream format to allow the
+use of cryptographic signatures to verify the origin of a stream, both to
+provide this short-term mitigation, and also as a generally useful mechanism for
+enhanced integrity protection on ZFS send streams.
 
 ### Send stream record structure
 
