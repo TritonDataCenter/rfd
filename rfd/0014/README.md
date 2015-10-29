@@ -1,6 +1,6 @@
 ---
 authors: Alex Wilson <alex.wilson@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
