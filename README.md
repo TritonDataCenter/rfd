@@ -56,6 +56,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 11 IPv6 and multiple IP addresses support in SDC](./rfd/0011/README.md) |
 | draft | [RFD 12 Bedtime for node-smartdc](./rfd/0012/README.md) |
 | draft | [RFD 13 Docker Subuser Support](./rfd/0013/README.md) |
+| draft | [RFD 15 Reduce/Eliminate runtime LX image customization](./rfd/0015/README.md) |
 
 ## Contents of an RFD
 
