@@ -132,7 +132,7 @@ experience.
  * Example registration payload (websocket):
 
    ```
-   /change-feeds
+   /changefeeds
    ---
    /*
     * This will be sent by the listener to the change feed route
@@ -140,15 +140,15 @@ experience.
     * {string} instance       - UUID of the listener / zone
     * {string} service        - Friendly name of the listening service
     *                           (e.g. TCNS)
-    * {Object} change-kind    - Object expressing what resource and
+    * {Object} changeKind     - Object expressing what resource and
     *                           sub-resources to listen for.
     */
    {
        "instance": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
        "service": "tcns",
-       "change-kind": {
+       "changeKind": {
             "resource": "vm",
-            "sub-resources": ["nic", "alias"]
+            "subResources": ["nic", "alias"]
        }
    }
    ```
@@ -159,13 +159,13 @@ experience.
    /*
     * This is sent to the listener in response to its registration
     *
-    * {string} bootstrap-route - URI of the route to bootstrap the listener with
+    * {string} bootstrapRoute - URI of the route to bootstrap the listener with
     *
     * Used by the listener each time it connects. Bootstrapping via walking the
     * paginated list of data available ensures the listener is up to date.
     */
     {
-        "bootstrap-route": "/vms"
+        "bootstrapRoute": "/vms"
     }
    ```
 
@@ -175,27 +175,27 @@ experience.
    /*
     * When changes happen, listeners will receive an object such as this one
     *
-    * {Object} change-kind - Object expressing what type of resource and
-    *                        sub-resource(s) changed.
-    * {string} resource-id - identifier of the root object that changed
+    * {Object} changeKind        - Object expressing what type of resource and
+    *                              subResource(s) changed.
+    * {string} changedResourceId - identifier of the root object that changed
     *
     * In this case we're saying that a VM identified by the given UUID had its
     * nic property changed. The listener would go fetch the VM from VMAPI using
     * the changed-resource-id.
     */
    {
-       "change-kind": {
+       "changeKind": {
             "resource": "vm",
-            "sub-resources": ["nic"]
+            "subResources": ["nic"]
            },
-       "changed-resource-id": "78615996-1a0e-40ca-974e-8b484774711a"
+       "changedResourceId": "78615996-1a0e-40ca-974e-8b484774711a"
    }
    ```
 
  * Example statistics request (HTTP):
 
    ```
-   GET /change-feeds/stats
+   GET /changefeeds/stats
    ---
    {
        "listeners":63,
@@ -203,9 +203,9 @@ experience.
         {
             "instance": "de1aac97-6f85-4ba9-b51e-514f48a6a46c",
             "service": "tcns",
-            "change-kind": {
+            "changeKind": {
                 "resource": "vm",
-                "sub-resources": ["nic", "alias"]
+                "subResources": ["nic", "alias"]
             }
         }
        ]
@@ -215,14 +215,14 @@ experience.
  * Example available change feed resources (HTTP):
 
    ```
-   GET /change-feeds
+   GET /changefeeds
    ---
    {
        "resources": [
         {
             "resource": "vm",
-            "sub-resources": ["nic", "alias"],
-            "bootstrap-route": "/vms"
+            "subResources": ["nic", "alias"],
+            "bootstrapRoute": "/vms"
         }
        ]
    }
@@ -309,7 +309,7 @@ experience.
 
 ### Steps explained (happy path)
 
- 1. TCNS registers with VMAPI `/change-feed` and establishes a read/write
+ 1. TCNS registers with VMAPI `/changefeed` and establishes a read/write
     websocket connection.
 
  2. TCNS begins receiving change feed items from VMAPI via websocket, but must
