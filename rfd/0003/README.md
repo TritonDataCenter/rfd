@@ -196,7 +196,22 @@ subcommand - the one creating the reboot plans - which is also open to discuss:
 
     Usage:
          sdcadm experimental reboots [ -a | -c | -o ] [ -h ] [-n ] [ -y ]
-                      [ -x FILTER, [ -x FILTER]... ] [server] [server]...
+                      [SERVER] [SERVER]...
+
+    A "SERVER" is a server UUID or hostname. In a larger datacenter, getting
+    a list of the wanted servers can be a chore. The "sdc-server lookup ..."
+    tool is useful for this.
+
+    Examples:
+        # Reboot the core servers servers.
+        sdcadm experimental reboots --core
+
+        # Reboot non core servers with the "pkg=aegean" trait.
+        sdcadm experimental reboots --non-core \
+            $(sdc-server lookup setup=true traits.pkg=aegean | xargs)
+        # Reboot non core servers, excluding those with a "internal=PKGSRC" trait.
+        sdcadm experimental reboots --non-core \
+            $(sdc-server lookup setup=true 'traits.internal!~PKGSRC' | xargs)
 
     Options:
         -y, --yes                    Answer yes to all confirmations.
@@ -212,13 +227,4 @@ subcommand - the one creating the reboot plans - which is also open to discuss:
         -o, --non-core               Reboot the servers without SDC core
                                      components.
         -a, --all                    Reboot all the servers (but the Headnode).
-        -x FILTER, --exclude=FILTER  Exclude the servers matching the given
-                                     conditions. Only used when updating ALL
-                                     the servers. On the left side of the
-                                     exclude expression any server property can
-                                     be used.
-                                     Allowed comparision operators are only
-                                     '===' and '!=='. At the right side of the
-                                     operator an arbitrary string, a boolean or
-                                     a number can be used.
 
