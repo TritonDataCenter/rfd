@@ -31,16 +31,18 @@ important to highlight here for the discussion on Docker subuser support:
    When creating a new resource (e.g. machine), the role tags are automatically
    added to the instance based on which role(s) are passed in the create
    command (no --role arg means "tag all of my roles").
-5. Account owner is free to define roles, policies and tag their resources to
+6. There is also a hardcoded 'administrator' role that acts as a super-user
+   role, granting full access to everything the account owns.
+7. Account owner is free to define roles, policies and tag their resources to
    achieve granular RBAC. There is no out-of-the-box role but the Portal has a few
    canned roles that are inserted to user's profile behind the scenes for the
    KVM docker host and registry feature.
-6. Every time a CloudAPI call is issued, the caller (subuser) and the account
+8. Every time a CloudAPI call is issued, the caller (subuser) and the account
    logins are passed to mahi to get the roles and policies associated with
    the caller. If the API endpoint is not authorized in any of the subuser's
    role policies or the resource involved is tagged to a role that the subuser
    doesn't have, an "NotAuthorized" error is returned to the caller.
-7. Once a subuser has passed authentication and authorization, the caller invokes
+9. Once a subuser has passed authentication and authorization, the caller invokes
    the operation **on behalf of the account owner**. From the perspective of the
    backend API (e.g. vmapi), it sees only the account owner's uuid. All owner_uuid
    references point to the account owner. The subuser's identity is tracked
@@ -87,30 +89,153 @@ There are a few wrinkles however:
   on performance.
 
 Taking the above into consideration, here is the minimum set of requirements
-I am proposing for Docker RBAC:
+for Docker RBAC:
 
 1. Subusers can access sdc-docker and authenticate with their own SSH keys.
-2. Subusers can act on behalf of the account owner to invoke **any docker remote
-   API call**. In other words, there is only one blanket policy action for docker.
-   This can be a canned policy attached to a canned role, pre-created behind
-   the scenes in each account, and assigned to the subusers automatically
-   when they run `sdc-docker-setup.sh`.
-3. Subusers will not be able to perform any CloudAPI or Manta API actions unless
+2. Subusers can act on behalf of the account owner to invoke docker remote
+   API call. The granularity of which does not have to mimic the current
+   cloudapi's endpoint-level permissions. From a usage perspective, some of
+   the actions are highly associated with each other and are better granted
+   as a group (e.g. start/stop/kill/pause/unpause/wait). Granting access at
+   this level will simplify the RBAC setup.
+3. Optionally, a set of recommended roles, provided in the form of documentation
+   or scripts that user can execute as part of docker setup may be useful.
+   Examples of such roles are 'developers', 'operators', 'users' and 'agents'
+   (monitoring applications).
+4. Subusers will not be able to perform any CloudAPI or Manta API actions unless
    they have been explicitly granted the permissions to do so.
-4. Subusers will have a way to segregate their container instance permissions
+5. Subusers will have a way to segregate their container instance permissions
    by role. One way to support this (coming out of some earlier discussions with
    Trent) is to prompt for a role name during docker setup. Subusers who have
    multiple roles can have multiple profiles, each of them will have a separate
    certificate file. Based on the DOCKER_CERT_PATH specified, sdc-docker will
    apply the corresponding role to the operation.
-5. Instance-level access control to pulled down docker image layers is not
+6. Instance-level access control to pulled down docker image layers is not
    necessary. Uncommitted 'head images' (created via `docker build` or `docker tag`)
    are the ones that warrant RBAC.
-6. For users who are accessing as account owners, it should be clear to them
+7. For users who are accessing as account owners, it should be clear to them
    that when they run the setup script, they can ignore the prompts for
    subuser and role. For those who have already done the setup and are
    using docker currently, ideally they don't have to rerun setup or configure
    any role/policy/role-tag for themselves.
+
+
+## Some Sample Roles
+
+Here are a few sample roles that are typically used to help us to group policy
+actions in a meaningful way:
+
+| Role | Description |
+| ---- | ----------- |
+| Dev | Developers who define and build containers |
+| Ops | Operators who deploy and manage container operations |
+| User | End users who access containers to run/use the applications |
+| APM | Application performance monitoring system agents |
+
+## Fine-grained Permissions							
+| Method | Docker Endpoint | Docker Route | Notes | Dev | Ops | User | APM |
+| ------ | --------------- | ------------ | ----- | --- | --- | ---- | --- |
+| POST | /containers/create | ContainerCreate | | X | X | | |	
+| GET | /containers | ContainerList | | X | X | X | X |
+| GET | /containers/(id) | ContainerInspect | | X | X | X | X |
+| GET | /containers/(id)/logs | ContainerLogs | | X | X | X | X |
+| GET | /containers/(id)/top | ContainerTop | | X | X | X | X |
+| GET | /containers/(id)/changes | ContainerChanges | file system changes | X | X | X | X |
+| GET | /containers/(id)/stat | ContainerStats | | X | X | X | X |
+| POST | /containers/(id)/resize | ContainerResize | tty resize | X | X | X | |
+| POST | /containers/(id)/start | ContainerStart | | X | X | X | X |
+| POST | /containers/(id)/stop | ContainerStop | | X | X | X | X |
+| POST | /containers/(id)/restart | ContainerRestart | | X | X | X | X |
+| POST | /containers/(id)/kill | ContainerKill | | X | X | X | X |
+| POST | /containers/(id)/pause | ContainerPause | | X | X | X | X |
+| POST | /containers/(id)/unpause | ContainerUnpause | | X | X | X | X |
+| POST | /containers/(id)/attach | ContainerAttach | | X | X | X | |
+| POST | /containers/(id)/wait | ContainerWait | | X | X | X | |
+| POST | /containers/(id)/rename | ContainerRename | | X | X | | |
+| DELETE | /containers/(id) | ContainerDelete | | X | X | | |		
+| POST | /containers/(id)/copy | ContainerCopy | copy files from container | X | X | X | |
+| GET | /containers/(id)/export | ContainerExport | export container | X | X | X | |
+| GET | /containers/(id)/archive | ContainerArchive | create archive from container fs | X | X | X | |
+| HEAD | /containers/(id)/archive | ContainerArchive | file system info | X | X | X | |
+| PUT | /containers/(id)/archive | ContainerArchive | extract archive into fs | X | X | X | |
+| POST | /containers/(id)/exec | ContainerExec | create exec instance in container | X | X | X | |
+| POST | /exec/(exec_id)/start | ExecStart | | X | X | X | |
+| POST | /exec/(exec_id)/resize | ExecResize | tty resize | X | X | X | |
+| POST | /exec/(exec_id)/inspect | ExecInspect | | X | X | X | |
+| GET | /images | ImageList | | X | X | | |	
+| GET | /images/(name) | ImageInspect | | X | X | | |	
+| GET | /images/(name)/history | ImageHistory | | X | X | | |	
+| GET | /images/search | ImageSearch | | X | X | | |
+| GET | /images/(name)/get | ImageGet | extract images into tarball | X | X | | |	
+| GET | /images/get | ImageGet | extract all images | X | X | | |
+| POST | /images/create | ImageCreate | import from registry | X | | | |
+| POST | /images/load | ImageLoad | load image tarball | X | | | |
+| POST | /images/(name)/tag | ImageTag | | X | | | |
+| POST | /images/(name)/push | ImagePush | push to registry | X | | | |
+| DELETE | /images/(name) | ImageDelete | | X | | | |
+| POST | /commit?container=(id) | Commit | | X | | | |
+| POST | /build | Build | | X | | | |
+| GET | /_ping | Ping | | X | X | X | X |
+| POST | /auth | Auth | | X | X | X | X |
+| GET | /info | Info | | X | X | X | X |
+| GET | /version | Version | | X | X | X | X |
+| GET | /events | Events | | X | X | X | X |
+							
+## Proposed Policy Action Categories
+
+| Policy Action | Method | Docker Endpoint | Docker Route | CloudAPI Equiv | Dev | Ops | User | APM |
+| ------------- | ------ | --------------- | ------------ | -------------- | --- | --- | ---- | --- |
+| ecs:GetContainer | GET | /containers/* (except export and archive) | ContainerList, ContainerInspect, ContainerTop, ContainerLogs, ContainerStats, ContainerChanges | getmachine, listmachines | X | X | X | X |
+| ecs:ExportContainer | GET | /containers/(id)/export, /containers/(id)/archive | ContainerExport, ContainerArchive | | X | X | X | |	
+| ecs:ExportContainer | POST | /containers/(id)/copy | ContainerCopy | | X | X | X | |	
+| ecs:UpdateContainer | HEAD | /containers | ContainerArchive | | X | X | X | |
+| ecs:UpdateContainer | PUT | /containers | ContainerArchive | | X | X | X | |
+| ecs:UpdateContainer | POST | /containers/(id)/rename, /containers/(id)/attach, /containers/(id)/exec, /containers/(id)/resize | ContainerRename, ContainerAttach, ContainerExec, ContainerResize | renamemachine | X | X | X | |	
+| ecs:CreateContainer | POST | /containers/create | ContainerCreate | createmachine | X | X | | |	
+| ecs:OperateContainer | POST | /containers/(id)/start, /containers/(id)/stop, /containers/(id)/restart, /containers/(id)/kill, /containers/(id)/wait, /containers/(id)/pause, /containers/(id)/unpause | ContainerStart, ContainerStop, ContainerRestart, ContainerKill, ContainerWait, ContainerPause, ContainerUnpause | startmachine, stopmachine,  rebootmachine | X | X | X | X |
+| ecs:DeleteContainer | DELETE | /containers | ContainerDelete | deletemachine | X | X | | |
+| ecs:GetImage | GET | /images/* | ImageList, ImageInspect, ImageHistory, ImageSearch | getimage, listimages | X | X | | |
+| ecs:ExportImage | POST | /images | ImageGet, ImagePush | | X | | | |
+| ecs:UpdateImage | POST | /images | ImageTag | | X | | | |
+| ecs:CreateImage | POST | /images | CreateImage, LoadImage | | X | | | |
+| ecs:DeleteImage | DELETE | /images | DeleteImage | deleteimage | X | | | |	
+| ecs:CreateImage | POST | /commit | Commit | createimagefrommachine | X | | | |
+| ecs:Createimage | POST | /build | Build | | X | | | |
+| N/A - accessible to all | GET | /_ping | Ping | | X | X | X | X |
+| N/A - accessible to all | POST | /auth | Auth | | X | X | X | X |
+| N/A - accessible to all | GET | /info | Info | | X | X | X | X |
+| N/A - accessible to all | GET | /version | Version | | X | X | X | X |
+| ecs:AuditContainer | GET | /events | Events | machineaudit | X | X | X | X |
+
+
+## Open Questions
+
+### List all instances being a separate policy action?
+
+To grant the permission to see all instances of a certain resource for a particular role,
+there are two ways to achieve it:
+
+- The role concerned should be tagged to every single instance of the resource, and
+  is attached to the Get<Resource> policy action.
+or
+- There is a separate policy action List<Resource> that grant the Get access permission
+  to all instances of that resource.
+
+CloudAPI follows the latter model. It is better for performance but is a slight
+deviation from the action vs instance permission model.
+
+### Converge Docker and Cloud API policy actions
+
+- If we decide to pursue the summary policy route, CloudAPI should follow the same
+  model. Based on the current usage of RBAC in CloudAPI, many users have resorted to
+  granting all policies or the 'administrator' role. The user experience will likely
+  improve if we make the policy set cleaner and have sample roles for users to model
+  after.
+
+- We still need to reconcile what happens when user has the permission to ListMachines
+  in CloudAPI but not the equivalent in Docker API (and vice versa). Further decision
+  has to be made as part of this project to ensure we do not leave behind such
+  segregated and confusing behavior.
 
 
 ## Other Considerations
@@ -148,11 +273,4 @@ I am proposing for Docker RBAC:
   the KVM Docker features in the Portal. Those features are being deprecated.
   To avoid confusion, we'll need to clean up those roles/policies in accounts
   which have previously made use of KVM Docker.
-- Creating the new canned "docker" role and policy for each new account and
-  backfilling them for existing accounts may not be trivial work. Also for the
-  setup script to see and act on the user/role/policy objects, the account owners
-  will need to grant those permissions in the first place. Maybe we can have
-  the canned role/policy setup scripted separately for account owners who
-  wish to use RBAC. It is just an one-time setup per account. `sdc-docker-setup.sh`
-  will validate this pre-requisite when configuring subusers.
 
