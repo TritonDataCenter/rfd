@@ -273,6 +273,30 @@ Survey. Which one?
 3. WTF?
 
 
+Okay, discussion (Trent and Angela) led to this plan:
+
+    $ triton rbac
+    ...
+    Usage:
+        triton rbac [OPTIONS] COMMAND [ARGS...]
+        triton rbac help COMMAND
+
+    Commands:
+        ...
+
+        instance-role-tags  Show, add, edit and remove RBAC role tags on an instance.
+        image-role-tags     Show, add, edit and remove RBAC role tags on an image.
+        package-role-tags   Show, add, edit and remove RBAC role tags on a package.
+        network-role-tags   Show, add, edit and remove RBAC role tags on a network.
+
+
+Examples:
+
+    triton rbac instance-role-tags webhead0             # list
+    triton rbac instance-role-tags -a eng webhead0      # add
+    triton rbac instance-role-tags -d support webhead0  # delete
+
+
 
 ### rbac summary/info/sync workflow
 
