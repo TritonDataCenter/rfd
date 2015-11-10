@@ -247,6 +247,8 @@ likewise be renamed accordingly, e.g. `manta:PutObject`.
 | N/A - accessible to all      | X   | X   | X    | X   | Version                                               | GET    | /version                                                      |                                          |
 | ecs:AuditContainer           | X   | X   | X    | X   | Events                                                | GET    | /events                                                       | machineaudit                             |
 
+See [full table of RBAC actions here](./rbac-actions.md).
+
 Trent Notes:
 - "ecs:*Container": I changed to "Instance".
 - ImageCreate: you'd missed htis one
