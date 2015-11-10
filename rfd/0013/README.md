@@ -139,66 +139,67 @@ In attmepting to collapse the API endpoint permissions into higher-level policy
 actions, it will be helpful to have a few sample roles, or principals, in mind
 based on what they need to achieve.
 
-| Role | Description |
-| ---- | ----------- |
-| Dev | Developers who define and build containers |
-| Ops | Operators who deploy and manage container operations |
+| Role | Description                                                 |
+| ---- | ----------------------------------------------------------- |
+| Dev  | Developers who define and build containers                  |
+| Ops  | Operators who deploy and manage container operations        |
 | User | End users who access containers to run/use the applications |
-| APM | Application performance monitoring system agents |
+| APM  | Application performance monitoring system agents            |
 
+<<<<<<< cc7dfe2d97dbda4897143c2bc8af950ee7572675
 ### Fine-grained Permissions
 
 Starting from the ground up, for each of the sample roles above, the need for access
 to the docker API endpoints will probably look like this:
 							
-| Method | Docker Endpoint | Docker Route | Notes | Dev | Ops | User | APM |
-| ------ | --------------- | ------------ | ----- | --- | --- | ---- | --- |
-| POST | /containers/create | ContainerCreate | | X | X | | |	
-| GET | /containers | ContainerList | | X | X | X | X |
-| GET | /containers/(id) | ContainerInspect | | X | X | X | X |
-| GET | /containers/(id)/logs | ContainerLogs | | X | X | X | X |
-| GET | /containers/(id)/top | ContainerTop | | X | X | X | X |
-| GET | /containers/(id)/changes | ContainerChanges | file system changes | X | X | X | X |
-| GET | /containers/(id)/stat | ContainerStats | | X | X | X | X |
-| POST | /containers/(id)/resize | ContainerResize | tty resize | X | X | X | |
-| POST | /containers/(id)/start | ContainerStart | | X | X | X | X |
-| POST | /containers/(id)/stop | ContainerStop | | X | X | X | X |
-| POST | /containers/(id)/restart | ContainerRestart | | X | X | X | X |
-| POST | /containers/(id)/kill | ContainerKill | | X | X | X | X |
-| POST | /containers/(id)/pause | ContainerPause | | X | X | X | X |
-| POST | /containers/(id)/unpause | ContainerUnpause | | X | X | X | X |
-| POST | /containers/(id)/attach | ContainerAttach | | X | X | X | |
-| POST | /containers/(id)/wait | ContainerWait | | X | X | X | |
-| POST | /containers/(id)/rename | ContainerRename | | X | X | | |
-| DELETE | /containers/(id) | ContainerDelete | | X | X | | |		
-| POST | /containers/(id)/copy | ContainerCopy | copy files from container | X | X | X | |
-| GET | /containers/(id)/export | ContainerExport | export container | X | X | X | |
-| GET | /containers/(id)/archive | ContainerArchive | create archive from container fs | X | X | X | |
-| HEAD | /containers/(id)/archive | ContainerArchive | file system info | X | X | X | |
-| PUT | /containers/(id)/archive | ContainerArchive | extract archive into fs | X | X | X | |
-| POST | /containers/(id)/exec | ContainerExec | create exec instance in container | X | X | X | |
-| POST | /exec/(exec_id)/start | ExecStart | | X | X | X | |
-| POST | /exec/(exec_id)/resize | ExecResize | tty resize | X | X | X | |
-| POST | /exec/(exec_id)/inspect | ExecInspect | | X | X | X | |
-| GET | /images | ImageList | | X | X | | |	
-| GET | /images/(name) | ImageInspect | | X | X | | |	
-| GET | /images/(name)/history | ImageHistory | | X | X | | |	
-| GET | /images/search | ImageSearch | | X | X | | |
-| GET | /images/(name)/get | ImageGet | extract images into tarball | X | X | | |	
-| GET | /images/get | ImageGet | extract all images | X | X | | |
-| POST | /images/create | ImageCreate | import from registry | X | | | |
-| POST | /images/load | ImageLoad | load image tarball | X | | | |
-| POST | /images/(name)/tag | ImageTag | | X | | | |
-| POST | /images/(name)/push | ImagePush | push to registry | X | | | |
-| DELETE | /images/(name) | ImageDelete | | X | | | |
-| POST | /commit?container=(id) | Commit | | X | | | |
-| POST | /build | Build | | X | | | |
-| GET | /_ping | Ping | | X | X | X | X |
-| POST | /auth | Auth | | X | X | X | X |
-| GET | /info | Info | | X | X | X | X |
-| GET | /version | Version | | X | X | X | X |
-| GET | /events | Events | | X | X | X | X |
-							
+| Method | Docker Endpoint          | Docker Route     | Notes                             | Dev | Ops | User | APM |
+| ------ | ------------------------ | ---------------- | --------------------------------- | --- | --- | ---- | --- |
+| POST   | /containers/create       | ContainerCreate  |                                   | X   | X   |      |     |
+| GET    | /containers              | ContainerList    |                                   | X   | X   | X    | X   |
+| GET    | /containers/(id)         | ContainerInspect |                                   | X   | X   | X    | X   |
+| GET    | /containers/(id)/logs    | ContainerLogs    |                                   | X   | X   | X    | X   |
+| GET    | /containers/(id)/top     | ContainerTop     |                                   | X   | X   | X    | X   |
+| GET    | /containers/(id)/changes | ContainerChanges | file system changes               | X   | X   | X    | X   |
+| GET    | /containers/(id)/stat    | ContainerStats   |                                   | X   | X   | X    | X   |
+| POST   | /containers/(id)/resize  | ContainerResize  | tty resize                        | X   | X   | X    |     |
+| POST   | /containers/(id)/start   | ContainerStart   |                                   | X   | X   | X    | X   |
+| POST   | /containers/(id)/stop    | ContainerStop    |                                   | X   | X   | X    | X   |
+| POST   | /containers/(id)/restart | ContainerRestart |                                   | X   | X   | X    | X   |
+| POST   | /containers/(id)/kill    | ContainerKill    |                                   | X   | X   | X    | X   |
+| POST   | /containers/(id)/pause   | ContainerPause   |                                   | X   | X   | X    | X   |
+| POST   | /containers/(id)/unpause | ContainerUnpause |                                   | X   | X   | X    | X   |
+| POST   | /containers/(id)/attach  | ContainerAttach  |                                   | X   | X   | X    |     |
+| POST   | /containers/(id)/wait    | ContainerWait    |                                   | X   | X   | X    |     |
+| POST   | /containers/(id)/rename  | ContainerRename  |                                   | X   | X   |      |     |
+| DELETE | /containers/(id)         | ContainerDelete  |                                   | X   | X   |      |     |
+| POST   | /containers/(id)/copy    | ContainerCopy    | copy files from container         | X   | X   | X    |     |
+| GET    | /containers/(id)/export  | ContainerExport  | export container                  | X   | X   | X    |     |
+| GET    | /containers/(id)/archive | ContainerArchive | create archive from container fs  | X   | X   | X    |     |
+| HEAD   | /containers/(id)/archive | ContainerArchive | file system info                  | X   | X   | X    |     |
+| PUT    | /containers/(id)/archive | ContainerArchive | extract archive into fs           | X   | X   | X    |     |
+| POST   | /containers/(id)/exec    | ContainerExec    | create exec instance in container | X   | X   | X    |     |
+| POST   | /exec/(exec_id)/start    | ExecStart        |                                   | X   | X   | X    |     |
+| POST   | /exec/(exec_id)/resize   | ExecResize       | tty resize                        | X   | X   | X    |     |
+| POST   | /exec/(exec_id)/inspect  | ExecInspect      |                                   | X   | X   | X    |     |
+| GET    | /images                  | ImageList        |                                   | X   | X   |      |     |
+| GET    | /images/(name)           | ImageInspect     |                                   | X   | X   |      |     |
+| GET    | /images/(name)/history   | ImageHistory     |                                   | X   | X   |      |     |
+| GET    | /images/search           | ImageSearch      |                                   | X   | X   |      |     |
+| GET    | /images/(name)/get       | ImageGet         | extract images into tarball       | X   | X   |      |     |
+| GET    | /images/get              | ImageGet         | extract all images                | X   | X   |      |     |
+| POST   | /images/create           | ImageCreate      | import from registry              | X   |     |      |     |
+| POST   | /images/load             | ImageLoad        | load image tarball                | X   |     |      |     |
+| POST   | /images/(name)/tag       | ImageTag         |                                   | X   |     |      |     |
+| POST   | /images/(name)/push      | ImagePush        | push to registry                  | X   |     |      |     |
+| DELETE | /images/(name)           | ImageDelete      |                                   | X   |     |      |     |
+| POST   | /commit?container=(id)   | Commit           |                                   | X   |     |      |     |
+| POST   | /build                   | Build            |                                   | X   |     |      |     |
+| GET    | /_ping                   | Ping             |                                   | X   | X   | X    | X   |
+| POST   | /auth                    | Auth             |                                   | X   | X   | X    | X   |
+| GET    | /info                    | Info             |                                   | X   | X   | X    | X   |
+| GET    | /version                 | Version          |                                   | X   | X   | X    | X   |
+| GET    | /events                  | Events           |                                   | X   | X   | X    | X   |
+
 ### Policy Action mapping
 
 We can derive some patterns from the above list of fine-grained permissions, while
@@ -221,30 +222,43 @@ in the same service category and with policy actions named tentatively to someth
 like `ecs:GetContainer` (ecs = Elastic Container Services). Manta policy actions can
 likewise be renamed accordingly, e.g. `manta:PutObject`.
 
+| Policy Action                | Dev | Ops | User | APM | Docker Route                                          | Method | Docker Endpoint                                               | CloudAPI Equiv                           |
+| ---------------------------- | --- | --- | ---- | --- | ----------------------------------------------------- | ------ | ------------------------------------------------------------- | ---------------------------------------- |
+| ecs:GetImage                 | X   | X   |      |     | ImageList, ImageInspect, ImageHistory, ImageSearch    | GET    | /images/*                                                     | getimage, listimages                     |
+| ecs:ImportImage (TM)         | X   | X   |      |     | ImageCreate                                           | POST   | /images ???                                                   |                                          |
+| ecs:ExportImage              | X   |     |      |     | ImageGet, ImagePush                                   | POST   | /images                                                       |                                          |
+| ecs:UpdateImage (TM)         | X   |     |      |     | ImageTag                                              | POST   | /images                                                       |                                          |
+| ecs:CreateImage              | X   |     |      |     | CreateImage, LoadImage                                | POST   | /images                                                       |                                          |
+| ecs:DeleteImage              | X   |     |      |     | DeleteImage                                           | DELETE | /images                                                       | deleteimage                              |
+| ecs:CreateImage              | X   |     |      |     | Commit                                                | POST   | /commit                                                       | createimagefrommachine                   |
+| ecs:CreateImage              | X   |     |      |     | Build                                                 | POST   | /build                                                        |                                          |
+| ecs:GetContainer             | X   | X   | X    | X   | Container{List,Inspect,Top,Logs,Stats,Changes}        | GET    | /containers/* (except export and archive)                     | getmachine, listmachines                 |
+| ecs:ExportContainer          | X   | X   | X    |     | ContainerExport, ContainerArchive                     | GET    | /containers/(id)/{export,archive}                             |                                          |
+| ecs:ExportContainer          | X   | X   | X    |     | ContainerCopy                                         | POST   | /containers/(id)/copy                                         |                                          |
+| ecs:UpdateContainer          | X   | X   | X    |     | ContainerArchive                                      | HEAD   | /containers                                                   |                                          |
+| ecs:UpdateContainer          | X   | X   | X    |     | ContainerArchive                                      | PUT    | /containers                                                   |                                          |
+| ecs:UpdateContainer (TM)     | X   | X   | X    |     | Container{Rename,Attach,Exec,Resize}                  | POST   | /containers/(id)/{rename,attach,exec,resize}                  | renamemachine                            |
+| ecs:CreateContainer          | X   | X   |      |     | ContainerCreate                                       | POST   | /containers/create                                            | createmachine                            |
+| ecs:OperateContainer (TM)    | X   | X   | X    | X   | Container{Start,Stop,Restart,Kill,Wait,Pause,Unpause} | POST   | /containers/(id)/{start,stop,restart,kill,wait,pause,unpause} | startmachine, stopmachine, rebootmachine |
+| ecs:DeleteContainer          | X   | X   |      |     | ContainerDelete                                       | DELETE | /containers                                                   | deletemachine                            |
+| N/A - accessible to all      | X   | X   | X    | X   | Ping                                                  | GET    | /_ping                                                        |                                          |
+| N/A - accessible to all      | X   | X   | X    | X   | Auth                                                  | POST   | /auth                                                         |                                          |
+| N/A - accessible to all (TM) | X   | X   | X    | X   | Info                                                  | GET    | /info                                                         |                                          |
+| N/A - accessible to all      | X   | X   | X    | X   | Version                                               | GET    | /version                                                      |                                          |
+| ecs:AuditContainer           | X   | X   | X    | X   | Events                                                | GET    | /events                                                       | machineaudit                             |
 
-| Policy Action | Method | Docker Endpoint | Docker Route | CloudAPI Equiv | Dev | Ops | User | APM |
-| ------------- | ------ | --------------- | ------------ | -------------- | --- | --- | ---- | --- |
-| ecs:GetContainer | GET | /containers/* (except export and archive) | ContainerList, ContainerInspect, ContainerTop, ContainerLogs, ContainerStats, ContainerChanges | getmachine, listmachines | X | X | X | X |
-| ecs:ExportContainer | GET | /containers/(id)/export, /containers/(id)/archive | ContainerExport, ContainerArchive | | X | X | X | |	
-| ecs:ExportContainer | POST | /containers/(id)/copy | ContainerCopy | | X | X | X | |	
-| ecs:UpdateContainer | HEAD | /containers | ContainerArchive | | X | X | X | |
-| ecs:UpdateContainer | PUT | /containers | ContainerArchive | | X | X | X | |
-| ecs:UpdateContainer | POST | /containers/(id)/rename, /containers/(id)/attach, /containers/(id)/exec, /containers/(id)/resize | ContainerRename, ContainerAttach, ContainerExec, ContainerResize | renamemachine | X | X | X | |	
-| ecs:CreateContainer | POST | /containers/create | ContainerCreate | createmachine | X | X | | |	
-| ecs:OperateContainer | POST | /containers/(id)/start, /containers/(id)/stop, /containers/(id)/restart, /containers/(id)/kill, /containers/(id)/wait, /containers/(id)/pause, /containers/(id)/unpause | ContainerStart, ContainerStop, ContainerRestart, ContainerKill, ContainerWait, ContainerPause, ContainerUnpause | startmachine, stopmachine,  rebootmachine | X | X | X | X |
-| ecs:DeleteContainer | DELETE | /containers | ContainerDelete | deletemachine | X | X | | |
-| ecs:GetImage | GET | /images/* | ImageList, ImageInspect, ImageHistory, ImageSearch | getimage, listimages | X | X | | |
-| ecs:ExportImage | POST | /images | ImageGet, ImagePush | | X | | | |
-| ecs:UpdateImage | POST | /images | ImageTag | | X | | | |
-| ecs:CreateImage | POST | /images | CreateImage, LoadImage | | X | | | |
-| ecs:DeleteImage | DELETE | /images | DeleteImage | deleteimage | X | | | |	
-| ecs:CreateImage | POST | /commit | Commit | createimagefrommachine | X | | | |
-| ecs:Createimage | POST | /build | Build | | X | | | |
-| N/A - accessible to all | GET | /_ping | Ping | | X | X | X | X |
-| N/A - accessible to all | POST | /auth | Auth | | X | X | X | X |
-| N/A - accessible to all | GET | /info | Info | | X | X | X | X |
-| N/A - accessible to all | GET | /version | Version | | X | X | X | X |
-| ecs:AuditContainer | GET | /events | Events | machineaudit | X | X | X | X |
+Trent Notes:
+- "ecs:*Container": I changed to "Instance".
+- ImageCreate: you'd missed htis one
+- ImageTag: I changed to "ecs:CreateImage"
+- ContainerChanges (aka `docker diff`) is closer to ContainerExport `docker export`
+  and/or ContainerArchive (`docker cp`)
+- ContainerResize as "UpdateContainer"? Hrm.  Resize is called for `docker attach`
+  and as part of `docker start -i` and `docker run`.
+- Proposing moving "ContainerWait" to "ecs:GetInstance"... because it is just
+  about getting the current state of the container and waiting until it is
+  stopped.
+- Info: Perhaps elide the image and container counts for non-account access.
 
 
 ## Open Questions
@@ -293,7 +307,8 @@ the resource but it is a major change.
 - Auditing is not returning correct information for docker containers
   currently because the docker request payload to vmapi is missing the
   "Context" section that is typically present in cloudapi requests:
-`````
+
+    ```
       "context": {
         "caller": {
           "type": "signature",
@@ -308,14 +323,13 @@ the resource but it is a major change.
           "dataset": "7c815c22-4606-11e5-8bb5-9f853c19be54"
         }
       },
-`````
+    ```
 
   The caller info for docker operations are returned as "operator" in
   [MachineAudit](https://github.com/joyent/sdc-cloudapi/blob/master/lib/audit.js#L74-L81).
   This needs to be fixed as part of the RBAC feature.
-  
+
 - There is already a pre-defined "docker" role and "docker" policy used by
   the KVM Docker features in the Portal. Those features are being deprecated.
   To avoid confusion, we'll need to clean up those roles/policies in accounts
   which have previously made use of KVM Docker.
-
