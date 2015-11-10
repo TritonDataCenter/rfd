@@ -5,7 +5,7 @@ state: draft
 
 # RFD 13 Docker Subuser Support
 
-## Background
+## Background on SDC and Manta RBAC
 
 Skip this section if you are already familiar with CloudAPI or Manta RBAC. There are
 some rather detailed end-user docs (https://docs.joyent.com/public-cloud/rbac)
@@ -37,8 +37,8 @@ important to highlight here for the discussion on Docker subuser support:
    achieve granular RBAC. There is no out-of-the-box role but the Portal has a few
    canned roles that are inserted to user's profile behind the scenes for the
    KVM docker host and registry feature.
-8. Every time a CloudAPI call is issued, the caller (subuser) and the account
-   logins are passed to mahi to get the roles and policies associated with
+8. Every time a CloudAPI or Manta call is issued, the caller (subuser) and the
+   account logins are passed to mahi to get the roles and policies associated with
    the caller. If the API endpoint is not authorized in any of the subuser's
    role policies or the resource involved is tagged to a role that the subuser
    doesn't have, an "NotAuthorized" error is returned to the caller.
@@ -59,6 +59,17 @@ account. The side effect of doing so is giving the subusers full access to
 all other resources in the account, including users and keys (essentially
 making the subuser a delegated admin). This is obviously undesirable.
 
+Like CloudAPI and Manta, there are three basic scenarios that need to be
+supported in Docker's RBAC model, listed in the order of importance:
+
+1. Tenancy separation - Users within an account can manage resources belong
+   to the roles of which they are members and have no access to resources
+   outside of those roles.
+2. Access level - Users can be granted different levels of access to the
+   same resources. E.g. some can read/write a certain resource while others
+   may have read-only access.
+3. Combination of 1 and 2, i.e. each user in an account may have different
+   access permissions to different resources.
 
 ## Proposed Scope for Docker RBAC
 
@@ -120,10 +131,13 @@ for Docker RBAC:
    any role/policy/role-tag for themselves.
 
 
-## Some Sample Roles
+## Docker Policy Actions
 
-Here are a few sample roles that are typically used to help us to group policy
-actions in a meaningful way:
+### Some Sample Roles
+
+In attmepting to collapse the API endpoint permissions into higher-level policy
+actions, it will be helpful to have a few sample roles, or principals, in mind
+based on what they need to achieve.
 
 | Role | Description |
 | ---- | ----------- |
@@ -132,7 +146,11 @@ actions in a meaningful way:
 | User | End users who access containers to run/use the applications |
 | APM | Application performance monitoring system agents |
 
-## Fine-grained Permissions							
+### Fine-grained Permissions
+
+Starting from the ground up, for each of the sample roles above, the need for access
+to the docker API endpoints will probably look like this:
+							
 | Method | Docker Endpoint | Docker Route | Notes | Dev | Ops | User | APM |
 | ------ | --------------- | ------------ | ----- | --- | --- | ---- | --- |
 | POST | /containers/create | ContainerCreate | | X | X | | |	
@@ -181,7 +199,28 @@ actions in a meaningful way:
 | GET | /version | Version | | X | X | X | X |
 | GET | /events | Events | | X | X | X | X |
 							
-## Proposed Policy Action Categories
+### Policy Action mapping
+
+We can derive some patterns from the above list of fine-grained permissions, while
+keeping in mind what the access allows the user to do to the resource.
+
+GET access for a resource can be as trivial as getting its non-confidential metadata,
+or as in depth as retrieving the operational data (logs, audit trails, processes),
+or even the entire content of the resource in the form of an export file. It will be
+appropriate to treat these permissions differently.
+
+Likewise, PUT and POST access for a resource can range from changing its state (e.g.
+the power state of a container), to its metadata (e.g. name, labels), to its content
+(through file copy or executing commands in the container). These different types
+of update actions warrant separate access permissions.
+
+As far as the policy action naming is concerned, there are some advantages in
+adopting the {service}:{policyAction} convention to provide more clarity on what
+policy actions correspond to which services. For Docker and CloudAPI, they can be
+in the same service category and with policy actions named tentatively to something
+like `ecs:GetContainer` (ecs = Elastic Container Services). Manta policy actions can
+likewise be renamed accordingly, e.g. `manta:PutObject`.
+
 
 | Policy Action | Method | Docker Endpoint | Docker Route | CloudAPI Equiv | Dev | Ops | User | APM |
 | ------------- | ------ | --------------- | ------------ | -------------- | --- | --- | ---- | --- |
@@ -213,16 +252,22 @@ actions in a meaningful way:
 ### List all instances being a separate policy action?
 
 To grant the permission to see all instances of a certain resource for a particular role,
-there are two ways to achieve it:
+there are a few ways to achieve it:
 
-- The role concerned should be tagged to every single instance of the resource, and
-  is attached to the Get<Resource> policy action.
-or
-- There is a separate policy action List<Resource> that grant the Get access permission
-  to all instances of that resource.
+1. The role concerned should be tagged to every single instance of the resource, and
+   is attached to the Get{Resource} policy action.
+2. There is a separate policy action List{Resource} that grant the access permission
+   to all instances of that resource.
+3. Have a separate "scope" attribute as part of the policy definition. Scope can be
+   set to "all instances" or "role-tagged instances".
 
-CloudAPI follows the latter model. It is better for performance but is a slight
-deviation from the action vs instance permission model.
+CloudAPI currently supports #2 but it is confusing to user since the `List` permission
+applies to the `Get` action only. If a role has `ListMachines` and `StartMachine`
+permissions, it still won't allow users with that role to perform `StartMachine` on any
+of the machines the user sees in `ListMachines`. The only way to enable the user to do
+so is to practice role-tagging (#1) as well. #3 will provide the most flexibility and
+reduce a lot of the need for role-tagging when tenancy-separation is not required for
+the resource but it is a major change.
 
 ### Converge Docker and Cloud API policy actions
 
@@ -234,8 +279,8 @@ deviation from the action vs instance permission model.
 
 - We still need to reconcile what happens when user has the permission to ListMachines
   in CloudAPI but not the equivalent in Docker API (and vice versa). Further decision
-  has to be made as part of this project to ensure we do not leave behind such
-  segregated and confusing behavior.
+  has to be made as part of this project to ensure we do not leave behind two islands
+  of permissions which would result in more segregated and confusing behavior.
 
 
 ## Other Considerations
