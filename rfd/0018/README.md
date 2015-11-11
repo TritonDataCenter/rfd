@@ -139,3 +139,7 @@ VMs matching a single network.
  * Which namespace should we use for these special labels?
      * [ZAPI-671](https://devhub.joyent.com/jira/browse/ZAPI-671) might suggest
        using triton.* namespace instead of com.joyent.*?
+     * fwiw [Docker Docs](https://docs.docker.com/engine/userguide/labels-custom-metadata/#label-keys-namespaces)
+       suggest that "All (third-party) tools should prefix their keys with the
+       reverse DNS notation of a domain controlled by the author. For example,
+       `com.example.some-label`."
