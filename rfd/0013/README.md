@@ -120,8 +120,10 @@ for Docker RBAC:
    Trent) is to prompt for a role name during docker setup. Subusers who have
    multiple roles can have multiple profiles, each of them will have a separate
    certificate file. Based on the DOCKER_CERT_PATH specified, sdc-docker will
-   apply the corresponding role to the operation.
-6. Instance-level access control to pulled down docker image layers is not
+   apply the corresponding role to the operation. The current RBAC mechanism
+   that automatically tags newly created resources to the roles passed to
+   the create operation will be required for Docker containers as well. 
+6. Instance-level access control to pulled-down docker image layers is not
    necessary. Uncommitted 'head images' (created via `docker build` or `docker tag`)
    are the ones that warrant RBAC.
 7. For users who are accessing as account owners, it should be clear to them
@@ -146,7 +148,6 @@ based on what they need to achieve.
 | User | End users who access containers to run/use the applications |
 | APM  | Application performance monitoring system agents            |
 
-<<<<<<< cc7dfe2d97dbda4897143c2bc8af950ee7572675
 ### Fine-grained Permissions
 
 Starting from the ground up, for each of the sample roles above, the need for access
@@ -219,7 +220,7 @@ As far as the policy action naming is concerned, there are some advantages in
 adopting the {service}:{policyAction} convention to provide more clarity on what
 policy actions correspond to which services. For Docker and CloudAPI, they can be
 in the same service category and with policy actions named tentatively to something
-like `ecs:GetContainer` (ecs = Elastic Container Services). Manta policy actions can
+like `ecs:GetInstance` (ecs = Elastic Container Services). Manta policy actions can
 likewise be renamed accordingly, e.g. `manta:PutObject`.
 
 | Policy Action                | Dev | Ops | User | APM | Docker Route                                          | Method | Docker Endpoint                                               | CloudAPI Equiv                           |
@@ -232,43 +233,45 @@ likewise be renamed accordingly, e.g. `manta:PutObject`.
 | ecs:DeleteImage              | X   |     |      |     | DeleteImage                                           | DELETE | /images                                                       | deleteimage                              |
 | ecs:CreateImage              | X   |     |      |     | Commit                                                | POST   | /commit                                                       | createimagefrommachine                   |
 | ecs:CreateImage              | X   |     |      |     | Build                                                 | POST   | /build                                                        |                                          |
-| ecs:GetContainer             | X   | X   | X    | X   | Container{List,Inspect,Top,Logs,Stats,Changes}        | GET    | /containers/* (except export and archive)                     | getmachine, listmachines                 |
-| ecs:ExportContainer          | X   | X   | X    |     | ContainerExport, ContainerArchive                     | GET    | /containers/(id)/{export,archive}                             |                                          |
-| ecs:ExportContainer          | X   | X   | X    |     | ContainerCopy                                         | POST   | /containers/(id)/copy                                         |                                          |
-| ecs:UpdateContainer          | X   | X   | X    |     | ContainerArchive                                      | HEAD   | /containers                                                   |                                          |
-| ecs:UpdateContainer          | X   | X   | X    |     | ContainerArchive                                      | PUT    | /containers                                                   |                                          |
-| ecs:UpdateContainer (TM)     | X   | X   | X    |     | Container{Rename,Attach,Exec,Resize}                  | POST   | /containers/(id)/{rename,attach,exec,resize}                  | renamemachine                            |
-| ecs:CreateContainer          | X   | X   |      |     | ContainerCreate                                       | POST   | /containers/create                                            | createmachine                            |
-| ecs:OperateContainer (TM)    | X   | X   | X    | X   | Container{Start,Stop,Restart,Kill,Wait,Pause,Unpause} | POST   | /containers/(id)/{start,stop,restart,kill,wait,pause,unpause} | startmachine, stopmachine, rebootmachine |
-| ecs:DeleteContainer          | X   | X   |      |     | ContainerDelete                                       | DELETE | /containers                                                   | deletemachine                            |
+| ecs:GetInstance              | X   | X   | X    | X   | Container{List,Inspect,Top,Logs,Stats}                | GET    | /containers/* (except export,archive,changes)                 | getmachine, listmachines                 |
+| ecs:ExportInstance           | X   | X   | X    |     | Container{Export,Archive,Changes}                     | GET    | /containers/(id)/{export,archive,changes}                     |                                          |
+| ecs:ExportInstance           | X   | X   | X    |     | ContainerCopy                                         | POST   | /containers/(id)/copy                                         |                                          |
+| ecs:UpdateInstance           | X   | X   | X    |     | ContainerArchive                                      | HEAD   | /containers                                                   |                                          |
+| ecs:UpdateInstance           | X   | X   | X    |     | ContainerArchive                                      | PUT    | /containers                                                   |                                          |
+| ecs:UpdateInstance (TM)      | X   | X   | X    |     | Container{Rename,Attach,Exec,Resize}                  | POST   | /containers/(id)/{rename,attach,exec,resize}                  | renamemachine                            |
+| ecs:CreateInstance           | X   | X   |      |     | ContainerCreate                                       | POST   | /containers/create                                            | createmachine                            |
+| ecs:OperateInstance (TM)     | X   | X   | X    | X   | Container{Start,Stop,Restart,Kill,Wait,Pause,Unpause} | POST   | /containers/(id)/{start,stop,restart,kill,wait,pause,unpause} | startmachine, stopmachine, rebootmachine |
+| ecs:DeleteInstance           | X   | X   |      |     | ContainerDelete                                       | DELETE | /containers                                                   | deletemachine                            |
 | N/A - accessible to all      | X   | X   | X    | X   | Ping                                                  | GET    | /_ping                                                        |                                          |
 | N/A - accessible to all      | X   | X   | X    | X   | Auth                                                  | POST   | /auth                                                         |                                          |
 | N/A - accessible to all (TM) | X   | X   | X    | X   | Info                                                  | GET    | /info                                                         |                                          |
 | N/A - accessible to all      | X   | X   | X    | X   | Version                                               | GET    | /version                                                      |                                          |
-| ecs:AuditContainer           | X   | X   | X    | X   | Events                                                | GET    | /events                                                       | machineaudit                             |
+| ecs:AuditInstance            | X   | X   | X    | X   | Events                                                | GET    | /events                                                       | machineaudit                             |
 
 See [full table of RBAC actions here](./rbac-actions.md).
 
-Trent Notes:
-- "ecs:*Container": I changed to "Instance".
-- ImageCreate: you'd missed htis one
-- ImageTag: I changed to "ecs:CreateImage"
+Trent Notes: (askfongjojo: responded, we can remove this section in next rev)
+- "ecs:*Container": I changed to "Instance". [a: updated, *Instance now]
+- ImageCreate: you'd missed this one [a: agreed]
+- ImageTag: I changed to "ecs:CreateImage" [a: agreed]
 - ContainerChanges (aka `docker diff`) is closer to ContainerExport `docker export`
-  and/or ContainerArchive (`docker cp`)
+  and/or ContainerArchive (`docker cp`) [a: agreed, moved to Export]
 - ContainerResize as "UpdateContainer"? Hrm.  Resize is called for `docker attach`
-  and as part of `docker start -i` and `docker run`.
+  and as part of `docker start -i` and `docker run`.i [a: true, hence grouped
+  with attach, though no persistent change on container]
 - Proposing moving "ContainerWait" to "ecs:GetInstance"... because it is just
   about getting the current state of the container and waiting until it is
-  stopped.
+  stopped. [a: true, but it's normally used with create or power cycle, hence
+  put under Operate; fine either way though]
 - Info: Perhaps elide the image and container counts for non-account access.
-
+  [a: yes if time, not too concerned since these are just counts]
 
 ## Open Questions
 
-### List all instances being a separate policy action?
+### List all instances being a separate policy action/attribute?
 
-To grant the permission to see all instances of a certain resource for a particular role,
-there are a few ways to achieve it:
+To grant the permission to see all instances of a certain resource type for a
+particular role, there are a few ways to achieve it:
 
 1. The role concerned should be tagged to every single instance of the resource, and
    is attached to the Get{Resource} policy action.
@@ -281,23 +284,43 @@ CloudAPI currently supports #2 but it is confusing to user since the `List` perm
 applies to the `Get` action only. If a role has `ListMachines` and `StartMachine`
 permissions, it still won't allow users with that role to perform `StartMachine` on any
 of the machines the user sees in `ListMachines`. The only way to enable the user to do
-so is to practice role-tagging (#1) as well. #3 will provide the most flexibility and
-reduce a lot of the need for role-tagging when tenancy-separation is not required for
-the resource but it is a major change.
+so is to practice role-tagging (#1) as well. Role tagging is taken care of automatically
+for newly created resources but the existing resources are the ones often forgotten.
+To hide this complexity from user, currently Portal auto role-tags existing resources
+resources in the account whenever a List* policy is added to a role (and supposedly
+untag them when the policy is dropped). API users have to take care of that manually.
+
+#3 will provide the most flexibility and reduce a lot of the need for role-tagging
+when tenancy-separation is not required for the resource. It'll potentially help
+performance but it is a major change to the policy data model. If we can implement
+this, we can remove the Portal hack which is expensive and unreliable.
+
 
 ### Converge Docker and Cloud API policy actions
 
-- If we decide to pursue the summary policy route, CloudAPI should follow the same
-  model. Based on the current usage of RBAC in CloudAPI, many users have resorted to
-  granting all policies or the 'administrator' role. The user experience will likely
+- If we decide to pursue the summary policy route, ideally CloudAPI would follow the
+  same model. Based on the current usage of RBAC in JPC, many users have resorted
+  to granting all policies or the 'administrator' role. The user experience will likely
   improve if we make the policy set cleaner and have sample roles for users to model
   after.
 
 - We still need to reconcile what happens when user has the permission to ListMachines
-  in CloudAPI but not the equivalent in Docker API (and vice versa). Further decision
+  in CloudAPI but not the Docker API equivalent (and vice versa). Further decision
   has to be made as part of this project to ensure we do not leave behind two islands
   of permissions which would result in more segregated and confusing behavior.
 
+One way to view this is that even though docker resources are a subset of all the
+resources owned by the account, it is unlikely that users want to segregate the
+permissions by container/vm type (i.e. some subusers can manage LX/smartos zones,
+while others can only docker ones, and so on). The intention for granting
+ecs:ListInstances is allowing user to see all instances, regardless of the type.
+If we can agree on this premise, we can potentially convert existing CloudAPI and
+Manta policies to the new nomenclature. This involves changing the RBAC check in
+mahi and grouping the more granular CloudAPI policies into the coarse-grained
+ones (Manta ones are already at the right granularity and do not require changes).
+Existing customer data will likely have to be migrated with some manual
+intervention, or kept unchanged with if we built in backwards compatibility.
+Maybe we need another RFD for this when we get to do it.
 
 ## Other Considerations
 
