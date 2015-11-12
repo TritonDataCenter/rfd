@@ -293,7 +293,7 @@ resources in the account whenever a List* policy is added to a role (and suppose
 untag them when the policy is dropped). API users have to take care of that manually.
 
 Option #3 will provide the most flexibility and reduce a lot of the need for role-tagging
-when tenancy-separation is not required for the resource. It'll potentially help
+when tenancy separation is not required for the resource. It'll potentially help
 performance but it is a major change to the policy data model. If we can implement
 this, we can remove the Portal hack which is expensive and unreliable.
 
