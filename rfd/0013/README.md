@@ -196,7 +196,7 @@ to the docker API endpoints will probably look like this:
 | POST   | /commit?container=(id)   | Commit           |                                   | X   |     |      |     |
 | POST   | /build                   | Build            |                                   | X   |     |      |     |
 | GET    | /_ping                   | Ping             |                                   | X   | X   | X    | X   |
-| POST   | /auth                    | Auth             |                                   | X   | X   | X    | X   |
+| POST   | /auth                    | Auth             | login a registry                  | X   | X   | X    | X   |
 | GET    | /info                    | Info             |                                   | X   | X   | X    | X   |
 | GET    | /version                 | Version          |                                   | X   | X   | X    | X   |
 | GET    | /events                  | Events           |                                   | X   | X   | X    | X   |
@@ -238,13 +238,15 @@ likewise be renamed accordingly, e.g. `manta:PutObject`.
 | ecs:ExportInstance           | X   | X   | X    |     | ContainerCopy                                         | POST   | /containers/(id)/copy                                         |                                          |
 | ecs:UpdateInstance           | X   | X   | X    |     | ContainerArchive                                      | HEAD   | /containers                                                   |                                          |
 | ecs:UpdateInstance           | X   | X   | X    |     | ContainerArchive                                      | PUT    | /containers                                                   |                                          |
-| ecs:UpdateInstance (TM)      | X   | X   | X    |     | Container{Rename,Attach,Exec,Resize}                  | POST   | /containers/(id)/{rename,attach,exec,resize}                  | renamemachine                            |
+| ecs:UpdateInstance           | X   | X   | X    |     | Container{Rename}                                     | POST   | /containers/(id)/{rename}                                     | renamemachine                            |
+| ecs:LoginInstance (TM)       | X   | X   | X    |     | Container{Attach,Exec,Resize}                         | POST   | /containers/(id)/{attach,exec,resize}                         |                                          |
+| ecs:LoginInstance (TM)       | X   | X   | X    |     | Exec{Start,Resize,Inspect}                            | POST   | /exec/(id)/{start,resize,inspect}                             |                                          |
 | ecs:CreateInstance           | X   | X   |      |     | ContainerCreate                                       | POST   | /containers/create                                            | createmachine                            |
 | ecs:OperateInstance (TM)     | X   | X   | X    | X   | Container{Start,Stop,Restart,Kill,Wait,Pause,Unpause} | POST   | /containers/(id)/{start,stop,restart,kill,wait,pause,unpause} | startmachine, stopmachine, rebootmachine |
 | ecs:DeleteInstance           | X   | X   |      |     | ContainerDelete                                       | DELETE | /containers                                                   | deletemachine                            |
 | N/A - accessible to all      | X   | X   | X    | X   | Ping                                                  | GET    | /_ping                                                        |                                          |
-| N/A - accessible to all      | X   | X   | X    | X   | Auth                                                  | POST   | /auth                                                         |                                          |
-| N/A - accessible to all (TM) | X   | X   | X    | X   | Info                                                  | GET    | /info                                                         |                                          |
+| ecs:GetImage                 | X   | X   | X    | X   | Auth                                                  | POST   | /auth                                                         |                                          |
+| N/A - accessible to all      | X   | X   | X    | X   | Info                                                  | GET    | /info                                                         |                                          |
 | N/A - accessible to all      | X   | X   | X    | X   | Version                                               | GET    | /version                                                      |                                          |
 | ecs:AuditInstance            | X   | X   | X    | X   | Events                                                | GET    | /events                                                       | machineaudit                             |
 
@@ -258,11 +260,11 @@ Trent Notes: (askfongjojo: responded, we can remove this section in next rev)
   and/or ContainerArchive (`docker cp`) [a: agreed, moved to Export]
 - ContainerResize as "UpdateContainer"? Hrm.  Resize is called for `docker attach`
   and as part of `docker start -i` and `docker run`.i [a: true, hence grouped
-  with attach, though no persistent change on container]
+  with attach, changed to Login* now per rbac-actions table]
 - Proposing moving "ContainerWait" to "ecs:GetInstance"... because it is just
   about getting the current state of the container and waiting until it is
-  stopped. [a: true, but it's normally used with create or power cycle, hence
-  put under Operate; fine either way though]
+  stopped. [a: true, but it's normally used with power cycle; fine either way
+  though]
 - Info: Perhaps elide the image and container counts for non-account access.
   [a: yes if time, not too concerned since these are just counts]
 
