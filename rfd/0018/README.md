@@ -143,3 +143,8 @@ VMs matching a single network.
        suggest that "All (third-party) tools should prefix their keys with the
        reverse DNS notation of a domain controlled by the author. For example,
        `com.example.some-label`."
+
+## Tickets
+
+ * [DOCKER-502](https://devhub.joyent.com/jira/browse/DOCKER-502) -- adding support for selecting packages
+ * [DOCKER-585](https://devhub.joyent.com/jira/browse/DOCKER-585) -- adding support for selecting networks
