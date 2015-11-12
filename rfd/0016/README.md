@@ -60,7 +60,7 @@ broadly works like this:
   into a group of objects, one for each database table.  These objects represent
   a backup of the corresponding _table_ for that shard at 0000Z that day.
 * Some time later, the daily metering, auditing, and GC jobs kick off, using
-  these per-table backups as input.  The processes diverage at this point.
+  these per-table backups as input.  The processes diverge at this point.
 
 There are a few other jobs that go through different processes:
 
