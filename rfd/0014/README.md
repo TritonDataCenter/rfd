@@ -36,20 +36,26 @@ as the ZPL). Such data would be blindly written into the pool by `zfs receive`,
 making it potentially un-importable (and possibly resulting in a kernel panic,
 and worse, allowing for the corruption of other data in the pool).
 
-This is particularly unfortunate for those offering Illumos zones or Linux
+This is particularly unfortunate for those offering illumos zones or Linux
 containers with ZFS access to external entities who are only partly trusted and
 should have no ability to break their isolation from other zones or containers.
 
 Previous work in this area has mainly extended to separating the privilege of
 use of ZFS from the use of `zfs receive` -- such as the `PRIV_SYS_FS_IMPORT`
-privilege in Illumos. In this way, the partly trusted tenant zones can be denied
+privilege in illumos. In this way, the partly trusted tenant zones can be denied
 entirely the ability to receive ZFS streams, the so-called "nuclear option".
 
-While in the long term, improving the validation performed by the DMU record
-parser is the clear solution to this, the problem is equivalent in complexity to
-writing a full `fsck` for ZFS. A full `fsck` is a project that has been brought
-up many times over the years but never implemented because of the vast amount of
-work involved, which makes this very long-term indeed.
+It might feel that this is merely a matter of improving the validation
+performed by the DMU record parser, but to think of this problem iteratively
+is to underestimate it:  not only must `zfs receive` be impervious to streams
+that would result in a corrupt on-disk structure, it must also reject streams
+that would result in denial-of-service of a host that attempts to import the
+pool.  This is a dauntingly high bar, and when multiple tenants share a single
+zpool, the failure mode is potentially devastating:  a kind of crown fire that
+can leap the fire line from one tenant to another.  In short, the problem of
+making `zfs receive` robust with respect to byzntine streams is brutally
+tricky and detail-oriented -- and the consequences of anything less than a
+perfect solution are dire.
 
 One shorter-term way to mitigate the problem somewhat is to enable the system to
 make trust decisions based on the origin of a given ZFS send stream. If the
@@ -271,7 +277,7 @@ allowed, this would reduce the available space remaining after a
 As the signature is used to protect the data produced by the kernel, the keys
 for signing will have to be kept in a kernel keyring.
 
-On Illumos, the proposal is to augment the kernel crypto framework (KCF) with
+On illumos, the proposal is to augment the kernel crypto framework (KCF) with
 some keyring management functions and better support for serializing and de-
 serializing keys. The KCF already contains support for ECDSA with most common
 curves, and can easily be enhanced to support EdDSA.
@@ -279,7 +285,7 @@ curves, and can easily be enhanced to support EdDSA.
 The kernel keyring will be loaded with two types of keys: key pairs used for
 signing; and trusted public keys that will be accepted for receive operations.
 
-Three new privileges will be added to the Illumos privilege model:
+Three new privileges will be added to the illumos privilege model:
 `PRIV_KERN_KEY_MGMT` (representing full control over the kernel keyring
 framework), `PRIV_SYS_FS_IMPORT_KEY_MGMT` (only the ZFS signed send keyring),
 and `PRIV_KERN_KEY_LIST` (to only list the `keyIds` or fingerprints of all

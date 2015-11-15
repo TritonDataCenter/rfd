@@ -56,6 +56,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 11 IPv6 and multiple IP addresses support in SDC](./rfd/0011/README.md) |
 | draft | [RFD 12 Bedtime for node-smartdc](./rfd/0012/README.md) |
 | draft | [RFD 13 Docker Subuser Support](./rfd/0013/README.md) |
+| draft | [RFD 14 Signed ZFS Send](./rfd/0014/README.md) |
 | draft | [RFD 15 Reduce/Eliminate runtime LX image customization](./rfd/0015/README.md) |
 | predraft | [RFD 16 Manta Metering](./rfd/0016/README.md) |
 | predraft | [RFD 17 Cloud Analytics v2](./rfd/0017/README.md) |
