@@ -592,10 +592,11 @@ returning internal error exception now.
 - Provide `GET /reboot-plans/:reboot_plan_uuid` to get details of the given
   reboot plan.
 - Provide `PUT /reboot-plans/:reboot_plan_uuid` to allow updates of the reboot
-  plan. Different actions like "stop", "run/continue" or "next" if we implement
-  the step based execution are required. We can also choose to implement these
-  using different end-points instead, like
-  `POST /reboot-plans/:reboot_plan_uuid/run` (TBD).
+  plan. The different actions like "stop", "run/continue" or "next" if we
+  implement the step based execution, will result into sdcadm-rebooter service
+  updating either the reboot plan itself, or the associated reboots for each
+  server included into the reboot plan with the start/finish times for the
+  different reboots.
 
 ### sdcadm
 
@@ -603,8 +604,8 @@ returning internal error exception now.
   `status`, `watch`, `stop`, `cancel` and `next`, if we decide to go ahead with
   implementation of execution of the reboot plan in steps requiring
   confirmation.
-- New sdcadm-rebooter HN GZ service, including transient SMF manifest, and the
-  required modifications to allow re-use of shared logic between this service
-  and the sdcam CLI.
+- New sdcadm-rebooter HN GZ service, including transient SMF manifest.
+- Required modifications to allow re-use of shared logic between this service
+  and the sdcam CLI. (This might be complex and require some extra time).
 - Logic to figure out "core" servers, manatee's shard mgmt. (shared with
   `sdcadm up manatee`), ...
