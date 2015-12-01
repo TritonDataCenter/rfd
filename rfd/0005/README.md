@@ -1,6 +1,6 @@
 ---
 authors: Richard Kiene <richard.kiene@joyent.com>
-state: draft
+state: publish
 ---
 
 <!--
