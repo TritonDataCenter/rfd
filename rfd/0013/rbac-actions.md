@@ -177,7 +177,7 @@ Generate meaning of the verb in an RBAC action:
 | CreateRole                |                        | rbac:CreateRole                      | `triton rbac role -a ...`                  |
 | UpdateRole                |                        | rbac:UpdateRole                      | `triton rbac role -e ROLE ...`             |
 | DeleteRole                |                        | rbac:DeleteRole                      | `triton rbac role -d ROLE`                 |
-| SetRoleTags               |                        | rbac:UpdateRoleTags                  | `triton rbac *-role-tags ...               |
+| SetRoleTags               |                        | rbac:UpdateRoleTags                  | `triton rbac *-role-tags ...`              |
 | ListPolicies              |                        | rbac:GetPolicy                       | `triton rbac policies`                     |
 | GetPolicy                 |                        | rbac:GetPolicy                       | `triton rbac policy POLICY`                |
 | CreatePolicy              |                        | rbac:CreatePolicy                    | `triton rbac policy POLICY`                |
@@ -220,6 +220,13 @@ Notes:
         ecs:ExecOnInstance
         ecs:ExecInstance
         ecs:ConsoleInstance
+
+   Weird example is that `docker-compose logs` will issue ContainerResize
+   even though it doesn't need to, IIUC. It might be undesirable (and certainly
+   surprising) to have `docker-compose logs` fail unless one has 'ecs:LoginInstance'.
+   IOW, perhaps "ecs:LoginInstance" is overkill for ContainerResize. Make it
+   a separate special case? Does it actually *change* the container at all?
+   If not perhaps an innocuous "Get"?
 
 3. Info. `docker info` includes a count of images and containers. Might want to
    consider filtering those on GetInstance/GetImage and those which are accessible,
