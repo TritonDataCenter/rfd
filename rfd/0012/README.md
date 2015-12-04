@@ -96,7 +96,7 @@ GH issues for each non-trivial chunk of work here.
 | **MACHINES**                     |          |                                                             |
 | ListMachines                     |          | `triton instances`                                          |
 | GetMachine                       |          | `triton instance INST`                                      |
-| CreateMachine                    |          | `triton create`                                             |
+| CreateMachine                    | \*CREATE | `triton create`                                             |
 | StopMachine                      |          | `triton stop`                                               |
 | StartMachine                     |          | `triton start`                                              |
 | RebootMachine                    |          | `triton reboot`                                             |
@@ -173,6 +173,8 @@ Notes:
 - CONFIG: 'Config' is a poor name, IMO. So generic. Should be called, perhaps,
   'Account Config'. Cloudapi rev to rename them? Endpoints can otherwise be the
   same.
+- CREATE: `triton create` doesn't cover the full CreateMachine. See "triton
+  create" section below to flesh that out.
 - RenameMachine: Allow editing of metadata and tags as well. Really should just
   be a UpdateMachine? Is there one?
 - UpdateMachineMetadata: '-a' for "add". *Is* this really about *adding*
@@ -184,6 +186,13 @@ Notes:
   `UpdateMachineMetadata`.
 - NICS: See sdc-nics from node-smartdc for some inspiration.
 - The whole "... foo -e ..." CLI UX for "edit/update" isn't figured out yet.
+
+## triton create
+
+`triton create` isn't complete. There are lots of options to CreateMachine that
+it doesn't yet support.
+
+TODO: list missing things and start fleshing it out
 
 
 ## RBAC
