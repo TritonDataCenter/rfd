@@ -192,7 +192,11 @@ Notes:
 `triton create` isn't complete. There are lots of options to CreateMachine that
 it doesn't yet support.
 
-TODO: list missing things and start fleshing it out
+- adding metadata: joyent/node-triton#59
+
+
+
+TODO: list other missing things and start fleshing it out
 
 
 ## RBAC
