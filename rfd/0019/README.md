@@ -56,8 +56,35 @@ The former method is more flexible, however version-ignoring job code can still
 be written. The latter method forces the developer to explicitly think about
 versioning, but it is more limited in its capabilities.
 
-There are perhaps other, better ways of doing this that escape the author at
-the moment.
+A third way of solving this problem is to simply move the job-execution code to
+the services that consume workflow, and have workflow be a coordinator --
+workflow would know which jobs are being executed, and would recieve progress
+updates from the services.
+
+This approach essentially makes workflow thinner, and fattens up the \*API
+services. It has the benefit of circumventing the versioning problem all
+together, but it makes the logistics surrounding services more complicated.
+Previously stateless services would now have state, and that would make them
+harder to reboot on a whim. Furthermore there is more than one container for
+each service. How would the load be distributed between these containers? Many
+of the problems that have been solved by workflow, would have to be re-solved
+for each service. This entails significant development effort, and replaces the
+versioning problem with a handful of other problems (both forseen and
+unforseen).
+
+A fourth way of resolving this problem is to create a new endpoint for workflow
+-- something like `/version` that will report the version of workflow itself to
+the consumer, which then takes action based on that. This is similar to the
+first method described above, however we are versioning the entire workflow
+service instead of its modules, and the \*API service handles branching (as
+opposed to its job code).
+
+A fifth way of resolving this problem is a lot like the fourth way except
+instead of a `/version` endpoint, we'd have a `/features` endpoint. And \*API
+services will generate job-code based on the available features. This clearly
+has the downside of forcing some kind of conditional code-generation logic in
+the \*API services. But on the upside it is much more granular than the
+previous solution.
 
 ## Developer Considerations
 
