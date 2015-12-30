@@ -122,7 +122,7 @@ for Docker RBAC:
    certificate file. Based on the DOCKER_CERT_PATH specified, sdc-docker will
    apply the corresponding role to the operation. The current RBAC mechanism
    that automatically tags newly created resources to the roles passed to
-   the create operation will be required for Docker containers as well. 
+   the create operation will be required for Docker containers as well.
 6. Instance-level access control to pulled-down docker image layers is not
    necessary. Uncommitted 'head images' (created via `docker build` or `docker tag`)
    are the ones that warrant RBAC.
@@ -152,7 +152,7 @@ based on what they need to achieve.
 
 Starting from the ground up, for each of the sample roles above, the need for access
 to the docker API endpoints will probably look like this:
-							
+
 | Method | Docker Endpoint          | Docker Route     | Notes                             | Dev | Ops | User | APM |
 | ------ | ------------------------ | ---------------- | --------------------------------- | --- | --- | ---- | --- |
 | POST   | /containers/create       | ContainerCreate  |                                   | X   | X   |      |     |
@@ -225,7 +225,7 @@ likewise be renamed accordingly, e.g. `manta:PutObject`.
 
 | Policy Action                | Dev | Ops | User | APM | Docker Route                                          | Method | Docker Endpoint                                               | CloudAPI Equiv                           |
 | ---------------------------- | --- | --- | ---- | --- | ----------------------------------------------------- | ------ | ------------------------------------------------------------- | ---------------------------------------- |
-| ecs:GetImage                 | X   | X   |      |     | ImageList, ImageInspect, ImageHistory, ImageSearch    | GET    | /images/*                                                     | getimage, listimages                     |
+| ecs:GetImage                 | X   | X   |      |     | ImageList, ImageInspect, ImageHistory, ImageSearch    | GET    | /images/\*                                                     | getimage, listimages                     |
 | ecs:ImportImage (TM)         | X   | X   |      |     | ImageCreate                                           | POST   | /images ???                                                   |                                          |
 | ecs:ExportImage              | X   |     |      |     | ImageGet, ImagePush                                   | POST   | /images                                                       |                                          |
 | ecs:UpdateImage (TM)         | X   |     |      |     | ImageTag                                              | POST   | /images                                                       |                                          |
@@ -233,7 +233,7 @@ likewise be renamed accordingly, e.g. `manta:PutObject`.
 | ecs:DeleteImage              | X   |     |      |     | DeleteImage                                           | DELETE | /images                                                       | deleteimage                              |
 | ecs:CreateImage              | X   |     |      |     | Commit                                                | POST   | /commit                                                       | createimagefrommachine                   |
 | ecs:CreateImage              | X   |     |      |     | Build                                                 | POST   | /build                                                        |                                          |
-| ecs:GetInstance              | X   | X   | X    | X   | Container{List,Inspect,Top,Logs,Stats}                | GET    | /containers/* (except export,archive,changes)                 | getmachine, listmachines                 |
+| ecs:GetInstance              | X   | X   | X    | X   | Container{List,Inspect,Top,Logs,Stats}                | GET    | /containers/\* (except export,archive,changes)                 | getmachine, listmachines                 |
 | ecs:ExportInstance           | X   | X   | X    |     | Container{Export,Archive,Changes}                     | GET    | /containers/(id)/{export,archive,changes}                     |                                          |
 | ecs:ExportInstance           | X   | X   | X    |     | ContainerCopy                                         | POST   | /containers/(id)/copy                                         |                                          |
 | ecs:UpdateInstance           | X   | X   | X    |     | ContainerArchive                                      | HEAD   | /containers                                                   |                                          |
@@ -244,7 +244,7 @@ likewise be renamed accordingly, e.g. `manta:PutObject`.
 | ecs:CreateInstance           | X   | X   |      |     | ContainerCreate                                       | POST   | /containers/create                                            | createmachine                            |
 | ecs:OperateInstance (TM)     | X   | X   | X    | X   | Container{Start,Stop,Restart,Kill,Wait,Pause,Unpause} | POST   | /containers/(id)/{start,stop,restart,kill,wait,pause,unpause} | startmachine, stopmachine, rebootmachine |
 | ecs:DeleteInstance           | X   | X   |      |     | ContainerDelete                                       | DELETE | /containers                                                   | deletemachine                            |
-| N/A - accessible to all      | X   | X   | X    | X   | Ping                                                  | GET    | /_ping                                                        |                                          |
+| N/A - accessible to all      | X   | X   | X    | X   | Ping                                                  | GET    | /\_ping                                                        |                                          |
 | ecs:GetImage                 | X   | X   | X    | X   | Auth                                                  | POST   | /auth                                                         |                                          |
 | N/A - accessible to all      | X   | X   | X    | X   | Info                                                  | GET    | /info                                                         |                                          |
 | N/A - accessible to all      | X   | X   | X    | X   | Version                                               | GET    | /version                                                      |                                          |
@@ -253,14 +253,14 @@ likewise be renamed accordingly, e.g. `manta:PutObject`.
 See [full table of RBAC actions here](./rbac-actions.md).
 
 Trent Notes: (askfongjojo: responded, we can remove this section in next rev)
-- "ecs:*Container": I changed to "Instance". [a: updated, *Instance now]
+- `ecs:*Container`: I changed to "Instance". [a: updated, `Instance*` now]
 - ImageCreate: you'd missed this one [a: agreed]
 - ImageTag: I changed to "ecs:CreateImage" [a: agreed]
 - ContainerChanges (aka `docker diff`) is closer to ContainerExport `docker export`
   and/or ContainerArchive (`docker cp`) [a: agreed, moved to Export]
 - ContainerResize as "UpdateContainer"? Hrm.  Resize is called for `docker attach`
   and as part of `docker start -i` and `docker run`.i [a: true, hence grouped
-  with attach, changed to Login* now per rbac-actions table]
+  with attach, changed to `Login*` now per rbac-actions table]
 - Proposing moving "ContainerWait" to "ecs:GetInstance"... because it is just
   about getting the current state of the container and waiting until it is
   stopped. [a: true, but it's normally used with power cycle; fine either way
@@ -289,13 +289,14 @@ of the machines the user sees in `ListMachines`. The only way to enable the user
 so is to practice role-tagging (#1) as well. Role tagging is taken care of automatically
 for newly created resources but the existing resources are the ones often forgotten.
 To hide this complexity from user, currently Portal auto role-tags existing resources
-resources in the account whenever a List* policy is added to a role (and supposedly
+resources in the account whenever a `List*` policy is added to a role (and supposedly
 untag them when the policy is dropped). API users have to take care of that manually.
 
 Option #3 will provide the most flexibility and reduce a lot of the need for role-tagging
 when tenancy separation is not required for the resource. It'll potentially help
 performance but it is a major change to the policy data model. If we can implement
 this, we can remove the Portal hack which is expensive and unreliable.
+
 
 
 ### Converge Docker and Cloud API policy actions

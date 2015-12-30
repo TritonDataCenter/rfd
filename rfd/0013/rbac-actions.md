@@ -170,7 +170,7 @@ Generate meaning of the verb in an RBAC action:
 | GetUser                   |                        | rbac:GetUser                         | `triton rbac user USER`                    |
 | CreateUser                |                        | rbac:CreateUser                      | `triton rbac user -a ...`                  |
 | UpdateUser                |                        | rbac:UpdateUser                      | `triton rbac user -e USER ...`             |
-| ChangeUserPassword        |                        | rbac:UpdateUserPassword              | `triton rbac user --change-password USER`  |
+| ChangeUserPassword        |                        | rbac:UpdateUserPassword              | `triton rbac passwd USER`                  |
 | DeleteUser                |                        | rbac:DeleteUser                      | `triton rbac user -d USER`                 |
 | ListRoles                 |                        | rbac:GetRole                         | `triton rbac roles`                        |
 | GetRole                   |                        | rbac:GetRole                         | `triton rbac role ROLE`                    |
