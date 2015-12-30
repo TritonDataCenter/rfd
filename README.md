@@ -64,6 +64,8 @@ formal writing that it has come to represent.)
 | draft | [RFD 20 Manta Slop-Aware Zone Scheduling](./rfd/0020/README.md) |
 | draft | [RFD 21 Metadata Scrubber For SDC](./rfd/0021/README.md) |
 | draft | [RFD 22: Improved user experience after a request has failed](./rfd/0022/README.md) |
+| draft | [RFD 23 A plan for Manta docs](./rfd/0023/README.md) |
+
 
 ## Contents of an RFD
 
