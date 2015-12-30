@@ -9,10 +9,6 @@ state: predraft
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 
-<!--
-    Copyright 2015 <contributor>
--->
-
 # RFD 21 Metadata Scrubber For SDC
 
 

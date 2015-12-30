@@ -62,6 +62,8 @@ formal writing that it has come to represent.)
 | predraft | [RFD 17 Cloud Analytics v2](./rfd/0017/README.md) |
 | predraft | [RFD 18 Support for using labels to select networks and packages](./rfd/0018/README.md) |
 | draft | [RFD 20 Manta Slop-Aware Zone Scheduling](./rfd/0020/README.md) |
+| draft | [RFD 21 Metadata Scrubber For SDC](./rfd/0021/README.md) |
+| draft | [RFD 22: Improved user experience after a request has failed](./rfd/0022/README.md) |
 
 ## Contents of an RFD
 
