@@ -21,6 +21,8 @@ Sources:
 
 - node-manta.git: "node.js SDK" docs
 - manta-muskie.git: Manta web front-end docs (mainly the REST API)
+- manta-compute-bin.git: man pages for Manta job utilities
+  (e.g. `maggr`, `mcat`)
 - manta.git: General Manta intro/landing-page in the README.md, plus
   the operator guide and
 - mantadoc.git: A collection point for the other sources *plus additional
@@ -64,6 +66,8 @@ Updating content for <apidocs.joyent.com/manta>:
 Sources:
 
 - node-manta.git: "node.js SDK" docs
+- manta-compute-bin.git: man pages for Manta job utilities
+  (e.g. `maggr`, `mcat`)
 - manta-muskie.git: Manta web front-end docs (mainly the REST API)
 - manta.git: General Manta intro/landing-page in the README.md, operator guide,
   and (proposed) new source for the primary content in mantadoc.git.
@@ -90,3 +94,8 @@ Longer term #2: I consider apidocs.joyent.com a bug. Joyent is too small to have
 two separate doc sites. There whould be one "docs.joyent.com" with organized
 publishing of all our content. Same opinion for the Manta operator docs at
 <joyent.github.io/manta>. IMHO.  Anyway, that is for another time.
+
+
+## Tickets
+
+- [DOC-646](https://devhub.joyent.com/jira/browse/DOC-646)
