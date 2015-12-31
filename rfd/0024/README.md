@@ -25,10 +25,10 @@ state: pre-draft
 
 ## Desired State
 
-- **DAPI to biase towards placing new instances to CNs with newer platform versions**
+- **DAPI to bias towards placing new instances to CNs with newer platform versions:**
   With this, over time, servers with older platform versions can be 'drained'
   when containers are destroyed and re-created.
-- **CloudAPI and sdc-docker to provide better support for spreading out a cluster**
+- **CloudAPI and sdc-docker to provide better support for spreading out a cluster:**
   CloudAPI currently allows user to provide 'locality' hints to place new containers
   away from certain containers but it requires exact container IDs to be passed. This
   forces user to keep track of the IDs in their provisioning scripts. It will be much
@@ -38,17 +38,17 @@ state: pre-draft
   compose project and service owned by the user on the fly when the service is scaled
   up. We'll also need a way to pass the server vs rack locality requirement (CloudAPI
   supports only server locality whereas DAPI allows both).
-- **VMAPI and AdminUI to support locality**
+- **VMAPI and AdminUI to support locality:**
   A less important requirement is to provide the same ability to operators to pass
   locality hints when provisioning on behalf of an end user. This may be necessary
   anyway as we may consider centralizing the processing logic in VMAPI and have other
   consumers (CloudAPI, sdc-docker, AdminUI) simply pass in the locality hints.
-- **Exposing locality information in List/GetMachine CloudAPI**
+- **Exposing locality information in List/GetMachine CloudAPI:**
   It is a nice-to-have feature and has been brought up by one customer (PUBAPI-1175).
   Server uuid is already exposed in CloudAPI. Maybe all that we need is exposing the
   rack identifiers. However they may contain proprietary information that is better
   hidden from end users.
-- **All compute nodes have their racks marked and kept accurate**
+- **All compute nodes have their racks marked and kept accurate:**
   This is more an operator action item than a software change. For the designation
   spread across racks to be useful, the rack attribute needs to be filled in
   consistently.
