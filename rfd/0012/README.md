@@ -37,13 +37,13 @@ GH issues for each non-trivial chunk of work here.
 | CloudAPI Endpoint                | Notes    | Triton command                                              |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
 | **ACCOUNT**                      |          |                                                             |
-| GetAccount                       | DONE     | `triton account`                                            |
-| UpdateAccount                    | NYI      | `triton account -e [FIELD=VALUE ...]`                       |
+| GetAccount                       | INC      | `triton account get`                                        |
+| UpdateAccount                    | NYI      | `triton account update`                                     |
 | **KEYS**                         |          |                                                             |
-| ListKeys                         | DONE     | `triton keys`                                               |
-| GetKey                           | NYI      | `triton key KEY`                                            |
-| CreateKey                        | NYI      | `triton key -a`                                             |
-| DeleteKey                        | NYI      | `triton key -d`                                             |
+| ListKeys                         | DONE     | `triton key list`, `triton keys`                                               |
+| GetKey                           | DONE      | `triton key get KEY`                                            |
+| CreateKey                        | DONE      | `triton key add ...`                                             |
+| DeleteKey                        | DONE      | `triton key delete KEY`                                             |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
 | **USERS**                        | \*RBAC   |                                                             |
 | ListUsers                        | DONE     | `triton rbac users`                                         |
@@ -75,53 +75,52 @@ GH issues for each non-trivial chunk of work here.
 | DeleteUserKey                    | DONE     | `triton rbac key -d USER KEY`                               |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
 | **CONFIG**                       | \*CONFIG |                                                             |
-| GetConfig                        | NYI      | `triton account-config`                                     |
-| UpdateConfig                     | NYI      | `triton account-config -e ...`                              |
+| GetConfig                        | NYI      | `triton account-config get-all` ??? |
+| UpdateConfig                     | NYI      | `triton account-config update ...`                          |
 | **DATACENTERS**                  |          |                                                             |
-| ListDatacenters                  |          | `triton datacenters`                                        |
+| ListDatacenters                  | DONE     | `triton datacenters`                                        |
 | GetDatacenter                    | NYI      | `triton datacenter DC`                                      |
 | **SERVICES**                     |          |                                                             |
 | ListServices                     | DONE     | `triton services`                                           |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
 | **IMAGES**                       |          |                                                             |
-| ListImages                       | DONE     | `triton images`                                             |
-| GetImage                         | DONE     | `triton image IMG`                                          |
-| DeleteImage                      | NYI      | `triton image -d IMG`                                       |
-| ExportImage                      | NYI      | `triton image --export [--manta-path=...] IMG`              |
-| CreateImageFromMachine           | NYI      | `triton image-create`                                       |
-| UpdateImage                      | NYI      | `triton image -e IMG`                                       |
+| ListImages                       | DONE     | `triton image list`, `triton images`                                             |
+| GetImage                         | DONE     | `triton image get IMG`                                          |
+| DeleteImage                      | NYI      | `triton image delete IMG`                                       |
+| ExportImage                      | NYI      | `triton image export [--manta-path=...] IMG`              |
+| CreateImageFromMachine           | NYI      | `triton image create ...`                                       |
+| UpdateImage                      | NYI      | `triton image update IMG`                                       |
 | **PACKAGES**                     |          |                                                             |
-| ListPackages                     | INC      | `triton packages`                                           |
-| GetPackage                       | DONE     | `triton package PKG`                                        |
+| ListPackages                     | INC      | `triton package list`, `triton packages`                                           |
+| GetPackage                       | DONE     | `triton package get PKG`                                        |
 | **MACHINES**                     |          |                                                             |
-| ListMachines                     |          | `triton instances`                                          |
-| GetMachine                       |          | `triton instance INST`                                      |
-| CreateMachine                    | \*CREATE | `triton create`                                             |
-| StopMachine                      |          | `triton stop`                                               |
-| StartMachine                     |          | `triton start`                                              |
-| RebootMachine                    |          | `triton reboot`                                             |
+| ListMachines                     |          | `triton instance list`, `triton instances`                                          |
+| GetMachine                       |          | `triton instance get INST`                                      |
+| CreateMachine                    | \*CREATE | `triton instance create`, `triton create`                                             |
+| StopMachine                      |          | `triton instance stop`, `triton stop`                                               |
+| StartMachine                     |          | `triton instance start`, `triton start`                                              |
+| RebootMachine                    |          | `triton instance reboot`, `triton reboot`                                             |
 | ResizeMachine                    | -        |                                                             |
-| RenameMachine                    | \*       | `triton inst -e INST [name=NAME]`                           |
-| EnableMachineFirewall            | NYI      | `triton inst --enable-firewall INST`                        |
-| DisableMachineFirewall           | NYI      | `triton inst --disable-firewall INST`                       |
-| ListMachineSnapshots             | NYI      | `triton snapshots INST`                                     |
-| GetMachineSnapshot               | NYI      | `triton snapshot INST SNAP`                                 |
-| CreateMachineSnapshot            | NYI      | `triton snapshot -c INST SNAP`                              |
-| StartMachineFromSnapshot         | NYI      | `triton start --snapshot=SNAPSHOT`                          |
-| DeleteMachineSnapshot            | NYI      | `triton snapshot -d INST SNAP`                              |
-| UpdateMachineMetadata            | NYI\*    | `triton [instance-]metadata -a [-f] INST [FIELD=VALUE ...]` |
-| ListMachineMetadata              | NYI      | `triton [instance-]metadata INST`                           |
-| GetMachineMetadata               | NYI      | `triton [instance-]metadata INST KEY`                       |
-| DeleteMachineMetadata            | NYI      | `triton [instance-]metadata INST KEY -d`                    |
-| DeleteAllMachineMetadata         | NYI      | `triton [instance-]metadata INST -da`                       |
-| AddMachineTags                   | NYI      | `triton tag -a INST/IMG KEY=VALUE`                          |
-| ReplaceMachineTags               | NYI\*    | `triton tag -af INST/IMG KEY=VALUE [...]`                   |
-| ListMachineTags                  | NYI      | `triton tags INST`                                          |
-| GetMachineTag                    | NYI      | `triton tag INST KEY`                                       |
-| DeleteMachineTag                 | NYI      | `triton tag -d INST KEY`                                    |
-| DeleteMachineTags                | NYI      | `triton tags -d INST KEY`                                   |
-| DeleteMachine                    | DONE     | `triton rm INST ...`                                        |
-| MachineAudit                     | DONE     | `triton [instance-]audit`                                   |
+| RenameMachine                    | \*       | `triton instance rename INST [name=NAME]`                           |
+| EnableMachineFirewall            | NYI      | `triton instance enable-firewall INST`                        |
+| DisableMachineFirewall           | NYI      | `triton instance disable-firewall INST`                       |
+| DeleteMachine                    | DONE     | `triton instance delete INST ...`                                        |
+| MachineAudit                     | DONE     | `triton instance audit`                                   |
+| ListMachineSnapshots             | NYI      | `triton instance list-snapshots,snapshots INST`                                     |
+| GetMachineSnapshot               | NYI      | `triton instance get-snapshot,snapshot INST SNAP`                                 |
+| CreateMachineSnapshot            | NYI      | `triton instance create-snapshot INST SNAP`                              |
+| StartMachineFromSnapshot         | NYI      | `triton instance start --snapshot=SNAPSHOT`                          |
+| DeleteMachineSnapshot            | NYI      | `triton instance delete-snapshot INST SNAP`                              |
+| UpdateMachineMetadata            | NYI\*    | `triton instance update-metadata -a [-f] INST [FIELD=VALUE ...]` |
+| ListMachineMetadata              | NYI      | `triton instance list-metadata INST`                           |
+| GetMachineMetadata               | NYI      | `triton instance get-metadata INST KEY`                       |
+| DeleteMachineMetadata            | NYI      | `triton instance delete-metadata INST KEY`                    |
+| DeleteAllMachineMetadata         | NYI      | `triton instance delete-metadata --all INST`                       |
+| AddMachineTags                   | NYI      | `triton instance add-tags,tag INST KEY=VALUE ...`                          |
+| ReplaceMachineTags               | NYI\*    | ???                   |
+| ListMachineTags                  | NYI      | `triton instance list-tags,tags INST`                                          |
+| GetMachineTag                    | NYI      | `triton instance get-tag,tag INST KEY`                                       |
+| DeleteMachineTag(s)              | NYI      | `triton instance delete-tags -d INST KEY ...`                                    |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
 | **ANALYTICS**                    |          |                                                             |
 | DescribeAnalytics                | -        |                                                             |
@@ -154,13 +153,13 @@ GH issues for each non-trivial chunk of work here.
 | GetFabricNetwork                 | -        |                                                             |
 | DeleteFabricNetwork              | -        |                                                             |
 | **NETWORKS**                     |          |                                                             |
-| ListNetworks                     |          | `triton networks`                                           |
-| GetNetwork                       |          | `triton network NET`                                        |
+| ListNetworks                     | DONE     | `triton network list`, `triton networks`                                           |
+| GetNetwork                       | DONE     | `triton network get NET`                                        |
 | **NICS**                         | \*NICS   |                                                             |
-| ListNics                         | NYI      | `triton nics`                                               |
-| GetNic                           | NYI      | `triton nic NIC`                                            |
-| AddNic                           | NYI      | `triton nic -a ...`                                         |
-| RemoveNic                        | NYI      | `triton nic -d NIC`                                         |
+| ListNics                         | NYI      | `triton nic list`, `triton nics`                                               |
+| GetNic                           | NYI      | `triton nic get INST MAC`                                            |
+| AddNic                           | NYI      | `triton nic add ...`                                         |
+| RemoveNic                        | NYI      | `triton nic delete,rm INST MAC`                                         |
 
 
 Notes:
@@ -170,6 +169,7 @@ Notes:
   widely used term should be prevalent in the CLI, APIs, Docs and UIs. For
   AWS is it "IAM". For Triton, "RBAC"? Relevant commands from node-smartdc
   to re-used: sdc-chmod, sdc-info, sdc-policy, sdc-role, sdc-user.
+  TODO: re-think. At the least, re-cast the style per joyent/node-triton#66.
 - CONFIG: 'Config' is a poor name, IMO. So generic. Should be called, perhaps,
   'Account Config'. Cloudapi rev to rename them? Endpoints can otherwise be the
   same.
@@ -185,6 +185,7 @@ Notes:
   This is to attempt to align the differing semantics of this and
   `UpdateMachineMetadata`.
 - NICS: See sdc-nics from node-smartdc for some inspiration.
+  Should these all be under `triton inst ...` a la metadata and inst tags?
 - The whole "... foo -e ..." CLI UX for "edit/update" isn't figured out yet.
 
 ## triton create
