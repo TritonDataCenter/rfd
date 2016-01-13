@@ -56,12 +56,28 @@ Updating content for <apidocs.joyent.com/manta>:
 - Move any primary content in mantadoc.git over to manta.git and deprecate
   mantadoc.git.
 - Add a build script to apidocs.joyent.com.git to build and import the
-  manta user docs from the three source repos (similar to what is done for
+  manta user docs from the source repos (similar to what is done for
   the cloudapi and sdc-docker docs).
 - Add a Makefile target to manta.git to simplify updating joyent.github.io/manta
   for updates to the operator guide.
 - Backport manual edits to *HTML* content in apidocs.joyent.com.git back to
   source Markdown.
+
+TODO:
+- follow up on mantadoc.git/docs/winmanta.md - Created, but never made it to
+  deployment on apidocs.joyent.com that I can see. TODO: Do we want to clean it
+  up and ship it? My pref would be to drop all/most of the screenshots of node
+  install b/c maint burden.
+
+
+Optional additions to the plan:
+
+- Switch all manta restdown docs away from 'wiki-tables' to GH style tables
+- Consider the restdown-brand-remora instead of mantadoc's "bluejoy" brand?
+  Would have to handle the hardcoded TOC.
+- Some sane hierarchical layout:
+    - mjob examples in exampes/$name/...
+    - man pages in man/...
 
 Sources:
 
@@ -88,7 +104,8 @@ in apidocs.joyent.com.git.  I want to cut out repo (b).
 ## longer term
 
 Longer term #1: The styling of docs on apidocs.joyent.com should move away from
-the current "bluejoy" theme to the same style as the docs.joyent.com docs.
+the current "bluejoy" theme (for manta docs) and "remora" theme (for others)
+to the same style as the docs.joyent.com docs.
 
 Longer term #2: I consider apidocs.joyent.com a bug. Joyent is too small to have
 two separate doc sites. There whould be one "docs.joyent.com" with organized
@@ -98,4 +115,5 @@ publishing of all our content. Same opinion for the Manta operator docs at
 
 ## Tickets
 
+- [DOC-642](https://devhub.joyent.com/jira/browse/DOC-642)
 - [DOC-646](https://devhub.joyent.com/jira/browse/DOC-646)
