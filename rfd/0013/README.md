@@ -14,6 +14,27 @@ enhancements are required to handle the complexity of resource sharing across ac
 especially in the context of on-prem customer deployment where one user may belong
 to multiple organizations and multiple project teams.
 
+
+## Terminology
+
+- **customer** or **person**: An honest to god human being (or bot) that is
+  calling an endpoint on CloudAPI or Manta with account or subuser credentials.
+- **operator**: An honest to god human being (or bot) that is calling an endpoint
+  on internal SDC APIs (imgapi, vmapi, adminui, etc.). No credentials are
+  involved here.
+- **account**: The top-level CloudAPI account. In UFDS an sdcPerson that is NOT
+  a `sdcAccountUser`, a.k.a a subuser. Identified for Manta with `MANTA_USER`.
+  Identified for CloudAPI with `SDC_ACCOUNT`.
+- **subuser**: A login that is scoped on an account. In UFDS, a node that is
+  both an `sdcPerson` and a `sdcAccountUser`.
+- **login**: The string identifier for an "account" or "subuser". The login for
+  an account is unique for all accounts in that cloud. The login for a subuser
+  is only unique within that account.
+- **user**: This is ambigous. I'd like to use it in lieu of "customer", but given
+  Manta and CloudAPI use "user" to mean different things, this RFD will attempt
+  to avoid it.
+
+
 ## Problem Space
 
 ### Background on SDC and Manta RBAC
@@ -25,41 +46,53 @@ if you want to pursue further on the feature details.
 There are some key characteristics of the current RBAC model that are
 important to highlight here for the discussion on RBAC v2:
 
-1. Each account owner may create one or more subusers (Note on terminology:
-   for Manta, account owners and subusers are designated by MANTA_USER and
-   MANTA_SUBUSER; for CloudAPI, they are designated by SDC_ACCOUNT and SDC_USER).
+1. Each account owner may create one or more subusers
+
 2. Subusers authenticate with their own SSH keys. The subuser login is unique
    within each account but is **not** globally unique.
+
 3. Each subuser can be assigned one or more roles that enable the subuser's
-   access to account's resources.
+   access to the account's resources.
+
 4. There are two dimensions to the access permissions of a role:
-   - Policies: Policies define the actions allowed (e.g. listmachines,
-     createmachine). Each role has one or more policies attached.
-   - Role tags: Tags control which **instances** of the account's resources
+
+   - Policies: Policies define the actions allowed (e.g. "listmachines",
+     "createmachine"). Each role has one or more policies attached.
+   - Role tags: Role tags control which **instances** of the account's resources
      (e.g. machines, images, users) are allowed for the role.
 
    The two sets of capabilities together control what a subuser can act on.
    When creating a new resource (e.g. machine), the role tags are automatically
    added to the instance based on which role(s) are passed in the create
    command (no --role arg means "tag all of my roles").
+
 6. There is also a hardcoded 'administrator' role that acts as a super-user
    role, granting full access to everything the account owns.
-7. Account owner is free to define roles, policies and tag their resources to
-   achieve granular RBAC. There is no out-of-the-box role but the Portal has a few
-   canned roles that are inserted to user's profile behind the scenes for the
-   KVM docker host and registry feature.
-8. Every time a CloudAPI or Manta call is issued, the caller (subuser) and the
-   account logins are passed to mahi to get the roles and policies associated with
-   the caller. If the API endpoint is not authorized in any of the subuser's
-   role policies, or the resource involved is tagged to a role that the subuser
-   doesn't have, an "NotAuthorized" error is returned to the caller.
+
+7. The account owner is free to define roles and policies, and tag their
+   resources to achieve granular RBAC. There is no out-of-the-box role but the
+   Portal has a few canned roles that are inserted to customer's profile behind
+   the scenes for the KVM docker host and registry feature.
+
+8. On every CloudAPI or Manta API request, authorization works like this:
+
+    - get the roles for the caller (subuser login and account login) from mahi;
+    - limit to a set of "active roles", if a role was specified in the request;
+    - get the role-tags for the resource being accessed;
+    - filter to the intersection of active roles and role-tags; and
+    - evaluate the policies for those roles (e.g. if this is a CreateMachine
+      call, is one of the policy's rules "CAN createmachine"?).
+
+   On failre, a "NotAuthorized" error is returned.
+
 9. Once a subuser has passed authentication and authorization, the caller invokes
    the operation **on behalf of the account owner**. From the perspective of the
-   backend API (e.g. vmapi), it sees only the account owner's uuid. All owner_uuid
+   backend API (e.g. vmapi), it sees only the account uuid. All `owner_uuid`
    references point to the account owner. The subuser's identity is tracked
    in jobs but not persisted in the resource's moray bucket. The only tracking is
    via `MachineAudit` CloudAPI which returns the subuser's information from the
-   VM jobs.
+   Workflow API jobs.
+
 
 
 ### RBAC Support for Docker API
@@ -100,11 +133,12 @@ of the account. When a user (person) belongs to multiple organizations, they
 need to have multiple logins. The other drawback with this model is that
 auditing is easily lost as 'account' has a login of its own.
 
-When an organization have multiple projects, and different access levels for
+When an organization has multiple projects, and different access levels for
 resources within the projects, there is no good way to model the relationships
 using the current RBAC roles. If there are three projects (A, B and C) and two different
 access levels (RW, RO), we need to have six unique roles to cover the permutations
 even when the access policies are identical for those different projects.
+
 
 ## Proposed Scope for RBAC v2
 
@@ -112,7 +146,7 @@ even when the access policies are identical for those different projects.
 
 ### Docker API Policy Actions
 
-At this time, there are only two types of resources managed in Docker - 
+At this time, there are only two types of resources managed in Docker -
 containers and images. There may be additional ones (e.g. volumes, networks)
 going forward. We can potentially follow the current RBAC model to have
 fine-grained policy actions. There are a few wrinkles however:
