@@ -5,6 +5,25 @@ state: draft
 
 # RFD 13 RBAC v2 for Improved Organization and Docker RBAC Support
 
+- [Introduction](#introduction)
+- [Terminology](#terminology)
+- [RBAC v1 Background](#rbac-v1-background)
+- [Problem Space](#problem-space)
+    - [RBAC Support for Docker API](#rbac-support-for-docker-api)
+    - [RBAC support for Organizations and Projects](#rbac-support-for-organizations-and-projects)
+- [Proposal](#proposal)
+    - [Projects and Orgs](#projects-and-orgs)
+        - [Projects](#projects)
+        - [Orgs](#orgs)
+        - [associating resources with a project](#associating-resources-with-a-project)
+    - [RBAC Actions](#rbac-actions)
+- [Implementation notes](#implementation-notes)
+- [Open Questions](#open-questions)
+- [Notes from earlier discussions](#notes-from-earlier-discussions)
+    - [List all instances being a separate policy action/attribute?](#list-all-instances-being-a-separate-policy-action-attribute-)
+    - [Converging Docker and Cloud API policy actions](#converging-docker-and-cloud-api-policy-actions)
+    - [Auditing](#auditing)
+
 ## Introduction
 
 The initial motivations for looking into a v2 RBAC model were to address the lack of
@@ -35,9 +54,7 @@ to multiple organizations and multiple project teams.
   to avoid it.
 
 
-## Problem Space
-
-### Background on SDC and Manta RBAC
+## RBAC v1 Background
 
 Skip this section if you are already familiar with CloudAPI or Manta RBAC. There are
 some rather detailed end-user docs (https://docs.joyent.com/public-cloud/rbac)
@@ -94,6 +111,7 @@ important to highlight here for the discussion on RBAC v2:
    Workflow API jobs.
 
 
+## Problem Space
 
 ### RBAC Support for Docker API
 
@@ -135,21 +153,299 @@ auditing is easily lost as 'account' has a login of its own.
 
 When an organization has multiple projects, and different access levels for
 resources within the projects, there is no good way to model the relationships
-using the current RBAC roles. If there are three projects (A, B and C) and two different
-access levels (RW, RO), we need to have six unique roles to cover the permutations
-even when the access policies are identical for those different projects.
+using the current RBAC roles. If there are three projects (A, B and C) and two
+different access levels (RW, RO), we need to have six unique roles to cover the
+permutations even when the access policies are identical for those different
+projects.
 
 
-## Proposed Scope for RBAC v2
+## Proposal
 
-### (organization account and projects and all the new things...)
+### Projects and Orgs
 
-### Docker API Policy Actions
+(We assert) the customer wants:
+
+- ... to be able to segment groups of resources (e.g. my instances for project A
+  separate from my instances for project B).
+- ... multiple people in a group be able to share resource access.
+- ... to have access control for members of these groups.
+
+Some problems with current RBAC:
+
+- Top-level account vs. subuser separation leads to customers often needing
+  separate sets of creds. That's annoying for `triton` CLI profile management,
+  bad for auditing, and a real pain for web portal session management.
+- Having non-person top-level "company accounts" (or whatever name you want
+  to use) results in authentication using a non-person credential, which is
+  problematic for good auditing.
+- Achieving resource separation with current RBAC requires (a) careful and
+  error prone role setup and (b) sometimes manual role-tagging.
+- Cross-account sharing isn't possible.
+- Various other clunkiness we'd also like to fix: hack 'administrator' special
+  case role, weird role-tag requirements for List* endpoints, etc.
+
+Forget "company accounts" (e.g. an "acmecorp" JPC account) and subusers.
+Forget mapping resources to *roles* with role-tags (though arguably we'll
+introduce something similar). Let's try this all again. If it helps, think
+roughly of the GitHub user/org model as we go through this.
+
+
+#### Projects
+
+You are Wendy. You have a JPC account 'wendy':
+
+    account 'wendy':
+        email 'wendy@example.com'
+
+and you have some resources:
+
+        inst 'wvm0'
+        inst 'wvm1'
+        image 'wimg0'       # a custom image, as opposed to a stock image like 'base-64'
+
+However, now you'd like to play with Terraform or Docker Compose. You'll feel
+more comfortable [and IIUC, some tooling will be easier --trent] with an
+isolated view of your resources while using those. Enter *projects*:
+
+    $ triton project create terraplay      # I'm making up this command for now
+    Created project 'terraplay' (use '-P terraplay' opt, or add to profile)
+
+You create a 'terraplay' `triton` profile for convenience:
+
+    $ triton profile get -j \
+        | json -e 'this.name = this.project = "terraplay"' \
+        | triton project create -f -
+    Created profile "terraplay"
+    $ triton profile set-current terraplay
+    Set "terraplay" as current profile
+    $ triton profile get
+    name: terraplay
+    account: wendy
+    curr: true
+    keyId: SHA256:2XCGHt3iufa9GqoVQHejf03lkjadsglFrN12YUPpA
+    url: https://us-east-3b.api.joyent.com
+    project: terraplay                                 # <-- this
+
+Now you are scoped on resources that are part of that project. The existing
+'wvm0', 'wvm1' and 'wimg0' don't show up.
+
+    $ triton insts
+    SHORTID  NAME  IMG  STATE  PRIMARYIP  AGO
+
+Now you run through <https://www.joyent.com/blog/introducing-hashicorp-terraform-for-joyent-triton>
+and:
+
+    $ triton insts
+    SHORTID   NAME                IMG                                   STATE    PRIMARYIP        AGO
+    0311dadb  nginx-terraform-01  a23c9a08-089d-134b-c85e-f656e514549e  running  165.225.168.228  5d
+    62609fb1  test-machine        ubuntu-15.04@20151105                 running  165.225.168.229  5d
+
+The full layout looks something like this:
+
+    account 'wendy':
+        email 'wendy@example.com'
+        --
+        inst 'wvm0'
+        inst 'wvm1'
+        image 'wimg0'
+        --
+        project 'terraplay':
+            inst 'nginx-terraform-01'
+            inst 'test-machine'
+
+Featuritis? Bear with me.
+
+
+#### Orgs
+
+Currently, to have multiple people sharing resources you create a sorta-meta
+non-person account with subusers for the actual auditable separate people. The
+proposed alternative is organizations (**orgs** for short) -- which contain
+members (top-level accounts, with RBAC roles) and projects. An attempt to give a
+feel for the hierarchy and rules for these things:
+
+- Orgs are siblings to accounts in UFDS. They share the same namespace:
+  you can't have a `trent` account *and* a `trent` org.
+- Resources (vms, custom images, fabric networks) are "owned"
+  by either an account (as now) or by an org. I.e. `vm.owner_uuid`, and the
+  equiv for other resource types, is the UUID of an account or an org.
+- Orgs do *not* have keys. You cannot authenticate as an org.
+- An org has members. These are top-level accounts.
+- Some of those members can be owners (there must be at least one). Being
+  an org owner affords full access to changing it: deleting,
+  adding/removing members, creating projects in the org.
+- Resources owned by an org *must* belong to one or more projects. E.g. a fabric
+  network might reasonably belong to two projects so instances in those projects
+  can talk to each other privately. (This differs from resources belonging to
+  accounts, which *can* exist without a project.)
+- Projects have membership: an *account and a role*. The role defines the
+  access level.
+- Roles are basically the same as now: A role has a set of polices, which have a
+  list of [aperture](https://github.com/joyent/node-aperture) rules like "CAN
+  CreateInstance" to define what actions (called "RBAC Actions") can be
+  performed.
+
+
+Back to Wendy. This JPC thing is working out. You are going to use it for your
+startup called "Wassup". You're going to wipe the floor with those
+http://www.suptheapp.com/ jokers. You have a co-founder Warren (he gets a JPC
+account 'warren'), and webdev Wil. Wil already has a 'startrek42' JPC account.
+
+Grouping all company resources under 'wendy's account is silly, so you create
+an org and add your employees:
+
+    $ triton org create wassup
+    Created organization 'wassup' (owners: wendy)
+    $ triton org member-add --owner warren   # also make Warren an owner of the org
+    Added member 'warren' to organization 'wassup' (as an owner)
+    $ triton org member-add startrek42
+    Added member 'startrek42' to organization 'wassup'
+
+And roles/policies for the org:
+
+    $ triton ...        # [we hope to have reasonable canned policies to simplify]
+
+and some starter projects (high flyin' trekkie Wil doesn't need access to
+billing resources):
+
+    $ triton -p wassup project create web --membership-all
+    $ triton -p wassup project create app --membership-all
+    $ triton -p wassup project create billing -m wendy -m warren
+
+To get something like this:
+
+    account 'wendy': ...
+    account 'warren'
+    account 'startrek42'
+    org 'wassup':
+        role 'ops' with policy 'poli-ops'
+        policy 'poli-ops'
+        role 'readonly' with policy 'poli-readonly'
+        policy 'poli-readonly'
+        --
+        member 'wendy' (owner, default role 'ops')
+        member 'warren' (owner, default role 'ops')
+        member 'startrek42' (default role 'ops')
+        --
+        project 'web':
+            member *         # IOW, all org members can access this project
+        project 'app':
+            member *
+        project 'billing':
+            member 'wendy' with role 'readonly'
+            member 'warren'
+
+Some notes on this:
+
+- Each member will typically have a "default role" -- the role that typically
+  applies when they access project resources.
+- The default role can be overridden per-project. E.g. wendy doesn't want to
+  mess up billing resources, so her role in project 'billing' is 'readonly'
+  (which has a policy that doesn't allow DeleteInstance).
+
+
+Now how to uses these projects? Let's be Wil. He'll setup a `triton` profile
+like this:
+
+    $ triton profile get
+    name: wassupweb
+    account: startrek42
+    curr: true
+    keyId: SHA256:yYMdKsaFzAugDQALtxUxZhRsBtjdgDY2tT958I39hnQ
+    url: https://us-east-3b.api.joyent.com
+    org: wassup                         <------ this
+    project: web                        <------ this
+
+and then create away:
+
+    $ triton create -n web0 minimal-32 t4-standard-1G
+
+[Note that we are proposing that "stock" resources (for lack of a better word)
+like standard images, public packages, networks without an
+`owner_uuid`, etc. are not restricted. I.e. Wil has access to the 'minimal-32'
+image. Support for allowing an org or project to restrict stock resources
+can be considered later.]
+
+or use Docker:
+
+    $ curl -O https://raw.githubusercontent.com/joyent/sdc-docker/master/tools/sdc-docker-setup.sh
+    $ ./sdc-docker-setup.sh -p wassupweb -o wassup -P web us-east-3b
+    $ ./tools/sdc-docker-setup.sh -p wassupweb
+    SDC CloudAPI URL [https://us-east-1.api.joyent.com]: us-east-3b
+    SDC account: startrek42
+    SSH private key [/Users/wil/.ssh/id_rsa]:
+    Organization: wassup
+    Project: web
+    ...
+    $ source ~/.sdc/docker/wassupweb/env.sh
+    $ docker run --name web0 nginx:latest
+
+[Dev Note: crying out for `triton docker-setup` or something here.]
+
+Then we'd have:
+
+    org 'wassup':
+        ...
+        project 'web':
+            member *
+            --
+            inst 'web0'
+
+
+And theoretically, this is it. There remain a lot of details, but the gist is:
+
+1. Org owners need to do some rare management/setup of the org, roles, policies,
+   projects, membership and (possibly) manual addition of resources to a
+   project.
+2. Account holders need to set one or both of 'project' and 'org' in their
+   `triton` profile.
+
+
+#### associating resources with a project
+
+Given a resource, SDC already provides an owner -- `vm.owner_uuid`,
+`image.owner`, `network.owner_uuids` (that this is plural might complicate, not
+sure), etc. Now we need to know what projects, if any, to which a resource
+belongs.
+
+We'll think about a `projects` property on CloudAPI objects. The equivalent in
+legacy RBAC is role-tags (associating with roles instead of with projects).
+Effectively, a resource created by a cloudapi request scoping to that project
+(e.g. the `triton` profile has `project=foo` set) will be associated with that
+project.
+
+The expected user experience is that resources naturally belong to the
+appropriate project. Some use cases (e.g., a network or image belonging to
+multiple projects) justify support for manually adding a resource to a project.
+
+
+### RBAC Actions
+
+Background: Roughly speaking, an RBAC v1 subuser a has zero or more *roles*. A
+role has a set of *policies*. A policy looks like this:
+
+    {
+        "name": "ops",
+        "description": "full access",
+        "rules": [
+            "CAN createmachine",
+            "CAN getmachine",
+            "CAN getimage",
+            ...
+        ]
+    },
+
+`CAN createmachine` is a **rule** (defined by the
+[aperture](https://github.com/joyent/node-aperture) policy language).
+`createmachine` is an example of an RBAC **action**. In RBAC v1 the RBAC actions
+(mostly) map one-to-one to CloudAPI and Muskie endpoint names.
 
 At this time, there are only two types of resources managed in Docker -
 containers and images. There may be additional ones (e.g. volumes, networks)
 going forward. We can potentially follow the current RBAC model to have
-fine-grained policy actions. There are a few wrinkles however:
+fine-grained policy actions.
+
+The Problem: There are a few wrinkles:
 
 - A single command from Docker clients (CLI, Compose) can result in
   multiple remote API calls. Users are not necessarily aware of the
@@ -221,10 +517,42 @@ a naive list of key user roles that consume them:
 | N/A - accessible to all      | X   | X   | X    | X   | Version                                               | GET    | /version                                                      |                                          |
 | ecs:AuditInstance            | X   | X   | X    | X   | Events                                                | GET    | /events                                                       | machineaudit                             |
 
-See [full table of RBAC actions here](./rbac-actions.md).
+See a [full table of RBAC actions here](./rbac-actions.md).
+
+
+## Implementation notes
+
+(Obviously, only a start so far.)
+
+Association of projects with resources:
+
+(a) be handled at the edges -- i.e. in cloudapi and muskie. VMAPI
+    doesn't know about project association. This is similar to role-tags
+    currently.
+
+(b) be handled by a new API, call it PROJAPI. The idea here is that real API
+    rather than slumming in UFDS for non-replicated data will help
+    (less messy DB migrations, API control over object field names vs.
+    restricted to raw objects in UFDS, better indexing control).
 
 
 ## Open Questions
+
+- full API and tooling for CRUD on orgs and membership
+- full API and tooling for CRUD on projects and membership
+- supporting legacy RBAC
+- implications for Manta
+- transferring resources from one account to another
+- supporting transforming an existing account to an org (e.g. existing tunacorp
+  account really wants to just be a tunacorp *org*)
+- lots of Qs in my other notes
+- There is already a pre-defined "docker" role and "docker" policy used by
+  the KVM Docker features in the Portal. Those features are being deprecated.
+  To avoid confusion, we'll need to clean up those roles/policies in accounts
+  which have previously made use of KVM Docker.
+
+
+## Notes from earlier discussions
 
 ### List all instances being a separate policy action/attribute?
 
@@ -274,39 +602,29 @@ to create any type of containers. We'll need to consider some kind of migration/
 for existing RBAC data that have been defined for CloudAPI to use the new coarse-grained
 model and naming convention.
 
-## Other Considerations
+### Auditing
 
-- sdc-docker uses the CN defined in the certificate file passed from the
-  Docker clients to identify the account login. As subuser login is not
-  globally unique, both account and subuser login may need to be captured
-  in the form of a concatenated string like "CN=jill.user/bob.subuser",
-  in the same way as subusers enter their login ID in Portal.
-- Auditing is not returning correct information for docker containers
-  currently because the docker request payload to vmapi is missing the
-  "Context" section that is typically present in cloudapi requests:
+Auditing is not returning correct information for docker containers
+currently because the docker request payload to vmapi is missing the
+"Context" section that is typically present in cloudapi requests:
 
-    ```
-      "context": {
-        "caller": {
-          "type": "signature",
-          "ip": "127.0.0.1",
-          "keyId": "/angela.fong/keys/d5:ca:36:85:e7:f0:9a:08:4d:05:81:ad:10:c8:a3:a0"
-        },
-        "params": {
-          "account": "angela.fong",
-          "name": "lx-debian2",
-          "image": "7c815c22-4606-11e5-8bb5-9f853c19be54",
-          "package": "20e583d5-ea48-411d-f0e2-9079352f48f8",
-          "dataset": "7c815c22-4606-11e5-8bb5-9f853c19be54"
-        }
-      },
-    ```
+```
+  "context": {
+    "caller": {
+      "type": "signature",
+      "ip": "127.0.0.1",
+      "keyId": "/angela.fong/keys/d5:ca:36:85:e7:f0:9a:08:4d:05:81:ad:10:c8:a3:a0"
+    },
+    "params": {
+      "account": "angela.fong",
+      "name": "lx-debian2",
+      "image": "7c815c22-4606-11e5-8bb5-9f853c19be54",
+      "package": "20e583d5-ea48-411d-f0e2-9079352f48f8",
+      "dataset": "7c815c22-4606-11e5-8bb5-9f853c19be54"
+    }
+  },
+```
 
-  The caller info for docker operations are returned as "operator" in
-  [MachineAudit](https://github.com/joyent/sdc-cloudapi/blob/master/lib/audit.js#L74-L81).
-  This needs to be fixed as part of the RBAC feature.
-
-- There is already a pre-defined "docker" role and "docker" policy used by
-  the KVM Docker features in the Portal. Those features are being deprecated.
-  To avoid confusion, we'll need to clean up those roles/policies in accounts
-  which have previously made use of KVM Docker.
+The caller info for docker operations are returned as "operator" in
+[MachineAudit](https://github.com/joyent/sdc-cloudapi/blob/master/lib/audit.js#L74-L81).
+This needs to be fixed as part of the RBAC feature.
