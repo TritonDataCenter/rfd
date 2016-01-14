@@ -100,7 +100,7 @@ important to highlight here for the discussion on RBAC v2:
     - evaluate the policies for those roles (e.g. if this is a CreateMachine
       call, is one of the policy's rules "CAN createmachine"?).
 
-   On failre, a "NotAuthorized" error is returned.
+   On failure, a "NotAuthorized" error is returned.
 
 9. Once a subuser has passed authentication and authorization, the caller invokes
    the operation **on behalf of the account owner**. From the perspective of the
@@ -292,13 +292,20 @@ http://www.suptheapp.com/ jokers. You have a co-founder Warren (he gets a JPC
 account 'warren'), and webdev Wil. Wil already has a 'startrek42' JPC account.
 
 Grouping all company resources under 'wendy's account is silly, so you create
-an org and add your employees:
+an org, switch your profile to use it:
 
     $ triton org create wassup
     Created organization 'wassup' (owners: wendy)
-    $ triton org member-add --owner warren   # also make Warren an owner of the org
+    $ triton profile create
+    name: wassup
+    ...
+    $ triton profile set-current wassup
+
+and add your employees:
+
+    $ triton org member-add wassup --owner warren   # also make Warren an owner of the org
     Added member 'warren' to organization 'wassup' (as an owner)
-    $ triton org member-add startrek42
+    $ triton org member-add wassup startrek42
     Added member 'startrek42' to organization 'wassup'
 
 And roles/policies for the org:
@@ -308,9 +315,9 @@ And roles/policies for the org:
 and some starter projects (high flyin' trekkie Wil doesn't need access to
 billing resources):
 
-    $ triton -p wassup project create web --membership-all
-    $ triton -p wassup project create app --membership-all
-    $ triton -p wassup project create billing -m wendy -m warren
+    $ triton project create web --membership-all
+    $ triton project create app --membership-all
+    $ triton project create billing -m wendy -m warren
 
 To get something like this:
 
