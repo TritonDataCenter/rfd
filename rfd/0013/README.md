@@ -1,5 +1,5 @@
 ---
-authors: Angela Fong <angela.fong@joyent.com>
+authors: Angela Fong <angela.fong@joyent.com>, Trent Mick <trent.mick@joyent.com>
 state: draft
 ---
 
@@ -214,7 +214,7 @@ You create a 'terraplay' `triton` profile for convenience:
 
     $ triton profile get -j \
         | json -e 'this.name = this.project = "terraplay"' \
-        | triton project create -f -
+        | triton profile create -f -
     Created profile "terraplay"
     $ triton profile set-current terraplay
     Set "terraplay" as current profile
