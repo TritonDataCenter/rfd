@@ -1,21 +1,188 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
-state: draft
+state: publish
 ---
 
-# RFD 23 A plan for Manta docs
+# RFD 23 The Manta docs pipeline
 
-The problem: Currently manta docs are published in a number of places, have
-primary sources in a number of repos, and the update process is undocumented
-and/or broken.
+Here in the docs plan for Manta (where primary sources live, how to build them,
+how to publish them). If this document and reality differ, then someone hasn't
+kept this up to date. :)
 
-This RFD intends to clarify current state, make a plan for fixing shortterm
-egregious issues, provide some future goals/dreams, and live on as the
-documented plan for Manta docs. Note that content on <www.joyent.com> for Manta
-is out of scope for this RFD.
+The Manta docs are spread across a few repositories, and publishing is to
+more than one site (and sites that also publish docs for other projects).
+For a while (up to Jan 2016) the publishing pipeline was effectively broken:
+the published docs at apidocs.joyent.com were not updatable from primary
+sources. Hence this RFD to act as the authority for the plan.
+
+Note that content on <www.joyent.com> for Manta is out of scope for this RFD.
 
 
-## state as of Dec 2015
+## Manta docs pipeline
+
+### Sources
+
+The primary Manta docs are Markdown files in a number of git repositories.
+
+| Repo | Description |
+| ---- | ----------- |
+| [manta.git](https://github.com/joyent/manta) | General Manta intro/landing-page is the repo [README.md](https://github.com/joyent/manta/blob/master/README.md). [Operator Guide](https://github.com/joyent/manta/tree/master/docs/operator-guide). [User Guide](https://github.com/joyent/manta/tree/master/docs/user-guide). |
+| [manta-muskie.git](https://github.com/joyent/manta-muskie) | Manta [REST API](https://github.com/joyent/manta-muskie/tree/master/docs) docs |
+| [node-manta.git](https://github.com/joyent/node-manta) | ["Node.js SDK"](https://github.com/joyent/node-manta/tree/master/docs) docs: man pages and node.js library docs |
+| [manta-compute-bin.git](https://github.com/joyent/node-manta) | [Man pages](https://github.com/joyent/manta-compute-bin/tree/master/docs/man) for Manta compute job utilities, e.g. `maggr`, `mcat`. |
+
+
+### Publish Targets
+
+| URL | How to update | Description |
+| --- | ------------- | ----------- |
+| <https://apidocs.joyent.com/manta> | [How to update](#how-to-update-the-manta-user-guide) | Manta user guide |
+| <https://github.com/joyent/manta> | [How to update](#how-to-update-the-manta-landing-page) | Manta project landing page for those with a code/operator interest |
+| <http://joyent.github.io/manta/> | [How to update](#how-to-update-the-manta-operator-guide) | (The somewhat hard to find) publishing of the manta operator guide |
+| <joyent.com/manta> | - | **Out of scope.** Currently redirects to <joyent.com/object-storage>. |
+
+#### How to update the Manta User Guide
+
+The [published User Guide](https://apidocs.joyent.com/manta) is made up of a
+number of separate logical groups. The first step is to find out which.
+Currently all results are dumped into one flat directory. Eventually those
+will be spread into logical separate dirs making identifying the source easier,
+but not yet.
+
+| Name | URL pattern | Source |
+| api | api.html | <https://github.com/joyent/manta-muskie/blob/master/docs/index.md> |
+| nodesdk | nodesdk.html, m\*.html | <https://github.com/joyent/node-manta/blob/master/docs>, note some "m\*.html" man pages in manta-compute-bin.git |
+| compute-man-pages | m\*.html | <https://github.com/joyent/manta-compute-bin/tree/master/docs/man>, note some "m\*.html" man pages in node-manta.git |
+| compute-examples | example-\*.html | <https://github.com/joyent/manta/tree/master/docs/user-guide/examples> |
+| base | \*.html (everything else) | <https://github.com/joyent/manta/tree/master/docs/user-guide> |
+
+
+
+1. Find the source group from the table above and edit source Markdown.
+
+2. Get a review from  Manta developers (whether via 'manta@' internal chat,
+   MANTA internal Jira ticket, email to Manta developers, GitHub PR, or
+   #joyent IRC).
+
+   Currently the build and publishing of the User Guide is done in a
+   private [apidocs.joyent.com.git repository](https://github.com/joyent/apidocs.joyent.com),
+   so non-Joyent employees will have to stop at this step.
+
+3. (For "compute-examples" group only.) The example-FOO.html files are built
+   wholely in the "manta.git", and the resultant HTML is commited. The HTML
+   is the output of a `mjob share`. The rebuild the full set of example files,
+   you first need your SSH key on the Joyent "manta" account used to house
+   the examples, then:
+
+        cd manta/     # joyent/manta.git clone
+        make docs-regenerate-examples
+
+   See [the examples
+   README](https://github.com/joyent/manta/tree/rfd23/docs/user-guide/examples)
+   for details.
+
+   Review and commit any HTML changes. Note: Because a re-run of a job changes
+   its UUID, there will be a large change for what could be effectively no
+   change. Try to avoid unnecessary churn.
+
+4. Re-import and build all Manta User Guide changes in a clone of
+   apidocs.joyent.com.git:
+
+        git clone git@github.com:joyent/apidocs.joyent.com.git
+        cd apidocs.joyent.com
+        make import-docset-manta
+        # Follow printed instructions to 'git diff' and 'git commit'.
+
+   You can optionally configure separate branches or git SHA revs for
+   doc imports in [the "etc/config.json"
+   file](https://github.com/joyent/apidocs.joyent.com/blob/master/etc/config.json).
+
+5. Talk to the master o' the docs (current MattF) to re-publish
+   apidocs.joyent.com.
+
+
+#### How to update the Manta Landing Page
+
+1. Update the manta.git README.md:
+   <https://github.com/joyent/manta/blob/master/README.md>.
+
+   Get a review from  Manta developers (whether via 'manta@' internal chat,
+   MANTA internal Jira ticket, email to Manta developers, GitHub PR, or
+   #joyent IRC).
+
+
+#### How to update the Manta Operator Guide
+
+1. Update the Markdown sources at
+   <https://github.com/joyent/manta/tree/master/docs/operator-guide>.
+
+   Get a review from  Manta developers (whether via 'manta@' internal chat,
+   MANTA internal Jira ticket, email to Manta developers, GitHub PR, or
+   #joyent IRC).
+
+2. Publish via the make target in the manta.git repo:
+
+        cd manta/         # joyent/manta.git clone
+        make publish-operator-guide
+
+The operator guide is currently published via GitHub Pages. Publishing is:
+(a) build the HTML from the Markdown (restdown) source, (b) update the
+gh-pages branch and push.
+
+
+The Operator Guide *styling* is currently the default "ohthejoy" "brand" for the
+[restdown](https://github.com/trentm/restdown) tool being used to build it.
+Restdown is a light-weight wrapper for single-page Markdown docs (mostly just
+adding a TOC and some styling). The change the styling one would need to
+provide a custom restdown "brand". E.g. [the restdown brand for Manta docs
+in apidocs.joyent.com](https://github.com/joyent/apidocs.joyent.com/tree/master/etc/manta-brand),
+or the ["remora" restdown brand currently used for cloudapi
+docs](https://github.com/joyent/restdown-brand-remora).
+
+
+## Future
+
+Future plans/ideas.
+
+- follow up on mantadoc.git/docs/winmanta.md - Created, but never made it to
+  deployment on apidocs.joyent.com that I can see. TODO: Do we want to clean it
+  up and ship it? My pref would be to drop all/most of the screenshots of node
+  install b/c maint burden.
+
+- Switch all manta restdown docs away from 'wiki-tables' to GH style tables
+
+- Consider the restdown-brand-remora (used for cloudapi docs) instead of
+  "apidocs.joyent.com.git:etc/manta-brand" (a copy of the old mantadoc.git's
+  "bluejoy" brand). This would align styles on apidocs.joyent.com. However,
+  might also just want to move to the styles on docs.joyent.com.
+  See the "longer term" TODO below.
+
+- Some sane hierarchical layout:
+    - mjob examples in examples/$name/...
+    - man pages in man/...
+
+- Having an "edit this" link on the footer of each doc automatically added
+  which links to the relevant primary doc in GitHub would be pretty nice.
+
+- Longer term: The styling of docs on apidocs.joyent.com should move away
+  from the current "bluejoy" theme (for manta docs) and "remora" theme (for
+  others) to the same style as the docs.joyent.com docs.
+
+- Longer term: I consider apidocs.joyent.com a bug. Joyent is too small to have
+  two separate doc sites. There whould be one "docs.joyent.com" with organized
+  publishing of all our content. Same opinion for the Manta operator docs at
+  <joyent.github.io/manta>. IMHO. Anyway, that is for another time.
+
+
+## History of Manta Docs state
+
+### state as of Jan 2016
+
+[DOC-642](https://devhub.joyent.com/jira/browse/DOC-642) will get us back
+to being able to update from primary sources.
+
+
+### state as of Dec 2015
 
 Sources:
 
@@ -49,36 +216,6 @@ Updating content for <apidocs.joyent.com/manta>:
   <https://github.com/joyent/apidocs.joyent.com/tree/master/htdocs/manta> !
   Yuck. This is the main doc pipeline thing to fix in the shorterm
 
-
-## short term plan
-
-- Stick with all the current publish endpoints.
-- Move any primary content in mantadoc.git over to manta.git and deprecate
-  mantadoc.git.
-- Add a build script to apidocs.joyent.com.git to build and import the
-  manta user docs from the source repos (similar to what is done for
-  the cloudapi and sdc-docker docs).
-- Add a Makefile target to manta.git to simplify updating joyent.github.io/manta
-  for updates to the operator guide.
-- Backport manual edits to *HTML* content in apidocs.joyent.com.git back to
-  source Markdown.
-
-TODO:
-- follow up on mantadoc.git/docs/winmanta.md - Created, but never made it to
-  deployment on apidocs.joyent.com that I can see. TODO: Do we want to clean it
-  up and ship it? My pref would be to drop all/most of the screenshots of node
-  install b/c maint burden.
-
-
-Optional additions to the plan:
-
-- Switch all manta restdown docs away from 'wiki-tables' to GH style tables
-- Consider the restdown-brand-remora instead of mantadoc's "bluejoy" brand?
-  Would have to handle the hardcoded TOC.
-- Some sane hierarchical layout:
-    - mjob examples in examples/$name/...
-    - man pages in man/...
-
 Sources:
 
 - node-manta.git: "node.js SDK" docs
@@ -100,17 +237,6 @@ a pipeline for doc fixes that involves three repos: (a) fix source doc in, say,
 manta.git; (b) update collected docs in mantadoc.git; (c) update for publishing
 in apidocs.joyent.com.git.  I want to cut out repo (b).
 
-
-## longer term
-
-Longer term #1: The styling of docs on apidocs.joyent.com should move away from
-the current "bluejoy" theme (for manta docs) and "remora" theme (for others)
-to the same style as the docs.joyent.com docs.
-
-Longer term #2: I consider apidocs.joyent.com a bug. Joyent is too small to have
-two separate doc sites. There whould be one "docs.joyent.com" with organized
-publishing of all our content. Same opinion for the Manta operator docs at
-<joyent.github.io/manta>. IMHO.  Anyway, that is for another time.
 
 
 ## Tickets
