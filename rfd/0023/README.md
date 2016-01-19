@@ -39,7 +39,7 @@ The primary Manta docs are Markdown files in a number of git repositories.
 | <https://apidocs.joyent.com/manta> | [How to update](#how-to-update-the-manta-user-guide) | Manta user guide |
 | <https://github.com/joyent/manta> | [How to update](#how-to-update-the-manta-landing-page) | Manta project landing page for those with a code/operator interest |
 | <http://joyent.github.io/manta/> | [How to update](#how-to-update-the-manta-operator-guide) | (The somewhat hard to find) publishing of the manta operator guide |
-| <joyent.com/manta> | - | **Out of scope.** Currently redirects to <joyent.com/object-storage>. |
+| <https://joyent.com/manta> | - | **Out of scope.** Currently redirects to <joyent.com/object-storage>. |
 
 #### How to update the Manta User Guide
 
@@ -50,6 +50,7 @@ will be spread into logical separate dirs making identifying the source easier,
 but not yet.
 
 | Name | URL pattern | Source |
+| ---- | ----------- | ------ |
 | api | api.html | <https://github.com/joyent/manta-muskie/blob/master/docs/index.md> |
 | nodesdk | nodesdk.html, m\*.html | <https://github.com/joyent/node-manta/blob/master/docs>, note some "m\*.html" man pages in manta-compute-bin.git |
 | compute-man-pages | m\*.html | <https://github.com/joyent/manta-compute-bin/tree/master/docs/man>, note some "m\*.html" man pages in node-manta.git |
@@ -61,8 +62,8 @@ but not yet.
 1. Find the source group from the table above and edit source Markdown.
 
 2. Get a review from  Manta developers (whether via 'manta@' internal chat,
-   MANTA internal Jira ticket, email to Manta developers, GitHub PR, or
-   #joyent IRC).
+   MANTA internal Jira ticket, email to Manta developers,
+   GitHub PR, or `#joyent` IRC).
 
    Currently the build and publishing of the User Guide is done in a
    private [apidocs.joyent.com.git repository](https://github.com/joyent/apidocs.joyent.com),
@@ -107,8 +108,8 @@ but not yet.
    <https://github.com/joyent/manta/blob/master/README.md>.
 
    Get a review from  Manta developers (whether via 'manta@' internal chat,
-   MANTA internal Jira ticket, email to Manta developers, GitHub PR, or
-   #joyent IRC).
+   MANTA internal Jira ticket, email to Manta developers,
+   GitHub PR, or `#joyent` IRC).
 
 
 #### How to update the Manta Operator Guide
@@ -117,8 +118,8 @@ but not yet.
    <https://github.com/joyent/manta/tree/master/docs/operator-guide>.
 
    Get a review from  Manta developers (whether via 'manta@' internal chat,
-   MANTA internal Jira ticket, email to Manta developers, GitHub PR, or
-   #joyent IRC).
+   MANTA internal Jira ticket, email to Manta developers,
+   GitHub PR, or `#joyent` IRC).
 
 2. Publish via the make target in the manta.git repo:
 
