@@ -1,0 +1,11 @@
+Pitch:
+
+1. You can *optionally* have projects under your account that provide an isolated
+   view of resources: e.g. `triton insts` would list only those VMs that
+   are part of that project.
+
+2. You can create an *org* with owners and members. Orgs have projects under them
+   to hold resources. A project under an org can be marked to have all org
+   members as members, or to specifically list which org members can see
+   that project... and *with a role*. The role defines what actions that member
+   can do on that project's resources.
