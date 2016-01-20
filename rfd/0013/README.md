@@ -559,6 +559,73 @@ Association of projects with resources:
   which have previously made use of KVM Docker.
 
 
+## Discussion notes
+
+With Alex (19 Jan 2016):
+
+- Consider having roles at the top-level or orgs to gate things like UpdateOrg.
+  The current proposal is that there is a set of org "owners" that have full
+  access -- i.e. RBAC-y aperture eval isn't in the picture for UpdateOrg.
+
+- What's the story for fwrules and roles?
+
+- Are there other "meta-ops" to consider with roles? I.e. RBAC actions that
+  aren't on "real" resources (vms, images, networks, packages).
+
+- Alex likes rbac action condensing.
+
+- One limitation with future-proof polices is that if we have a new facility for
+  which we want a new RBAC action... we can't have pre-existing future proof
+  policies. E.g. one thing I saw with AWS's policy language was:
+
+        deny ecs:SomeSpecificAction
+        allow ecs:*
+
+  We don't have a "deny" equiv in aperture. It is just "CAN" (ie "allow").
+
+- Smartlogin. Alex wonders if we should think about the difference between SSH
+  access as root and SSH access as a user named the same as your account, too.
+
+  The idea in the future is to have the nsswitch.conf set up so that it has a
+  provider in there and will communicate with the smartlogin agent and
+  implicitly create the user like the LDAP login integration stuff.
+
+  To futureproof for eventual possible support for ^^, we'd have OperateInstance
+  as root ssh/zlogin/docker-login access. But a *separate* RBAC action for
+  per-user login.
+
+  is it worth having another one with is like logininstance or something
+  I guess we can add it in future
+  when we have something to use it for
+  but we should take care to define that the right that's included in
+  operateinstance is specifically the right to become root on the instance by
+  various means.
+
+  Re: "ubuntu instead of root" for ubuntu images:
+  Alex: I'd treat that case as the same as the others -- you're getting root
+  login it's just it's as this ubuntu user because politics it has passwordless
+  sudo
+
+- Smartlogin. Trent: "at the least I think smartlogin would need to learn that a
+  zone owned by an org belongs to a set of projects, for which a set of accounts
+  have OperateInstance access... and that defines the set of keys that should be
+  allows to login"
+
+- User docs: just make sure the doco has diagrams and examples and really
+  patiently runs through things all in one spot.
+
+
+With jclulow:
+
+- Clarify that "VM.owner_uuid"  is the *org* UUID for VMs under orgs. Ditto
+  other resources.
+
+- Clarify the billing picture. That isn't well covered. I was leaning towards
+  something similar to GH, where you can assign a billing contact on an org. I
+  think GH allows that to be an email (and obviously credit card details), and
+  not need to be a full GH account.
+
+
 ## Notes from earlier discussions
 
 ### List all instances being a separate policy action/attribute?
