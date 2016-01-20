@@ -67,7 +67,8 @@ The Triton docker tools will be enhanced to create an NFS server zone when they
 receive the 'volume create' command and to destroy the zone on 'volume rm'.
 The user-mode server must be installed in the zone and configured to export
 the appropriate file system. The Triton docker tools must support the mapping
-of the user's logical volume name to the zone name and share.
+of the user's logical volume name to the zone name and share. The mechanism
+to map the customer's volume name to their zone/share is TBD.
 
 The placement of the NFS server zone during provisioning is a complicated
 decision. There is no requirement for dedicated hardware that is optimized as
