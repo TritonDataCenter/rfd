@@ -41,7 +41,7 @@ of sharing volumes between zones and kvm-based services.
  0. The NFS server does not need to be HA.
  1. The NFS server does not need to be available across data centers.
  2. High performance is not critical.
- 3. A dedicated NFS server (or servers) is not necessary.
+ 3. Dedicated NFS server (or servers) hardware is not necessary.
  4. Robust locking for concurrent read-write access (e.g. as used by a
     database) is not necessary.
 
@@ -66,8 +66,8 @@ to this proposal.
 The Triton docker tools will be enhanced to create an NFS server zone when they
 receive the 'volume create' command and to destroy the zone on 'volume rm'.
 The user-mode server must be installed in the zone and configured to export
-the appropriate file system. The docker tools must support the mapping of the
-user's logical volume name to the zone name and share.
+the appropriate file system. The Triton docker tools must support the mapping
+of the user's logical volume name to the zone name and share.
 
 The placement of the NFS server zone during provisioning is a complicated
 decision. There is no requirement for dedicated hardware that is optimized as
