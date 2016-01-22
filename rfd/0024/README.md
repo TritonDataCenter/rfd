@@ -176,3 +176,9 @@ Each plugin will return the score it assigned to a server, which then must be
 combined with the aggregate score for that server from previous steps. Perhaps a
 simple multiplication will suffice, but normalisation will then be desirable at
 every plugin step to keep server scores nicely distributed between 0 to 1.
+
+Tangentially:
+
+Locality hints for provisioning need to be exposed through adminui and portal.
+Hints also need to support tags, not just VM UUIDs.
+
