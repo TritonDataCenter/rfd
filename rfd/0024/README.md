@@ -138,3 +138,41 @@ scheduled on a per-rack basis.
   need to be enhanced to make filtering with different server attributes easier.
 - Mesos/Marathon already has the support for tag-based [locality hints](https://mesosphere.github.io/marathon/docs/constraints.html), though some
   people have found it hard to use without the knowledge about the data center topology.
+
+## Proposed Solution
+
+Dapi currently is only able to effectively prioritise one thing at a time; by
+default that thing is memory. If we switch to prioritising new platforms, that
+means memory will be ignored. We need a way to handle multiple priorities at
+once, and ones that potentially conflict to boot. The simplest means to do this
+is using a weighted score.
+
+Currently, each plugin in dapi returns an array of servers. This should be
+modified to become an array of servers and scores, with each server having a
+score. A score ranges from 0.0 to 1.0, where higher values indicate that a
+server is more desirable for an allocation. This will primarily affect the
+sorting plugins, which will no longer sort servers in preference from most to
+least, but assign a score.
+
+Server memory will be scored based on an inverse ration of how much free memory
+is left; more free memory will get a lower score, thus biasing new allocations
+to full(er) servers.
+
+A new plugin will be added that looks at all server platforms, and ranks them
+based on the range of server platforms. Servers with the newest platforms will
+receive scores close to 1.0, while old platforms will receive close to 0.0.
+
+A new plugin will be added that looks at the range of reboot dates on servers.
+Servers closer to a reboot date should be scored lower than servers further away.
+Reboot dates are not as important as a server's free memory or platform image,
+so it should have less of an effect on the final server score. It should ignore
+reboot dates that have already passed, in case ops doesn't update the field.
+
+For reboot dates to work, cnapi will need to be modified to support a new date
+attribute on server objects (e.g. "next_reboot_date"); a Moray migration will
+be in order. Ideally this attribute will then be exposed through adminui.
+
+Each plugin will return the score it assigned to a server, which then must be 
+combined with the aggregate score for that server from previous steps. Perhaps a
+simple multiplication will suffice, but normalisation will then be desirable at
+every plugin step to keep server scores nicely distributed between 0 to 1.
