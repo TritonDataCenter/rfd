@@ -186,7 +186,7 @@ Notes:
   `UpdateMachineMetadata`.
 - NICS: See sdc-nics from node-smartdc for some inspiration.
   Should these all be under `triton inst ...` a la metadata and inst tags?
-- The whole "... foo -e ..." CLI UX for "edit/update" isn't figured out yet.
+
 
 ## triton create
 
@@ -269,25 +269,8 @@ needs to effectively do this whenever RBAC is in play.
 We *could* have the triton client handle this client-side for starters.
 Though could be really slow. Would have to warn about that.
 
-We already have:
-    triton instance-stop
-    triton instance-delete
-    triton image-create
-(at least after the renaming). Perhaps we should have:
-    triton image-role-tag -r ROLE[,ROLE1...] IMAGE
-    triton instance-role-tag -r ROLE[,ROLE1...] IMAGE
-Those *could* be under 'rbac'... but not sure that is necessary. Cannot shorten
-to 'instance-tag' unless under rbac tho. Comparison
-    triton instance-role-tag -r ops webhead0
-    triton rbac instance-tag -r ops webhead0
 
-Survey. Which one?
-1. triton instance-role-tag -r ops webhead0
-2. triton rbac instance-tag -r ops webhead0
-3. WTF?
-
-
-Okay, discussion (Trent and Angela) led to this plan:
+Discussion (Trent and Angela) led to this plan:
 
     $ triton rbac
     ...
