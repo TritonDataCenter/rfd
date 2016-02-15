@@ -563,7 +563,7 @@ Association of projects with resources:
 
 With Alex (19 Jan 2016):
 
-- Consider having roles at the top-level or orgs to gate things like UpdateOrg.
+- Consider having roles at the top-level of orgs to gate things like UpdateOrg.
   The current proposal is that there is a set of org "owners" that have full
   access -- i.e. RBAC-y aperture eval isn't in the picture for UpdateOrg.
 
@@ -592,7 +592,7 @@ With Alex (19 Jan 2016):
 
   To futureproof for eventual possible support for ^^, we'd have OperateInstance
   as root ssh/zlogin/docker-login access. But a *separate* RBAC action for
-  per-user login.
+  per-user login: UserLoginInstance
 
   is it worth having another one with is like logininstance or something
   I guess we can add it in future
@@ -624,6 +624,26 @@ With jclulow:
   something similar to GH, where you can assign a billing contact on an org. I
   think GH allows that to be an email (and obviously credit card details), and
   not need to be a full GH account.
+
+- Make sure we have a non unreasonable solution for the "sudo" use case: where
+  a member of a project typically wants reduced access, but occassionally
+  explicitly wants more access (to delete things, etc.). E.g. To avoid the scary
+  case of being able to accidentally delete an entire Manta tree because
+  one is an operator or has full delete access.
+
+- jclulow: Is your intention to delete the old thing?
+
+  the old thing: basically disallow using both at the same time. I haven't fully
+  sussed out if that can be done *efficiently* for an account. E.g.: when a
+  request comes in, can I know if there are any role-tagged resources and/or
+  subusers on the account efficiently to say "sorry you can't use a project on
+  this account"
+
+- Manta: definitely not well felt out yet.
+
+    Is there to be an /$ORG/stor
+    And will I be able to grant limited rights to any other JPC user to my
+    personal ~~/stor ? (Or to a subset of it)
 
 
 ## Notes from earlier discussions
