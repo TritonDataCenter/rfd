@@ -1,0 +1,78 @@
+An example for showing off Manta projects/orgs behaviour.
+Warning: I don't have a solid feel for how to design this for Manta yet.
+
+# with an org
+
+    account 'man'
+    account 'samiam'
+    account 'fox'
+    account 'goat'
+    org 'seuss':
+        owner 'man'
+        group 'eggers': man, samiam, fox, goat
+        --
+        project 'eggs':
+            acl:
+                eggers CAN manta:* *
+            inst 'eggs0'
+
+This tells you that members of the 'eggers' group can access parts of
+'/seuss/...' tagged for the 'eggs' project.
+
+This design could work similarly to role-tags on Manta objects/dirs currently:
+creating a resource sets the active-roles as role-tags, use mchmod to update
+role-tags.
+
+If you are 'samiam' here, GetObject works fine: if it is in the 'eggs' project,
+then it works, else it fails. PutObject is harder:
+
+    echo "would not, could not on a boat" | mput /seuss/stor/eggs/answer12.txt
+
+With what project(s) should the new object be tagged. With roles we have
+default-role(s) for a subuser. Q: Do we need/want a "default project" for each
+member of an org? Otherwise, we'd require a way to specify the project:
+
+    export MANTA_PROJECT=eggs
+    # or:
+    ... | mput -P eggs ...
+
+
+Or what if we had this: **If there is no given active project, then we use
+the project(s) of the parent dir.** E.g. if '/seuss/stor/eggs/' has
+`projects=eggs`, then we inherit that.
+
+Or should it always inherit the parent dir's project? I.e. (a) no 'mput -P'
+option and (b) only an org owner can explicitly set these project tags.
+
+'~~/jobs' is different, we want the project to be an 'active' or 'default'
+one for the caller of CreateJob. Hrm.
+
+
+If you are 'man' here (i.e. an owner of the org), is it more confusing? How
+does 'man' operate with reduced (non-owner) privs? Perhaps 'org owner' does
+not confer 'manta:*' access. I.e. you'd need to enable yourself with something
+like:
+
+    org 'seuss':
+        owner 'man'
+        acl:
+            man CAN manta:* *
+
+But then still have the 'sudo' problem: how to NOT be sudo. XXX
+
+
+
+Q: what about '/seuss/jobs'?
+Q: what about '/seuss/reports'?
+Q: what about '/seuss/public'?
+
+
+# sharing a particular manta file with an account/group
+
+TODO: show what rule syntax would be here:
+    bob CAN manta:Get* ~~/stor/img/awesome.gif
+
+# with an account
+
+TODO: any issues/edge cases? or is this the same 'sudo' problem?
+
