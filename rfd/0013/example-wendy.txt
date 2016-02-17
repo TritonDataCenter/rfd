@@ -1,5 +1,7 @@
 # wendy
 
+Wendy has this basic account and current resources:
+
     account 'wendy':
         email 'wendy@example.com'
         --
@@ -7,7 +9,7 @@
         inst 'wvm1'
         image 'wimg0'
 
-Adding the 'terraplay' project.
+She adds the 'terraplay' project:
 
     $ triton project create terraplay
     Created project 'terraplay'
@@ -19,7 +21,7 @@ Adding the 'terraplay' project.
     $ triton profile set-current terraplay
     Set "terraplay" as current profile
 
-Then play with our terraform example, resulting in:
+Then plays with the Joyent blog post using terraform, resulting in:
 
     account 'wendy':
         inst 'wvm0'
