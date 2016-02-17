@@ -1,0 +1,182 @@
+# wendy
+
+    account 'wendy':
+        email 'wendy@example.com'
+        --
+        inst 'wvm0'
+        inst 'wvm1'
+        image 'wimg0'
+
+Adding the 'terraplay' project.
+
+    $ triton project create terraplay
+    Created project 'terraplay'
+
+    $ triton profile get -j \
+        | json -e 'this.name = this.project = "terraplay"' \
+        | triton profile create -f -
+    Created profile "terraplay"
+    $ triton profile set-current terraplay
+    Set "terraplay" as current profile
+
+Then play with our terraform example, resulting in:
+
+    account 'wendy':
+        inst 'wvm0'
+        inst 'wvm1'
+        image 'wimg0'
+        --
+        project 'terraplay':
+            inst 'nginx-terraform-01'
+            inst 'test-machine'
+
+# account ACL
+
+Wendy has a friend Warren:
+
+    account 'warren'
+
+to whom she wants to give access to her 'wvm1' instance:
+
+    $ triton acl create 'account:warren CAN compute:* instance:wvm1'
+
+(Note: Would like that command to be easier. Learning that much aperture
+is harsh. Thinking out loud: `triton acl create 'warren CAN read wvm1'`.)
+
+    account 'warren'
+    account 'wendy':
+        acl:
+            account:warren CAN compute:* instance:wvm1
+        --
+        inst 'wvm1'
+        ...
+
+Now warren can:
+
+    warren$ triton -o wendy inst get wvm1
+
+(Note: Not sure what the syntax should be to specify "wendy's top-level
+resources". `triton -P wendy ...` is ambiguous with a possible 'wendy' *project*
+of warren's. Maybe using the 'org' field in the profile -- i.e. '-o' -- even
+though 'wendy' isn't an org. Or find a common base word for
+'account or org'. "Scope"?)
+
+
+# project acl
+
+Actually, that was wrong. Wendy wants to share her terraplay project with
+Warren:
+
+    wendy$ triton acl ls
+    SHORTID   RULE
+    abcd1234  account:warren CAN compute:* instance:wvm1
+    wendy$ triton acl rm abcd1234
+    wendy$ triton project acl create terraplay 'account:warren CAN * *'
+
+(Note: Some shortcuts for common canned action lists would be useful.
+    $ triton project acl create terraplay -a warren --full
+    $ triton project grant-access terraplay -a warren --full
+^ Thinking out loud.)
+
+giving us:
+
+    account 'warren'
+    account 'wendy':
+        inst 'wvm0'
+        inst 'wvm1'
+        image 'wimg0'
+        --
+        project 'terraplay':
+            acl:
+                account:warren CAN * *
+            inst 'nginx-terraform-01'
+            inst 'test-machine'
+
+And warren should be able to:
+
+    warren$ triton -o wendy -P terraplay insts
+
+
+# manta area for project
+
+... (TODO)
+
+
+# groups
+
+Wendy has another friend she wants to give access to this project as well.
+Time to use a group:
+
+    wendy$ triton group create friends warren startrek42
+    wendy$ triton project acl rm terraplay --all
+    wendy$ triton project acl create terraplay 'group:friends CAN * *'
+
+Giving:
+
+    account 'warren'
+    account 'startrek42'
+    account 'wendy':
+        group 'friends': warren, startrek42
+        --
+        inst 'wvm0'
+        inst 'wvm1'
+        image 'wimg0'
+        --
+        project 'terraplay':
+            acl:
+                group:friends CAN * *
+            inst 'nginx-terraform-01'
+            inst 'test-machine'
+
+(Q: Should groups be creatable on a project? E.g. that could allow warren
+to create groups there. Punt for now.)
+
+# more groups/projects
+
+(I.e. to possibly show if the proposal so far breaks down with lots of
+resources.)
+
+Wendy's started doing lots of things with her account, and sharing with
+lots of people, effectively running a business:
+
+    account 'wendy':
+        group 'foo': warren, ... (5 others)
+        group 'bar': startrek42, ... (3 others)
+        group 'baz': fred, barney, ... (2 others)
+        --
+        inst 'wvm0'
+        ...
+        ---
+        project 'terraplay': ...
+        project 'foo':
+            acl:
+                group:foo CAN * *
+            ...
+        project 'bar':
+            acl:
+                group:bar CAN * *
+            ...
+        project 'baz':
+            acl:
+                group:baz CAN * *
+            ...
+
+# migrate to an org
+
+Wendy's business has a name other than 'wendy'. She'd like all this data,
+except 'terraplay' and the top-level stuff, to be an org. (Why? What reason to
+move to an org? Opportunity to rename the top-level thing? To move *some* of the
+resources perhaps.)
+
+... (TODO)
+
+
+
+# TODO
+
+XXX manta sharing and lock down
+XXX basic org example: why org better than vanilla account?
+XXX explore login/ssh/key/auth/audit issues with accounts. E.g. 'wendy' accessing
+    things in a project: she isn't in the groups. Need she be?
+XXX adding subusers? separate example
+XXX could explore the consulting group example (later)

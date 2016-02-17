@@ -1,0 +1,192 @@
+# acme: angela edition
+
+A translation of Angela's ACMECLOUD/ACMEBILLING/ACMEWEB/ACMEAUDIT example
+to my presentation:
+
+    org 'ACMECLOUD':
+        subuser 'ACMECLOUD/owen' (ops)
+        subuser 'ACMECLOUD/oliver' (ops)
+        subuser 'ACMECLOUD/sandy' (support)
+        subuser 'ACMECLOUD/sidney' (support)
+        group 'acme-ops': ACMECLOUD/owen ACMECLOUD/oliver
+        group 'acme-sup': ACMECLOUD/sandy ACMECLOUD/sidney
+        --
+        role 'admin':
+            rules: CAN *
+            members:
+                acme-ops (projects: *)     ???
+        role 'operator':
+            rules: CAN GetInstance, GetNetwork, OperateInstance, PutObject, GetObject
+            members:
+                acme-sup (projects: *)     ???
+        role 'readonly':
+            rules: CAN Get*
+            members:
+                acme-web-dev (projects: web-prod, web-staging)
+                acme-web-qa (projects: web-prod, web-staging)
+                acme-billing-eng (projects: billing-prod, billing-staging)
+                ACMEAUDIT (projects: web-prod, billing-prod)
+        --
+        project 'web-prod':
+            inst 'web-prod-app1'
+            inst 'web-prod-app2'
+            volume 'web-prod-vol'
+            network 'ops-net-prod'
+            network 'ops-net-staging'
+        project 'web-staging':
+            inst 'web-staging-app1'
+            inst 'web-staging-app2'
+            volume 'web-staging-vol'
+            network 'ops-net-prod'
+            network 'ops-net-staging'
+        project 'billing-prod':
+            inst 'billing-prod-api'
+            network 'ops-net-prod'
+            network 'ops-net-staging'
+        project 'billing-staging':
+            inst 'billing-staging-api'
+            network 'ops-net-prod'
+            network 'ops-net-staging'
+        --
+        # Manta: I'm unsure about.
+        - manta: /stor/acmecloud/web web-staging::*
+        - manta: /stor/acmecloud/billing billing-staging::*
+
+    org 'ACMEWEB':
+        subuser 'ACMEWEB/warren' (dev)
+        subuser 'ACMEWEB/wes' (dev)
+        subuser 'ACMEWEB/wendy' (qa)
+        subuser 'ACMEWEB/will' (sales engineer)
+        group 'acme-web-dev': ACMEWEB/wes ACMEWEB/warren
+        group 'acme-web-qa': ACMEWEB/wendy
+        --
+        role 'dev':
+            rules: CAN *
+            members:
+                acme-web-dev (projects: *)
+        role 'qa':
+            rules: CAN UpdateInstance, OperateInstance, GetInstance, GetObject
+            members:
+                acme-web-qa (projects: web-perf)
+                ACMEWEB/will (projects: web-perf)
+        --
+        project 'web-nightly':
+            ...
+        project 'web-perf':
+            ...
+
+    org 'ACMEBILLING':
+        subuser 'ACMEBILLING/bob'
+        subuser 'ACMEBILLING/blake'
+        group 'acme-billing-eng': ACMEBILLING/bob ACMEBILLING/blake
+        --
+        role ...
+        --
+        project ...
+        --
+        resource ...
+
+    account 'ACMEAUDIT':
+        (none)
+        # ??? Intended as an account for reading prod info?
+        ??? manta
+        - manta: /stor/acmecloud *::admin
+
+- Q: I don't have a clear picture how the $project::$role role-tags get applied
+  and if manual maint of those is required. E.g. "web-prod::*" is suggesting
+  that role-tags support globs?
+
+
+# acme: trent edition
+
+Re-take on angela's ACME* example using my role-less model.
+
+    org 'ACMECLOUD':
+        subuser 'owen'      # ops
+        subuser 'oliver'    # ops
+        subuser 'sandy'     # support
+        subuser 'sidney'    # supprot
+        group 'acme-ops': owen oliver
+        group 'acme-sup': sandy sidney
+        --
+        acl:
+            group:acme-ops CAN * *
+            group:acme-sup CAN compute:Get*, compute:OperateInstance, manta:PutObject, manta:GetObject *
+            group:ACMEWEB/acme-web-dev CAN compute:Get* * if project in (web-prod, web-staging)
+            group:ACMEWEB/acme-web-qa CAN compute:Get* * if project in (web-prod, web-staging)
+            group:ACMEBILLING/acme-billing-eng CAN compute:Get* * if project in (billing-prod, billing-staging)
+            account:ACMEAUDIT CAN compute:Get* * if project in (web-prod, billing-prod)
+        # Note: The ACL entries with 'if project in ...' could instead be
+        # designed as an ACL scoped on the project. E.g. instea of:
+        #   acl:
+        #       account:ACMEAUDIT CAN compute:Get* * if project in (web-prod, billing-prod)
+        # we'd have:
+        #   project 'web-prod':
+        #       acl:
+        #           account:ACMEAUDIT CAN compute:Get* *
+        #   project 'billing-prod':
+        #       acl:
+        #           account:ACMEAUDIT CAN compute:Get* *
+        # Doing the latter might be better for allowing those with access just
+        # to a project to add ACLs for that project.
+        --
+        project 'web-prod':
+            inst 'web-prod-app1'
+            inst 'web-prod-app2'
+            volume 'web-prod-vol'
+            network 'ops-net-prod'
+            network 'ops-net-staging'
+        project 'web-staging':
+            inst 'web-staging-app1'
+            inst 'web-staging-app2'
+            volume 'web-staging-vol'
+            network 'ops-net-prod'
+            network 'ops-net-staging'
+        project 'billing-prod':
+            inst 'billing-prod-api'
+            network 'ops-net-prod'
+            network 'ops-net-staging'
+        project 'billing-staging':
+            inst 'billing-staging-api'
+            network 'ops-net-prod'
+            network 'ops-net-staging'
+        --
+        # Manta stuff: I'm still uncertain here.
+        #acl:
+        #    # From above, this gives ops guys full access to /stor/ACMECLOUD:
+        #    #  group:acme-ops CAN * *
+        #- manta: /stor/acmecloud/web web-staging::*
+        #- manta: /stor/acmecloud/billing billing-staging::*
+
+    org 'ACMEWEB':
+        subuser 'warren' (dev)
+        subuser 'wes' (dev)
+        subuser 'wendy' (qa)
+        subuser 'will' (sales engineer)
+        group 'acme-web-dev': wes warren
+        group 'acme-web-qa': wendy
+        --
+        acl:
+            group:acme-web-dev CAN * *
+            group:acme-web-qa AND ACMEWEB/will CAN compute:UpdateInstance, \
+                compute:OperateInstance, compute:GetInstance, compute:GetObject * \
+                IF project=web-perf
+        --
+        project 'web-nightly':
+            ...
+        project 'web-perf':
+            ...
+
+    org 'ACMEBILLING':
+        subuser 'bob'
+        subuser 'blake'
+        group 'acme-billing-eng': bob blake
+        --
+        role ...
+        --
+        project ...
+        --
+        resource ...
+
+    account 'ACMEAUDIT':
+        ...
