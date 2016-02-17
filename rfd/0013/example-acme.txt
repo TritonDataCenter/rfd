@@ -1,7 +1,12 @@
+This shows a quick attempt at translating Angela's recent Acme example (first
+section) to Trent's current thinking using ACLs (and excluding roles).
+Trent's main goal is to sanity check the ACL ideas.
+
+
 # acme: angela edition
 
 A translation of Angela's ACMECLOUD/ACMEBILLING/ACMEWEB/ACMEAUDIT example
-to my presentation:
+(from her recent powerpoint slides) using Trent's text representation:
 
     org 'ACMECLOUD':
         subuser 'ACMECLOUD/owen' (ops)
