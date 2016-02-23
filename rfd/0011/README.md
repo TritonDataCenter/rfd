@@ -55,7 +55,8 @@ multiple IP addresses:
     items between **ips** and **allowed\_ips** since the kernel does not allow
     the `allowed-ips` property of a NIC to contain more entries than this
 - **nic.\*.gateways** will accept an array of IPv4 and IPv6 addresses
-- **nic.\*.network6\_uuid** will be a UUID for an IPv6 network
+- **nic.\*.network\_uuids** will be a map of IP addresses to the network
+  they're allocated from. See [RFD 32] for more.
 - **routes** will accept both IPv4 and IPv6 networks and addresses as keys and
   values (address family must match for each key-value pair, of course)
 - **resolvers** will accept both IPv4 and IPv6 addresses
@@ -266,3 +267,6 @@ how to properly boot.
 [FWAPI-212]: https://smartos.org/bugview/FWAPI-212
 [FWAPI-225]: https://smartos.org/bugview/FWAPI-225
 [ZAPI-598]: https://smartos.org/bugview/ZAPI-598
+
+<!-- Other RFDs -->
+[RFD 32]: ../rfd/0032
