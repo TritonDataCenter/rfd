@@ -84,6 +84,8 @@ generator](http://zaach.github.io/jison/). The grammar will need to be adjusted
 to accept and validate IPv6 addresses, and the consumers will need to make sure
 that it gets fed appropriately to [ipf(1M)].
 
+This work was finished in [FWAPI-225].
+
 ## Zone \& KVM Images and Setup
 
 The startup scripts and programs for zones and KVM images will need to be
@@ -126,8 +128,12 @@ ListRules endpoint will need to be made:
 
 - **ip** will need to accept IPv6 addresses
 - **subnet** will need to accept IPv6 subnets
-- **address\_family** will need to be added, so that it is possible to search
-  for rules affecting one of IPv4 or IPv6
+
+Part of this work should also involve moving from storing firewall rules in UFDS
+to storing them in Moray, instead, where the `ip` and `subnet` types can be
+used.
+
+This work was finished in [FWAPI-212] and [FWAPI-225].
 
 # Compute Node Agents
 
@@ -257,4 +263,6 @@ how to properly boot.
 [OS-4582]: https://smartos.org/bugview/OS-4582
 [OS-4741]: https://smartos.org/bugview/OS-4741
 [OS-4802]: https://smartos.org/bugview/OS-4802
+[FWAPI-212]: https://smartos.org/bugview/FWAPI-212
+[FWAPI-225]: https://smartos.org/bugview/FWAPI-225
 [ZAPI-598]: https://smartos.org/bugview/ZAPI-598
