@@ -401,6 +401,14 @@ What are the differences between these two versions?
 
 What are the NFS security requirements?
 
+At this point sdc-nfs does not support anything other than restricting to a
+specfic list of IPs, so we're planning to leave it open to any networks assigned
+to the container. Is this a acceptable?
+
+#### Can we limit the number of NFS volumes a single container can mount?
+
+If so: how many?
+
 ## Allocation (DAPI, packages, etc.)
 
 ### Packages for volume containers
