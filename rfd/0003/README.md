@@ -505,7 +505,7 @@ prioritize these and do only some of them.
    `sdcadm reboot-plan step` or `next` (like a debugger) to have it do the next
    step. This would confirm the next step:
 
-        $ sdcdm reboot-plan next
+        $ sdcadm reboot-plan next
         Reboot plan $uuid (10 servers, max concurrency 3)
         Next step: reboot 3 servers
             server $hostname1: $current_platform -> $boot_platform
@@ -536,6 +536,15 @@ prioritize these and do only some of them.
     of the DC. Near the top of the list should be:
         - currently in maint?
         - is there a reboot plan running?
+
+13. PhillipS requests "an option to reboot only empty CNs", where in his
+    experience they've had to query *zoneadm list* on CNs instead of *vmadm*
+    because "problems in the past where tools like vmadm were too old to see the
+    running instances".
+    Perhaps something like this:
+
+        $ sdcadm reboot-plan create \
+            $(sdc-server lookup ...someway to query empty servers... | xargs)
 
 
 ## Implementation Details
