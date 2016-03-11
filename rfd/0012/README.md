@@ -102,8 +102,8 @@ GH issues for each non-trivial chunk of work here.
 | RebootMachine                    |          | `triton instance reboot`, `triton reboot`                   |
 | ResizeMachine                    | -        |                                                             |
 | RenameMachine                    | \*       | `triton instance rename INST [name=NAME]`                   |
-| EnableMachineFirewall            | NYI      | `triton instance enable-firewall INST`                      |
-| DisableMachineFirewall           | NYI      | `triton instance disable-firewall INST`                     |
+| EnableMachineFirewall            | DONE     | `triton instance enable-firewall INST`                      |
+| DisableMachineFirewall           | DONE     | `triton instance disable-firewall INST`                     |
 | DeleteMachine                    | DONE     | `triton instance delete INST ...`                           |
 | MachineAudit                     | DONE     | `triton instance audit`                                     |
 | ListMachineSnapshots             | NYI      | `triton instance snapshot list INST`                        |
