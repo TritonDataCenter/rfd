@@ -106,11 +106,11 @@ GH issues for each non-trivial chunk of work here.
 | DisableMachineFirewall           | DONE     | `triton instance disable-firewall INST`                     |
 | DeleteMachine                    | DONE     | `triton instance delete INST ...`                           |
 | MachineAudit                     | DONE     | `triton instance audit`                                     |
-| ListMachineSnapshots             | NYI      | `triton instance snapshot list INST`                        |
-| GetMachineSnapshot               | NYI      | `triton instance snapshot get INST SNAPNAME`                |
-| CreateMachineSnapshot            | NYI      | `triton instance snapshot create INST`                      |
-| StartMachineFromSnapshot         | NYI      | `triton instance start --snapshot=SNAPNAME`                 |
-| DeleteMachineSnapshot            | NYI      | `triton instance snapshot delete INST SNAPNAME`             |
+| ListMachineSnapshots             | DONE     | `triton instance snapshot list INST`                        |
+| GetMachineSnapshot               | DONE     | `triton instance snapshot get INST SNAPNAME`                |
+| CreateMachineSnapshot            | DONE     | `triton instance snapshot create INST`                      |
+| StartMachineFromSnapshot         | DONE     | `triton instance start --snapshot=SNAPNAME`                 |
+| DeleteMachineSnapshot            | DONE     | `triton instance snapshot delete INST SNAPNAME`             |
 | UpdateMachineMetadata            | NYI\*    | `triton instance update-metadata -a [-f] INST [FIELD=VALUE ...]` |
 | ListMachineMetadata              | NYI      | `triton instance list-metadata INST`                        |
 | GetMachineMetadata               | NYI      | `triton instance get-metadata INST KEY`                     |
@@ -133,15 +133,15 @@ GH issues for each non-trivial chunk of work here.
 | DeleteInstrumentation            | -        |                                                             |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
 | **FIREWALL RULES**               |          |                                                             |
-| ListFirewallRules                | -        | `triton fwrule list`                                        |
-| GetFirewallRule                  | -        | `triton fwrule get FWRULE-ID`                               |
-| CreateFirewallRule               | -        | `triton fwrule create RULE`                                 |
-| UpdateFirewallRule               | -        | `triton fwrule update FWRULE-ID [FIELD=VALUE ...]`          |
-| EnableFirewallRule               | -        | `triton fwrule enable FWRULE-ID`                            |
-| DisableFirewallRule              | -        | `triton fwrule disable FWRULE-ID`                           |
-| DeleteFirewallRule               | -        | `triton fwrule delete FWRULE-ID`                            |
-| ListFirewallRuleMachines         | -        | `triton fwrule instances FWRULE-ID`                         |
-| ListMachineFirewallRules         | -        | `triton instance fwrules INST`                              |
+| ListFirewallRules                | DONE     | `triton fwrule list`                                        |
+| GetFirewallRule                  | DONE     | `triton fwrule get FWRULE-ID`                               |
+| CreateFirewallRule               | DONE     | `triton fwrule create RULE`                                 |
+| UpdateFirewallRule               | DONE     | `triton fwrule update FWRULE-ID [FIELD=VALUE ...]`          |
+| EnableFirewallRule               | DONE     | `triton fwrule enable FWRULE-ID`                            |
+| DisableFirewallRule              | DONE     | `triton fwrule disable FWRULE-ID`                           |
+| DeleteFirewallRule               | DONE     | `triton fwrule delete FWRULE-ID`                            |
+| ListFirewallRuleMachines         | DONE     | `triton fwrule instances FWRULE-ID`                         |
+| ListMachineFirewallRules         | DONE     | `triton instance fwrules INST`                              |
 | **FABRICS**                      | -        |                                                             |
 | ListFabricVLANs                  | -        |                                                             |
 | CreateFabricVLAN                 | -        |                                                             |
