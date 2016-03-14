@@ -67,7 +67,8 @@ formal writing that it has come to represent.)
 | draft | [RFD 23 A plan for Manta docs](./rfd/0023/README.md) |
 | predraft | [RFD 24 Designation API improvements to facilitate platform update](./rfd/0024/README.md) |
 | draft | [RFD 25 Pluralizing CloudAPI CreateMachine et al](./rfd/0025/README.md) |
-| draft | [RFD 26 RFD 26 Network Shared Storage for SDC](./rfd/0026/README.md) |
+| draft | [RFD 26 Network Shared Storage for SDC](./rfd/0026/README.md) |
+| predraft | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
 
 
 ## Contents of an RFD
