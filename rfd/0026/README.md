@@ -409,6 +409,11 @@ to the container. Is this a acceptable?
 
 If so: how many?
 
+#### Volume name limitations
+
+Can we limit to [a-zA-Z0-9\-\_]? If not, what characters do we need? How long
+should these names be allowed to be?
+
 ## Allocation (DAPI, packages, etc.)
 
 ### Packages for volume containers
