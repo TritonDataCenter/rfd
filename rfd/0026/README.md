@@ -371,49 +371,6 @@ current configurations.
 Concurrent access use cases need to be supported, but support for robust high
 concurrency ones (such as database storage) is not critical.
 
-### Open questions
-
-#### Interaction with local volumes
-
-Do we support local volumes? If so, is there any chance of conflicts between
-local and shared volumes?
-
-#### What happens when mounting of a volume fails?
-
-Container does not start?
-
-#### How does mounting work when the docker container using that volume start?
-
-What support is required for NFS clients running in Docker containers to be
-able to mount volumes from the NFS server zones? Is there any work needed to
-to make `mount` in `/native` work? Jerry, JoshW and Angela went through that
-discussion already, need to confirm with them.
-
-#### What NFS versions need to be supported?
-
-NFSv3 and NFSv4 are both supported in LX containers, and it may be desirable
-to support NFSv3 for mounting shared volumes from the command line in non-
-Docker containers.
-
-What are the differences between these two versions?
-
-#### Security
-
-What are the NFS security requirements?
-
-At this point sdc-nfs does not support anything other than restricting to a
-specfic list of IPs, so we're planning to leave it open to any networks assigned
-to the container. Is this a acceptable?
-
-#### Can we limit the number of NFS volumes a single container can mount?
-
-If so: how many?
-
-#### Volume name limitations
-
-Can we limit to [a-zA-Z0-9\-\_]? If not, what characters do we need? How long
-should these names be allowed to be?
-
 ## Allocation (DAPI, packages, etc.)
 
 ### Packages for volume containers
@@ -718,3 +675,55 @@ sdcadm shared-volumes rm [--owner owner-uuid] [--volume shared-volume-uuid]
 If Docker containers use the shared volumes that need to be deleted, `sdcadm`
 doesn't delete the shared volume zones and instead outputs the containers'
 uuids so that the operator knows which containers are still using them.
+
+## Open questions
+
+### Interaction with local volumes
+
+Do we support local volumes? If so, is there any chance of conflicts between
+local and shared volumes?
+
+#### What happens when mounting of a volume fails?
+
+The current recommendation is to fail the provisioning request with an error
+message that is as clear as possible.
+
+### What NFS versions need to be supported?
+
+NFSv3 and NFSv4 are both supported in LX containers, and it may be desirable
+to support NFSv3 for mounting shared volumes from the command line in non-
+Docker containers.
+
+What are the differences between these two versions?
+
+### Security
+
+What are the NFS security requirements?
+
+At this point sdc-nfs does not support anything other than restricting to a
+specfic list of IPs, so we're planning to leave it open to any networks assigned
+to the container. Is this a acceptable?
+
+#### Can we limit the number of NFS volumes a single container can mount?
+
+If so: how many?
+
+#### Volume name limitations
+
+Can we limit to `[a-zA-Z0-9\-\_]`? If not, what characters do we need? How long
+should these names be allowed to be?
+
+### NFS server zone's packages
+
+#### NFS server zone's packages' CPU and memory requirements
+
+It's not clear currently what the optimal CPU and memory requirements for
+packages are. The correlation between the amount of I/O operations performed on
+a given shared volume and its CPU and memory requirements hasn't been determined
+yet.
+
+As for minimum requirements, the NFS server zone currently runs one node
+application (sdc-nfs) and has a smaller number of services running compared to
+most "core" SDC zones. These run fine in a zone with 512 MBs of memory,
+`cpu_shares === 4` and `cpu_cap === 200`, but these minimum requirements could
+probably be lower.
