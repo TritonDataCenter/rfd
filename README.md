@@ -68,7 +68,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 24 Designation API improvements to facilitate platform update](./rfd/0024/README.md) |
 | draft | [RFD 25 Pluralizing CloudAPI CreateMachine et al](./rfd/0025/README.md) |
 | draft | [RFD 26 Network Shared Storage for SDC](./rfd/0026/README.md) |
-| predraft | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
+| draft | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
 | predraft | [RFD 28 Improving syncing between Compute Nodes and NAPI](./rfd/0028/README.md) |
 
 
