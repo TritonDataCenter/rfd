@@ -269,7 +269,8 @@ The minimum viable set of translations are Syslog, statsd, and InfluxDB.
     * Tag instances that should not be monitored with `triton_cm_collect=false`
         _by default all of your instances will be collected_
 
-* ![Configure your Prometheus server](https://prometheus.io/docs/operating/configuration/)
+* [Configure](https://prometheus.io/docs/operating/configuration/) your
+  Prometheus server
     * Use the same TLS cert and key you provided in the previous steps
     * Add a job for the availability zones that your containers run in, using
       the polling interval configured in the previous step.
