@@ -156,29 +156,51 @@ easily, it would compliment a Prometheus based solution quite well.
 ### [OpenTSDB](http://opentsdb.net/)
 >OpenTSDB consists of a Time Series Daemon (TSD) as well as set of command line utilities. Interaction with OpenTSDB is primarily achieved by running one or more of the TSDs. Each TSD is independent. There is no master, no shared state so you can run as many TSDs as required to handle any load you throw at it. Each TSD uses the open source database HBase to store and retrieve time-series data.
 
-A very powerful time series database which supports a pull mechanism. However,
-given it's complexity (e.g. HBase Hadoop requirement), it seems unlikely that we
-can reach a wide audience by standardizing on this.
+A powerful time series database which supports a pull mechanism. However, given
+it's complexity (e.g. HBase Hadoop requirement), it seems unlikely that we can
+reach a wide audience by standardizing on this.
 
 ## Chosen Solution
-Expose metrics in a way that is *compatible* with Prometheus, but not include a
-Prometheus server or any of their code.
+Expose metrics in a way that is compatible with the Prometheus
+[text format HTTP client](http://prometheus.io/docs/instrumenting/exposition_formats/#format-version-0-0-4)
+specification. This is distinctly different from the Prometheus HTTP API and
+server components, which will not be implemented.
+
+Furthermore, a blueprint and/or Docker image for forwarding metrics to
+pre-existing customer solutions should be created so that customers do not have
+to feel locked into the Prometheus model or be forced to switch.
 
 Prometheus facilitates each of the goals listed above, has a great amount of
-open-source traction, and provides an end-to-end solution. That said, it does
-contain a few technologies and moving pieces that are undesirable
-(e.g. its storage engine and front end). So rather than implanting Prometheus
-into our platform, we should become Prometheus compatible. What this means is
-that we will support the Prometheus protocol and semantics, but implement the
-components of the solution ourselves.
+open-source traction, and provides an end-to-end solution. Users in a green can
+easily spin up a new Prometheus server in minutes and start polling new metrics.
+Thanks to the optional metric forwarding, users with existing time-series stores
+can also get up to speed quickly.
 
 ## Components
-### Metric Agent
+### Metric Client
 Runs in the global zone on the head node and compute nodes. It provides a
 Prometheus compatible HTTP endpoint for the Metric Proxy to make requests of.
-The agent does not buffer or retain any data, it responds to requests for
-metrics with the data available at the time of request. Static pre-defined
-metrics will be collected using modules like
+
+------
+
+###### Option 1 (No buffer)
+The client does not buffer or retain any data, it responds to requests for
+metrics with the data available at the time of request.
+
+###### Option 2 (Selective caching)
+The client caches expensive calls and allows for a configurable expiration. In
+this scenario specific metrics would always be retrievable, but would remain
+the same for the duration of the cached value. The expensive calls would only be
+made if a cached value does not exist or the currently cached value has expired.
+
+###### Option 3 (Self populated caching)
+The client caches all metrics and allows for a configurable per metric
+expiration. Metric Client Proxy requests do not result in metric collection,
+instead metrics are automatically collected by the client on a timer.
+
+------
+
+Static pre-defined metrics will be collected using modules like
 [node-kstat](https://github.com/bcantrill/node-kstat). Additionally, it seems
 likely that we can leverage the proc(4) backend instrumenter in CAv1 to provide
 prstat type collection.
@@ -195,51 +217,71 @@ the Metric agent living in the global zone, a crash will result in all zones on
 that CN lacking data until it comes back up. It is also easier for the agent to
 become a noisy neighbor.
 
-### Metric Proxy
-The Metric Proxy presents a data-center/availability zone as a single Prometheus
-endpoint, much the same way that the sdc-docker API works.
+### Metric Client Proxy
+The Metric Client Proxy lives between a customers Prometheus server and the
+Metric Clients that live on each compute node.
+
+Though the Metric Client is a highly available cluster per data center, it will
+have a DNS A record per monitored customer container assigned to it so that it
+can respond as if it was the monitored instance itself. In addition to the DNS A
+records, one or more DNS SRV records will be created to allow a customers
+Prometheus server to automatically discover containers that should be polled.
 
 This is an operator controlled zone, deployed with sdcadm. The zone will need to
-have a leg on the admin network in order to talk with the Metric Agent, and a
+have a leg on the admin network in order to talk with the Metric Client, and a
 leg on the external network to expose it to customers. However it does consume
 additional resources on any node that it is provisioned on, so it should keep an
 accounting of customer usage.
 
-Metric Proxy is per data-center resource for all customers, not a per-customer
-deployment.
-
 For customers that can use Prometheus data directly or via a
 [plugin](https://github.com/prometheus/nagios_plugins), this and the Metric
-Agent are the only components that need to be in place.
+Client are the only components that need to be in place.
 
-Metric Proxy pollers will need to be authenticated and authorized. The proxy
-support the same TLS based scheme as the official Prometheus endpoints. The
-maximum set of results returned will be all non-destroyed instances that pertain
-to the given user. However, end users should be able to blacklist instances and
-metrics that should not be returned (this will be configured via Cloud API).
+Customers polling servers will need to be authenticated and authorized. The
+proxy will utilize the same TLS based scheme as the official Prometheus
+endpoints. Customers existing SSH key(s) (the same key(s) used for accessing
+instances and sdc-docker) will be used. Optionally a customer may choose to
+restrict polling of their instances to specific IPs or subnets.
 
-Authentication and authorization will also be leveraged to decide how frequently
-an end user is allowed to poll the Metric Proxy. By default end users will be
-able to poll every five minutes. In a public cloud deployment, operators may
-choose to charge for more frequent polling intervals. Users who attempt to poll
-more frequently than their defined interval will receive a
-[HTTP 429](https://tools.ietf.org/html/rfc6585#page-3) response.
+Authentication and authorization will also be leveraged to decide how many
+polling requests an end user is allowed to make to the Metric Client Proxy
+within a configurable amount of time.
 
-If not guarded against, a DDoS attack could be structured such that all compute
-nodes are kept busy trying to respond to polling requests and crippling the
-performance of running containers across the fleet. That is why it is critical
-that the Metric Proxy be the first line of defense for the Metric Agents
-(e.g. not allowing customers to go beyond their pre-configured polling frequency
-and proxying authenticated polling requests to only the compute nodes
-necessary).
+-----
 
-### Cloud API
-End users will leverage CloudAPI to enable Container Monitor for their account,
-manage which containers are monitored by adding and removing tags, and configure
-their polling frequency allowance. Triton CLI will also use CloudAPI to manage
-settings and provide alternate Container Monitor configuration endpoints.
-Admin UI will talk directly with VMAPI and UFDS for enabling Container Monitor
-on an account and adding the container monitor tag to containers.
+###### Option 1 (Configurable per user request quota, global per user maximum)
+
+User request quota will default to an operator set value, and an optional per
+user maximum can also be set by an operator.
+
+For example, a per user default could be 1000 requests per minute, and a global
+per user maximum could be 10000 requests per minute. Operators can choose
+whether or not to throttle users that go beyond 1000 requests per minute or
+charge them. That said, users are not allowed to violate the global per user
+maximum request quota if it is set.
+
+###### Option 2 (Package based request quota, global per user maximum)
+
+Each deployable package will be configured with a request quota. Each users
+request quota will be the sum total of their deployed packages quota. An
+operator can optionally configure a global per user maximum quota.
+
+For example, a user may have three containers deployed:
+
+1. 10 request per minute quota
+2. 100 request per minute quota
+3. 20 request per minute quota
+
+In this scenario the users request quota would be 130 requests per minute. An
+operator can choose to throttle users at their request quota, or set a per user
+global maximum limit. An operator may choose to bill for requests that exceed
+the users request quota up until they hit the global maximum. When the
+global maximum is hit, users will be throttled.
+
+-----
+
+If configured, users who poll beyond their allotment or global maximum will
+receive a [HTTP 429](https://tools.ietf.org/html/rfc6585#page-3) response.
 
 ### Metric Forwarder (optional)
 For customers that need to have data pushed to them, and can't use an existing
@@ -255,6 +297,27 @@ with the necessary pieces pre-installed.
 
 The minimum viable set of translations are Syslog, statsd, and InfluxDB.
 
+### Opting in
+End users will leverage CloudAPI to enable Container Monitor for their account
+by adding `cm_enabled=true`.
+
+### Discovery
+
+When a user opts into using Container Monitor for their account, CNS will detect
+the change and create a the following DNS records
+
+`<vm_uuid>.cm.triton.zone A <ip of metric client proxy>`
+`_cm._tcp.<useruuid>.triton.zone 86400 IN SRV 0 5 3000 <vm_uuid>.cm.triton.zone`
+
+for each of the accounts containers. Going forward all new containers will get a
+Container Monitor A record and an SRV record automatically. This allows
+Prometheus built-in DNS discovery to automatically find and collect metrics from
+all of a users containers.
+
+If a user does not wish to use DNS SRV record discovery, they may list their
+containers via CloudAPI which will include the Container Monitor A record for
+each container as a part of the payload.
+
 ## Architecture Overview
 ![Container Monitor Layout](http://us-east.manta.joyent.com/shmeeny/public/container_monitor.png)
 
@@ -263,17 +326,12 @@ The minimum viable set of translations are Syslog, statsd, and InfluxDB.
 ### Configuration
 * Configure account for use with Container Monitor via Portal, AdminUI, or
   the Triton CLI
-    * Enable Container Monitor
-    * Choose your allowed polling interval
-    * Upload your container monitor TLS configuration via Portal or AdminUI
-    * Tag instances that should not be monitored with `triton_cm_collect=false`
-        _by default all of your instances will be collected_
 
 * [Configure](https://prometheus.io/docs/operating/configuration/) your
   Prometheus server
-    * Use the same TLS cert and key you provided in the previous steps
+    * Use the cert and key for your SDC user
     * Add a job for the availability zones that your containers run in, using
-      the polling interval configured in the previous step.
+      DNS SRV discovery.
       ```
       - job_name: triton_jpc_east1
 
@@ -285,45 +343,43 @@ The minimum viable set of translations are Syslog, statsd, and InfluxDB.
             scrape_interval: 60s
             scrape_timeout:  10s
 
-        target_groups:    
-        - targets: ['<useruuid>.east1-cm.triton.zone']
-          labels:
-            triton_jpc: east1
+        dns_sd_configs:
+            names:
+                - _cm._tcp.<useruuid>.triton.zone
+            # refresh_interval defaults to 30s.
+
+        labels:
+            triton_jpc: triton_jpc
 
         scheme: https
       ```
 
+
 ### Flow
-* Prometheus server makes HTTPS requests to the configured Metric Proxy
-    _The configured metric proxy will actually be multiple Metric Proxies in the
-    same availability zone, presented as a single DNS record by Triton CNS._
-* The Metric Proxy authenticates and authorizes the request based on the TLS
-  information provided and the UUID provided in the hostname
-* The Metric Proxy queries only the necessary metric agents for current metrics
-  and a special header value is passed along so that only the metrics for
-  containers pertaining to this request are scraped.
-  ```
-  x-container-metric-uuids:uuid1,uuid2,uuid3,uuid4,...
-  ```
-* Each Metric Agent returns a Prometheus compatible HTTP response to the Metric
+* Prometheus server makes HTTPS requests to the discovered Metric Client Proxy
+  endpoint(s).
+* The Metric Client Proxy authenticates and authorizes the request(s) based on
+  the TLS information provided and the UUID provided in the URI.
+* The Metric Client Proxy queries the appropriate compute node Metric Client for
+  only the container metrics being requested.
+* Metric Client(s) return a Prometheus text based HTTP response to the Metric
   Proxy.
-* The Metric Proxy combines all Metric Agent responses into a single response
-  and returns it to the customers Prometheus server.
+* The Metric Client Proxy returns the response from the Metric Client to the end
+  users Prometheus server or Metric Forwarder
 
 ## High Availability
-### Metric Agent
+### Metric Client
 This is a single agent on a compute or head node, it has no more availability
 than the other supporting agents like cn-agent and vm-agent. Additional agents
 would only be helpful in the case of an agent crash, and not node failure. At
 this time it does not make sense to provide guarantees beyond SMF restarts.
 
-### Metric Proxy
+### Metric Client Proxy
 This is an entirely stateless service and because of that there is no limit to
 the number of proxies that can be in use at a given time. The proxy can be
-deployed in much the same way that we deploy multiple manatee zones across head
-and compute nodes. The major difference here is that the Metric Proxy will be
-stateless and active/active unlike Manatee. Triton CNS can be used to present
-multiple Metric Proxies to end users.
+deployed with sdcadm to multiple nodes in a given data center. The recommended
+deployment is three Metric Client Proxies, one on the headnode and the other two
+on different compute nodes which are ideally in different racks.
 
 ### Metric Forwarder
 Because the metric forwarder is an outbound stream/push mechanism, multiple
@@ -340,9 +396,7 @@ state it should sacrifice itself in order to maintain the performance of the
 node it is on.
 
 ### Metric Proxy
-Multiple Metric Proxy zones should be added to Triton CNS so that requests can
-be balanced across multiple instances and new Metric Proxy zones can be added
-and removed without needing to reconfigure pollers/end users.
+Multiple Metric Proxy zones can be added as load requires and without penalty.
 
 ### Metric Forwarder
 The Metric Forwarder should support an instance/container whitelist so that
@@ -363,7 +417,7 @@ for end users.
   intended to be prescriptive at this time.
 ```
 # default raw response
-$ triton monitor <useruuid>.east1-cm.triton.zone
+$ triton monitor <vmuuid>.cm.triton.zone
 ...
 http_request_duration_seconds_bucket{le="0.05"} 24054
 http_request_duration_seconds_bucket{le="0.1"} 33444
@@ -374,7 +428,7 @@ http_request_duration_seconds_bucket{le="0.5"} 129389
 
 ```
 # Formatted response listing vm caps data
-$ triton monitor <useruuid>.east1-cm.triton.zone --caps
+$ triton monitor <vmuuid>.cm.triton.zone --caps
     VM_UUID                                 value    usage    maxusage
     fbb8e583-9c87-4724-ac35-7cefb46c0f7b    100      0        87
     ...
@@ -387,7 +441,7 @@ $ triton monitor <useruuid>.east1-cm.triton.zone --caps
 * prstat -mLc
 * df -h
 
-## Prometheus Compatible [Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
+## Prometheus [Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
 ### Example text based response
 ```
 # HELP api_http_request_count The total number of HTTP requests.
