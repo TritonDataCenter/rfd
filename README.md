@@ -5,7 +5,7 @@
 -->
 
 <!--
-    Copyright 2015 Joyent, Inc.
+    Copyright 2016 Joyent, Inc.
 -->
 
 # Requests for Discussion
@@ -139,6 +139,15 @@ For an existing install, what are the implications if anything is
 upgraded through the normal update mechanisms, e.g. platform reboot,
 sdcadm update, manta-adm update, etc. Are there any special steps that
 need to be taken or do certain updates need to happen together for this
+
+##### What is the security impact?
+
+What (untrusted) user input (including both data and code) will be used as part
+of the change?  Which components will interact with that input?  How will that
+input be validated and managed securely?  What new operations are exposed and
+which privileges will they require (both system privileges and SDC privileges)?
+How would an attacker use the proposed facilities to escalate their privileges?
+
 
 ## Mechanics of an RFD
 
