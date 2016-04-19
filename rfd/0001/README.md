@@ -1,6 +1,6 @@
 ---
 authors: Alex Wilson <alex.wilson@joyent.com>
-state: draft
+state: publish
 ---
 
 # RFD 1 Triton Container Naming Service
@@ -425,9 +425,9 @@ will be provided:
 
 The per-account opt-in flag will be stored as a free field on the account's UFDS
 record, and settable by the user themselves through the CloudAPI UpdateAccount
-endpoint. It will be named `tcns_enabled`. A toggle for the option will also
-appear in the SDC user portal. Once set in one DC, the flag will be sync'd by
-ufds-replicator to other related DCs.
+endpoint. It will be named `triton_cns_enabled`. A toggle for the option will
+also appear in the SDC user portal. Once set in one DC, the flag will be
+sync'd by ufds-replicator to other related DCs.
 
 The per-container tag can be set and removed in the same way as the service
 membership tags, through CloudAPI or Docker Labels.
@@ -482,12 +482,12 @@ zone are only available to `127.0.0.1` (ie, the TCNS zone itself) for testing
 and debugging. No zone transfers will be served to other addresses.
 
 A commandline tool for editing the `dns_zones` payload and other settings will
-be provided in the global zone, by the name of `sdc-tcnsadm`, as editing
+be provided in the global zone, by the name of `cnsadm`, as editing
 embedded JSON payloads in SAPI metadata is not the most enjoyable operator
 experience. The tool will also validate its input by looking up the names of
 `slaves`, validating NAPI UUIDs, and verifying that there is only one catch-all
 zone configured. The existing SAPI support for `metadata_schema` will be used
-for basic validation of structure, but the `sdc-tcnsadm` tool will be able to
+for basic validation of structure, but the `cnsadm` tool will be able to
 perform additional validation.
 
 #### SAPI metadata schema
@@ -626,4 +626,36 @@ and addresses of the slave NS that should be listed in the SOA and allowed to
 perform zone transfers. This should be stored in the SAPI metadata for the
 service.
 
+## Implementation Notes
 
+As of early 2016, CNS is now available in the Joyent Public Cloud and in
+on-premise SDC installations. It has been implemented basically as outlined
+in this document, with some small changes.
+
+ * Flags were added that enable the use of `alias` and `login` in DNS names
+   for on-premise deployments which are not subject to the same legacy data
+   requirements as JPC.
+ * In the JPC, the use of `alias` in DNS names was enabled by default after
+   careful examination of existing data and some adjustments to the validation
+   code in VMAPI.
+ * The removal hysteresis function has not yet been implemented.
+ * The `triton.cns.services` tag has had its syntax enhanced to support
+   additional metadata, such as a port number for generating SRV records.
+   See [the relevant documentation](https://github.com/joyent/triton-cns/blob/master/docs/metadata.md) for details.
+ * Support for generating SRV records was added.
+ * Some support for custom PTR record generation was added, but has not been
+   fully documented and deployed as yet.
+ * CloudAPI now coordinates with CNS to add a `dns_names` field to the output
+   of the GetMachine endpoint. This means that commands like `triton inst get`
+   can now show the user all the CNS-generated names associated with a VM (both
+   its instance names and service names).
+ * The `node-named` library ended up needing quite extensive rework due to
+   many bugs and problems in its packet parsing code, rather than just the
+   proposed IXFR enhancement. A [local fork](https://github.com/arekinath/node-named) was necessary.
+ * The `sdc-tcnsadm` command became `cnsadm`, which has been quite well
+   received by operators, particularly for its status reporting commands.
+ * For various non-technical reasons, the terminology of `master` and `slave`
+   has been excised from the code and documentation and replaced by `primary`
+   and `secondary`.
+ * The `tcns_enabled` UFDS key was renamed to `triton_cns_enabled` as part of
+   the wider tendency to refer to the system as "CNS" rather than "TCNS".

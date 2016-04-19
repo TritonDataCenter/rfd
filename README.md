@@ -44,7 +44,7 @@ formal writing that it has come to represent.)
 
 | state | RFD |
 | ----- | --- |
-| draft | [RFD 1 Triton Container Naming Service](./rfd/0001/README.md) |
+| publish | [RFD 1 Triton Container Naming Service](./rfd/0001/README.md) |
 | publish | [RFD 2 Docker Logging in SDC](./rfd/0002/README.md) |
 | draft | [RFD 3 SDC Compute Nodes Reboot](./rfd/0003/README.md) |
 | draft | [RFD 4 Docker Build Implementation For Triton](./rfd/0004/README.md) |
