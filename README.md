@@ -71,6 +71,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
 | predraft | [RFD 28 Improving syncing between Compute Nodes and NAPI](./rfd/0028/README.md) |
 | draft | [RFD 29 Nothing in SDC should rely on ur outside bootstrapping and emergencies](./rfd/0029/README.md) |
+| predraft | [RFD 30 Handling "lastexited" for zones when CN is rebooted or crashes](./rfd/0030/README.md) |
 
 
 ## Contents of an RFD
