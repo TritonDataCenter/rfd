@@ -1,5 +1,5 @@
 ---
-authors: Angela Fong <angela.fong@joyent.com>, Casey Bisson <casey.bisson@joyent.com>, Jerry Jelinek <jerry@joyent.com>, Josh Wilsdon <jwilsdon@joyent.com>, Julien Gilli <julien.gilli@joyent.com>, Trent Mick <trent.mick@joyent.com>
+authors: Angela Fong <angela.fong@joyent.com>, Casey Bisson <casey.bisson@joyent.com>, Jerry Jelinek <jerry@joyent.com>, Josh Wilsdon <jwilsdon@joyent.com>, Julien Gilli <julien.gilli@joyent.com>, Trent Mick <trent.mick@joyent.com>, Marsell Kukuljevic <marsell@joyent.com>
 state: draft
 ---
 
@@ -424,7 +424,44 @@ storage zones and any future growth they might incur. It is likely we'll have
 to experiment with various approaches to provisioning in order to come up with
 an acceptable solution. The provisioning design is TBD.
 
+A challenge facing the placement of NFS server zones is whether to place them
+greedily (like DAPI currently does), or to spread them out. Greedy placement
+fills up servers faster, leaving more servers free for larger allocations; this
+improves density in the datacenter. However, greedy placement also directly
+conflicts with the ability to resize NFS server zones; resizing a storage volume
+up is a relativey common operation, but is a dodgy operation on a server which
+has already used up its reserved RAM and disk. Giving NFS server zones a fixed
+upper limit (i.e. 1TiB) helps mitigate this problem.
+
 #### Mixing compute containers and volume containers
+
+Mixing compute and volume containers has some advantages: since the server fleet
+does not need to be split, there is more potential to spread volumes across the
+entire datacenter; the failure of individual servers is less likely to have a
+wide-spread effect. There are also disadvantages: dedicated volume servers
+likely need platform updates less often, thus having the potential for better
+uptime.
+
+The main challenge with mixing compute and volume containers from DAPI's
+perspective is that volume containers are disk-heavy, while packages for compute
+containers have (and assume) a more balanced mix between memory, disk, and CPU.
+E.g. if a package gets 1/4 of a server's RAM, it typically also gets roughly 1/4
+of the disk. The disk-heavy volume containers upset this balance, with at least
+three (non-exclusive) solutions:
+
+* We accept that mixing compute and volume containers on the same servers will
+  leave more memory not reserved to containers. This would leave more for the
+  ZFS ARC, but how much is too much?
+
+* We allow the overprovisioning of disk. A lot of disk in typical cloud
+  deployments remain unused, thus this would increase utilization, but
+  sometimes those promises are all called in on the same server. Programs often
+  degrade more poorly under low-disk conditions than low-ram, which can still
+  page out.
+
+* We add a tier of packages that are RAM-heavy. These could be more easily
+  slotted in on servers which have one or more volumes. It's uncertain how much
+  the demand for RAM-heavy packages can compensate for volume containers.
 
 #### Expressing locality with affinity filters
 
