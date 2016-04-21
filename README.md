@@ -42,36 +42,36 @@ formal writing that it has come to represent.)
 
 ## RFDs
 
-| state | RFD |
-| ----- | --- |
-| publish | [RFD 1 Triton Container Naming Service](./rfd/0001/README.md) |
-| publish | [RFD 2 Docker Logging in SDC](./rfd/0002/README.md) |
-| draft | [RFD 3 SDC Compute Nodes Reboot](./rfd/0003/README.md) |
-| draft | [RFD 4 Docker Build Implementation For Triton](./rfd/0004/README.md) |
-| publish | [RFD 5 Triton Change Feed Support](./rfd/0005/README.md) |
-| draft | [RFD 6 Improving SDC and Manta RAS Infrastructure](./rfd/0006/README.md) |
-| draft | [RFD 7 Datalink LLDP and State Tracking](./rfd/0007/README.md) |
-| publish | [RFD 9 sdcadm fabrics management](./rfd/0009/README.md) |
-| publish | [RFD 10 Sending GZ Docker Logs to Manta](./rfd/0010/README.md) |
-| draft | [RFD 11 IPv6 and multiple IP addresses support in SDC](./rfd/0011/README.md) |
-| draft | [RFD 12 Bedtime for node-smartdc](./rfd/0012/README.md) |
-| draft | [RFD 13 RBAC v2 for Improved Organization and Docker RBAC Support](./rfd/0013/README.md) |
-| draft | [RFD 14 Signed ZFS Send](./rfd/0014/README.md) |
-| draft | [RFD 15 Reduce/Eliminate runtime LX image customization](./rfd/0015/README.md) |
+| state    | RFD |
+| -------- | ------------------------------------------------------------- |
+| publish  | [RFD 1 Triton Container Naming Service](./rfd/0001/README.md) |
+| publish  | [RFD 2 Docker Logging in SDC](./rfd/0002/README.md) |
+| draft    | [RFD 3 SDC Compute Nodes Reboot](./rfd/0003/README.md) |
+| draft    | [RFD 4 Docker Build Implementation For Triton](./rfd/0004/README.md) |
+| publish  | [RFD 5 Triton Change Feed Support](./rfd/0005/README.md) |
+| draft    | [RFD 6 Improving SDC and Manta RAS Infrastructure](./rfd/0006/README.md) |
+| draft    | [RFD 7 Datalink LLDP and State Tracking](./rfd/0007/README.md) |
+| publish  | [RFD 9 sdcadm fabrics management](./rfd/0009/README.md) |
+| publish  | [RFD 10 Sending GZ Docker Logs to Manta](./rfd/0010/README.md) |
+| draft    | [RFD 11 IPv6 and multiple IP addresses support in SDC](./rfd/0011/README.md) |
+| draft    | [RFD 12 Bedtime for node-smartdc](./rfd/0012/README.md) |
+| draft    | [RFD 13 RBAC v2 for Improved Organization and Docker RBAC Support](./rfd/0013/README.md) |
+| draft    | [RFD 14 Signed ZFS Send](./rfd/0014/README.md) |
+| draft    | [RFD 15 Reduce/Eliminate runtime LX image customization](./rfd/0015/README.md) |
 | predraft | [RFD 16 Manta Metering](./rfd/0016/README.md) |
 | predraft | [RFD 17 Cloud Analytics v2](./rfd/0017/README.md) |
 | predraft | [RFD 19 Versioning For Workflow Modules](./rfd/0019/README.md) |
 | predraft | [RFD 18 Support for using labels to select networks and packages](./rfd/0018/README.md) |
-| draft | [RFD 20 Manta Slop-Aware Zone Scheduling](./rfd/0020/README.md) |
-| draft | [RFD 21 Metadata Scrubber For SDC](./rfd/0021/README.md) |
-| draft | [RFD 22 Improved user experience after a request has failed](./rfd/0022/README.md) |
-| draft | [RFD 23 A plan for Manta docs](./rfd/0023/README.md) |
+| draft    | [RFD 20 Manta Slop-Aware Zone Scheduling](./rfd/0020/README.md) |
+| draft    | [RFD 21 Metadata Scrubber For SDC](./rfd/0021/README.md) |
+| draft    | [RFD 22 Improved user experience after a request has failed](./rfd/0022/README.md) |
+| draft    | [RFD 23 A plan for Manta docs](./rfd/0023/README.md) |
 | predraft | [RFD 24 Designation API improvements to facilitate platform update](./rfd/0024/README.md) |
-| draft | [RFD 25 Pluralizing CloudAPI CreateMachine et al](./rfd/0025/README.md) |
-| draft | [RFD 26 Network Shared Storage for SDC](./rfd/0026/README.md) |
-| draft | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
+| draft    | [RFD 25 Pluralizing CloudAPI CreateMachine et al](./rfd/0025/README.md) |
+| draft    | [RFD 26 Network Shared Storage for SDC](./rfd/0026/README.md) |
+| draft    | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
 | predraft | [RFD 28 Improving syncing between Compute Nodes and NAPI](./rfd/0028/README.md) |
-| draft | [RFD 29 Nothing in SDC should rely on ur outside bootstrapping and emergencies](./rfd/0029/README.md) |
+| draft    | [RFD 29 Nothing in SDC should rely on ur outside bootstrapping and emergencies](./rfd/0029/README.md) |
 | predraft | [RFD 30 Handling "lastexited" for zones when CN is rebooted or crashes](./rfd/0030/README.md) |
 
 
