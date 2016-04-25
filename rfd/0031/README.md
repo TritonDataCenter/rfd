@@ -197,7 +197,7 @@ will be amended to add another entry point to the `libscsi_engine_ops_t`
 structure. It will add a new member that looks like:
 
 ```
-int (*lseo_max_transfer)(libscsi_hdl_t *, size_t *);
+int (*lseo_max_transfer)(libscsi_hdl_t *, void *, size_t *);
 ```
 
 As part of this the value of `LIBSCSI_VERSION` will be incremented to
