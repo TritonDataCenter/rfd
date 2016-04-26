@@ -390,6 +390,7 @@ each container as a part of the payload.
     * Metric Agent Proxy validates the end users key and cert file
     * Metric Agent Proxy determines which compute node the container is on and
       makes an HTTP call to its Metric Agent
+
       ```
         GET fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
         ---
