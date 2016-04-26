@@ -306,8 +306,12 @@ The minimum viable set of translations are Syslog, statsd, and InfluxDB.
 When existing accounts are backfilled and when new accounts are created, CNS
 will detect the change and create a the following DNS records
 
-`<vm_uuid>.cm.triton.zone A <ip of metric agent proxy>`
-`_cm._tcp.<useruuid>.triton.zone <ttl> IN SRV <priority> <weight> 3000 <vm_uuid>.cm.triton.zone`
+```
+    <vm_uuid>.cm.triton.zone A <ip of metric agent proxy>
+```
+```
+    _cm._tcp.<useruuid>.triton.zone <ttl> IN SRV <priority> <weight> 3000 <vm_uuid>.cm.triton.zone
+```
 
 for each of the accounts containers. Going forward all new containers will get a
 Container Monitor A record and an SRV record automatically. This allows
@@ -327,9 +331,14 @@ each container as a part of the payload.
 * User creates a new container
 * VMAPI pushes a changefeed event to CNS
 * CNS creates an A record of the form
-  `<vm_uuid>.cm.triton.zone A <ip of metric agent proxy>` for each Metric Agent
+  ```
+    <vm_uuid>.cm.triton.zone A <ip of metric agent proxy>
+  ```
+  for each Metric Agent
   Proxy IP and a new SRV record of the form
-  `_cm._tcp.<useruuid>.triton.zone <ttl> IN SRV <priority> <weight> 3000 <vm_uuid>.cm.triton.zone`
+  ```
+    _cm._tcp.<useruuid>.triton.zone <ttl> IN SRV <priority> <weight> 3000 <vm_uuid>.cm.triton.zone
+  ```
 
 ### End User Configuration
 * Option 1 - Install and run a Prometheus server
@@ -361,16 +370,16 @@ each container as a part of the payload.
           ```
     * User creates a Dockerfile using their specific prometheus.yml
       ```
-      FROM prom/prometheus
-      ADD prometheus.yml /etc/prometheus/
+        FROM prom/prometheus
+        ADD prometheus.yml /etc/prometheus/
       ```
     * Build a new docker image
       ```
-      docker build -t my-prometheus .
+        docker build -t my-prometheus .
       ```
     * Run the Prometheus server
       ```
-      docker run -p 9090:9090 my-prometheus
+        docker run -p 9090:9090 my-prometheus
       ```
     * Prometheus server polls `_cm._tcp.<useruuid>.triton.zone` to discover
       end points to collect from
@@ -382,30 +391,30 @@ each container as a part of the payload.
     * Metric Agent Proxy determines which compute node the container is on and
       makes an HTTP call to its Metric Agent
       ```
-      GET fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
-      ---
-      # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage z1hlp1
-      # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage gauge
-      cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage 0
-      # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below z1hlp2
-      # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below gauge
-      cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below 16208
-      # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above z1hlp3
-      # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above gauge
-      cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above 0
-      # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss z1hl4
-      # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss gauge
-      memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss 491872256
-      # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap z1hl5
-      # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap gauge
-      memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap 577830912
-      # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin z1hl6
-      # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin gauge
-      memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin 11019
-      # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail z1hl6
-      # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail gauge
-      memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail 0
-      ...
+        GET fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
+        ---
+        # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage z1hlp1
+        # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage gauge
+        cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage 0
+        # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below z1hlp2
+        # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below gauge
+        cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below 16208
+        # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above z1hlp3
+        # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above gauge
+        cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above 0
+        # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss z1hl4
+        # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss gauge
+        memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss 491872256
+        # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap z1hl5
+        # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap gauge
+        memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap 577830912
+        # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin z1hl6
+        # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin gauge
+        memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin 11019
+        # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail z1hl6
+        # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail gauge
+        memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail 0
+        ...
       ```
     * Metric Agent Proxy proxies the Metric Agent response back to the calling
       Prometheus server.
@@ -469,22 +478,23 @@ for end users.
 
 * Examples provided as a loose example of what could be done. This is not
   intended to be prescriptive at this time.
+
 ```
-# default raw response
-$ triton monitor <instance uuid or name>
-...
-cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage 0
-cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below 16208
-cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_value 100
-...
+    # default raw response
+    $ triton monitor <instance uuid or name>
+    ...
+    cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage 0
+    cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below 16208
+    cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_value 100
+    ...
 ```
 
 ```
-# Formatted response listing vm caps data
-$ triton monitor <instance uuid or name> --caps
-    VM_UUID                                 value    usage    maxusage
-    fbb8e583-9c87-4724-ac35-7cefb46c0f7b    100      0        87
-    ...
+    # Formatted response listing vm caps data
+    $ triton monitor <instance uuid or name> --caps
+        VM_UUID                                 value    usage    maxusage
+        fbb8e583-9c87-4724-ac35-7cefb46c0f7b    100      0        87
+        ...
 ```
 ## Default Metric Collection
 * kstat caps::cpucaps_zone*
