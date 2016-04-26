@@ -175,10 +175,10 @@ pre-existing customer solutions should be created so that customers do not have
 to feel locked into the Prometheus model or be forced to switch.
 
 Prometheus facilitates each of the goals listed above, has a great amount of
-open-source traction, and provides an end-to-end solution. Users in a green can
-easily spin up a new Prometheus server in minutes and start polling new metrics.
-Thanks to the optional metric forwarding, users with existing time-series stores
-can also get up to speed quickly.
+open-source traction, and provides an end-to-end solution. Users can easily spin
+up a new Prometheus server in minutes and start polling new metrics. Thanks to
+the optional metric forwarding, users with existing time-series stores can also
+get up to speed quickly.
 
 ## Components
 ### Metric Agent
@@ -193,7 +193,7 @@ metrics with the data available at the time of request.
 
 ###### Option 2 (Selective caching)
 The client caches expensive calls and allows for a configurable expiration. In
-this scenario specific metrics would always be retrievable, but would remain
+this scenario metrics would always be retrievable, but some metrics would remain
 the same for the duration of the cached value. The expensive calls would only be
 made if a cached value does not exist or the currently cached value has expired.
 
@@ -203,6 +203,11 @@ expiration. Metric Agent Proxy requests do not result in metric collection,
 instead metrics are automatically collected by the client on a timer.
 
 ------
+
+Regardless which of the above options are chosen, the Metric Agent should support
+an operator configurable global minimum polling frequency. This will allow an
+operator to dial back metric collection on an overloaded compute node and
+potentially avoid stopping the Metric Agent.
 
 Static pre-defined metrics will be collected using modules like
 [node-kstat](https://github.com/bcantrill/node-kstat). Additionally, it seems
@@ -304,7 +309,7 @@ The minimum viable set of translations are Syslog, statsd, and InfluxDB.
 ### Discovery
 
 When existing accounts are backfilled and when new accounts are created, CNS
-will detect the change and create a the following DNS records
+will detect the change and create the following DNS records
 
 ```
     <vm_uuid>.cm.triton.zone A <ip of metric agent proxy>
@@ -334,8 +339,7 @@ each container as a part of the payload.
   ```
     <vm_uuid>.cm.triton.zone A <ip of metric agent proxy>
   ```
-  for each Metric Agent
-  Proxy IP and a new SRV record of the form
+  for each Metric Agent Proxy IP and a new SRV record of the form
   ```
     _cm._tcp.<useruuid>.triton.zone <ttl> IN SRV <priority> <weight> 3000 <vm_uuid>.cm.triton.zone
   ```
@@ -445,6 +449,11 @@ deployed with sdcadm to multiple nodes in a given data center. The recommended
 deployment is three Metric Agent Proxies, one on the headnode and the other two
 on different compute nodes which are ideally in different racks.
 
+When multiple Metric Agent Proxies are in use, CNS and round robin DNS
+(e.g. multiple A records per <container uuid>.cm.triton.zone) will be leveraged.
+To ensure minimum disruption in the case of a Metric Agent Proxy failure, a low
+TTL should be used.
+
 ### Metric Forwarder
 Because the metric forwarder is an outbound stream/push mechanism, multiple
 translators cannot push data to the same customer endpoint without duplication.
@@ -461,6 +470,7 @@ node it is on.
 
 ### Metric Proxy
 Multiple Metric Proxy zones can be added as load requires and without penalty.
+When new Metric Proxies are added, CNS will detect this and add new A records.
 
 ### Metric Forwarder
 For version one of Container Monitor, only a single instance of the forwarder
@@ -482,7 +492,7 @@ for end users.
 
 ```
     # default raw response
-    $ triton monitor <instance uuid or name>
+    $ triton monitor <container uuid or name>
     ...
     cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage 0
     cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below 16208
@@ -492,7 +502,7 @@ for end users.
 
 ```
     # Formatted response listing vm caps data
-    $ triton monitor <instance uuid or name> --caps
+    $ triton monitor <container uuid or name> --caps
         VM_UUID                                 value    usage    maxusage
         fbb8e583-9c87-4724-ac35-7cefb46c0f7b    100      0        87
         ...
@@ -528,5 +538,9 @@ for end users.
   * SCL
   * SIG
   * PROCESS/LWPI
+* ulimit -a
+* pfiles PID
 
-## Prometheus [Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
+## [Prometheus Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
+
+## [Example agent code](https://github.com/joyent/sdc-cn-agent/blob/rfd27/lib/monitor-agent.js)
