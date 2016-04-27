@@ -292,20 +292,6 @@ global maximum is hit, users will be throttled.
 If configured, users who poll beyond their allotment or global maximum will
 receive a [HTTP 429](https://tools.ietf.org/html/rfc6585#page-3) response.
 
-### Metric Forwarder (optional)
-For customers that need to have data pushed to them, and can't use an existing
-Prometheus plugin, a Metric Forwarder zone can be deployed. This zone will poll
-a configurable set of Metric Proxy endpoints for data, translate it to the
-desired metric format (e.g. [InfluxDB](https://influxdata.com/), Syslog, etc.),
-and push the translated data to the customers existing system.
-
-This is provisioned by the customer, but some configuration will be necessary to
-dictate which type of translation should be done. It's likely a configuration
-file will suffice for version 1 along side a pre-defined SmartOS or LX package
-with the necessary pieces pre-installed.
-
-The minimum viable set of translations are Syslog, statsd, and InfluxDB.
-
 ### Discovery
 
 When existing accounts are backfilled and when new accounts are created, CNS
@@ -345,7 +331,7 @@ each container as a part of the payload.
   ```
 
 ### End User Configuration
-* Option 1 - Install and run a Prometheus server
+* Install and run a Prometheus server
     * Create prometheus.yml [configuration](https://prometheus.io/docs/operating/configuration/)
         * TLS is configuration is required, use the same cert and key that you
           configured for use with CloudAPI, sdc-docker, etc.
@@ -424,11 +410,6 @@ each container as a part of the payload.
     * Metric Agent Proxy proxies the Metric Agent response back to the calling
       Prometheus server.
     * Container Monitor data is now available in the users Prometheus endpoint
-* Option 2 - Install and run a Metric Forwarder
-    * For end users with pre-existing metric storage solutions, a Metric
-      Forwarder zone can be deployed. Metric Forwarder zones act like a
-      Prometheus server, accept a subset of the Prometheus server configuration,
-      and push data to services like Graylog, Splunk, InfluxDB, etc.
 
 ### Container Destroyed
 * User destroys a container
@@ -454,12 +435,6 @@ When multiple Metric Agent Proxies are in use, CNS and round robin DNS
 To ensure minimum disruption in the case of a Metric Agent Proxy failure, a low
 TTL should be used.
 
-### Metric Forwarder
-Because the metric forwarder is an outbound stream/push mechanism, multiple
-translators cannot push data to the same customer endpoint without duplication.
-Because of this limitation, the translator must only operate in an
-active/passive configuration.
-
 ## Scaling
 ### Metric Agent
 Because the Metric Agent is a single agent running on a compute or head node,
@@ -471,11 +446,6 @@ node it is on.
 ### Metric Proxy
 Multiple Metric Proxy zones can be added as load requires and without penalty.
 When new Metric Proxies are added, CNS will detect this and add new A records.
-
-### Metric Forwarder
-For version one of Container Monitor, only a single instance of the forwarder
-will be supported. However, a sharded approach should be implemented in a later
-release.
 
 ## Dynamic metrics (e.g. on-demand DTrace integration)
 Dynamic metrics are already somewhat supported by CAv1, and are out of scope for
@@ -544,3 +514,15 @@ for end users.
 ## [Prometheus Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
 
 ## [Example agent code](https://github.com/joyent/sdc-cn-agent/blob/rfd27/lib/monitor-agent.js)
+
+## Metric Forwarder
+For customers that need to have data pushed to them, and can't use an existing
+Prometheus plugin, a Metric Forwarder zone can be deployed. This zone will poll
+a configurable set of Metric Proxy endpoints for data (just like a Prometheus
+server), translate it to the desired metric format
+(e.g. [InfluxDB](https://influxdata.com/), Syslog, etc.), and push the
+translated data to the customers existing system.
+
+This is provisioned by the customer and not in the scope of this RFD. That said,
+in the near future Joyent will create a few blueprints to help customers get
+started. The blueprints may be for Syslog, statsd, InfluxDB, etc.
