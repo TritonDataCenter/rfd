@@ -384,27 +384,27 @@ each container as a part of the payload.
       ```
         GET fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
         ---
-        # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage z1hlp1
-        # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage gauge
-        cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage 0
-        # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below z1hlp2
-        # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below gauge
-        cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below 16208
-        # HELP cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above z1hlp3
-        # TYPE cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above gauge
-        cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_above 0
-        # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss z1hl4
-        # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss gauge
-        memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_rss 491872256
-        # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap z1hl5
-        # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap gauge
-        memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_swap 577830912
-        # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin z1hl6
-        # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin gauge
-        memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_anonpgin 11019
-        # HELP memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail z1hl6
-        # TYPE memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail gauge
-        memcaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_allocfail 0
+        # HELP cpucaps_usage_percent current CPU utilization
+        # TYPE cpucaps_usage_percent gauge
+        cpucaps_usage 0
+        # HELP cpucaps_below_seconds time spent below CPU cap in seconds
+        # TYPE cpucaps_below_seconds gauge
+        cpucaps_below 16208
+        # HELP cpucaps_above_seconds time spent above CPU cap in seconds
+        # TYPE cpucaps_above_seconds gauge
+        cpucaps_above 0
+        # HELP memcaps_rss_bytes memory usage in bytes
+        # TYPE memcaps_rss_bytes gauge
+        memcaps_rss 491872256
+        # HELP memcaps_swap_bytes swap usage in bytes
+        # TYPE memcaps_swap_bytes gauge
+        memcaps_swap 577830912
+        # HELP memcaps_anonpgin anonymous pages from swap device
+        # TYPE memcaps_anonpgin gauge
+        memcaps_anonpgin 11019
+        # HELP memcaps_anon_alloc_fail memory allocation failures
+        # TYPE memcaps_anon_alloc_fail gauge
+        memcaps_allocfail 0
         ...
       ```
     * Metric Agent Proxy proxies the Metric Agent response back to the calling
@@ -464,9 +464,9 @@ for end users.
     # default raw response
     $ triton monitor <container uuid or name>
     ...
-    cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_usage 0
-    cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_below 16208
-    cpucaps_fbb8e583-9c87-4724-ac35-7cefb46c0f7b_value 100
+    cpucaps_usage 0
+    cpucaps_below 16208
+    cpucaps_value 100
     ...
 ```
 
