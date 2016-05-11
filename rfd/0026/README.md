@@ -639,8 +639,20 @@ parameter that corresponds to the user making the request.
 
 | Param               | Type         | Description                              |
 | ------------------- | ------------ | ---------------------------------------- |
-| name            | String       | Type of virtual CPU exposed to the guest |
-| filter          | String       | Drivel model for the VM disks            |
+| name            | String       | Allows to filter volumes by name. |
+| filter          | String       | Custom filter to filter volumes on arbitrary indexed properties |
+
+`name` is a pattern where the character `*` has a special meaning of matching
+any character any number of time. For instance, `*foo*` will match `foo`,
+`foobar`, `barfoo` and `barfoobar`.
+
+`filter` is a JSON string that can be transformed into an LDAP filter to search
+on the following indexed properties:
+
+* `name`
+* `owner_uuid`.
+* `type`.
+* `state`.
 
 ###### Output
 
@@ -649,15 +661,25 @@ A list of volume objects of the following form:
 ```
 [
   {
+    "uuid": "e435d72a-2498-8d49-a042-87b222a8b63f",
     "name": "my-volume",
     "owner_uuid": "ae35672a-9498-ed41-b017-82b221a8c63f",
     "type": "tritonnfs",
-    "nfs_path": "host:port/path"
+    "nfs_path": "host:port/path",
+    "state": "ready",
+    "networks": [
+      "1537d72a-949a-2d89-7049-17b2f2a8b634"
+    ]
   },
   {
+    "uuid": "a495d72a-2498-8d49-a042-87b222a8b63c",
     "name": "my-other-volume",
     "owner_uuid": "d1c673f2-fe9c-4062-bf44-e13959d26407",
-    "type": "someothervolumetype"
+    "type": "someothervolumetype",
+    "state": "ready",
+    "networks": [
+      "4537d92a-149c-6d83-104a-97b2f2a8b635"
+    ]
   }
   ...
 ]
@@ -895,6 +917,7 @@ of properties:
 
 ```
 {
+  "uuid": "some-uuid",
   "owner_uuid": "some-uuid",
   "name": "foo",
   "type": "tritonnfs",
@@ -904,6 +927,7 @@ of properties:
 }
 ```
 
+* `uuid`: the UUID of the volume itself.
 * `owner_uuid`: the UUID of the volume's owner. In the example of a NFS shared
   volume, the owner is the user who created the volume using the `docker volume
   create` command.
