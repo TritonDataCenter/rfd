@@ -52,8 +52,10 @@ state: draft
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
         - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid)
+        - [UpdateVolume PUT /volumes/volume-uuid](#updatevolume-put-volumesvolume-uuid)
         - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid)
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
+      - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
       - [Filtering shared volumes zones from list endpoint](#filtering-shared-volumes-zones-from-list-endpoint)
       - [New `internal_role` property on VM objects](#new-internal_role-property-on-vm-objects)
@@ -78,17 +80,19 @@ state: draft
         - [Type-specific properties](#type-specific-properties)
         - [Deletion and usage semantics](#deletion-and-usage-semantics)
       - [Volumes state machine](#volumes-state-machine)
+      - [Reaping stalled volumes](#reaping-stalled-volumes)
   - [Snapshots](#snapshots)
     - [Use case](#use-case)
     - [Implementation](#implementation)
       - [Limits](#limits)
   - [Support for operating shared volumes](#support-for-operating-shared-volumes)
-    - [`sdcadm` changes](#sdcadm-changes)
+    - [New `sdc-voladm` command](#new-sdc-voladm-command)
       - [Listing shared volume zones](#listing-shared-volume-zones)
       - [Restarting shared volume zones](#restarting-shared-volume-zones)
       - [Updating shared volume zones](#updating-shared-volume-zones)
       - [Deleting shared volume zones](#deleting-shared-volume-zones)
   - [Open questions](#open-questions)
+    - [Resizing volumes](#resizing-volumes)
     - [Ownership of NFS shared volumes' storage VMs](#ownership-of-nfs-shared-volumes-storage-vms)
       - [Potential solutions](#potential-solutions)
         - [Owner is admin, internal metadata for representing actual ownership](#owner-is-admin-internal-metadata-for-representing-actual-ownership)
@@ -101,6 +105,8 @@ state: draft
     - [Volume name limitations](#volume-name-limitations)
     - [NFS server zone's packages](#nfs-server-zones-packages)
       - [storage capacity](#storage-capacity)
+        - [Granularity of available volume sizes](#granularity-of-available-volume-sizes)
+        - [How to expose volume sizes to users?](#how-to-expose-volume-sizes-to-users)
       - [CPU and memory requirements](#cpu-and-memory-requirements)
     - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
     - [Networking](#networking)
@@ -719,6 +725,29 @@ determine when a volume being created is ready to be used.
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
+##### UpdateVolume PUT /volumes/volume-uuid
+
+The UpdateVolume endpoint can be used to update the following properties of a
+shared volume:
+
+* `name`, to rename a volume.
+* `networks`, to change the networks to which a shared volume is connected,
+  which changes the set of VMs that can use it.
+
+Adding or removing networks to a shared volume may require to reboot its
+underlying storage VM. See the section entitled [Impact of fabric networks
+changes](#impact-of-fabric-networks-changes) for more details.
+
+###### Input
+
+| Param               | Type         | Description                     |
+| ------------------- | ------------ | --------------------------------|
+| uuid            | String       | The uuid of the volume object       |
+
+###### Output
+
+A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+
 ##### DeleteVolume DELETE /volumes/volume-uuid
 
 ###### Input
@@ -748,6 +777,12 @@ Zones acting as shared volumes hosts need to [_not_ be included in
 `ListMachines`' implementation will add a filter to filter out VMs with the
 value `tritonnfs_server` for their `internal_role` property.
 
+#### Failing for other machine-related endpoints used on shared volumes zones
+
+All other ["Machines" related CloudAPI
+endpoints](https://apidocs.joyent.com/cloudapi/#machines) will need to fail with
+an appropriate error message when used on shared volumes zones.
+
 ### Changes to VMAPI
 
 #### Filtering shared volumes zones from list endpoint
@@ -767,9 +802,10 @@ NFS shared volumes zones](https://github.com/joyent/sdc-volapi
 indexable without requiring any change to Moray.
 
 This new `internal_role` property will be empty for any VM object other than
-those representing NFS server zones, and changes will be made to CloudAPI's
+those representing NFS server zones. Changes will be made to CloudAPI's
 `ListMachines` endpoint to filter out VMs with a value of `tritonnfs_server`
-from its output.
+from its output and to all other machines-related CloudAPI endpoints to fail
+with a clear error message for such VMs.
 
 #### Naming of shared volumes zones
 
@@ -1036,12 +1072,27 @@ all references helps when debugging issues related to reference counting.
 
 The first implementation of the APIs related to shared volumes will not be
 notified of state changes for VMs that reference shared volume objects, instead
-the list of references will be updated when requests that need up to date data
-are handled.
+the list of references will be updated (e.g by doing an indexed search on VMAPI
+to find active VMs in the current set of references) when requests that need up
+to date data are handled (e.g when a `DeleteVolume` request is handled).
 
 #### Volumes state machine
 
 ![Volumes state FSM](images/volumes-state-fsm.png)
+
+#### Reaping stalled volumes
+
+Volumes in state `failed` and `deleted` do not need to be present in persistent
+storage forever. Not deleting these entries has an impact on performance. For
+instance, searches take longer and responses are larger, which tends to increase
+response latency. Maintenance is also impacted. For instance, migrations take
+longer as there are more objects to handle.
+
+A separate process running in the VOLAPI service's zone will delete these
+entries from persistent storage after some time. This period will need to be
+chosen so that staled volume objects are still kept in persistent storage for
+long enough and most debugging tasks that require inspecting them can still take
+place. For instance, IMGAPI reaps stalled images after a week.
 
 ## Snapshots
 
@@ -1087,35 +1138,35 @@ Shared volumes are hosted on zones that need to be operated in a way similar
 than other user-owned containers. Operators need to be able to migrate, stop,
 restart, upgrade them, etc.
 
-### `sdcadm` changes
+### New `sdc-voladm` command
 
-SDC operators need to be able to perform new operations using new `sdcadm`
-commands and options.
+SDC operators need to be able to perform new operations using a new `sdc-voladm`
+command
 
 #### Listing shared volume zones
 
 * Listing all shared volume zones:
 ```
-sdcadm shared-volumes list
+sdc-voladm list-volume-zones
 ```
 
 * Listing all shared volume zones for a given user:
 ```
-sdcadm shared-volumes list owner-uuid
+sdc-voladm list-volume-zones owner-uuid
 ```
 
 #### Restarting shared volume zones
 
-Shared volumes owner by a given user, or with a specific uuid, can be
+Shared volumes zones owned by a given user, or with a specific uuid, can be
 restarted. Specifying both an owner and a shared volume uuid checks that the
 shared volume is actually owned by the owner.
 
 ```
-sdcadm shared-volumes restart [--owner owner-uuid] shared-volume-uuid]
+sdc-voladm restart-volume-zone [--owner owner-uuid] shared-volume-uuid]
 ```
 
 If Docker containers use the shared volumes that need to be restarted,
-`sdcadm` doesn't restart the shared volume zones and instead outputs the
+`sdc-voladm` doesn't restart the shared volume zones and instead outputs the
 containers' uuids so that the operator knows which containers are still using
 them.
 
@@ -1127,7 +1178,7 @@ an owner and a shared volume uuid checks that the shared volume is actually
 owned by the owner.
 
 ```
-sdcadm shared-volumes update [--owner owner-uuid] --image [shared-volumes@uuid] shared-volume-uuid
+sdc-voladm update-volume-zone [--owner owner-uuid] --image [shared-volumes@uuid] shared-volume-uuid
 ```
 
 If Docker containers use the shared volumes that need to be updated, `sdcadm`
@@ -1141,7 +1192,7 @@ deleted by an operator. Specifiying both an owner and a volume uuid checks
 that the shared volume is actually owned by the owner:
 
 ```
-sdcadm shared-volumes rm [--owner owner-uuid] shared-volume-uuid
+sdc-voladm delete-volume-zone [--owner owner-uuid] shared-volume-uuid
 ```
 
 If Docker containers use the shared volumes that need to be deleted, `sdcadm`
@@ -1149,6 +1200,14 @@ doesn't delete the shared volume zones and instead outputs the containers'
 uuids so that the operator knows which containers are still using them.
 
 ## Open questions
+
+### Resizing volumes
+
+VMs _can_ be resized, and thus NFS shared volumes could be resized too, as their
+storage is provided by a VM running a NFS server. However, the ability to resize
+NFS shared volumes would have an impact on allocation, among other things. I'm
+not familiar with the issues of VMs resizing, but I'd imagine they would apply
+similarly here.
 
 ### Ownership of NFS shared volumes' storage VMs
 
@@ -1180,6 +1239,12 @@ default behavior.
 Provided that the section above accurately represents the requirements for NFS
 shared volumes, there are several different potential solutions that solve this
 problem, each with their pros and cons.
+
+In the previous sections, this document [recommends the second
+solution](#filtering-shared-volumes-zones-from-the-listmachines-endpoint), but
+this is not yet set in stone. This section presents all the potential solutions
+that have been considered so far, and future discussions may lead to changes in
+this document to recommend a different solution.
 
 ##### Owner is admin, internal metadata for representing actual ownership
 
@@ -1296,11 +1361,55 @@ request.
 
 Thus, a few questions remain:
 
-* Is the current list of packages granular enough to cover most use cases?
+##### Granularity of available volume sizes
 
-* Do we want to expose those sizes to the user? For instance, a user creating a
-  NFS shared volume with a size of 101 GBs would, with the current packages
-  design, actually be billed for a 200 GBs package.
+Is the current list of available volume sizes granular enough to cover most use
+cases?
+
+##### How to expose volume sizes to users?
+
+Because the underlying volume storage is provided by VMs running an NFS server,
+provisioning of volumes' storage uses the standard VM provisioning workflow.
+That workflow uses packages to determine, among other things, the storage
+capacity that a storage VM can use. As a result, all available volume sizes must
+be represented by a finite number of existing packages, and are discrete values.
+
+Without exposing the available volume sizes, a user creating a NFS shared volume
+with a size of 101 GBs would, with the current packages design, actually be
+billed for a 200 GBs package. This doesn't help users making smart decisions
+about which size to choose for their volumes and potentially leads to a lot of
+wasted storage space.
+
+There are two different ways of exposing available volume sizes:
+
+1. by exposing packages used to provision storage VMs
+2. by providing a separate `ListVolumesSizes` API endpoint
+
+###### Exposing packages used to provision storage VMs
+
+Pros:
+  * allows the user to see the available sizes via `ListPackages` and anything
+    that builds on top of that (e.g `triton pkgs`).
+  * allows for different families of volume packages, e.g. with traits to land
+    on newer hardware, or to be on faster disks. Users could select from a
+    family if willing to pay for the difference.
+
+Cons:
+  * couples storage VMs and NFS shared volumes tightly.
+  * PAPI (and users of papi) would need some notion of role/type for packages to
+    differentiate "regular VMs" packages from "volume" packages. It seems that
+    this could apply for KVM vs not-for-KVM packages, so work here wouldn't be
+    unwelcome.
+
+###### Providing a separate `ListVolumesSizes` API endpoint.
+
+Pros:
+  * Keeps the one to one mapping between storage VMs and NFS shared volumes as
+    an implementation detail.
+
+Cons:
+  * Requires to document and communicate billing of different storage capacities
+    without using packages, which is not common and might be confusing.
 
 #### CPU and memory requirements
 
