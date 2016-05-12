@@ -73,7 +73,11 @@ state: draft
       - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
         - [Input](#input-3)
         - [Output](#output-3)
-      - [SnapshotVolume POST /volumes/volume-uuid](#snapshotvolume-post-volumesvolume-uuid)
+      - [Snapshots](#snapshots)
+        - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
+        - [RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacksnapshot](#rollbacktovolumesnapshot-post-volumesvolume-uuidrollbacksnapshot)
+        - [UpdateVolumeSnapshot PUT /snapshots/snapshot-uuid](#updatevolumesnapshot-put-snapshotssnapshot-uuid)
+        - [DeleteVolumeSnapshot DELETE /snapshots/snapshot-uuid](#deletevolumesnapshot-delete-snapshotssnapshot-uuid)
       - [Volume objects](#volume-objects)
         - [Common layout](#common-layout)
         - [Naming constraints](#naming-constraints)
@@ -81,7 +85,7 @@ state: draft
         - [Deletion and usage semantics](#deletion-and-usage-semantics)
       - [Volumes state machine](#volumes-state-machine)
       - [Reaping stalled volumes](#reaping-stalled-volumes)
-  - [Snapshots](#snapshots)
+  - [Snapshots](#snapshots-1)
     - [Use case](#use-case)
     - [Implementation](#implementation)
       - [Limits](#limits)
@@ -964,7 +968,111 @@ otherwise it is an object with the following properties:
 When deleting a volume asynchronously, polling the job using the `job_uuid` can
 be used to determine when the volume is deleted.
 
-#### SnapshotVolume POST /volumes/volume-uuid
+#### Snapshots
+
+A snapshot represents the state of a Volume at a given point in time. Volume
+snapshot objects are stored in a separate moray bucket named `volapi_snapshots`.
+
+A snpashot object has the following properties:
+
+* `uuid`: a unique identifier.
+* `name`: a human readable name.
+* `volume_uuid`: the UUID of the volume from which this snapshot was taken.
+* `create_timestamp`: a number that can be converted to the timestamp at which
+  the snapshot was taken.
+* `state`: a value of the following set: `creating`, `failed`, `created`,
+  `deleted`.
+
+##### CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| name          | String       | The desired name for the snapshot to create. The name must be unique per user. |
+| sync          | Boolean      | If `true`, the response is sent when the volume snapshot is created and ready to use or when an error occurs, otherwise the volume snapshot is created asynchronously and the response contains data to poll the state of the creation process. |
+
+###### Output
+
+If `sync` is `true`, the response is a snapshot object of the form:
+
+````
+{
+  "uuid": "snapshot-uuid",
+  "name": "snapshot-name",
+  "volume_uuid": "volume-uuid",
+  "create_timestamp": 1462802062480,
+  "state": "created"
+}
+````
+
+Otherwise, it is an object that allows for polling the state of the snapshot
+being created:
+
+```
+{
+  "job_uuid": "job-uuid",
+  "snapshot_uuid": "snapshot-uuid"
+}
+```
+
+##### RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacksnapshot
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| uuid          | String       | The uuid of the snapshot object that represents the state to which to rollback. |
+| name          | String       | The name of the snapshot object that represents the state to which to rollback. |
+
+###### Output
+
+No output other than the HTTP response's status code.
+
+##### UpdateVolumeSnapshot PUT /snapshots/snapshot-uuid
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| name          | String       | The new name of the snapshot object with uuid `snapshot-uuid`. |
+
+###### Output
+
+The updated snapshot object, with the new name.
+
+##### DeleteVolumeSnapshot DELETE /snapshots/snapshot-uuid
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| uuid          | String       | The uuid of the snapshot object to delete. |
+| sync          | Boolean      | If `true`, the response is sent when the volume snapshot is deleted or when an error occurs, otherwise the volume snapshot is deleted asynchronously and the response contains data to poll the state of the delete process. |
+
+###### Output
+
+If `sync` is `true`, the response is a snapshot object of the form:
+
+````
+{
+  "uuid": "snapshot-uuid",
+  "name": "snapshot-name",
+  "volume_uuid": "volume-uuid",
+  "create_timestamp": 1462802062480,
+  "state": "deleted"
+}
+````
+
+Otherwise, it is an object that allows for polling the state of the snapshot
+being deleted:
+
+```
+{
+  "job_uuid": "job-uuid",
+  "snapshot_uuid": "snapshot-uuid"
+}
+```
 
 #### Volume objects
 
@@ -979,9 +1087,9 @@ of properties:
   "owner_uuid": "some-uuid",
   "name": "foo",
   "type": "tritonnfs",
-  "create_timestamp": "",
-  "
-  "status": "created"
+  "create_timestamp": 1462802062480,
+  "status": "created",
+  "snapshots": "[\"a-snapshot-uuid\", \"another-snapshot-uuid\"]"
 }
 ```
 
@@ -1003,6 +1111,7 @@ of properties:
 * `references`: a list of VMs that are considered to be using that volume. More
   details about the reference counting mechanism can be found in [the `reference
   counting` section](#reference-counting).
+* `snapshots`: a list of snapshot objects' UUIDs.
 
 ##### Naming constraints
 
@@ -1114,9 +1223,9 @@ Snapshotting a shared volume involves snapshotting only the delegated dataset
 that contains the actual user data, not the whole root filesystem of the
 underlying zone.
 
-Snapshotting a shared volume is done by using VAPI's `SnapshotVolume`
-endpoint. Creating a snapshot can fail as no space might be left in the
-corresponding zfs dataset.
+Snapshotting a shared volume is done by using VOLAPI's [`CreateVolumeSnapshot`
+endpoint](#createvolumesnapshot-post-volumesvolume-uuidsnapshot). Creating a
+snapshot can fail as no space might be left in the corresponding zfs dataset.
 
 #### Limits
 
@@ -1124,13 +1233,13 @@ As snapshots consume storage space even if no file is present in the delegated
 dataset, limiting the number of snapshots that a user can create may be
 needed. This limit could be implemented at various levels:
 
-* In the Shared Volume API (VAPI): VAPI could maintain a count of how many
+* In the Shared Volume API (VOLAPI): VOLAPI could maintain a count of how many
 snapshots of a given volume exist and a maximum number of snapshots, and send
 a request error right away without even reaching the compute node to try and
 create a new snapshot.
 
-* At the zfs level: snapshotting operation results would bubble up to VAPI,
-which would result in a request error in case of a failure.
+* At the zfs level: snapshotting operation results would bubble up to VOLAPI,
+  which would result in a request error in case of a failure.
 
 ## Support for operating shared volumes
 
@@ -1401,7 +1510,7 @@ Cons:
     this could apply for KVM vs not-for-KVM packages, so work here wouldn't be
     unwelcome.
 
-###### Providing a separate `ListVolumesSizes` API endpoint.
+###### Providing a separate `ListVolumesSizes` API endpoint
 
 Pros:
   * Keeps the one to one mapping between storage VMs and NFS shared volumes as
