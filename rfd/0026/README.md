@@ -53,6 +53,11 @@ state: draft
         - [CreateVolume](#createvolume)
         - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid)
         - [UpdateVolume PUT /volumes/volume-uuid](#updatevolume-put-volumesvolume-uuid)
+        - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
+        - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name)
+        - [RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesvolume-uuidrollbacktosnapshot)
+        - [ListVolumeSnapshots GET /volume/volume-uuid/snapshots](#listvolumesnapshots-get-volumevolume-uuidsnapshots)
+        - [DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesvolume-uuidsnapshotssnapshot-name)
         - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid)
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
@@ -74,10 +79,12 @@ state: draft
         - [Input](#input-3)
         - [Output](#output-3)
       - [Snapshots](#snapshots)
-        - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
-        - [RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacksnapshot](#rollbacktovolumesnapshot-post-volumesvolume-uuidrollbacksnapshot)
-        - [UpdateVolumeSnapshot PUT /snapshots/snapshot-uuid](#updatevolumesnapshot-put-snapshotssnapshot-uuid)
-        - [DeleteVolumeSnapshot DELETE /snapshots/snapshot-uuid](#deletevolumesnapshot-delete-snapshotssnapshot-uuid)
+        - [Snapshot objects](#snapshot-objects)
+        - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot-1)
+        - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name-1)
+        - [RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesvolume-uuidrollbacktosnapshot-1)
+        - [ListVolumeSnapshots GET /volume/volume-uuid/snapshots](#listvolumesnapshots-get-volumevolume-uuidsnapshots-1)
+        - [DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesvolume-uuidsnapshotssnapshot-name-1)
       - [Volume objects](#volume-objects)
         - [Common layout](#common-layout)
         - [Naming constraints](#naming-constraints)
@@ -679,6 +686,18 @@ A list of volume objects of the following form:
     "state": "ready",
     "networks": [
       "1537d72a-949a-2d89-7049-17b2f2a8b634"
+    ],
+    "snapshots": [
+      {
+        "name": "my-first-snapshot",
+        "create_timestamp": "1562802062480",
+        "state": "created"
+      },
+      {
+        "name": "my-second-snapshot",
+        "create_timestamp": "1572802062480",
+        "state": "created"
+      }
     ]
   },
   {
@@ -751,6 +770,69 @@ changes](#impact-of-fabric-networks-changes) for more details.
 ###### Output
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+
+##### CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot
+
+###### Input
+
+| Param         | Type         | Description                     |
+| ------------- | ------------ | --------------------------------|
+| name          | String       | The desired name for the snapshot to create. The name must be unique per user. |
+
+###### Output
+
+The volume object representing the volume with UUID `volume-uuid`, with the
+newly created snapshot added to its `snapshots` list property. Note that
+creating a snapshot can fail as no space might be left in the corresponding zfs
+dataset.
+
+##### GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name
+
+###### Output
+
+The [snapshot object](#snapshot-objects) with name `snapshot-name` for the
+volume with UUID `volume-uuid`.
+
+##### RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot
+
+Note that rolling back a NFS shared volume to a given snapshot requires its
+underlying storage VM to be stopped and restarted.
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| uuid          | String       | The uuid of the snapshot object that represents the state to which to rollback. |
+| name          | String       | The name of the snapshot object that represents the state to which to rollback. |
+
+###### Output
+
+The volume object that represents the volume with UUID `volume-uuid` with its
+state property set to `rolling_back`. When the volume has been rolled back to
+the snapshot with name `name`, the volume's `state` property is `ready`.
+
+##### ListVolumeSnapshots GET /volume/volume-uuid/snapshots
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| name          | String       | The new name of the snapshot object with uuid `snapshot-uuid`. |
+| owner_uuid    | String       | If present, the `owner_uuid` passed as a parameter will be checked against the `owner_uuid` of the volume identified by `volume-uuid`. If they don't match, the request will result in an error. |
+
+###### Output
+
+A list of [snapshot objects](#snapshot-objects) that were created from the
+volume with UUID `volume-uuid`.
+
+##### DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name
+
+###### Output
+
+The [volume object](#volume-objects) that represents the volume with UUID
+`volume-uuid`. This volume object can be polled to determine when the snapshot
+with name `snapshot-name` is not present in the `snapshots` list anymore, which
+means the snapshot was deleted successfully.
 
 ##### DeleteVolume DELETE /volumes/volume-uuid
 
@@ -852,7 +934,7 @@ or "VOLAPI".
 | Param           | Type         | Description                              |
 | --------------- | ------------ | ---------------------------------------- |
 | name            | String       | Allows to filter volumes by name. |
-| owner_uuid      | String       | When not empty, only volume objects with that `owner_uuid` will be included in the output |
+| owner_uuid      | String       | When not empty, only volume objects with an owner whose UUID is `owner_uuid` will be included in the output |
 | filter          | String       | Custom filter to filter volumes on arbitrary indexed properties |
 
 `name` is a pattern where the character `*` has a special meaning of matching
@@ -882,6 +964,18 @@ A list of volume objects of the following form:
     "state": "ready",
     "networks": [
       "1537d72a-949a-2d89-7049-17b2f2a8b634"
+    ],
+    "snapshots": [
+      {
+        "name": "my-first-snapshot",
+        "create_timestamp": "1562802062480",
+        "state": "created"
+      },
+      {
+        "name": "my-second-snapshot",
+        "create_timestamp": "1572802062480",
+        "state": "created"
+      }
     ]
   },
   {
@@ -905,10 +999,10 @@ determine when a volume being created is ready to be used.
 
 ##### Input
 
-| Param               | Type         | Description                     |
-| ------------------- | ------------ | --------------------------------|
-| uuid            | String       | The uuid of the volume object       |
-| owner_uuid          | String       | The uuid of the volume's owner  |
+| Param           | Type         | Description                     |
+| --------------- | ------------ | --------------------------------|
+| uuid            | String       | The uuid of the volume object   |
+| owner_uuid      | String       | The uuid of the volume's owner  |
 
 ##### Output
 
@@ -970,18 +1064,20 @@ be used to determine when the volume is deleted.
 
 #### Snapshots
 
-A snapshot represents the state of a Volume at a given point in time. Volume
-snapshot objects are stored in a separate moray bucket named `volapi_snapshots`.
+A snapshot represents the state of a volume's storage at a given point in time.
+Volume snapshot objects are stored within volume objects because the
+relationship between a volume and a snapshot is one of composition. A volume
+object is composed, among other things, of zero or more snapshots. When a volume
+object is deleted, its associated snapshots are irrelevant and are also deleted.
+
+##### Snapshot objects
 
 A snpashot object has the following properties:
 
-* `uuid`: a unique identifier.
 * `name`: a human readable name.
-* `volume_uuid`: the UUID of the volume from which this snapshot was taken.
 * `create_timestamp`: a number that can be converted to the timestamp at which
   the snapshot was taken.
-* `state`: a value of the following set: `creating`, `failed`, `created`,
-  `deleted`.
+* `state`: a value of the following set: `creating`, `failed`, `created`.
 
 ##### CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot
 
@@ -989,22 +1085,14 @@ A snpashot object has the following properties:
 
 | Param         | Type         | Description                              |
 | ------------- | ------------ | ---------------------------------------- |
-| name          | String       | The desired name for the snapshot to create. The name must be unique per user. |
+| name          | String       | The desired name for the snapshot to create. The name must be unique per volume. |
 | sync          | Boolean      | If `true`, the response is sent when the volume snapshot is created and ready to use or when an error occurs, otherwise the volume snapshot is created asynchronously and the response contains data to poll the state of the creation process. |
 
 ###### Output
 
-If `sync` is `true`, the response is a snapshot object of the form:
-
-````
-{
-  "uuid": "snapshot-uuid",
-  "name": "snapshot-name",
-  "volume_uuid": "volume-uuid",
-  "create_timestamp": 1462802062480,
-  "state": "created"
-}
-````
+If `sync` is `true`, the response is the volume object representing the volume
+with UUID `volume-uuid`, with the newly created snapshot added to its
+`snapshots` list property.
 
 Otherwise, it is an object that allows for polling the state of the snapshot
 being created:
@@ -1012,11 +1100,30 @@ being created:
 ```
 {
   "job_uuid": "job-uuid",
-  "snapshot_uuid": "snapshot-uuid"
+  "volume_uuid": "volume-uuid"
 }
 ```
 
-##### RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacksnapshot
+Note that creating a snapshot can fail as no space might be left in the
+corresponding zfs dataset.
+
+##### GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| owner_uuid    | String       | If present, the `owner_uuid` passed as a parameter will be checked against the `owner_uuid` of the volume identified by `volume-uuid`. If they don't match, the request will result in an error. |
+
+###### Output
+
+The [snapshot object](#snapshot-objects) with name `snapshot-name` for the
+volume with UUID `volume-uuid`.
+
+##### RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot
+
+Note that rolling back a NFS shared volume to a given snapshot requires its
+underlying storage VM to be stopped and restarted.
 
 ###### Input
 
@@ -1024,24 +1131,30 @@ being created:
 | ------------- | ------------ | ---------------------------------------- |
 | uuid          | String       | The uuid of the snapshot object that represents the state to which to rollback. |
 | name          | String       | The name of the snapshot object that represents the state to which to rollback. |
+| sync          | Boolean      | If `true`, the response is sent when the volume is rolled back and ready to use or when an error occurs, otherwise the rollback process is done asynchronously and the response contains data to poll the state of the rollback process. |
+| owner_uuid    | String       | If present, the `owner_uuid` passed as a parameter will be checked against the `owner_uuid` of the volume identified by `volume-uuid`. If they don't match, the request will result in an error. |
 
 ###### Output
 
-No output other than the HTTP response's status code.
+The volume object that represents the volume with UUID `volume-uuid`, with its
+`snapshots` list updated to not list the snapshots that were taken _after_ the
+one to which the volume was rolled back.
 
-##### UpdateVolumeSnapshot PUT /snapshots/snapshot-uuid
+##### ListVolumeSnapshots GET /volume/volume-uuid/snapshots
 
 ###### Input
 
 | Param         | Type         | Description                              |
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The new name of the snapshot object with uuid `snapshot-uuid`. |
+| owner_uuid    | String       | If present, the `owner_uuid` passed as a parameter will be checked against the `owner_uuid` of the volume identified by `volume-uuid`. If they don't match, the request will result in an error. |
 
 ###### Output
 
-The updated snapshot object, with the new name.
+A list of [snapshot objects](#snapshot-objects) that were created from the
+volume with UUID `volume-uuid`.
 
-##### DeleteVolumeSnapshot DELETE /snapshots/snapshot-uuid
+##### DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name
 
 ###### Input
 
@@ -1049,20 +1162,13 @@ The updated snapshot object, with the new name.
 | ------------- | ------------ | ---------------------------------------- |
 | uuid          | String       | The uuid of the snapshot object to delete. |
 | sync          | Boolean      | If `true`, the response is sent when the volume snapshot is deleted or when an error occurs, otherwise the volume snapshot is deleted asynchronously and the response contains data to poll the state of the delete process. |
+| owner_uuid    | String       | If present, the `owner_uuid` passed as a parameter will be checked against the `owner_uuid` of the volume identified by `volume-uuid`. If they don't match, the request will result in an error. |
 
 ###### Output
 
-If `sync` is `true`, the response is a snapshot object of the form:
-
-````
-{
-  "uuid": "snapshot-uuid",
-  "name": "snapshot-name",
-  "volume_uuid": "volume-uuid",
-  "create_timestamp": 1462802062480,
-  "state": "deleted"
-}
-````
+If `sync` is `true`, the response is the volume object that represents the
+volume with UUID `volume-uuid`, with its `snapshots` list updated to not list
+the snapshot whose name is `snapshot-name`.
 
 Otherwise, it is an object that allows for polling the state of the snapshot
 being deleted:
@@ -1070,7 +1176,7 @@ being deleted:
 ```
 {
   "job_uuid": "job-uuid",
-  "snapshot_uuid": "snapshot-uuid"
+  "volume_uuid": "volume-uuid"
 }
 ```
 
@@ -1089,7 +1195,18 @@ of properties:
   "type": "tritonnfs",
   "create_timestamp": 1462802062480,
   "status": "created",
-  "snapshots": "[\"a-snapshot-uuid\", \"another-snapshot-uuid\"]"
+  "snapshots": [
+    {
+      "name": "my-first-snapshot",
+      "create_timestamp": "1562802062480",
+      "state": "created"
+    },
+    {
+      "name": "my-second-snapshot",
+      "create_timestamp": "1572802062480",
+      "state": "created"
+    }
+  ]
 }
 ```
 
@@ -1103,15 +1220,15 @@ of properties:
   for this property: `tritonnfs`.
 * `create_timestamp`: a timestamp that indicates the time at which the volume
   was created.
-* `state`: `creating`, `ready`, `deleted` or `failed`. Indicates in which state the volume
-  currently is. `deleted` and `failed` volumes are still persisted to Moray for
-  troubleshooting/debugging purposes. See the section [Volumes state
-  machine](#volumes-state-machine) for a diagram and further details about the
-  volumes' state machine.
+* `state`: `creating`, `ready`, `deleted`, `failed` or `rolling_back`. Indicates
+  in which state the volume currently is. `deleted` and `failed` volumes are
+  still persisted to Moray for troubleshooting/debugging purposes. See the
+  section [Volumes state machine](#volumes-state-machine) for a diagram and
+  further details about the volumes' state machine.
 * `references`: a list of VMs that are considered to be using that volume. More
   details about the reference counting mechanism can be found in [the `reference
   counting` section](#reference-counting).
-* `snapshots`: a list of snapshot objects' UUIDs.
+* `snapshots`: a list of [snapshot objects](#snapshot-objects).
 
 ##### Naming constraints
 
@@ -1224,8 +1341,9 @@ that contains the actual user data, not the whole root filesystem of the
 underlying zone.
 
 Snapshotting a shared volume is done by using VOLAPI's [`CreateVolumeSnapshot`
-endpoint](#createvolumesnapshot-post-volumesvolume-uuidsnapshot). Creating a
-snapshot can fail as no space might be left in the corresponding zfs dataset.
+endpoint](#createvolumesnapshot-post-volumesvolume-uuidsnapshot). See the
+section about [REST APIs changes](#rest-apis) for more details on APIs that
+allow users to manage volume snapshots.
 
 #### Limits
 
