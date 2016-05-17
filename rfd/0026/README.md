@@ -727,7 +727,7 @@ A list of volume objects of the following form:
 | Param         | Type         | Description                              |
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
-| size          | Number       | The desired minimum storage capacity for that volume. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
+| size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable |
 
@@ -1065,7 +1065,7 @@ volume with UUID `volume-uuid`:
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
 | owner_uuid    | String       | The UUID of the volume's owner. |
-| size          | Number       | The desired minimum storage capacity for that volume. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
+| size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable |
 | sync          | Boolean      | If true, the response is sent when the volume is created and ready to use or when an error occurs, otherwise the volume is created asynchronously and the response contains data to poll the state of the creation process. |
