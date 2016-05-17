@@ -52,6 +52,7 @@ state: draft
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
         - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid)
+        - [GetVolumeReferences GET /volumes/volume-uuid/references](#getvolumereferences-get-volumesvolume-uuidreferences)
         - [UpdateVolume PUT /volumes/volume-uuid](#updatevolume-put-volumesvolume-uuid)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
         - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name)
@@ -72,12 +73,15 @@ state: draft
       - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
         - [Input](#input-1)
         - [Output](#output-1)
-      - [CreateVolume POST /volumes](#createvolume-post-volumes)
+      - [GetVolumeReferences GET /volumes/volume-uuid/references](#getvolumereferences-get-volumesvolume-uuidreferences-1)
         - [Input](#input-2)
         - [Output](#output-2)
-      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
+      - [CreateVolume POST /volumes](#createvolume-post-volumes)
         - [Input](#input-3)
         - [Output](#output-3)
+      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
+        - [Input](#input-4)
+        - [Output](#output-4)
       - [Snapshots](#snapshots)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot-1)
@@ -298,7 +302,8 @@ The network to which this shared volume will be attached.
 
 ###### Affinity (not necessarily in MVP)
 
-See [Expressing locality with affinity filters](FIXME) below.
+See [Expressing locality with affinity
+filters](#expressing-locality-with-affinity-filters) below.
 
 #### List
 
@@ -687,6 +692,7 @@ A list of volume objects of the following form:
     "networks": [
       "1537d72a-949a-2d89-7049-17b2f2a8b634"
     ],
+    "references": "references/",
     "snapshots": [
       {
         "name": "my-first-snapshot",
@@ -747,6 +753,23 @@ determine when a volume being created is ready to be used.
 ###### Output
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+
+##### GetVolumeReferences GET /volumes/volume-uuid/references
+
+`GetVolumeReferences` can be used to list resources that are using the volume
+with UUID `volume-uuid`.
+
+###### Output
+
+A list of URI pointing to resources (not necessarily VMs) that are using the
+volume with UUID `volume-uuid`:
+
+```
+[
+   "http://api.triton-datacenter.tld/login/machines/some-vm-uuid/",
+   "http://api.triton-datacenter.tld/login/machines/some-other-vm-uuid/"
+]
+```
 
 ##### UpdateVolume PUT /volumes/volume-uuid
 
@@ -818,7 +841,6 @@ the snapshot with name `name`, the volume's `state` property is `ready`.
 | Param         | Type         | Description                              |
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The new name of the snapshot object with uuid `snapshot-uuid`. |
-| owner_uuid    | String       | If present, the `owner_uuid` passed as a parameter will be checked against the `owner_uuid` of the volume identified by `volume-uuid`. If they don't match, the request will result in an error. |
 
 ###### Output
 
@@ -855,6 +877,9 @@ for more information.
 A volume is always deleted asynchronously. The output is the volume object being
 deleted. In order to determine when the volume is actually deleted, users need
 to poll the volume object's `state` property.
+
+If resources are using the volume to be deleted, the request results in an error
+and the error contains a list of resources that are using the volume.
 
 #### Filtering shared volumes zones from the ListMachines endpoint
 
@@ -965,6 +990,7 @@ A list of volume objects of the following form:
     "networks": [
       "1537d72a-949a-2d89-7049-17b2f2a8b634"
     ],
+    "references": "references/",
     "snapshots": [
       {
         "name": "my-first-snapshot",
@@ -1008,6 +1034,29 @@ determine when a volume being created is ready to be used.
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
+#### GetVolumeReferences GET /volumes/volume-uuid/references
+
+`GetVolumeReferences` can be used to list resources that are using the volume
+with UUID `volume-uuid`.
+
+##### Input
+
+| Param           | Type         | Description                     |
+| --------------- | ------------ | --------------------------------|
+| owner_uuid      | String       | The uuid of the volume's owner. If `owner_uuid` doesn't match the owner of volume with UUID `volume-uuid`, the request results in an error. |
+
+##### Output
+
+A list of URI pointing to resources (not necessarily VMs) that are using the
+volume with UUID `volume-uuid`:
+
+```
+[
+   "http://vmapi.triton-datacenter.tld/vms/some-vm-uuid/",
+   "http://vmapi.triton-datacenter.tld/vms/some-other-vm-uuid/"
+]
+```
+
 #### CreateVolume POST /volumes
 
 ##### Input
@@ -1044,8 +1093,8 @@ be used to determine when the volume is created and can be used.
 | force           | Boolean     | If true, the volume can be deleted even if there are still non-deleted containers that reference it .   |
 
 If `force` is not specified or `false`, deletion of a shared volume is not
-allowed if it has at least one "active user". If `force` is true, the constraint
-on users of  doesn't apply.
+allowed if it has at least one "active user". If `force` is true, a shared
+volume can be deleted even if it has active users.
 
 See the section ["Deletion and usage semantics"](#deletion-and-usage-semantics)
 for more information.
@@ -1061,6 +1110,9 @@ otherwise it is an object with the following properties:
 
 When deleting a volume asynchronously, polling the job using the `job_uuid` can
 be used to determine when the volume is deleted.
+
+If resources are using the volume to be deleted, the request results in an error
+and the error contains a list of resources that are using the volume.
 
 #### Snapshots
 
@@ -1195,6 +1247,7 @@ of properties:
   "type": "tritonnfs",
   "create_timestamp": 1462802062480,
   "status": "created",
+  "references": "references/",
   "snapshots": [
     {
       "name": "my-first-snapshot",
@@ -1225,9 +1278,11 @@ of properties:
   still persisted to Moray for troubleshooting/debugging purposes. See the
   section [Volumes state machine](#volumes-state-machine) for a diagram and
   further details about the volumes' state machine.
-* `references`: a list of VMs that are considered to be using that volume. More
-  details about the reference counting mechanism can be found in [the `reference
-  counting` section](#reference-counting).
+* `references`: a relative path to a URI that can be used to list resources
+  (such as VMs, but other types of resources could reference a volume) that are
+  using that volume. See for instance [the section about volume deletion and
+  usage semantics](#deletion-and-usage-semantics) for more details on how this
+  list is used by various volumes APIs.
 * `snapshots`: a list of [snapshot objects](#snapshot-objects).
 
 ##### Naming constraints
@@ -1257,25 +1312,28 @@ extra properties:
 
 ##### Deletion and usage semantics
 
-A volume is considered to be "in use" if the list stored in its `references`
-property is not empty. When a Docker contianer that mounts a shared volume is
-created, it is automatically added to its list of references. A container
-referencing a shared volume is considered to be using it when it's in any state
-except `failed` and `destroyed` -- in other words in any state that cannot
-transition to `running`.
+A volume is considered to be "in use" if the list of objects using it stored in
+[the volume's `references` property](#common-layout) is not empty. When a Docker
+container that mounts a shared volume is created, it is automatically added to
+its list of references. A container referencing a shared volume is considered to
+be using it when it's in any state except `failed` and `destroyed` -- in other
+words in any state that cannot transition to `running`.
 
 For instance, even if a _stopped_ Docker container is the only remaining Docker
 container that references a given shared volume, it won't be possible to delete
 that volume until that container is _deleted_.
 
-Deleting a shared volume when there's still at least one container that
-references it will result in an error and a 409 HTTP response. For Docker
-containers, this is in line with Docker's API's documentation about deleting
-volumes.
+Deleting a shared volume when there's still at least one active Docker container
+that references it will result in an error listing active Docker containers
+referencing it and a 409 HTTP response. This is in line with [Docker's API's
+documentation about deleting volumes](https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#remove-a-volume).
 
-However, a shared volume can be deleted if its NFS file system is mounted over
-the network manually (e.g by using the `mount` command), because currently there
-doesn't seem to be any way to track that usage cleanly and efficiently.
+However, a shared volume can be deleted if its only users are not mounting it
+via the Docker API (e.g by using the `mount` command manually from within a VM),
+because currently there doesn't seem to be any way to track that usage cleanly
+and efficiently.
+
+###### Implementation
 
 In order to determine users of a shared volume, the Volumes API uses a reference
 counting mechanism. The `references` property of each Volumes object is a list
