@@ -1069,6 +1069,8 @@ volume with UUID `volume-uuid`:
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable |
 | sync          | Boolean      | If true, the response is sent when the volume is created and ready to use or when an error occurs, otherwise the volume is created asynchronously and the response contains data to poll the state of the creation process. |
+| server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
+| ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
 
 ##### Output
 
