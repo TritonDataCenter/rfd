@@ -334,19 +334,16 @@ for each Metric Agent Proxy deployed with sdcadm
 ### End User Configuration
 * Install and run a Prometheus server
     * Create prometheus.yml [configuration](https://prometheus.io/docs/operating/configuration/)
-        * TLS is configuration is required, use the same cert and key that you
+        * TLS configuration is required, use the same cert and key that you
           configured for use with CloudAPI, sdc-docker, etc.
-          _Important_: You should not bake TLS certificates into your Docker
-          image. Instead prefer a mechanism that injects them at the
-          `docker run` phase, or that retrieves them from a secure store.
         * Add a job for the availability zones that your containers run in,
           using Triton discovery.
           ```
-          - job_name: triton_jpc_east1
+          - job_name: triton_east1
 
             tls_config:
-                cert_file: valid_cert_file
-                key_file: valid_key_file
+                cert_file: /path/to/valid_cert_file
+                key_file: /path/to/valid_key_file
 
                 bearer_token: avalidtoken
                 scrape_interval: 30s
@@ -360,22 +357,30 @@ for each Metric Agent Proxy deployed with sdcadm
                 # refresh_interval defaults to 30s.
 
             labels:
-                triton_jpc: triton_jpc
+                triton_cloud: triton_cloud
 
             scheme: https
           ```
-    * User creates a Dockerfile using their specific prometheus.yml
+    * User deploys a Triton Linux Container
       ```
-        FROM prom/prometheus
-        ADD prometheus.yml /etc/prometheus/
+      $ triton instance create -w --name=prometheus01 ubuntu-14.04 t4-standard-1G
       ```
-    * Build a new docker image
+    * User secure copies pem files and config to the newly deployed Prometheus
+      server
       ```
-        docker build -t my-prometheus .
+      $ scp pem_config.tgz root@prometheus01:.
       ```
-    * Run the Prometheus server
+    * User logs into Prometheus server
       ```
-        docker run -p 9090:9090 my-prometheus
+      $ ssh root@prometheus01
+      ```
+    * Download the official Prometheus server binaries
+      ```
+      $ wget https://github.com/prometheus/prometheus/releases/download/0.18.0/prometheus-0.18.0.linux-amd64.tar.gz
+      ```
+    * User runs the Prometheus server
+      ```
+      $ ./prometheus -config.file=prometheus.yml
       ```
     * Prometheus server polls CloudAPI to discover end points to collect from
     * Prometheus server polls discovered endpoints every thirty seconds, such as
