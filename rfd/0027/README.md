@@ -46,10 +46,9 @@ subset of it at a minimum).
 * Compute node utilization (metrics and alerts)
 
 ## Note
-This RFD is orthogonal to
-[RFD 0017](https://github.com/joyent/rfd/blob/master/rfd/0017/README.md). While
-it is likely that the two RFD will be complementary, they are distinctly
-different applications/product offerings.
+This RFD is a precursor to
+[RFD 0017](https://github.com/joyent/rfd/blob/master/rfd/0017/README.md) and it
+is likely that it will both complimentary and foundational.
 
 ## Inspirational Reading
 [Push vs Pull](http://www.boxever.com/push-vs-pull-for-monitoring) for metrics
@@ -182,34 +181,32 @@ get up to speed quickly.
 
 ## Components
 ### Metric Agent
+* Must operate under the following hard constraints
+  * Minimal impact on compute nodes / prevent brownout
+  * Must be operational even when operator and customer zones are not
+
 Runs in the global zone on the head node and compute nodes. It provides a
 Prometheus compatible HTTP endpoint for the Metric Proxy to make requests of.
 
-------
+```
+GET <cn_admin_ip>/vms/<vm_uuid>/metrics
+---
+    # HELP cpucaps_usage_percent current CPU utilization
+    # TYPE cpucaps_usage_percent gauge
+    cpucaps_usage 0
+    ...
+```
 
-###### Option 1 (No buffer)
-The client does not buffer or retain any data, it responds to requests for
-metrics with the data available at the time of request.
+The Metric Agent caches values and allows for a configurable expiration/TTL.
+Metrics are always be retrievable, however they will remain unchanged for the
+duration of the cached value TTL. Metric Agent collection will only be made if a
+cached value does not exist or the currently cached value is expired.
 
-###### Option 2 (Selective caching)
-The client caches expensive calls and allows for a configurable expiration. In
-this scenario metrics would always be retrievable, but some metrics would remain
-the same for the duration of the cached value. The expensive calls would only be
-made if a cached value does not exist or the currently cached value has expired.
+The Metric Agent should support an operator configurable global minimum polling
+frequency. This will allow an operator to dial back metric collection on an
+overloaded compute node and potentially avoid stopping the Metric Agent.
 
-###### Option 3 (Self populated caching)
-The client caches all metrics and allows for a configurable per metric
-expiration. Metric Agent Proxy requests do not result in metric collection,
-instead metrics are automatically collected by the client on a timer.
-
-------
-
-Regardless which of the above options are chosen, the Metric Agent should support
-an operator configurable global minimum polling frequency. This will allow an
-operator to dial back metric collection on an overloaded compute node and
-potentially avoid stopping the Metric Agent.
-
-Static pre-defined metrics will be collected using modules like
+Pre-defined metrics will be collected using modules like
 [node-kstat](https://github.com/bcantrill/node-kstat). Additionally, it seems
 likely that we can leverage the proc(4) backend instrumenter in CAv1 to provide
 prstat type collection.
@@ -218,8 +215,9 @@ The reasoning behind running in the global zone is that metrics are necessary in
 scenarios where an in-zone agent may become unresponsive (e.g. CPU caps exceeded
 , DRAM exceeded, etc.).
 
-While this is likely the most correct location, it is not without drawbacks. If
-the agent lived in-zone the failure domain has more breadth
+While this is likely the most correct location, and the only reasonable way to
+comply with the defined constraints, it is not without drawbacks. If the agent
+lived in-zone the failure domain has more breadth
 (i.e. the failure of one Metric agent only impacts a single zone), and its
 resource utilization could be easily controlled by existing functionality. With
 the Metric agent living in the global zone, a crash will result in all zones on
@@ -227,38 +225,36 @@ that CN lacking data until it comes back up. It is also easier for the agent to
 become a noisy neighbor.
 
 ### Metric Agent Proxy
-The Metric Agent Proxy lives between a customers Prometheus server and the
-Metric Agents that live on each compute node.
+* Must operate under the following hard constraints
+  * The same user limitations as sdc-docker
+  * Flexible enough to support future versions of RBAC
+  * Highly available
+  * Prevent causing system brownout
 
-Though the Metric Agent is a highly available cluster per data center, it will
-have a DNS A record per monitored customer container assigned to it so that it
-can respond as if it was the monitored instance itself. In addition to the DNS A
-records, one or more DNS SRV records will be created to allow a customers
-Prometheus server to automatically discover containers that should be polled.
+The Metric Agent Proxy lives between a customers Prometheus server and the
+Metric Agents that live on each compute node. It is also a highly available
+cluster per data center.
+
+Every container will have a DNS CNAME record which points at the Metric Agent
+Proxy cluster. In this way, the Metric Agent Proxy can respond as if it was the
+monitored instance itself by multiplexing on the request hostname.
 
 This is an operator controlled zone, deployed with sdcadm. The zone will need to
 have a leg on the admin network in order to talk with the Metric Agent, and a
-leg on the external network to expose it to customers. However it does consume
-additional resources on any node that it is provisioned on, so it should keep an
-accounting of customer usage.
+leg on the external network to expose it to customers.
 
 For customers that can use Prometheus data directly or via a
 [plugin](https://github.com/prometheus/nagios_plugins), this and the Metric
 Client are the only components that need to be in place.
 
-Customers polling servers will need to be authenticated and authorized. The
-proxy will utilize the same TLS based scheme as the official Prometheus
-endpoints. Customers existing SSH key(s) (the same key(s) used for accessing
-instances and sdc-docker) will be used. Optionally a customer may choose to
-restrict polling of their instances to specific IPs or subnets.
+Customers Prometheus servers will need to be authenticated and authorized. The
+proxy will utilize the same TLS based scheme as the official Prometheus agents.
+Customers existing SSH key(s) (the same key(s) used for accessing instances and
+sdc-docker) will be used.
 
 Authentication and authorization will also be leveraged to decide how many
 polling requests an end user is allowed to make to the Metric Agent Proxy
 within a configurable amount of time.
-
------
-
-###### Option 1 (Configurable per user request quota, global per user maximum)
 
 User request quota will default to an operator set value, and an optional per
 user maximum can also be set by an operator.
@@ -267,76 +263,84 @@ For example, a per user default could be 1000 requests per minute, and a global
 per user maximum could be 10000 requests per minute. Operators can choose
 whether or not to throttle users that go beyond 1000 requests per minute or
 charge them. That said, users are not allowed to violate the global per user
-maximum request quota if it is set.
-
-###### Option 2 (Package based request quota, global per user maximum)
-
-Each deployable package will be configured with a request quota. Each users
-request quota will be the sum total of their deployed packages quota. An
-operator can optionally configure a global per user maximum quota.
-
-For example, a user may have three containers deployed:
-
-1. 10 request per minute quota
-2. 100 request per minute quota
-3. 20 request per minute quota
-
-In this scenario the users request quota would be 130 requests per minute. An
-operator can choose to throttle users at their request quota, or set a per user
-global maximum limit. An operator may choose to bill for requests that exceed
-the users request quota up until they hit the global maximum. When the
-global maximum is hit, users will be throttled.
-
------
+maximum request quota if it is set. The goal is not to limit users ever, but we
+must comply with the constraint of preventing CN and cloud brownout if possible.
 
 If configured, users who poll beyond their allotment or global maximum will
 receive a [HTTP 429](https://tools.ietf.org/html/rfc6585#page-3) response.
 
 ### Discovery
 
-When existing accounts are backfilled and when new accounts are created, CNS
+When Metric Agent Proxies are provisioned or destroyed CNS will detect the
+change and create or remove a Metric Agent Proxy A record automatically.
+
+```
+    <region>.map<instance number>.triton.zone A 10.99.99.7
+```
+
+When existing containers are backfilled and when new containers are created, CNS
 will detect the change and create the following DNS records
 
 ```
-    <vm_uuid>.cm.triton.zone A <ip of metric agent proxy>
-```
-```
-    _cm._tcp.<useruuid>.triton.zone <ttl> IN SRV <priority> <weight> 3000 <vm_uuid>.cm.triton.zone
+    <vm_uuid>.cm.triton.zone CNAME <region>.map01.triton.zone
+    <vm_uuid>.cm.triton.zone CNAME <region>.map02.triton.zone
+    <vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
 ```
 
-for each of the accounts containers. Going forward all new containers will get a
-Container Monitor A record and an SRV record automatically. This allows
-Prometheus built-in DNS discovery to automatically find and collect metrics from
-all of a users containers.
+for each container. Going forward all new containers will get a Container
+Monitor CNAME record automatically. Similarly, Metric Agent Proxy records will
+be added and removed when proxies come and go, along with corresponding CNAME
+records.
 
-If a user does not wish to use DNS SRV record discovery, they may list their
-containers via CloudAPI which will include the Container Monitor A record for
-each container as a part of the payload.
+Each CNAME record represents a virtual Prometheus endpoint backed by the Metric
+Agent Proxy.
+
+A CloudAPI based Prometheus service discovery module will be built and hopefully
+accepted for inclusion in the main Prometheus repository. This will function and
+be configured similarly to the existing
+[ec2 service discovery module](https://prometheus.io/docs/operating/configuration/#ec2_sd_config).
+
+For users running pre-existing Prometheus servers, the suggested service
+discovery mechanism will be leveraging [file based service discovery](https://prometheus.io/docs/operating/configuration/#<file_sd_config>)
+in conjunction with our Prometheus autopilot pattern. In this way they'll get an
+equivalent experience to the CloudAPI based discovery without having to upgrade
+their Prometheus installation.
 
 ## Architecture Overview
 ![Container Monitor Layout](http://us-east.manta.joyent.com/shmeeny/public/container_monitor.png)
 
 ## Happy Path Walk Through
 
+### Metric Agent Proxy Creation
+* Operator deploys new Metric Agent Proxies using sdcadm
+* VMAPI pushes a changefeed event to CNS
+* CNS creates A records of the form
+```
+    <region>.map<instance number>.triton.zone A 10.99.99.7
+```
+for each Metric Agent Proxy deployed with sdcadm
+
 ### Container Creation
 * User creates a new container
 * VMAPI pushes a changefeed event to CNS
-* CNS creates an A record of the form
+* CNS creates CNAME records of the form
   ```
-    <vm_uuid>.cm.triton.zone A <ip of metric agent proxy>
+    <vm_uuid>.cm.triton.zone CNAME <region>.map01.triton.zone
+    <vm_uuid>.cm.triton.zone CNAME <region>.map02.triton.zone
+    <vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
   ```
-  for each Metric Agent Proxy IP and a new SRV record of the form
-  ```
-    _cm._tcp.<useruuid>.triton.zone <ttl> IN SRV <priority> <weight> 3000 <vm_uuid>.cm.triton.zone
-  ```
+  for each Metric Agent Proxy IP.
 
 ### End User Configuration
 * Install and run a Prometheus server
     * Create prometheus.yml [configuration](https://prometheus.io/docs/operating/configuration/)
         * TLS is configuration is required, use the same cert and key that you
           configured for use with CloudAPI, sdc-docker, etc.
-        * Add a job for the availability zones that your containers run in, using
-          DNS SRV discovery.
+          _Important_: You should not bake TLS certificates into your Docker
+          image. Instead prefer a mechanism that injects them at the
+          `docker run` phase, or that retrieves them from a secure store.
+        * Add a job for the availability zones that your containers run in,
+          using Triton discovery.
           ```
           - job_name: triton_jpc_east1
 
@@ -348,9 +352,11 @@ each container as a part of the payload.
                 scrape_interval: 30s
                 scrape_timeout:  10s
 
-            dns_sd_configs:
-                names:
-                    - _cm._tcp.<useruuid>.triton.zone
+            triton_sd_configs:
+              - region: us-east-1
+                access_key: access
+                secret_key: secret
+                user_name: name
                 # refresh_interval defaults to 30s.
 
             labels:
@@ -371,8 +377,7 @@ each container as a part of the payload.
       ```
         docker run -p 9090:9090 my-prometheus
       ```
-    * Prometheus server polls `_cm._tcp.<useruuid>.triton.zone` to discover
-      end points to collect from
+    * Prometheus server polls CloudAPI to discover end points to collect from
     * Prometheus server polls discovered endpoints every thirty seconds, such as
      ```
      https://fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
@@ -382,7 +387,7 @@ each container as a part of the payload.
       makes an HTTP call to its Metric Agent
 
       ```
-        GET fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
+        GET 10.99.99.7/vms/fbb8e583-9c87-4724-ac35-7cefb46c0f7b/metrics
         ---
         # HELP cpucaps_usage_percent current CPU utilization
         # TYPE cpucaps_usage_percent gauge
@@ -414,7 +419,13 @@ each container as a part of the payload.
 ### Container Destroyed
 * User destroys a container
 * VMAPI pushes a changefeed event to CNS
-* CNS removes the A records and SRV record associated with the container
+* CNS removes the CNAME records associated with the container
+
+### Metric Agent Proxy destroyed
+* Operator destroys a Metric Agent Proxy
+* VMAPI pushes a changefeed event to CNS
+* CNS removes the A record associated with the Metric Agent Proxy and all CNAME
+  records that reference it.
 
 ## High Availability
 ### Metric Agent
@@ -431,7 +442,7 @@ deployment is three Metric Agent Proxies, one on the headnode and the other two
 on different compute nodes which are ideally in different racks.
 
 When multiple Metric Agent Proxies are in use, CNS and round robin DNS
-(e.g. multiple A records per <container uuid>.cm.triton.zone) will be leveraged.
+(e.g. multiple A records per <vm_uuid>.cm.triton.zone) will be leveraged.
 To ensure minimum disruption in the case of a Metric Agent Proxy failure, a low
 TTL should be used.
 
@@ -439,13 +450,15 @@ TTL should be used.
 ### Metric Agent
 Because the Metric Agent is a single agent running on a compute or head node,
 there is no good way of scaling it. That said, it does need to be sensitive to
-overloading the global zone. If the Metric Agent finds itself in an overloaded
-state it should sacrifice itself in order to maintain the performance of the
-node it is on.
+overloading the global zone.
+
+In order to protect the global zone, the Metric Agent will have a runtime
+configurable throttle.
 
 ### Metric Proxy
 Multiple Metric Proxy zones can be added as load requires and without penalty.
-When new Metric Proxies are added, CNS will detect this and add new A records.
+When new Metric Proxies are added, CNS will detect this and add new A records as
+well as the necessary CNAME records.
 
 ## Dynamic metrics (e.g. on-demand DTrace integration)
 Dynamic metrics are already somewhat supported by CAv1, and are out of scope for
@@ -478,38 +491,8 @@ for end users.
         ...
 ```
 ## Default Metric Collection
-* kstat caps::cpucaps_zone*
-  * usage
-  * value
-  * above_sec
-* kstat memory_cap:::
-  * rss
-  * physcap
-  * swap
-  * swapcap
-  * anonpgin
-  * anon_alloc_fail
-* zfs list
-  * used
-  * available
-* prstat -mLc equivalent
-  * PID
-  * USERNAME
-  * USR
-  * SYS
-  * TRP
-  * TFL
-  * DFL
-  * LCK
-  * SLP
-  * LAT
-  * VCX
-  * ICX
-  * SCL
-  * SIG
-  * PROCESS/LWPI
-* ulimit -a
-* pfiles PID
+At a minimum, we should provide the same metrics as the official Prometheus
+[node exporter](https://github.com/prometheus/node_exporter#enabled-by-default)
 
 ## [Prometheus Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
 
