@@ -324,11 +324,13 @@ for each Metric Agent Proxy deployed with sdcadm
 * User creates a new container
 * VMAPI pushes a changefeed event to CNS
 * CNS creates CNAME records of the form
-  ```
-    <vm_uuid>.cm.triton.zone CNAME <region>.map01.triton.zone
-    <vm_uuid>.cm.triton.zone CNAME <region>.map02.triton.zone
-    <vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
-  ```
+
+```
+<vm_uuid>.cm.triton.zone CNAME <region>.map01.triton.zone
+<vm_uuid>.cm.triton.zone CNAME <region>.map02.triton.zone
+<vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
+```
+
   for each Metric Agent Proxy IP.
 
 ### End User Configuration
@@ -496,8 +498,19 @@ for end users.
         ...
 ```
 ## Default Metric Collection
-At a minimum, we should provide the same metrics as the official Prometheus
+At a minimum, we should provide a subset of the official Prometheus
 [node exporter](https://github.com/prometheus/node_exporter#enabled-by-default)
+metrics
+
+### Proposed Subset
+Name     | Description
+---------|-------------
+cpu | Exposes CPU statistics
+filesystem | Exposes filesystem statistics, such as disk space used.
+loadavg | Exposes load average.
+meminfo | Exposes memory statistics.
+netdev | Exposes network interface statistics such as bytes transferred.
+time | Exposes the current system time.
 
 ## [Prometheus Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
 
