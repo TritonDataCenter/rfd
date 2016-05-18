@@ -125,7 +125,7 @@ state: draft
       - [CPU and memory requirements](#cpu-and-memory-requirements)
     - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
     - [Networking](#networking)
-      - [Impact of fabric networks changes](#impact-of-fabric-networks-changes)
+      - [Impact of networking changes](#impact-of-networking-changes)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -729,7 +729,7 @@ A list of volume objects of the following form:
 | name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
 | size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
-| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable |
+| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be owned by the user sending the request. |
 
 ###### Output
 
@@ -781,8 +781,8 @@ shared volume:
   which changes the set of VMs that can use it.
 
 Adding or removing networks to a shared volume may require to reboot its
-underlying storage VM. See the section entitled [Impact of fabric networks
-changes](#impact-of-fabric-networks-changes) for more details.
+underlying storage VM. See the section entitled [Impact of networking
+changes](#impact-of-networking-changes) for more details.
 
 ###### Input
 
@@ -1067,7 +1067,7 @@ volume with UUID `volume-uuid`:
 | owner_uuid    | String       | The UUID of the volume's owner. |
 | size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
-| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable |
+| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be owned by the user with UUID `owner_uuid`. |
 | sync          | Boolean      | If true, the response is sent when the volume is created and ready to use or when an error occurs, otherwise the volume is created asynchronously and the response contains data to poll the state of the creation process. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
 | ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
@@ -1537,7 +1537,7 @@ this document to recommend a different solution.
 
 This solution is similar to the one implemented for NAT zones, which are another
 form of "internal" VMs. NAT zones are transparently created by Triton when a VM
-on a Fabrics network needs to have access to external networks, in the same way
+on a fabric network needs to have access to external networks, in the same way
 that storage VMs are transparently created when a NFS shared volume is created.
 
 NAT zones have their owner set to the administrator, but a
@@ -1754,23 +1754,23 @@ expected level of service.
 
 ### Networking
 
-#### Impact of fabric networks changes
+#### Impact of networking changes
 
-Users may want to change the fabric network on which a shared volume is for
+Users may want to change the network to which a shared volume is attached for
 several reasons:
 
-1. The previous fabric network was too small, or too large, and needs to be
-recreated to be made larger or smaller.
+1. The previous network was too small, or too large, and needs to be recreated
+to be made larger or smaller.
 
-2. Containers belonging to several different fabric networks need to access the
-same shared volume.
+2. Containers belonging to several different networks without a route between
+them need to access the same shared volume.
 
 In order to achieve this, virtual NICs will need to be added and/or removed to
 the NFS shared volume's underlying storage VM. These changes currently require a
 zone reboot, and thus will make the shared volume unavailable for some time.
 
-I'm not sure if there's anything we can do to make fabric network changes not
-impact shared volumes' availability. If there's nothing we can do, we should
-probably communicate it in some way (e.g in the API documentation or by making
-changes to the API so that the impact on shared volumes is more obvious).
+I'm not sure if there's anything we can do to make network changes not impact
+shared volumes' availability. If there's nothing we can do, we should probably
+communicate it in some way (e.g in the API documentation or by making changes to
+the API so that the impact on shared volumes is more obvious).
 
