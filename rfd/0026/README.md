@@ -94,6 +94,7 @@ state: draft
         - [Naming constraints](#naming-constraints)
         - [Type-specific properties](#type-specific-properties)
         - [Deletion and usage semantics](#deletion-and-usage-semantics)
+        - [Persistent storage](#persistent-storage)
       - [Volumes state machine](#volumes-state-machine)
       - [Reaping stalled volumes](#reaping-stalled-volumes)
   - [Snapshots](#snapshots-1)
@@ -659,22 +660,49 @@ parameter that corresponds to the user making the request.
 
 ###### Input
 
-| Param               | Type         | Description                              |
-| ------------------- | ------------ | ---------------------------------------- |
+| Param           | Type         | Description                              |
+| --------------- | ------------ | ---------------------------------------- |
 | name            | String       | Allows to filter volumes by name. |
-| filter          | String       | Custom filter to filter volumes on arbitrary indexed properties |
+| type            | String       | Allows to filter volumes by type, e.g `tritonnfs`. |
+| state           | String       | Allows to filter volumes by state, e.g `state=failed`. |
+| predicate       | String       | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
+| tag.key         | String       | A string representing the value for the tag with key `key` to match. More details below. |
+
+####### Searching by name
 
 `name` is a pattern where the character `*` has a special meaning of matching
 any character any number of time. For instance, `*foo*` will match `foo`,
 `foobar`, `barfoo` and `barfoobar`.
 
-`filter` is a JSON string that can be transformed into an LDAP filter to search
-on the following indexed properties:
+####### Searching by predicate
+
+The `predicate` parameter is a JSON string that can be used to build a LDAP
+filter to search on the following indexed properties:
 
 * `name`
-* `owner_uuid`.
-* `type`.
-* `state`.
+* `owner_uuid`
+* `type`
+* `state`
+* `tags`
+
+####### Searching by tags
+
+It is also possible to search for volumes matching one tag by using the `tag`
+parameter as following:
+
+``
+/volumes?tag.key=value
+``
+
+For instance, to search for a volume with the tag `foo` set to `bar`:
+
+``
+/volumes?tag.foo=bar
+``
+
+This form only allows to specify one tag name/value pair. [The predicate
+search](#searching-by-predicate) can be used to perform a search with multiple
+tags.
 
 ###### Output
 
@@ -704,7 +732,11 @@ A list of volume objects of the following form:
         "create_timestamp": "1572802062480",
         "state": "created"
       }
-    ]
+    ],
+    "tags: {
+      "foo": "bar",
+      "bar": "baz"
+    }
   },
   {
     "uuid": "a495d72a-2498-8d49-a042-87b222a8b63c",
@@ -714,7 +746,11 @@ A list of volume objects of the following form:
     "state": "ready",
     "networks": [
       "4537d92a-149c-6d83-104a-97b2f2a8b635"
-    ]
+    ],
+    "tags: {
+      "foo": "bar",
+      "bar": "baz"
+    }
   }
   ...
 ]
@@ -729,7 +765,8 @@ A list of volume objects of the following form:
 | name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
 | size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
-| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be owned by the user sending the request. |
+| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be fabric networks owned by the user sending the request. |
+| labels        | Object       | An object representing key/value pairs that correspond to label names/values. |
 
 ###### Output
 
@@ -960,19 +997,29 @@ or "VOLAPI".
 | --------------- | ------------ | ---------------------------------------- |
 | name            | String       | Allows to filter volumes by name. |
 | owner_uuid      | String       | When not empty, only volume objects with an owner whose UUID is `owner_uuid` will be included in the output |
-| filter          | String       | Custom filter to filter volumes on arbitrary indexed properties |
+| type            | String       | Allows to filter volumes by type, e.g `type=tritonnfs`. |
+| state           | String       | Allows to filter volumes by state, e.g `state=failed`. |
+| predicate       | String       | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
+| tag.key         | String       | A string representing the value for the tag with key `key` to match. More details below. |
+
+###### Searching by name
 
 `name` is a pattern where the character `*` has a special meaning of matching
 any character any number of time. For instance, `*foo*` will match `foo`,
 `foobar`, `barfoo` and `barfoobar`.
 
-`filter` is a JSON string that can be transformed into an LDAP filter to search
+###### Searching by predicate
+
+The `predicate` parameter is a JSON string that can be transformed into an LDAP filter to search
 on the following indexed properties:
 
 * `name`
-* `owner_uuid`.
-* `type`.
-* `state`.
+* `owner_uuid`
+* `type`
+* `state`
+* `tags`
+
+###### Searching by tags
 
 ##### Output
 
@@ -1002,7 +1049,11 @@ A list of volume objects of the following form:
         "create_timestamp": "1572802062480",
         "state": "created"
       }
-    ]
+    ],
+    "tags: {
+      "foo": "bar",
+      "bar": "baz"
+    }
   },
   {
     "uuid": "a495d72a-2498-8d49-a042-87b222a8b63c",
@@ -1012,7 +1063,11 @@ A list of volume objects of the following form:
     "state": "ready",
     "networks": [
       "4537d92a-149c-6d83-104a-97b2f2a8b635"
-    ]
+    ],
+    "tags: {
+      "foo": "bar",
+      "bar": "baz"
+    }
   }
   ...
 ]
@@ -1067,10 +1122,11 @@ volume with UUID `volume-uuid`:
 | owner_uuid    | String       | The UUID of the volume's owner. |
 | size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
-| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be owned by the user with UUID `owner_uuid`. |
+| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be fabric networks and owned by the user with UUID `owner_uuid`. |
 | sync          | Boolean      | If true, the response is sent when the volume is created and ready to use or when an error occurs, otherwise the volume is created asynchronously and the response contains data to poll the state of the creation process. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
 | ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
+| tags          | Object       | An object representing key/value pairs that correspond to tags names/values. Docker volumes' labels are implemented with tags. |
 
 ##### Output
 
@@ -1238,8 +1294,7 @@ being deleted:
 
 ##### Common layout
 
-Volumes are be represented as objects in a moray bucket that share a common set
-of properties:
+Volumes are be represented as objects that share a common set of properties:
 
 ```
 {
@@ -1248,7 +1303,7 @@ of properties:
   "name": "foo",
   "type": "tritonnfs",
   "create_timestamp": 1462802062480,
-  "status": "created",
+  "state": "created",
   "references": "references/",
   "snapshots": [
     {
@@ -1261,7 +1316,11 @@ of properties:
       "create_timestamp": "1572802062480",
       "state": "created"
     }
-  ]
+  ],
+  tags: {
+    "foo": "bar",
+    "bar": "baz"
+  }
 }
 ```
 
@@ -1272,7 +1331,9 @@ of properties:
 * `name`: the volume's name. It must be unique for a given user. This is similar
   to the `alias` property of VMAPI's VM objects.
 * `type`: identifies the volume's type. There is currently one possible value
-  for this property: `tritonnfs`.
+  for this property: `tritonnfs`. Additional types can be added in the future,
+  and they can all have different sets of [type specific
+  properties](#type-specific-properties).
 * `create_timestamp`: a timestamp that indicates the time at which the volume
   was created.
 * `state`: `creating`, `ready`, `deleted`, `failed` or `rolling_back`. Indicates
@@ -1286,6 +1347,8 @@ of properties:
   usage semantics](#deletion-and-usage-semantics) for more details on how this
   list is used by various volumes APIs.
 * `snapshots`: a list of [snapshot objects](#snapshot-objects).
+* `tags`: a map of key/value pairs that represent volume tags. Docker volumes'
+  labels are implemented with tags.
 
 ##### Naming constraints
 
@@ -1361,6 +1424,22 @@ notified of state changes for VMs that reference shared volume objects, instead
 the list of references will be updated (e.g by doing an indexed search on VMAPI
 to find active VMs in the current set of references) when requests that need up
 to date data are handled (e.g when a `DeleteVolume` request is handled).
+
+##### Persistent storage
+
+Volume objects of any type are stored in the _same_ moray bucket named
+`volapi_volumes`. This avoids the need for searches across volume types to be
+performed in different tables, then aggregated and sometimes resorted when a
+sorted search is requested.
+
+Indices are setup for the followng searchable properties:
+
+* `owner_uuid`
+* `name`
+* `type`
+* `create_timestamp`
+* `state`
+* `tags`
 
 #### Volumes state machine
 
