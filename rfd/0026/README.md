@@ -720,7 +720,6 @@ A list of volume objects of the following form:
     "networks": [
       "1537d72a-949a-2d89-7049-17b2f2a8b634"
     ],
-    "references": "references/",
     "snapshots": [
       {
         "name": "my-first-snapshot",
@@ -1037,7 +1036,6 @@ A list of volume objects of the following form:
     "networks": [
       "1537d72a-949a-2d89-7049-17b2f2a8b634"
     ],
-    "references": "references/",
     "snapshots": [
       {
         "name": "my-first-snapshot",
@@ -1304,7 +1302,6 @@ Volumes are be represented as objects that share a common set of properties:
   "type": "tritonnfs",
   "create_timestamp": 1462802062480,
   "state": "created",
-  "references": "references/",
   "snapshots": [
     {
       "name": "my-first-snapshot",
