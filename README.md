@@ -76,6 +76,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 31 libscsi and uscsi(7I) Improvements for Firmware Upgrade](./rfd/0031/README.md)
 | draft    | [RFD 32 Multiple IP Addresses in NAPI](./rfd/0032/README.md) |
 | predraft | [RFD 33 Moray client v2](./rfd/0033/README.md) |
+| predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
 
 
 ## Contents of an RFD
