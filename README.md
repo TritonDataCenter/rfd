@@ -73,6 +73,10 @@ formal writing that it has come to represent.)
 | predraft | [RFD 28 Improving syncing between Compute Nodes and NAPI](./rfd/0028/README.md) |
 | draft    | [RFD 29 Nothing in SDC should rely on ur outside bootstrapping and emergencies](./rfd/0029/README.md) |
 | predraft | [RFD 30 Handling "lastexited" for zones when CN is rebooted or crashes](./rfd/0030/README.md) |
+| draft    | [RFD 31 libscsi and uscsi(7I) Improvements for Firmware Upgrade](./rfd/0031/README.md)
+| draft    | [RFD 32 Multiple IP Addresses in NAPI](./rfd/0032/README.md) |
+| predraft | [RFD 33 Moray client v2](./rfd/0033/README.md) |
+| predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
 
 
 ## Contents of an RFD

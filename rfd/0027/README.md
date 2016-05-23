@@ -27,25 +27,28 @@ where possible.
 
 ## Goals
 * Produce a clearly defined interface for users and operators to extract data
-that is readily available in SmartOS today.
-
+  that is readily available in SmartOS today.
 * The end result should facilitate a persistent instrumentation of the
 [USE Method](http://www.brendangregg.com/USEmethod/use-smartos.html) (or some
 subset of it at a minimum).
-
 * Should not limit the set of potential customer ingest solutions.
-
 * Should allow customers to use a push or a pull model externally.
-
 * Should not require operators to store metric data on behalf of end users.
-
 * If possible, leverage an existing open source tool with traction.
 
+## Use Case Examples
+### End user
+* Real time alarms for resource utilization (disk capacity, CPU, DRAM, etc.).
+* Monitor the impact of app utilization and throughput on container utilization.
+* Correlate resource metrics with application metrics.
+### Operators
+* ZFS zpool health (metrics and alerts)
+* Compute node utilization (metrics and alerts)
+
 ## Note
-This RFD is orthogonal to
-[RFD 0017](https://github.com/joyent/rfd/blob/master/rfd/0017/README.md). While
-it is likely that the two RFD will be complementary, they are distinctly
-different applications/product offerings.
+This RFD is a precursor to
+[RFD 0017](https://github.com/joyent/rfd/blob/master/rfd/0017/README.md) and it
+is likely that it will both complimentary and foundational.
 
 ## Inspirational Reading
 [Push vs Pull](http://www.boxever.com/push-vs-pull-for-monitoring) for metrics
@@ -171,36 +174,39 @@ pre-existing customer solutions should be created so that customers do not have
 to feel locked into the Prometheus model or be forced to switch.
 
 Prometheus facilitates each of the goals listed above, has a great amount of
-open-source traction, and provides an end-to-end solution. Users in a green can
-easily spin up a new Prometheus server in minutes and start polling new metrics.
-Thanks to the optional metric forwarding, users with existing time-series stores
-can also get up to speed quickly.
+open-source traction, and provides an end-to-end solution. Users can easily spin
+up a new Prometheus server in minutes and start polling new metrics. Thanks to
+the optional metric forwarding, users with existing time-series stores can also
+get up to speed quickly.
 
 ## Components
-### Metric Client
+### Metric Agent
+* Must operate under the following hard constraints
+  * Minimal impact on compute nodes / prevent brownout
+  * Must be operational even when operator and customer zones are not
+
 Runs in the global zone on the head node and compute nodes. It provides a
 Prometheus compatible HTTP endpoint for the Metric Proxy to make requests of.
 
-------
+```
+GET <cn_admin_ip>/vms/<vm_uuid>/metrics
+---
+    # HELP cpucaps_usage_percent current CPU utilization
+    # TYPE cpucaps_usage_percent gauge
+    cpucaps_usage 0
+    ...
+```
 
-###### Option 1 (No buffer)
-The client does not buffer or retain any data, it responds to requests for
-metrics with the data available at the time of request.
+The Metric Agent caches values and allows for a configurable expiration/TTL.
+Metrics are always be retrievable, however they will remain unchanged for the
+duration of the cached value TTL. Metric Agent collection will only be made if a
+cached value does not exist or the currently cached value is expired.
 
-###### Option 2 (Selective caching)
-The client caches expensive calls and allows for a configurable expiration. In
-this scenario specific metrics would always be retrievable, but would remain
-the same for the duration of the cached value. The expensive calls would only be
-made if a cached value does not exist or the currently cached value has expired.
+The Metric Agent should support an operator configurable global minimum polling
+frequency. This will allow an operator to dial back metric collection on an
+overloaded compute node and potentially avoid stopping the Metric Agent.
 
-###### Option 3 (Self populated caching)
-The client caches all metrics and allows for a configurable per metric
-expiration. Metric Client Proxy requests do not result in metric collection,
-instead metrics are automatically collected by the client on a timer.
-
-------
-
-Static pre-defined metrics will be collected using modules like
+Pre-defined metrics will be collected using modules like
 [node-kstat](https://github.com/bcantrill/node-kstat). Additionally, it seems
 likely that we can leverage the proc(4) backend instrumenter in CAv1 to provide
 prstat type collection.
@@ -209,47 +215,46 @@ The reasoning behind running in the global zone is that metrics are necessary in
 scenarios where an in-zone agent may become unresponsive (e.g. CPU caps exceeded
 , DRAM exceeded, etc.).
 
-While this is likely the most correct location, it is not without drawbacks. If
-the agent lived in-zone the failure domain has more breadth
+While this is likely the most correct location, and the only reasonable way to
+comply with the defined constraints, it is not without drawbacks. If the agent
+lived in-zone the failure domain has more breadth
 (i.e. the failure of one Metric agent only impacts a single zone), and its
 resource utilization could be easily controlled by existing functionality. With
 the Metric agent living in the global zone, a crash will result in all zones on
 that CN lacking data until it comes back up. It is also easier for the agent to
 become a noisy neighbor.
 
-### Metric Client Proxy
-The Metric Client Proxy lives between a customers Prometheus server and the
-Metric Clients that live on each compute node.
+### Metric Agent Proxy
+* Must operate under the following hard constraints
+  * The same user limitations as sdc-docker
+  * Flexible enough to support future versions of RBAC
+  * Highly available
+  * Prevent causing system brownout
 
-Though the Metric Client is a highly available cluster per data center, it will
-have a DNS A record per monitored customer container assigned to it so that it
-can respond as if it was the monitored instance itself. In addition to the DNS A
-records, one or more DNS SRV records will be created to allow a customers
-Prometheus server to automatically discover containers that should be polled.
+The Metric Agent Proxy lives between a customers Prometheus server and the
+Metric Agents that live on each compute node. It is also a highly available
+cluster per data center.
+
+Every container will have a DNS CNAME record which points at the Metric Agent
+Proxy cluster. In this way, the Metric Agent Proxy can respond as if it was the
+monitored instance itself by multiplexing on the request hostname.
 
 This is an operator controlled zone, deployed with sdcadm. The zone will need to
-have a leg on the admin network in order to talk with the Metric Client, and a
-leg on the external network to expose it to customers. However it does consume
-additional resources on any node that it is provisioned on, so it should keep an
-accounting of customer usage.
+have a leg on the admin network in order to talk with the Metric Agent, and a
+leg on the external network to expose it to customers.
 
 For customers that can use Prometheus data directly or via a
 [plugin](https://github.com/prometheus/nagios_plugins), this and the Metric
 Client are the only components that need to be in place.
 
-Customers polling servers will need to be authenticated and authorized. The
-proxy will utilize the same TLS based scheme as the official Prometheus
-endpoints. Customers existing SSH key(s) (the same key(s) used for accessing
-instances and sdc-docker) will be used. Optionally a customer may choose to
-restrict polling of their instances to specific IPs or subnets.
+Customers Prometheus servers will need to be authenticated and authorized. The
+proxy will utilize the same TLS based scheme as the official Prometheus agents.
+Customers existing SSH key(s) (the same key(s) used for accessing instances and
+sdc-docker) will be used.
 
 Authentication and authorization will also be leveraged to decide how many
-polling requests an end user is allowed to make to the Metric Client Proxy
+polling requests an end user is allowed to make to the Metric Agent Proxy
 within a configurable amount of time.
-
------
-
-###### Option 1 (Configurable per user request quota, global per user maximum)
 
 User request quota will default to an operator set value, and an optional per
 user maximum can also be set by an operator.
@@ -258,155 +263,214 @@ For example, a per user default could be 1000 requests per minute, and a global
 per user maximum could be 10000 requests per minute. Operators can choose
 whether or not to throttle users that go beyond 1000 requests per minute or
 charge them. That said, users are not allowed to violate the global per user
-maximum request quota if it is set.
-
-###### Option 2 (Package based request quota, global per user maximum)
-
-Each deployable package will be configured with a request quota. Each users
-request quota will be the sum total of their deployed packages quota. An
-operator can optionally configure a global per user maximum quota.
-
-For example, a user may have three containers deployed:
-
-1. 10 request per minute quota
-2. 100 request per minute quota
-3. 20 request per minute quota
-
-In this scenario the users request quota would be 130 requests per minute. An
-operator can choose to throttle users at their request quota, or set a per user
-global maximum limit. An operator may choose to bill for requests that exceed
-the users request quota up until they hit the global maximum. When the
-global maximum is hit, users will be throttled.
-
------
+maximum request quota if it is set. The goal is not to limit users ever, but we
+must comply with the constraint of preventing CN and cloud brownout if possible.
 
 If configured, users who poll beyond their allotment or global maximum will
 receive a [HTTP 429](https://tools.ietf.org/html/rfc6585#page-3) response.
 
-### Metric Forwarder (optional)
-For customers that need to have data pushed to them, and can't use an existing
-Prometheus plugin, a Metric Forwarder zone can be deployed. This zone will poll
-a configurable set of Metric Proxy endpoints for data, translate it to the
-desired metric format (e.g. [InfluxDB](https://influxdata.com/), Syslog, etc.),
-and push the translated data to the customers existing system.
-
-This is provisioned by the customer, but some configuration will be necessary to
-dictate which type of translation should be done. It's likely a configuration
-file will suffice for version 1 along side a pre-defined SmartOS or LX package
-with the necessary pieces pre-installed.
-
-The minimum viable set of translations are Syslog, statsd, and InfluxDB.
-
-### Opting in
-End users will leverage CloudAPI to enable Container Monitor for their account
-by adding `cm_enabled=true`.
-
 ### Discovery
 
-When a user opts into using Container Monitor for their account, CNS will detect
-the change and create a the following DNS records
+When Metric Agent Proxies are provisioned or destroyed CNS will detect the
+change and create or remove a Metric Agent Proxy A record automatically.
 
-`<vm_uuid>.cm.triton.zone A <ip of metric client proxy>`
-`_cm._tcp.<useruuid>.triton.zone 86400 IN SRV 0 5 3000 <vm_uuid>.cm.triton.zone`
+```
+    <region>.map<instance number>.triton.zone A 10.99.99.7
+```
 
-for each of the accounts containers. Going forward all new containers will get a
-Container Monitor A record and an SRV record automatically. This allows
-Prometheus built-in DNS discovery to automatically find and collect metrics from
-all of a users containers.
+When existing containers are backfilled and when new containers are created, CNS
+will detect the change and create the following DNS records
 
-If a user does not wish to use DNS SRV record discovery, they may list their
-containers via CloudAPI which will include the Container Monitor A record for
-each container as a part of the payload.
+```
+    <vm_uuid>.cm.triton.zone CNAME <region>.map01.triton.zone
+    <vm_uuid>.cm.triton.zone CNAME <region>.map02.triton.zone
+    <vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
+```
+
+for each container. Going forward all new containers will get a Container
+Monitor CNAME record automatically. Similarly, Metric Agent Proxy records will
+be added and removed when proxies come and go, along with corresponding CNAME
+records.
+
+Each CNAME record represents a virtual Prometheus endpoint backed by the Metric
+Agent Proxy.
+
+A CloudAPI based Prometheus service discovery module will be built and hopefully
+accepted for inclusion in the main Prometheus repository. This will function and
+be configured similarly to the existing
+[ec2 service discovery module](https://prometheus.io/docs/operating/configuration/#ec2_sd_config).
+
+For users running pre-existing Prometheus servers, the suggested service
+discovery mechanism will be leveraging [file based service discovery](https://prometheus.io/docs/operating/configuration/#<file_sd_config>)
+in conjunction with our Prometheus autopilot pattern. In this way they'll get an
+equivalent experience to the CloudAPI based discovery without having to upgrade
+their Prometheus installation.
 
 ## Architecture Overview
 ![Container Monitor Layout](http://us-east.manta.joyent.com/shmeeny/public/container_monitor.png)
 
 ## Happy Path Walk Through
 
-### Configuration
-* Configure account for use with Container Monitor via Portal, AdminUI, or
-  the Triton CLI
+### Metric Agent Proxy Creation
+* Operator deploys new Metric Agent Proxies using sdcadm
+* VMAPI pushes a changefeed event to CNS
+* CNS creates A records of the form
+```
+    <region>.map<instance number>.triton.zone A 10.99.99.7
+```
+for each Metric Agent Proxy deployed with sdcadm
 
-* [Configure](https://prometheus.io/docs/operating/configuration/) your
-  Prometheus server
-    * Use the cert and key for your SDC user
-    * Add a job for the availability zones that your containers run in, using
-      DNS SRV discovery.
+### Container Creation
+* User creates a new container
+* VMAPI pushes a changefeed event to CNS
+* CNS creates CNAME records of the form
+
+```
+<vm_uuid>.cm.triton.zone CNAME <region>.map01.triton.zone
+<vm_uuid>.cm.triton.zone CNAME <region>.map02.triton.zone
+<vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
+```
+
+  for each Metric Agent Proxy IP.
+
+### End User Configuration
+* Install and run a Prometheus server
+    * Create prometheus.yml [configuration](https://prometheus.io/docs/operating/configuration/)
+        * TLS configuration is required, use the same cert and key that you
+          configured for use with CloudAPI, sdc-docker, etc.
+        * Add a job for the availability zones that your containers run in,
+          using Triton discovery.
+          ```
+          - job_name: triton_east1
+
+            tls_config:
+                cert_file: /path/to/valid_cert_file
+                key_file: /path/to/valid_key_file
+
+                bearer_token: avalidtoken
+                scrape_interval: 30s
+                scrape_timeout:  10s
+
+            triton_sd_configs:
+              - region: us-east-1
+                access_key: access
+                secret_key: secret
+                user_name: name
+                # refresh_interval defaults to 30s.
+
+            labels:
+                triton_cloud: triton_cloud
+
+            scheme: https
+          ```
+    * User deploys a Triton Linux Container
       ```
-      - job_name: triton_jpc_east1
-
-        tls_config:
-            cert_file: valid_cert_file
-            key_file: valid_key_file
-
-            bearer_token: avalidtoken
-            scrape_interval: 60s
-            scrape_timeout:  10s
-
-        dns_sd_configs:
-            names:
-                - _cm._tcp.<useruuid>.triton.zone
-            # refresh_interval defaults to 30s.
-
-        labels:
-            triton_jpc: triton_jpc
-
-        scheme: https
+      $ triton instance create -w --name=prometheus01 ubuntu-14.04 t4-standard-1G
       ```
+    * User secure copies pem files and config to the newly deployed Prometheus
+      server
+      ```
+      $ scp pem_config.tgz root@prometheus01:.
+      ```
+    * User logs into Prometheus server
+      ```
+      $ ssh root@prometheus01
+      ```
+    * Download the official Prometheus server binaries
+      ```
+      $ wget https://github.com/prometheus/prometheus/releases/download/0.18.0/prometheus-0.18.0.linux-amd64.tar.gz
+      ```
+    * User runs the Prometheus server
+      ```
+      $ ./prometheus -config.file=prometheus.yml
+      ```
+    * Prometheus server polls CloudAPI to discover end points to collect from
+    * Prometheus server polls discovered endpoints every thirty seconds, such as
+     ```
+     https://fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
+     ```
+    * Metric Agent Proxy validates the end users key and cert file
+    * Metric Agent Proxy determines which compute node the container is on and
+      makes an HTTP call to its Metric Agent
 
+      ```
+        GET 10.99.99.7/vms/fbb8e583-9c87-4724-ac35-7cefb46c0f7b/metrics
+        ---
+        # HELP cpucaps_usage_percent current CPU utilization
+        # TYPE cpucaps_usage_percent gauge
+        cpucaps_usage 0
+        # HELP cpucaps_below_seconds time spent below CPU cap in seconds
+        # TYPE cpucaps_below_seconds gauge
+        cpucaps_below 16208
+        # HELP cpucaps_above_seconds time spent above CPU cap in seconds
+        # TYPE cpucaps_above_seconds gauge
+        cpucaps_above 0
+        # HELP memcaps_rss_bytes memory usage in bytes
+        # TYPE memcaps_rss_bytes gauge
+        memcaps_rss 491872256
+        # HELP memcaps_swap_bytes swap usage in bytes
+        # TYPE memcaps_swap_bytes gauge
+        memcaps_swap 577830912
+        # HELP memcaps_anonpgin anonymous pages from swap device
+        # TYPE memcaps_anonpgin gauge
+        memcaps_anonpgin 11019
+        # HELP memcaps_anon_alloc_fail memory allocation failures
+        # TYPE memcaps_anon_alloc_fail gauge
+        memcaps_allocfail 0
+        ...
+      ```
+    * Metric Agent Proxy proxies the Metric Agent response back to the calling
+      Prometheus server.
+    * Container Monitor data is now available in the users Prometheus endpoint
 
-### Flow
-* Prometheus server makes HTTPS requests to the discovered Metric Client Proxy
-  endpoint(s).
-* The Metric Client Proxy authenticates and authorizes the request(s) based on
-  the TLS information provided and the UUID provided in the URI.
-* The Metric Client Proxy queries the appropriate compute node Metric Client for
-  only the container metrics being requested.
-* Metric Client(s) return a Prometheus text based HTTP response to the Metric
-  Proxy.
-* The Metric Client Proxy returns the response from the Metric Client to the end
-  users Prometheus server or Metric Forwarder
+### Container Destroyed
+* User destroys a container
+* VMAPI pushes a changefeed event to CNS
+* CNS removes the CNAME records associated with the container
+
+### Metric Agent Proxy destroyed
+* Operator destroys a Metric Agent Proxy
+* VMAPI pushes a changefeed event to CNS
+* CNS removes the A record associated with the Metric Agent Proxy and all CNAME
+  records that reference it.
 
 ## High Availability
-### Metric Client
+### Metric Agent
 This is a single agent on a compute or head node, it has no more availability
 than the other supporting agents like cn-agent and vm-agent. Additional agents
 would only be helpful in the case of an agent crash, and not node failure. At
 this time it does not make sense to provide guarantees beyond SMF restarts.
 
-### Metric Client Proxy
+### Metric Agent Proxy
 This is an entirely stateless service and because of that there is no limit to
 the number of proxies that can be in use at a given time. The proxy can be
 deployed with sdcadm to multiple nodes in a given data center. The recommended
-deployment is three Metric Client Proxies, one on the headnode and the other two
+deployment is three Metric Agent Proxies, one on the headnode and the other two
 on different compute nodes which are ideally in different racks.
 
-### Metric Forwarder
-Because the metric forwarder is an outbound stream/push mechanism, multiple
-translators cannot push data to the same customer endpoint without duplication.
-Because of this limitation, the translator must only operate in an
-active/passive configuration.
+When multiple Metric Agent Proxies are in use, CNS and round robin DNS
+(e.g. multiple A records per <vm_uuid>.cm.triton.zone) will be leveraged.
+To ensure minimum disruption in the case of a Metric Agent Proxy failure, a low
+TTL should be used.
 
 ## Scaling
 ### Metric Agent
 Because the Metric Agent is a single agent running on a compute or head node,
 there is no good way of scaling it. That said, it does need to be sensitive to
-overloading the global zone. If the Metric Agent finds itself in an overloaded
-state it should sacrifice itself in order to maintain the performance of the
-node it is on.
+overloading the global zone.
+
+In order to protect the global zone, the Metric Agent will have a runtime
+configurable throttle.
 
 ### Metric Proxy
 Multiple Metric Proxy zones can be added as load requires and without penalty.
-
-### Metric Forwarder
-The Metric Forwarder should support an instance/container whitelist so that
-end users can scale active/passive pairs horizontally. For example one pairing
-could have containers 0 - 100, another pairing with 101 - 200, and so on. This
-maintains a single writer per container, but allows for scale out.
+When new Metric Proxies are added, CNS will detect this and add new A records as
+well as the necessary CNAME records.
 
 ## Dynamic metrics (e.g. on-demand DTrace integration)
 Dynamic metrics are already somewhat supported by CAv1, and are out of scope for
-version one of Container Metrics.
+version one of Container Monitor. The intent is to add support for dynamic
+metrics in a future version.
 
 ## Triton CLI integration
 The Triton CLI should be able to act as a Prometheus polling server. This will
@@ -415,69 +479,51 @@ for end users.
 
 * Examples provided as a loose example of what could be done. This is not
   intended to be prescriptive at this time.
-```
-# default raw response
-$ triton monitor <vmuuid>.cm.triton.zone
-...
-http_request_duration_seconds_bucket{le="0.05"} 24054
-http_request_duration_seconds_bucket{le="0.1"} 33444
-http_request_duration_seconds_bucket{le="0.2"} 100392
-http_request_duration_seconds_bucket{le="0.5"} 129389
-...
-```
 
 ```
-# Formatted response listing vm caps data
-$ triton monitor <vmuuid>.cm.triton.zone --caps
-    VM_UUID                                 value    usage    maxusage
-    fbb8e583-9c87-4724-ac35-7cefb46c0f7b    100      0        87
+    # default raw response
+    $ triton monitor <container uuid or name>
+    ...
+    cpucaps_usage 0
+    cpucaps_below 16208
+    cpucaps_value 100
     ...
 ```
+
+```
+    # Formatted response listing vm caps data
+    $ triton monitor <container uuid or name> --caps
+        VM_UUID                                 value    usage    maxusage
+        fbb8e583-9c87-4724-ac35-7cefb46c0f7b    100      0        87
+        ...
+```
 ## Default Metric Collection
-* kstat -p caps::cpucaps_zone*
-* kstat -p memory_cap:::
-* kstat -p | grep ifspeed
-* kstat -p <nic kind>::*
-* prstat -mLc
-* df -h
+At a minimum, we should provide a subset of the official Prometheus
+[node exporter](https://github.com/prometheus/node_exporter#enabled-by-default)
+metrics
 
-## Prometheus [Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
-### Example text based response
-```
-# HELP api_http_request_count The total number of HTTP requests.
-# TYPE api_http_request_count counter
-http_request_count{method="post",code="200"} 1027 1395066363000
-http_request_count{method="post",code="400"}    3 1395066363000
+### Proposed Subset
+Name     | Description
+---------|-------------
+cpu | Exposes CPU statistics
+filesystem | Exposes filesystem statistics, such as disk space used.
+loadavg | Exposes load average.
+meminfo | Exposes memory statistics.
+netdev | Exposes network interface statistics such as bytes transferred.
+time | Exposes the current system time.
 
-# Escaping in label values:
-msdos_file_access_time_ms{path="C:\\DIR\\FILE.TXT",error="Cannot find file:\n\"FILE.TXT\""} 1.234e3
+## [Prometheus Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
 
-# Minimalistic line:
-metric_without_timestamp_and_labels 12.47
+## [Example agent code](https://github.com/joyent/sdc-cn-agent/blob/rfd27/lib/monitor-agent.js)
 
-# A weird metric from before the epoch:
-something_weird{problem="division by zero"} +Inf -3982045
+## Metric Forwarder
+For customers that need to have data pushed to them, and can't use an existing
+Prometheus plugin, a Metric Forwarder zone can be deployed. This zone will poll
+a configurable set of Metric Proxy endpoints for data (just like a Prometheus
+server), translate it to the desired metric format
+(e.g. [InfluxDB](https://influxdata.com/), Syslog, etc.), and push the
+translated data to the customers existing system.
 
-# A histogram, which has a pretty complex representation in the text format:
-# HELP http_request_duration_seconds A histogram of the request duration.
-# TYPE http_request_duration_seconds histogram
-http_request_duration_seconds_bucket{le="0.05"} 24054
-http_request_duration_seconds_bucket{le="0.1"} 33444
-http_request_duration_seconds_bucket{le="0.2"} 100392
-http_request_duration_seconds_bucket{le="0.5"} 129389
-http_request_duration_seconds_bucket{le="1"} 133988
-http_request_duration_seconds_bucket{le="+Inf"} 144320
-http_request_duration_seconds_sum 53423
-http_request_duration_seconds_count 144320
-
-# Finally a summary, which has a complex representation, too:
-# HELP telemetry_requests_metrics_latency_microseconds A summary of the response latency.
-# TYPE telemetry_requests_metrics_latency_microseconds summary
-telemetry_requests_metrics_latency_microseconds{quantile="0.01"} 3102
-telemetry_requests_metrics_latency_microseconds{quantile="0.05"} 3272
-telemetry_requests_metrics_latency_microseconds{quantile="0.5"} 4773
-telemetry_requests_metrics_latency_microseconds{quantile="0.9"} 9001
-telemetry_requests_metrics_latency_microseconds{quantile="0.99"} 76656
-telemetry_requests_metrics_latency_microseconds_sum 1.7560473e+07
-telemetry_requests_metrics_latency_microseconds_count 2693
-```
+This is provisioned by the customer and not in the scope of this RFD. That said,
+in the near future Joyent will create a few blueprints to help customers get
+started. The blueprints may be for Syslog, statsd, InfluxDB, etc.
