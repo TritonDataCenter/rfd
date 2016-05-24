@@ -21,3 +21,12 @@ This will describe requirements and solutions for distributed tracing in Triton
 in order to help monitor and diagnose issues around performance and
 interdependencies.
 
+## Background Reading
+
+ - [AppDash](https://github.com/sourcegraph/appdash)
+ - [DiTrace](https://ditrace.readthedocs.io/en/latest/)
+ - [Google's Dapper](http://research.google.com/pubs/pub36356.html)
+ - [HTrace](https://github.com/cloudera/htrace)
+ - [OpenTracing.io](OpenTracing.io)
+ - [X-Trace](https://github.com/rfonseca/X-Trace)
+ - [Zipkin](http://zipkin.io/)
