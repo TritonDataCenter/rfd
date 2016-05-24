@@ -77,6 +77,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 32 Multiple IP Addresses in NAPI](./rfd/0032/README.md) |
 | predraft | [RFD 33 Moray client v2](./rfd/0033/README.md) |
 | predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
+| predraft | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
 
 
 ## Contents of an RFD
