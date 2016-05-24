@@ -96,7 +96,7 @@ state: draft
         - [Deletion and usage semantics](#deletion-and-usage-semantics)
         - [Persistent storage](#persistent-storage)
       - [Volumes state machine](#volumes-state-machine)
-      - [Reaping stalled volumes](#reaping-stalled-volumes)
+      - [Reaping failed and deleted volumes](#reaping-failed-and-deleted-volumes)
   - [Snapshots](#snapshots-1)
     - [Use case](#use-case)
     - [Implementation](#implementation)
@@ -775,6 +775,9 @@ state is `creating`. Users need to poll the newly created volume with the
 `GetVolume` API to determine when it's ready to use (its state transitions to
 `ready`).
 
+If the creation process fails, the volume object has its state set to `failed`
+and an `error` property that documents what the cause for the failure was.
+
 ##### GetVolume GET /volumes/volume-uuid
 
 GetVolume can be used to get data from an already created volume, or to
@@ -1121,22 +1124,19 @@ volume with UUID `volume-uuid`:
 | size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be fabric networks and owned by the user with UUID `owner_uuid`. |
-| sync          | Boolean      | If true, the response is sent when the volume is created and ready to use or when an error occurs, otherwise the volume is created asynchronously and the response contains data to poll the state of the creation process. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
 | ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
 | tags          | Object       | An object representing key/value pairs that correspond to tags names/values. Docker volumes' labels are implemented with tags. |
 
 ##### Output
 
-If the volume is created synchronously (by passing the `sync=true` in input
-parameters), the output is the newly created [volume object](#volume-objects),
-otherwise it is an object with the following properties:
+An object with the following properties:
 
 * `volume_uuid`: the UUID of the newly created volume.
 * `job_uuid`: the UUID of the job that is creating the volume.
 
-When creating a volume asynchronously, polling the job using the `job_uuid` can
-be used to determine when the volume is created and can be used.
+When creating a volume, polling the job using the `job_uuid` can be used to
+determine when the volume is created and can be used.
 
 #### DeleteVolume DELETE /volumes/volume-uuid
 
@@ -1145,7 +1145,6 @@ be used to determine when the volume is created and can be used.
 | Param           | Type        | Description                     |
 | --------------- | ----------- | --------------------------------|
 | uuid            | String      | The uuid of the volume object   |
-| sync            | Boolean     | If true, the response is sent when the volume is deleted or when an error occurs, otherwise the volume is deleted asynchronously and the response contains data to poll the state of the deletion process.   |
 | force           | Boolean     | If true, the volume can be deleted even if there are still non-deleted containers that reference it .   |
 
 If `force` is not specified or `false`, deletion of a shared volume is not
@@ -1157,15 +1156,13 @@ for more information.
 
 ##### Output
 
-If the volume is deleted synchronously (by passing the `sync=true` in input
-parameters), the output is the deleted [volume object](#volume-objects),
-otherwise it is an object with the following properties:
+An object with the following properties:
 
 * `volume_uuid`: the UUID of the deleted volume.
 * `job_uuid`: the UUID of the job that is deleting the volume.
 
-When deleting a volume asynchronously, polling the job using the `job_uuid` can
-be used to determine when the volume is deleted.
+Polling the job using the `job_uuid` can be used to determine when the volume is
+deleted.
 
 If resources are using the volume to be deleted, the request results in an error
 and the error contains a list of resources that are using the volume.
@@ -1194,16 +1191,10 @@ A snpashot object has the following properties:
 | Param         | Type         | Description                              |
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The desired name for the snapshot to create. The name must be unique per volume. |
-| sync          | Boolean      | If `true`, the response is sent when the volume snapshot is created and ready to use or when an error occurs, otherwise the volume snapshot is created asynchronously and the response contains data to poll the state of the creation process. |
 
 ###### Output
 
-If `sync` is `true`, the response is the volume object representing the volume
-with UUID `volume-uuid`, with the newly created snapshot added to its
-`snapshots` list property.
-
-Otherwise, it is an object that allows for polling the state of the snapshot
-being created:
+An object that allows for polling the state of the snapshot being created:
 
 ```
 {
@@ -1239,7 +1230,6 @@ underlying storage VM to be stopped and restarted.
 | ------------- | ------------ | ---------------------------------------- |
 | uuid          | String       | The uuid of the snapshot object that represents the state to which to rollback. |
 | name          | String       | The name of the snapshot object that represents the state to which to rollback. |
-| sync          | Boolean      | If `true`, the response is sent when the volume is rolled back and ready to use or when an error occurs, otherwise the rollback process is done asynchronously and the response contains data to poll the state of the rollback process. |
 | owner_uuid    | String       | If present, the `owner_uuid` passed as a parameter will be checked against the `owner_uuid` of the volume identified by `volume-uuid`. If they don't match, the request will result in an error. |
 
 ###### Output
@@ -1269,17 +1259,11 @@ volume with UUID `volume-uuid`.
 | Param         | Type         | Description                              |
 | ------------- | ------------ | ---------------------------------------- |
 | uuid          | String       | The uuid of the snapshot object to delete. |
-| sync          | Boolean      | If `true`, the response is sent when the volume snapshot is deleted or when an error occurs, otherwise the volume snapshot is deleted asynchronously and the response contains data to poll the state of the delete process. |
 | owner_uuid    | String       | If present, the `owner_uuid` passed as a parameter will be checked against the `owner_uuid` of the volume identified by `volume-uuid`. If they don't match, the request will result in an error. |
 
 ###### Output
 
-If `sync` is `true`, the response is the volume object that represents the
-volume with UUID `volume-uuid`, with its `snapshots` list updated to not list
-the snapshot whose name is `snapshot-name`.
-
-Otherwise, it is an object that allows for polling the state of the snapshot
-being deleted:
+An object that allows for polling the state of the snapshot being deleted:
 
 ```
 {
@@ -1338,6 +1322,11 @@ Volumes are be represented as objects that share a common set of properties:
   still persisted to Moray for troubleshooting/debugging purposes. See the
   section [Volumes state machine](#volumes-state-machine) for a diagram and
   further details about the volumes' state machine.
+* `error`: an optional property present when the `state` property is `failed`.
+  It allows users to get further details on why a volume is in the `failed`
+  state. Its value is an object with the following properties:
+    * `message`: a string that describes the cause for the failure
+    * `code`: a string code that identifies classes of errors
 * `references`: a relative path to a URI that can be used to list resources
   (such as VMs, but other types of resources could reference a volume) that are
   using that volume. See for instance [the section about volume deletion and
@@ -1442,7 +1431,7 @@ Indices are setup for the followng searchable properties:
 
 ![Volumes state FSM](images/volumes-state-fsm.png)
 
-#### Reaping stalled volumes
+#### Reaping failed and deleted volumes
 
 Volumes in state `failed` and `deleted` do not need to be present in persistent
 storage forever. Not deleting these entries has an impact on performance. For
