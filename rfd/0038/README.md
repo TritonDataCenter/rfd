@@ -22,7 +22,7 @@ by trying to ensure that a single zone does not use more than its fair share
 of the physical memory page cache at the expense of other zones.
 
 There are a number of problems with the existing approach for physical memory
-capping and we have pushed the current implementation about as far as possible,
+capping and we have pushed the current implementation about as far as possible.
 The problems are described in this RFD, but to summarize, physcical memory
 capping is hard to enforce, can induce unacceptable latency onto the
 application, and is hard to accurately observe. A new approach is needed to
@@ -48,7 +48,7 @@ more detail.
    One of the primary issues is that there is no good way to determine how much
    physical memory a zone is consuming. This is because pages can be shared
    among multiple processes which map the backing object (e.g. each process
-   which maps libc will back to the same object and share pages that come
+   which maps libc will back to the same file and share pages that come
    from libc). Furthermore, these pages can be shared across zones. Taking
    the libc example, a process in one zone might map in libc, then another
    process in a different zone will map in libc and re-use the pages that were
@@ -101,7 +101,7 @@ more detail.
    simply depend on the VM system to manage residency as necessary. These
    types of applications can demand page in as much data as possible. One
    example is MongoDB, which maps in all of its large database files (this
-   can lead to an adress space usage of tens to hundreds of GB) and then
+   can lead to an address space usage of tens to hundreds of GB) and then
    simply accesses these pages. This style of behavior is not very well suited
    to a multi-tenant environment (either multiple zones or even a multi-user
    system), because the VM system has no ability to manage fairness across
@@ -115,7 +115,7 @@ more detail.
    traverse its address space. This pause is not noticeable for the typical
    small process, but can become noticeable once a process address space
    becomes large (tens of GB), as described above. This pause can cause
-   noticable latency issues for some applications and we strive hard to avoid
+   noticeable latency issues for some applications and we strive hard to avoid
    this. In addition, our current mechanism for invalidating pages when we're
    over the cap also locks the process, and suffers from the same latency
    concern on large processes.
@@ -174,7 +174,7 @@ about the latency issues that occur in some cases, 'zoneadmd' was enhanced to
 avoid the 'getvmusage' syscall as much as possible. Use of the lightweight, but
 inaccurate per-process RSS was emphasized, with 'getvmusage' only being called
 when it appears that the zone has gone over the cap. The 'prstat' command was
-also changed to avoid 'getvmusage' unless an accurate RSS was explcitly
+also changed to avoid 'getvmusage' unless an accurate RSS was explicitly
 requested. Currently 'zoneadmd' uses a moderately complex RSS scaling mechansim
 to further reduce the calls to 'getvmusage' while still trying to maintain a
 reasonable approximation of the RSS.
@@ -237,13 +237,13 @@ to be minimally invasive in the VM system.
       to go top-down from processes inside the zone. We want to avoid the
       process locking the top-down approach entails, since it causes the
       latency issues described earlier. We can use the new zoneid tag on the
-      page to determine which pages are candidates to be freed, There are some
-      open questions on this.
+      page to determine which pages belong to a zone and are candidates to be
+      freed, There are some open questions on this.
 
       a. Is there one scanner for the entire system which is also responsible
          for every zone on the system, or is there a scanner per-zone?
 
-      b. We need to determine if ignoring shared pages is going to be an issue.
-         It seems like it should not be, since all anonymous memory, and any
-         memory backed by files local to the zone, should account for the
-         majority of memory used by real world applications.
+      b. We need to determine if ignoring cross-zone shared pages is going to
+         be an issue.  It seems like it should not be, since all anonymous
+         memory, and any memory backed by files local to the zone, should
+         account for the majority of memory used by real world applications.
