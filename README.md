@@ -80,6 +80,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
 | predraft | [RFD 36 Mariposa](./rfd/0036/README.md) |
 | predraft | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
+| draft    | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
 
 
 ## Contents of an RFD
