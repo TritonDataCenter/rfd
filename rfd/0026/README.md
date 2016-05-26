@@ -66,23 +66,26 @@ state: draft
       - [Filtering shared volumes zones from list endpoint](#filtering-shared-volumes-zones-from-list-endpoint)
       - [New `internal_role` property on VM objects](#new-internal_role-property-on-vm-objects)
       - [New internal `mounted_volumes` property on VM objects](#new-internal-mounted_volumes-property-on-vm-objects)
+      - [New GetVolumeReferences `GET /volumereferences?volume_uuid=` endpoint](#new-getvolumereferences-get-volumereferencesvolume_uuid-endpoint)
+        - [Input](#input)
+        - [Output](#output)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
     - [New `VOLAPI` service and API](#new-volapi-service-and-api)
       - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
-        - [Input](#input)
-        - [Output](#output)
-      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
         - [Input](#input-1)
         - [Output](#output-1)
-      - [GetVolumeReferences GET /volumes/volume-uuid/references](#getvolumereferences-get-volumesvolume-uuidreferences-1)
+      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
         - [Input](#input-2)
         - [Output](#output-2)
-      - [CreateVolume POST /volumes](#createvolume-post-volumes)
+      - [GetVolumeReferences GET /volumes/volume-uuid/references](#getvolumereferences-get-volumesvolume-uuidreferences-1)
         - [Input](#input-3)
         - [Output](#output-3)
-      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
+      - [CreateVolume POST /volumes](#createvolume-post-volumes)
         - [Input](#input-4)
         - [Output](#output-4)
+      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
+        - [Input](#input-5)
+        - [Output](#output-5)
       - [Snapshots](#snapshots)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot-1)
@@ -979,7 +982,33 @@ An underscore character (`_`) will be used to delimit volumes' UUIDs. Storing
 this property as a single string as opposed to a composite type (an array or an
 object) allows the implementation to index it and perform indexed searches.
 
-This property is _internal_ and is not exposed to VMAPI and CloudAPI users.
+This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
+is used by the new [GetVolumeReferences VMAPI endpoint](#new-getvolumereferences-get-volumereferencesvolume_uuid-endpoint).
+
+#### New GetVolumeReferences `GET /volumereferences?volume_uuid=` endpoint
+
+While the [`mounted_volumes`
+property](#new-internal-mounted_volumes-property-on-vm-objects) on VM objects is
+internal, a new external `GetVolumesReferences` API is provided.
+
+##### Input
+
+| Param           | Type         | Description                              |
+| --------------- | ------------ | ---------------------------------------- |
+| owner_uuid      | String       | When not empty, only UUIDS of VM objects with an owner whose UUID is `owner_uuid` will be included in the output. |
+| volume_uuid     | String       | A string representing a volume UUID for wich to list VMs that reference it. |
+
+##### Output
+
+A list of VM UUIDs that represents all active VMs that reference the volume
+represented by `volume_uuid`, such as:
+
+```
+[
+  'some-vm-uuid',
+  'some-other-vm-uuid'
+]
+```
 
 #### Naming of shared volumes zones
 
