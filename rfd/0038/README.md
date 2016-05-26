@@ -1,5 +1,6 @@
 ---
 author: Jerry Jelinek <jerry@joyent.com>
+contriutors: Joshua Clulow <jclulow@joyent.com>
 state: draft
 ---
 
@@ -216,34 +217,34 @@ Many details in this section are still TBD, but we can describe a high-level
 approach which is modeled on the system's page scanner and which attempts
 to be minimally invasive in the VM system.
 
-   1. We need a better mechanism to track an on-going accurate count of
+   1. We will ignore pages shared across zones. By the very definition of
+      SmartOS, there is only a small amount (< 200MB) of program text shipped
+      in the GZ that could be shared. Any pages shared from there are likely in
+      use by many zones and are uninteresting to the overall application memory
+      consumption of a zone. Also, by ignoring cross-zone shared pages we can
+      take advantage of the 'referenced' and 'modified' bits on each page to
+      know how a zone is using the page.
+
+   2. We need a better mechanism to track an on-going accurate count of
       overall page residency for a zone. This is a prerequisite to any other
       improvements in capping. This accounting mechanism should work in
       conjunction with the next item. The count is used to determine when the
-      page scanner runs for the zone. The exact design for accurately counting
-      pages by zone is TBD.
-
-   2. We need to know which zone a page is associated with. If a page is
-      associated with more than one zone then we should also record this. We
-      could track this by recording the zoneid on the page struct when the
-      page is paged in. If a different zone accesses the same page, then we
-      could record that this is a shared page not associated with an individual
-      zone. We need to determine how disruptive adding a zoneid tag onto each
-      page will be.
+      page scanner runs for the zone. We will maintain a list of pages
+      associated with a zone. If a page is on the per-zone list, and then later
+      we see another zone also needs that page, it will be removed from the
+      per-zone list and will no longer be associated with any zone. By having
+      a list of pages for a zone, it is easy to maintain a count for the zone.
+      We need to determine how disruptive adding a pair of list pointers onto
+      onto each page_t will be.
 
    3. We should leverage the system's approach for the page scanner when the
       zone is approaching its memory cap and start freeing pages from within
       the kernel. In particular, we want to scan pages bottom-up, and not have
       to go top-down from processes inside the zone. We want to avoid the
       process locking the top-down approach entails, since it causes the
-      latency issues described earlier. We can use the new zoneid tag on the
-      page to determine which pages belong to a zone and are candidates to be
-      freed, There are some open questions on this.
+      latency issues described earlier. We will use the traditional two-handed
+      approach for the scanner and scan the page list associated with the 
+      zone to determine which pages are candidates to be freed.
 
-      a. Is there one scanner for the entire system which is also responsible
-         for every zone on the system, or is there a scanner per-zone?
-
-      b. We need to determine if ignoring cross-zone shared pages is going to
-         be an issue.  It seems like it should not be, since all anonymous
-         memory, and any memory backed by files local to the zone, should
-         account for the majority of memory used by real world applications.
+   4. Given the above, we could make zone page usage a hard cap and block
+      page faults until enough memory is available.
