@@ -65,6 +65,7 @@ state: draft
     - [Changes to VMAPI](#changes-to-vmapi)
       - [Filtering shared volumes zones from list endpoint](#filtering-shared-volumes-zones-from-list-endpoint)
       - [New `internal_role` property on VM objects](#new-internal_role-property-on-vm-objects)
+      - [New internal `mounted_volumes` property on VM objects](#new-internal-mounted_volumes-property-on-vm-objects)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
     - [New `VOLAPI` service and API](#new-volapi-service-and-api)
       - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
@@ -957,6 +958,29 @@ those representing NFS server zones. Changes will be made to CloudAPI's
 from its output and to all other machines-related CloudAPI endpoints to fail
 with a clear error message for such VMs.
 
+#### New internal `mounted_volumes` property on VM objects
+
+A VM object that represents a Docker container mounting a shared volumes will
+store a reference to that volume in a new _indexable_ property named
+`mounted_volumes`.
+
+This will allow VOLAPI to perform an indexed search on VMAPI to determine what
+uses a given volume when handling operations that depends on a volume's usage,
+e.g a `DeleteVolume` request.
+
+The new `mounted_volumes` property will be stored in moray as a string storing
+any number of volumes' UUIDs, as following:
+
+```
+volume-uuid-1_volume-uuid-2_volume-uuid-3
+```
+
+An underscore character (`_`) will be used to delimit volumes' UUIDs. Storing
+this property as a single string as opposed to a composite type (an array or an
+object) allows the implementation to index it and perform indexed searches.
+
+This property is _internal_ and is not exposed to VMAPI and CloudAPI users.
+
 #### Naming of shared volumes zones
 
 Shared volumes names are __unique per account__. Thus, in order to be able to
@@ -1327,11 +1351,6 @@ Volumes are be represented as objects that share a common set of properties:
   state. Its value is an object with the following properties:
     * `message`: a string that describes the cause for the failure
     * `code`: a string code that identifies classes of errors
-* `references`: a relative path to a URI that can be used to list resources
-  (such as VMs, but other types of resources could reference a volume) that are
-  using that volume. See for instance [the section about volume deletion and
-  usage semantics](#deletion-and-usage-semantics) for more details on how this
-  list is used by various volumes APIs.
 * `snapshots`: a list of [snapshot objects](#snapshot-objects).
 * `tags`: a map of key/value pairs that represent volume tags. Docker volumes'
   labels are implemented with tags.
@@ -1363,12 +1382,14 @@ extra properties:
 
 ##### Deletion and usage semantics
 
-A volume is considered to be "in use" if the list of objects using it stored in
-[the volume's `references` property](#common-layout) is not empty. When a Docker
-container that mounts a shared volume is created, it is automatically added to
-its list of references. A container referencing a shared volume is considered to
-be using it when it's in any state except `failed` and `destroyed` -- in other
-words in any state that cannot transition to `running`.
+A volume is considered to be "in use" if the [`GetVolumeReferences`](#getvolumereferences-get-volumesvolume-uuidreferences-1)
+endpoint doesn't return an empty
+list of objects UUIDs. When a Docker container is created, it adds any of its
+mounted volumes to [an internal
+property](#new-internal-mounted_volumes-property-on-vm-objects). A container
+referencing a shared volume is considered to be using it when it's in any state
+except `failed` and `destroyed` -- in other words in any state that cannot
+transition to `running`.
 
 For instance, even if a _stopped_ Docker container is the only remaining Docker
 container that references a given shared volume, it won't be possible to delete
@@ -1383,33 +1404,6 @@ However, a shared volume can be deleted if its only users are not mounting it
 via the Docker API (e.g by using the `mount` command manually from within a VM),
 because currently there doesn't seem to be any way to track that usage cleanly
 and efficiently.
-
-###### Implementation
-
-In order to determine users of a shared volume, the Volumes API uses a reference
-counting mechanism. The `references` property of each Volumes object is a list
-of VM UUIDs. VMs that mount a shared volume have their UUID in its `references`
-list.
-
-After a shared volume is created, its references list is initially empty. When a
-Docker container mounts it, the VM's UUID is added to the references list. When
-the same VM is deleted, its UUID is removed from the `references` list.
-
-Stopped Docker container that mount a given volume are not removed from the
-`references` list to align the reference counting mechanism with Docker's
-engine's behavior.
-
-A shared volume can be deleted only when the `references` list is empty, or if a
-`force` flag is set on the requests that implement volume deletion.
-
-A counter could be used to implement the same mechanism, but having the UUID of
-all references helps when debugging issues related to reference counting.
-
-The first implementation of the APIs related to shared volumes will not be
-notified of state changes for VMs that reference shared volume objects, instead
-the list of references will be updated (e.g by doing an indexed search on VMAPI
-to find active VMs in the current set of references) when requests that need up
-to date data are handled (e.g when a `DeleteVolume` request is handled).
 
 ##### Persistent storage
 
