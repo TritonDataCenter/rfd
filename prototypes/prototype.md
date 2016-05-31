@@ -1,7 +1,7 @@
-----
+---
 authors: Han Solo <han@example.com>, Frodo Baggins <frodo@example.com>
 state: predraft
-----
+---
 
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public

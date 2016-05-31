@@ -1,7 +1,7 @@
-----
+---
 authors: Dave Eddy <dave@daveeddy.com>
 state: draft
-----
+---
 
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public

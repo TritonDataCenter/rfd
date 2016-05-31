@@ -1,7 +1,7 @@
-----
+---
 authors: Richard Kiene <richard.kiene@joyent.com>
 state: draft
-----
+---
 
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public

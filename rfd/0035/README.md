@@ -1,7 +1,7 @@
-----
+---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
 state: predraft
-----
+---
 
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public
