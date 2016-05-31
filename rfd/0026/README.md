@@ -66,7 +66,7 @@ state: draft
       - [Filtering shared volumes zones from list endpoint](#filtering-shared-volumes-zones-from-list-endpoint)
       - [New `internal_role` property on VM objects](#new-internal_role-property-on-vm-objects)
       - [New internal `mounted_volumes` property on VM objects](#new-internal-mounted_volumes-property-on-vm-objects)
-      - [New GetVolumeReferences `GET /volumereferences?volume_uuid=` endpoint](#new-getvolumereferences-get-volumereferencesvolume_uuid-endpoint)
+      - [New `mounting_volume` parameter for the `ListVms` endpoint](#new-mounting_volume-parameter-for-the-listvms-endpoint)
         - [Input](#input)
         - [Output](#output)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
@@ -77,15 +77,12 @@ state: draft
       - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
         - [Input](#input-2)
         - [Output](#output-2)
-      - [GetVolumeReferences GET /volumes/volume-uuid/references](#getvolumereferences-get-volumesvolume-uuidreferences-1)
+      - [CreateVolume POST /volumes](#createvolume-post-volumes)
         - [Input](#input-3)
         - [Output](#output-3)
-      - [CreateVolume POST /volumes](#createvolume-post-volumes)
+      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
         - [Input](#input-4)
         - [Output](#output-4)
-      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
-        - [Input](#input-5)
-        - [Output](#output-5)
       - [Snapshots](#snapshots)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot-1)
@@ -789,9 +786,9 @@ determine when a volume being created is ready to be used.
 
 ###### Input
 
-| Param               | Type         | Description                     |
-| ------------------- | ------------ | --------------------------------|
-| uuid            | String       | The uuid of the volume object       |
+| Param           | Type         | Description                     |
+| --------------- | ------------ | --------------------------------|
+| uuid            | String       | The uuid of the volume object   |
 
 ###### Output
 
@@ -983,30 +980,38 @@ this property as a single string as opposed to a composite type (an array or an
 object) allows the implementation to index it and perform indexed searches.
 
 This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
-is used by the new [GetVolumeReferences VMAPI endpoint](#new-getvolumereferences-get-volumereferencesvolume_uuid-endpoint).
+is used by VMAPI's `ListVms` endpoint to implement support for its new
+[`mounting_volume` input
+parameter](#new-mounting_volume-parameter-for-the-listvms-endpoint).
 
-#### New GetVolumeReferences `GET /volumereferences?volume_uuid=` endpoint
+#### New `mounting_volume` parameter for the `ListVms` endpoint
 
 While the [`mounted_volumes`
 property](#new-internal-mounted_volumes-property-on-vm-objects) on VM objects is
-internal, a new external `GetVolumesReferences` API is provided.
+internal, the `ListVms` API endpoint allows users to list _active_ VMs that
+mount a given volume.
 
 ##### Input
 
 | Param           | Type         | Description                              |
 | --------------- | ------------ | ---------------------------------------- |
-| owner_uuid      | String       | When not empty, only UUIDS of VM objects with an owner whose UUID is `owner_uuid` will be included in the output. |
-| volume_uuid     | String       | A string representing a volume UUID for wich to list VMs that reference it. |
+| mounting_volume | String       | A string representing _one_ volume UUID for wich to list _active_ VMs that reference it. |
 
 ##### Output
 
-A list of VM UUIDs that represents all active VMs that reference the volume
-represented by `volume_uuid`, such as:
+A list of VMs that represent all active VMs that reference the volume
+represented by UUIDs represented by `mounting_volumes`, such as:
 
 ```
 [
-  'some-vm-uuid',
-  'some-other-vm-uuid'
+  {
+    "uuid": "vm-uuid-1",
+    "alias": ...
+  },
+  {
+    "uuid": "vm-uuid-2",
+    "alias": ...
+  },
 ]
 ```
 
@@ -1142,29 +1147,6 @@ determine when a volume being created is ready to be used.
 ##### Output
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
-
-#### GetVolumeReferences GET /volumes/volume-uuid/references
-
-`GetVolumeReferences` can be used to list resources that are using the volume
-with UUID `volume-uuid`.
-
-##### Input
-
-| Param           | Type         | Description                     |
-| --------------- | ------------ | --------------------------------|
-| owner_uuid      | String       | The uuid of the volume's owner. If `owner_uuid` doesn't match the owner of volume with UUID `volume-uuid`, the request results in an error. |
-
-##### Output
-
-A list of URI pointing to resources (not necessarily VMs) that are using the
-volume with UUID `volume-uuid`:
-
-```
-[
-   "http://vmapi.triton-datacenter.tld/vms/some-vm-uuid/",
-   "http://vmapi.triton-datacenter.tld/vms/some-other-vm-uuid/"
-]
-```
 
 #### CreateVolume POST /volumes
 
@@ -1441,7 +1423,7 @@ Volume objects of any type are stored in the _same_ moray bucket named
 performed in different tables, then aggregated and sometimes resorted when a
 sorted search is requested.
 
-Indices are setup for the followng searchable properties:
+Indices are setup for the following searchable properties:
 
 * `owner_uuid`
 * `name`
@@ -1747,13 +1729,22 @@ Because the underlying volume storage is provided by VMs running an NFS server,
 provisioning of volumes' storage uses the standard VM provisioning workflow.
 That workflow uses packages to determine, among other things, the storage
 capacity that a storage VM can use. As a result, all available volume sizes must
-be represented by a finite number of existing packages, and are discrete values.
+be represented by a finite number of existing packages, and their storage
+capacity are discrete values.
 
 Without exposing the available volume sizes, a user creating a NFS shared volume
 with a size of 101 GBs would, with the current packages design, actually be
 billed for a 200 GBs package. This doesn't help users making smart decisions
-about which size to choose for their volumes and potentially leads to a lot of
-wasted storage space.
+about which size to choose for their volumes and could potentially lead to
+several types of problems.
+
+First, it potentially leads to a lot of wasted storage space. Then it seems it
+coud also surprise users:
+
+* when backing up that storage: most of the time, they would backup much more
+  storage than they asked for
+* when reaching the limits of the storage capacity they _asked_ for, which
+  wouldn't be the limit of the _actual_ available storage
 
 There are two different ways of exposing available volume sizes:
 
