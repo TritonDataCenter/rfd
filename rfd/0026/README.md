@@ -1746,19 +1746,24 @@ coud also surprise users:
 * when reaching the limits of the storage capacity they _asked_ for, which
   wouldn't be the limit of the _actual_ available storage
 
-There are two different ways of exposing available volume sizes:
-
-1. by exposing packages used to provision storage VMs
-2. by providing a separate `ListVolumesSizes` API endpoint
+There are two different ways of exposing available volume sizes.
 
 ###### Exposing packages used to provision storage VMs
 
+Users would provide a package's name or UUID when creating a NFS shared volume.
+This package would have a `quota` attribute that would determine the storage
+capacity available in that volume.
+
 Pros:
   * allows the user to see the available sizes via `ListPackages` and anything
-    that builds on top of that (e.g `triton pkgs`).
+    that builds on top of that (e.g `triton pkgs`), without the need to add new
+    API endpoints.
   * allows for different families of volume packages, e.g. with traits to land
     on newer hardware, or to be on faster disks. Users could select from a
     family if willing to pay for the difference.
+  * similar to the previous point, provides a way for users to also specify CPU
+    and memory capacity for their storage VMs, which could potentially allow
+    them to better handle different types of I/O load.
 
 Cons:
   * couples storage VMs and NFS shared volumes tightly.
@@ -1767,7 +1772,13 @@ Cons:
     this could apply for KVM vs not-for-KVM packages, so work here wouldn't be
     unwelcome.
 
-###### Providing a separate `ListVolumesSizes` API endpoint
+###### Exposing a finite set of sizes as numbers
+
+Users would provide a number representing a size when creating a NFS shared
+volume. If that number is not included in the set of available sizes, the
+request would result in an error. The API would provide a separate
+`ListVolumesSizes` API endpoint that would allow users to know what sizes are
+available.
 
 Pros:
   * Keeps the one to one mapping between storage VMs and NFS shared volumes as
@@ -1776,6 +1787,36 @@ Pros:
 Cons:
   * Requires to document and communicate billing of different storage capacities
     without using packages, which is not common and might be confusing.
+
+###### Current position
+
+If the goal of NFS shared volumes is to expose the mapping between a single VM
+and a single NFS shared volume explicitly, for instance to allow users to
+control the number of CPUs and ram their NFS shared volume uses depending on the
+I/O load that needs to be handled, exposing volumes' sizes as packages would to
+be the best fit.
+
+However, initial performance testing seems to indicate that NFS shared volumes'
+workloads are not CPU/memory bound and that it might not be desirable for users
+to change the number of CPUs or the amount of RAM that the NFS server software
+can use.
+
+Moreover, explicitly exposing the fact that NFS shared volumes' storage is
+backed by a VM for which the storage capacity, and eventually the number of CPUs
+and the amount of RAM can be chosen, is a form of contract between the service
+and its users. This contract would be broken by moving to another design that
+wouldn't allow the same control of allocated resources. If, as was mentioned in
+the previous paragraph, this contract doesn't bring value to users, it seems it
+would unnecessarily limit the implementation.
+
+On the other hand, exposing NFS shared volumes' sizes as numbers instead of
+packages still allows the implementation to provide at some point in the future
+a way to specify a package when creating a shared volume, if the advantages of
+doing outweight the potential issue of coupling VMs and NFS shared volumes too
+tightly.
+
+As a result the current position is to expose NFS shared volumes' sizes as a
+number instead of via packages.
 
 #### CPU and memory requirements
 
