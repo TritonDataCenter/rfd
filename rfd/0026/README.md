@@ -120,10 +120,13 @@ state: draft
     - [Security](#security)
     - [Can we limit the number of NFS volumes a single container can mount?](#can-we-limit-the-number-of-nfs-volumes-a-single-container-can-mount)
     - [Volume name limitations](#volume-name-limitations)
-    - [NFS server zone's packages](#nfs-server-zones-packages)
-      - [storage capacity](#storage-capacity)
-        - [Granularity of available volume sizes](#granularity-of-available-volume-sizes)
-        - [How to expose volume sizes to users?](#how-to-expose-volume-sizes-to-users)
+    - [Granularity of available volume sizes](#granularity-of-available-volume-sizes)
+    - [How to expose volume sizes to users?](#how-to-expose-volume-sizes-to-users)
+      - [Exposing regular packages used to provision storage VMs](#exposing-regular-packages-used-to-provision-storage-vms)
+      - [Exposing specific volume packages used to provision storage VMs](#exposing-specific-volume-packages-used-to-provision-storage-vms)
+      - [Exposing a finite set of sizes as numbers](#exposing-a-finite-set-of-sizes-as-numbers)
+      - [Using documentation and error messages to communicate available sizes](#using-documentation-and-error-messages-to-communicate-available-sizes)
+      - [Current position](#current-position)
       - [CPU and memory requirements](#cpu-and-memory-requirements)
     - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
     - [Networking](#networking)
@@ -1382,14 +1385,7 @@ extra properties:
   filesystem in the host's filesystem.
 * `vm_uuid`: the UUID of the Triton VM running the NFS server that exports the
   actual storage provided by this volume.
-* `requested_size`: the storage size requested for this volume, in megabytes.
-  This is useful for debugging purposes, see the `reserved_size` property for
-  how to get the actual amount of usable storage.
-* `reserved_size`: the storage size available for this volume, in megabytes. It
-  is _not_ the currently used storage capacity. Tritonnfs volumes need both
-  `requested_size` and `reserved_size` properties, because the amount of storage
-  that is actually available to applications using that volume is quantized to
-  the set of values of nfs volumes packages.
+* `size`: the storage size available for this volume, in megabytes.
 
 ##### Deletion and usage semantics
 
@@ -1704,26 +1700,16 @@ If so: how many?
 Can we limit to `[a-zA-Z0-9\-\_]`? If not, what characters do we need? How long
 should these names be allowed to be?
 
-### NFS server zone's packages
-
-#### storage capacity
+### Granularity of available volume sizes
 
 Currently, NFS shared volumes packages are available in sizes from 10 GBs to
 1000 GBs, with gap of 10 GBS from 10 to 100 GBs, and then of 100 GBs from 100 to
 1000 GBs.
 
-However, users will request NFS shared volumes of arbitrary sizes, and the
-current allocation design is to select the package that best matches the user's
-request.
-
-Thus, a few questions remain:
-
-##### Granularity of available volume sizes
-
 Is the current list of available volume sizes granular enough to cover most use
 cases?
 
-##### How to expose volume sizes to users?
+### How to expose volume sizes to users?
 
 Because the underlying volume storage is provided by VMs running an NFS server,
 provisioning of volumes' storage uses the standard VM provisioning workflow.
@@ -1748,7 +1734,7 @@ coud also surprise users:
 
 There are two different ways of exposing available volume sizes.
 
-###### Exposing packages used to provision storage VMs
+#### Exposing regular packages used to provision storage VMs
 
 Users would provide a package's name or UUID when creating a NFS shared volume.
 This package would have a `quota` attribute that would determine the storage
@@ -1772,7 +1758,33 @@ Cons:
     this could apply for KVM vs not-for-KVM packages, so work here wouldn't be
     unwelcome.
 
-###### Exposing a finite set of sizes as numbers
+#### Exposing specific volume packages used to provision storage VMs
+
+Instead of exposing NFS shared volumes' sizes with traditional packages that
+include a number of CPUs and an amount of RAM, a set of packages of a different
+type are used.
+
+These packages only have one relevant attribute: a size in megabytes. They would
+not be outputed by PAPI's ListPackages endpoint by default, so that users would
+not be able to list these packages when e.g listing packages to provision
+compute VMs. Instead, users would need to pass a `?type=nfs_volume` query
+parameter. Existing packages would be considered to have a `type` of `vm`.
+
+Packages that would actually be used to provision storage VMs would _not_ be
+visible to users. An additional property named `internal` would be used to
+identify private/exposed packages.
+
+Pros:
+  * allows the user to see the available sizes via `ListPackages` and anything
+    that builds on top of that (e.g `triton pkgs`), without the need to add new
+    API endpoints.
+  * keeps the way to associate resources used with cost consistent with all
+    other components of Triton.
+
+Cons:
+  * Makes PAPI's API more complex.
+
+#### Exposing a finite set of sizes as numbers
 
 Users would provide a number representing a size when creating a NFS shared
 volume. If that number is not included in the set of available sizes, the
@@ -1787,8 +1799,32 @@ Pros:
 Cons:
   * Requires to document and communicate billing of different storage capacities
     without using packages, which is not common and might be confusing.
+  * In the future, `ListVolumesSizes` APIs and the concept of fixed volumes
+    sizes might not apply to every volumes' types. Thus, `ListVolumesSizes`
+    endpoints might need to have a `volume_type` parameter, which could make
+    them a bit confusing to use.
 
-###### Current position
+#### Using documentation and error messages to communicate available sizes
+
+Users would provie a number representing a size when creating a NFS shared
+volume. If that number is not included in the set of available sizes, the
+request would result in an error. The API would _not_ provide a separate
+`ListVolumesSizes` API endpoint that would allow users to know what sizes are
+available.
+
+Instead, users would find available NFS shared volumes' sizes in the error
+messages when passing invalid sizes, and in the volumes' APIs' documentation.
+
+Pros:
+  * Keeps the one to one mapping between storage VMs and NFS shared volumes as
+    an implementation detail.
+  * Does not require to add addition `ListVolumesSizes` API endpoints.
+
+Cons:
+  * Requires to document and communicate billing of different storage capacities
+    without using packages, which is not common and might be confusing.
+
+#### Current position
 
 If the goal of NFS shared volumes is to expose the mapping between a single VM
 and a single NFS shared volume explicitly, for instance to allow users to
@@ -1815,8 +1851,11 @@ a way to specify a package when creating a shared volume, if the advantages of
 doing outweight the potential issue of coupling VMs and NFS shared volumes too
 tightly.
 
-As a result the current position is to expose NFS shared volumes' sizes as a
-number instead of via packages.
+As a result, and given the small amount of data around how users are or will use
+these volumes, the current position is to expose NFS shared volumes' sizes as a
+number instead of via packages, and to use documentation and error messages to
+expose available sizes. While it is not an ideal choice, it allows for
+revisiting available options in the future when more data is available.
 
 #### CPU and memory requirements
 
