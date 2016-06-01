@@ -13,7 +13,7 @@ state: draft
     Copyright 2016 Joyent, Inc.
 -->
 
-RFD 0039 vminfod
+RFD 0039 VM Attribute Cache (vminfod)
 ================
 
 Introduction
@@ -33,13 +33,49 @@ Some are just a bare zone, like a SmartOS zone, LX zone, docker container,
 etc. while others are a zone coupled with a hardware virtualization process
 (ie. KVM) - but all are examples of "VM"s.
 
-### `vminfod`
+### The problem
+
+In the current world, `vmadm` provides this VM abstraction for us.  When an
+operator runs `vmadm list` for instance, the code base itself (through mostly
+`VM.js`) will reach out to various parts of the system to create a list of all
+VMs on the system, typically through forking userland tools such as `zfs(1M)`,
+`zoneadm(1M)`, `dladm(1M)`, etc.
+
+This process can be slow.
+
+Every time a VMs attributes are queried, through `vmadm list`, `vmadm lookup`,
+etc. this gathering process for the data is done, which can take in the range
+of hundreds of milliseconds, to multiple seconds on systems with high load
+or many VMs.  This slowness can be seen all over the system, manifesting in
+long provision times, long VM modification or deletion times, etc..
+
+`vminfod` will speed this process up immensely by creating a separate process
+that will run responsible for querying this data whenever it changes, and
+caching it for callers to get the information almost immediately when they
+request it.
+
+### `vminfod` - What it is
 
 `vminfod` is two things.  First, it is a daemon that provides read-only access
 to this VM abstraction on a given system. Second, it is a cache for this
 information, only reaching out to the system when modifications are made - so it
 is very fast.  `vminfod` makes this information available over an HTTP
 interface to the Global zone.
+
+In the new world, any read-only actions with `vmadm` such as `vmadm list`,
+`vmadm lookup`, `vmadm get`, etc. will be thin wrappers around HTTP requests to
+the `vminfod` daemon.  Read-write actions such as `vmadm create`, `vmadm
+reboot`, `vmadm update`, etc. by contrast, will still behave in their normal
+way by reaching out to the system directly to make the changes requested.  In
+addition to this however, these read-write actions will now "block" on
+`vminfod`, and wait for the changes to be reflected before returning to the
+caller.
+
+As an example, if an operator deletes a VM using `vmadm delete $uuid`,
+the code will now wait for the delete event for that VM to be fired in
+`vminfod` before returning success.  This allows us to avoid problems such as
+404 on GET immediately after PUT, or in this case, "VM Not Found" on `vmadm
+get` immediately after `vmadm create`.
 
 On top of this static interface for looking up VM information in `vminfod`, there
 is a second streaming interface that can be used, that will emit an event
@@ -58,28 +94,9 @@ over by [Dave Eddy](https://github.com/bahamas10).
 
 The main project ticket is here https://smartos.org/bugview/OS-2647
 
-### `vmadm` and its relation to `vminfod`
+### Project designs
 
-In the current world, `vmadm` provides the VM abstraction for us.  When an
-operator runs `vmadm list` for instance, the code base itself (through mostly
-`VM.js`) will reach out to various parts of the system to create a list of all
-VMs on the system, typically through forking userland tools such as `zfs(1M)`,
-`zoneadm(1M)`, `dladm(1M)`, etc.
-
-In the new world, any read-only actions with `vmadm` such as `vmadm list`,
-`vmadm lookup`, `vmadm get`, etc. will be thin wrappers around HTTP requests to
-the `vminfod` daemon.  Read-write actions such as `vmadm create`, `vmadm
-reboot`, `vmadm update`, etc. by contrast, will still behave in their normal
-way by reaching out to the system directly to make the changes requested.  In
-addition to this however, these read-write actions will now "block" on
-`vminfod`, and wait for the changes to be reflected before returning to the
-caller.  As an example, if an operator deletes a VM using `vmadm delete $uuid`,
-the code will now wait for the delete event for that VM to be fired in
-`vminfod` before returning success.  This allows us to avoid problems such as
-404 on GET immediately after PUT, or in this case, "VM Not Found" on `vmadm
-get` immediately after `vmadm create`.
-
-### Event driven
+#### Event driven
 
 An important design decision for `vminfod` is that all of its updates are
 event-driven.  With the exception of when the daemon first starts up (or an
@@ -97,6 +114,27 @@ looks like.  *`vminfod` uses the system as the source of
 truth*.  This means that `vminfod` is able to catch ad hoc actions that are done
 on a system, because they will inevitably result in an event being fired such
 as a Zone or ZFS sysevent, or a file being modified.
+
+#### Transparent
+
+When `vminfod` is working, you shouldn't even know it is there.  Any tools
+or code that uses `VM.js` or `vmadm` should benefit from the use of `vminfod`
+without having to consider it.
+
+It is a bug with `vminfod` if any existing tools break because of `vminfod`,
+or if any new code is written with considerations specifically for `vminfod`.
+
+Impact
+------
+
+### Public and private interface changes
+
+In the `vminfod` world, the switch to use it should be completely transparent.
+This means that, all of the existing `vmadm` commands, and all of the
+existing `VM.js` functions will use `vminfod` under-the-hood, but will not
+change their usage or signatures.  All of the existing tools, either shipped
+with the platform, or from other places, will work without modification,
+and will be able to reap the performance benefits of `vminfod`.
 
 Implementation
 --------------
@@ -270,6 +308,8 @@ showing
 Deployment
 ----------
 
+### Initial deployment
+
 In order to deploy `vminfod`, the following conditions must be met
 
 1. The ZFS sysevent kernel change must be in place (either via the OpenZFS pull
@@ -278,3 +318,8 @@ request, or a flag day set for the SmartOS release)
 
 From there, deployment is as simple as merging the code into master, and
 building a new platform
+
+### Upgrading
+
+Because `vminfod` will be shipped with the platform, upgrading it will
+be as simple as rebooting with a new platform image.
