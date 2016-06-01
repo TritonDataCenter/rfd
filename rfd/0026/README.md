@@ -126,8 +126,9 @@ state: draft
       - [Exposing specific volume packages used to provision storage VMs](#exposing-specific-volume-packages-used-to-provision-storage-vms)
       - [Exposing a finite set of sizes as numbers](#exposing-a-finite-set-of-sizes-as-numbers)
       - [Using documentation and error messages to communicate available sizes](#using-documentation-and-error-messages-to-communicate-available-sizes)
+      - [Transparently mapping (quantizing) input size parameter to available sizes](#transparently-mapping-quantizing-input-size-parameter-to-available-sizes)
       - [Current position](#current-position)
-      - [CPU and memory requirements](#cpu-and-memory-requirements)
+    - [CPU and memory requirements](#cpu-and-memory-requirements)
     - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
     - [Networking](#networking)
       - [Impact of networking changes](#impact-of-networking-changes)
@@ -1718,21 +1719,8 @@ capacity that a storage VM can use. As a result, all available volume sizes must
 be represented by a finite number of existing packages, and their storage
 capacity are discrete values.
 
-Without exposing the available volume sizes, a user creating a NFS shared volume
-with a size of 101 GBs would, with the current packages design, actually be
-billed for a 200 GBs package. This doesn't help users making smart decisions
-about which size to choose for their volumes and could potentially lead to
-several types of problems.
-
-First, it potentially leads to a lot of wasted storage space. Then it seems it
-coud also surprise users:
-
-* when backing up that storage: most of the time, they would backup much more
-  storage than they asked for
-* when reaching the limits of the storage capacity they _asked_ for, which
-  wouldn't be the limit of the _actual_ available storage
-
-There are two different ways of exposing available volume sizes.
+There are several ways of exposing available volume sizes, each with their pros
+and cons. This section tries to present all these potential solutions.
 
 #### Exposing regular packages used to provision storage VMs
 
@@ -1824,6 +1812,35 @@ Cons:
   * Requires to document and communicate billing of different storage capacities
     without using packages, which is not common and might be confusing.
 
+#### Transparently mapping (quantizing) input size parameter to available sizes
+
+Users would provide a number representing a size when creating a NFS shared
+volume. That number would be transparently quantized to the closest available
+size. The request would result in an error only if the input size parameter is
+greater than the maximum available size.
+
+Note that this the solution that the current prototype implements.
+
+Pros:
+  * Easy to use: users can specify almost arbitrary sizes and the request
+    succeeds most of the time (considering only failures related to the input
+    parameters validation).
+  * Keeps the one to one mapping between storage VMs and NFS shared volumes as
+    an implementation detail.
+  * Does not require to add addition `ListVolumesSizes` API endpoints.
+
+Cons:
+  * Actual allocated storage differs, sometimes by tens of GBs, from the
+    requested size, which could lead to users misunderstanding what storage is
+    actually allocated.
+  * Does not allow users to make smart decisions about requested size.
+    Requesting 101 GBs would mean allocating 200GBs of storage, while requesting
+    100GBs would mean allocating 100GBs less. A difference in 1GB could mean a
+    significant difference in cost that would not be explicitly presented to
+    users.
+  * Requires to document and communicate billing of different storage capacities
+    without using packages, which is not common and might be confusing.
+
 #### Current position
 
 If the goal of NFS shared volumes is to expose the mapping between a single VM
@@ -1857,7 +1874,7 @@ number instead of via packages, and to use documentation and error messages to
 expose available sizes. While it is not an ideal choice, it allows for
 revisiting available options in the future when more data is available.
 
-#### CPU and memory requirements
+### CPU and memory requirements
 
 In order to allow for both optimal utilization of hardware and good performance
 for I/O operations on shared volumes, the CPU and memory capacity of NFS server
