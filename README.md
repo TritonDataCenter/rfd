@@ -82,6 +82,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
 | draft    | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
 | draft    | [RFD 39 VM Attribute Cache (vminfod)](./rfd/0039/README.md) |
+| predraft | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |
 
 
 ## Contents of an RFD
