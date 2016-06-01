@@ -123,7 +123,7 @@ state: draft
     - [Granularity of available volume sizes](#granularity-of-available-volume-sizes)
     - [How to expose volume sizes to users?](#how-to-expose-volume-sizes-to-users)
       - [Exposing regular packages used to provision storage VMs](#exposing-regular-packages-used-to-provision-storage-vms)
-      - [Exposing specific volume packages used to provision storage VMs](#exposing-specific-volume-packages-used-to-provision-storage-vms)
+      - [Exposing specific volume packages](#exposing-specific-volume-packages)
       - [Exposing a finite set of sizes as numbers](#exposing-a-finite-set-of-sizes-as-numbers)
       - [Using documentation and error messages to communicate available sizes](#using-documentation-and-error-messages-to-communicate-available-sizes)
       - [Transparently mapping (quantizing) input size parameter to available sizes](#transparently-mapping-quantizing-input-size-parameter-to-available-sizes)
@@ -1746,7 +1746,7 @@ Cons:
     this could apply for KVM vs not-for-KVM packages, so work here wouldn't be
     unwelcome.
 
-#### Exposing specific volume packages used to provision storage VMs
+#### Exposing specific volume packages
 
 Instead of exposing NFS shared volumes' sizes with traditional packages that
 include a number of CPUs and an amount of RAM, a set of packages of a different
