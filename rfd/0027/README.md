@@ -206,10 +206,10 @@ The Metric Agent should support an operator configurable global minimum polling
 frequency. This will allow an operator to dial back metric collection on an
 overloaded compute node and potentially avoid stopping the Metric Agent.
 
-Pre-defined metrics will be collected using modules like
-[node-kstat](https://github.com/bcantrill/node-kstat). Additionally, it seems
-likely that we can leverage the proc(4) backend instrumenter in CAv1 to provide
-prstat type collection.
+Pre-defined metrics will be collected using the Metric Instrumenter defined in
+[RFD 37](https://github.com/joyent/rfd/blob/master/rfd/0037/README.md), which
+will leverage modules like [node-kstat](https://github.com/bcantrill/node-kstat)
+.
 
 The reasoning behind running in the global zone is that metrics are necessary in
 scenarios where an in-zone agent may become unresponsive (e.g. CPU caps exceeded
@@ -468,9 +468,11 @@ When new Metric Proxies are added, CNS will detect this and add new A records as
 well as the necessary CNAME records.
 
 ## Dynamic metrics (e.g. on-demand DTrace integration)
-Dynamic metrics are already somewhat supported by CAv1, and are out of scope for
-version one of Container Monitor. The intent is to add support for dynamic
-metrics in a future version.
+Dynamic metrics are out of scope for version one of Container Monitor. The
+intent is to add support for dynamic metrics in a future version by leveraging
+the HTTP mechanism of the Metric Agent (e.g. a POST could be made that tells the
+agent to start collecting specific metrics that would be automatically injected
+into the Prometheus compatible response).
 
 ## Triton CLI integration
 The Triton CLI should be able to act as a Prometheus polling server. This will
@@ -502,15 +504,15 @@ At a minimum, we should provide a subset of the official Prometheus
 [node exporter](https://github.com/prometheus/node_exporter#enabled-by-default)
 metrics
 
-### Proposed Subset
-Name     | Description
----------|-------------
-cpu | Exposes CPU statistics
-filesystem | Exposes filesystem statistics, such as disk space used.
-loadavg | Exposes load average.
-meminfo | Exposes memory statistics.
-netdev | Exposes network interface statistics such as bytes transferred.
-time | Exposes the current system time.
+### Static Metrics Collected
+Name     | Description | Native Metrics | Mapping
+---------|-------------|----------------|--------
+cpu | Exposes CPU statistics | kstat zones:::[nsec_user,nsec_waitrq] | aggregate usage, wait time
+filesystem | Exposes filesystem statistics, such as disk space used. | zfs list [used, available] | storage space used, available
+loadavg | Exposes load average. | kstat zones:::avenrun_1min | load average over one minute
+meminfo | Exposes memory statistics. | kstat memory_cap:::[rss,physcap,swap,swapcap] | aggregate usage, limit, swap, swap limit
+netdev | Exposes network interface statistics such as bytes transferred. | kstat:::[ipackets64,opackets64,rbytes64,obytes64] | aggregate packets in, out, bytes in, out
+time | Exposes the current system time. | gettimeofday(3C) | system's notion of the current time
 
 ## [Prometheus Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
 
