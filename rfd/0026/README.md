@@ -297,6 +297,11 @@ triton volume create --opt network=mynetwork --name wp-uploads --size 100g -e af
 
 ##### Options
 
+###### Name
+
+The name of the shared volume. If not specified, the command results in an
+error.
+
 ###### Size
 
 The size of the shared volume. Matched with the closest available shared
@@ -390,6 +395,11 @@ docker volume create --name wp-uploads --opt size=100g
 #### Create
 
 ##### Options
+
+###### Name
+
+The name of the shared volume. If not specified, a unique name is automatically
+generated.
 
 ###### Size
 
