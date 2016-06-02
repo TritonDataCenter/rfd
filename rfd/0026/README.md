@@ -546,28 +546,28 @@ be available to end users when provisioning compute instances.
 
 #### Packages sizes
 
-Each volume would have a minimum size of 10GB, and support resizing in units
-of 10GB and then 100GB as the volume size increases:
+Each volume would have a minimum size of 10 GiB, and support resizing in units
+of 10 GiB and then 100 GiB as the volume size increases:
 
-* 10GB
-* 20GB
-* 30GB
-* 40GB
-* 50GB
-* 60GB
-* 70GB
-* 80GB
-* 90GB
-* 100GB
-* 200GB
-* 300GB
-* 400GB
-* 500GB
-* 600GB
-* 700GB
-* 800GB
-* 900GB
-* 1,000GB
+* 10 GiB
+* 20 GiB
+* 30 GiB
+* 40 GiB
+* 50 GiB
+* 60 GiB
+* 70 GiB
+* 80 GiB
+* 90 GiB
+* 100 GiB
+* 200 GiB
+* 300 GiB
+* 400 GiB
+* 500 GiB
+* 600 GiB
+* 700 GiB
+* 800 GiB
+* 900 GiB
+* 1,000 GiB
 
 ### Placement of volume containers
 
@@ -1713,9 +1713,9 @@ should these names be allowed to be?
 
 ### Granularity of available volume sizes
 
-Currently, NFS shared volumes packages are available in sizes from 10 GBs to
-1000 GBs, with gap of 10 GBS from 10 to 100 GBs, and then of 100 GBs from 100 to
-1000 GBs.
+Currently, NFS shared volumes packages are available in sizes from 10 GiB to
+1000 GiB, with gaps of 10 GiB from 10 to 100 GiB, and then of 100 GiB from 100
+to 1000 GiB.
 
 Is the current list of available volume sizes granular enough to cover most use
 cases?
@@ -1840,14 +1840,14 @@ Pros:
   * Does not require to add addition `ListVolumesSizes` API endpoints.
 
 Cons:
-  * Actual allocated storage differs, sometimes by tens of GBs, from the
+  * Actual allocated storage differs, sometimes by tens of GiB, from the
     requested size, which could lead to users misunderstanding what storage is
     actually allocated.
   * Does not allow users to make smart decisions about requested size.
-    Requesting 101 GBs would mean allocating 200GBs of storage, while requesting
-    100GBs would mean allocating 100GBs less. A difference in 1GB could mean a
-    significant difference in cost that would not be explicitly presented to
-    users.
+    Requesting 101 GiB would mean allocating 200 GiB of storage, while
+    requesting 100 GiB would mean allocating 100 GiB less. A difference in 1 GiB
+    could mean a significant difference in cost that would not be explicitly
+    presented to users.
   * Requires to document and communicate billing of different storage capacities
     without using packages, which is not common and might be confusing.
 
@@ -1892,7 +1892,7 @@ zones must be chosen carefully.
 
 The current prototype makes NFS server zones have a `cpu_cap` of `100`, and
 memory and swap of `256`. Running ad-hoc, manual perfomance tests, CPU
-utilization and memory footprint while writing a 4 GBs file from one Docker
+utilization and memory footprint while writing a 4 GiB file from one Docker
 container to a shared volume while 9 other containers read the same file did not
 go over 40% and 115 MBs respectively.
 
