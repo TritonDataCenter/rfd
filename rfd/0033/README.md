@@ -210,34 +210,68 @@ currently-deployed Fast server version.
 
 During development, it was determined that the `version` RPC call cannot
 reasonably be used programmatically, so it has been removed from the
-documented, public interface.  It may still be useful to use the "version" RPC
-against individual server instances so that a human can identify those which
-need to be upgraded.  This functionality is provided by the `morayversion`
-tool, which uses a now-private RPC call.
+documented, public interface.
 
 Versioning Moray is hard because the Moray client interface uses pooled
-connections.  There is no way to run an RPC against particular server
+connections.  There is no interface to run an RPC against a particular server
 instances, nor all server instances, nor to ensure that subsequent requests go
 to the same instance as previous requests.  As a result, asking whether the
 server is at version N means effectively nothing.  The next request may hit a
 server at some previous version.  Even if you execute `version()` and get back
 the expected `N`, the server at version N may be immediately removed from the
-pool.  In the presence of electric-moray, where clients make a normal Moray
+pool.  (In the presence of electric-moray, where clients make a normal Moray
 connection to electric-moray, which itself maintains many backend connections
 that may be used depending on the sharding key, it's not even safe to assume
 that multiple requests made over the same TCP connection will wind up hitting
-the same server instance.
+the same server instance.)
 
-Robust versioning would require that consumers specify either with each request
-or on a per-client basis which server version is required, and the Moray client
+Robust versioning would require that consumers specify which server version is
+required on either a per-request or a per-client basis, and the Moray client
 would be responsible for both identifying the version of each server instance
-and funneling requests to appropriate server instances.  Electric-moray would
-have to provide similar behavior.  Identifying the version for each service
+and funneling requests to appropriate server instances.  (Electric-moray would
+have to provide similar behavior.)  Identifying the version for each service
 instance is itself extremely tricky because of
-[MORAY-336](https://devhub.joyent.com/jira/browse/MORAY-336).
+[MORAY-336](https://devhub.joyent.com/jira/browse/MORAY-336).  Details on that
+are below.
 
 The only consumer in SDC or Manta that appears to use this option is NAPI, which
-needs to find a more robust approach.
+needs to find a more robust approach to ensuring that Moray supports the
+necessary facilities.
+
+It may still be useful to use the "version" RPC against individual server
+instances so that a human can identify those which need to be upgraded.  This
+functionality is provided by the `morayversion` tool, which uses a now-private
+RPC call.  While the previous implementation of this RPC had a short timeout and
+interpreted a timeout to mean that the server is running version 1 (because of
+MORAY-336), the new version uses a generous timeout and reports a timeout error
+on failure, with a note indicating that the cause _may_ be an ancient Moray
+version.
+
+For reference, here are the revisions of Moray that are relevant to this
+discussion:
+
+* Early revisions had no support for the "version" RPC.  Because of MORAY-336,
+  requests for this RPC hang.  The existing node-moray client interprets this as
+  "version 1".
+* On 2014-08-11 with commit 7413e2e213ce7ae3bbc0772c635b75f8da19a342 under
+  MORAY-249, the "version" RPC was added to the server with version 1.
+  These revisions of the server will properly report version 1 instead of
+  hanging on requests.
+* On 2015-02-16 with commit 95771e5835184fc03398825adedd69063e1ff126 under
+  MORAY-297, the server version was incremented to 2 to support IP and subnet
+  types.  These revisions of the server will properly report version 2.
+
+In terms of affected deployments:
+
+* Most existing SDC deployments are believed to be at version 2.
+* Some Manta deployments may still be at version 1, but Manta components do not
+  use the "version" RPC nor the version 2 functionality.
+* It is believed that at least one SDC deployment exists on release 20140626,
+  which would be running a Moray version that hangs on the "version" RPC.  As a
+  result, it's important that the new Moray client behave at least reasonably
+  for such deployments.  (See above -- that's why the new client uses a generous
+  timeout and fails with an error reflecting the problem.  The expected operator
+  action will likely be to upgrade Moray in this case.)
 
 
 #### Explicit breakage: Error classes
