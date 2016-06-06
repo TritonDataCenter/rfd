@@ -1,6 +1,6 @@
 ---
 authors: David Pacheco <dap@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
