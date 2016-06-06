@@ -78,9 +78,9 @@ with in complex ways.) Here's an example:
         'name': 'ConnectionError',
         'cause': err1,
         'info': {
-    	'errno': 'ECONNREFUSED',
-    	'remote_ip': '127.0.0.1',
-    	'port': 215
+            'errno': 'ECONNREFUSED',
+            'remote_ip': '127.0.0.1',
+            'port': 215
         }
     }, 'failed to connect to "%s:%d"', '127.0.0.1', 215);
 ```
@@ -108,7 +108,7 @@ This works with cause chaining.  The next level up the stack might create:
         'name': 'RequestError',
         'cause': err2,
         'info': {
-    	'errno': 'EBADREQUEST'
+            'errno': 'EBADREQUEST'
         }
     }, 'request failed');
 
@@ -221,8 +221,8 @@ request.frq_error = new VError({
     'name': 'FastRequestError',
     'cause': error,
     'info': {
-	'rpcMsgid': request.frq_msgid,
-	'rpcMethod': request.frq_rpcmethod
+        'rpcMsgid': request.frq_msgid,
+        'rpcMethod': request.frq_rpcmethod
     }
 }, 'request failed');
 ```
