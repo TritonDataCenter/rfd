@@ -180,6 +180,152 @@ thin wrapper around `sysevent-stream.js` to watch for Zone sysevents
 - [zpoolwatcher.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/zpoolwatcher.js):
 thin wrapper around `sysevent-stream.js` to watch for ZFS sysevents
 
+### VM properties
+
+VM properties loaded by `vminfod` are the same as those gathered from
+[vmload](https://github.com/joyent/smartos-live/tree/master/src/vm/node_modules/vmload)
+with the current system.  `vminfod` instead uses a series of filesystem and sysevent
+watchers to call the `vmload` functions when appropriate to update the VM
+objects.
+
+VM Updates and Modifications
+----------------------------
+
+In each of the examples below there are 5 distinct steps seen.
+
+1. A change is made on the system
+2. An event is fired almost immediately after the change is made
+3. `vminfod` catches this event and pauses the work queue
+4. `vminfod` gathers the latest information off of the system
+5. `vminfod` resumes the queue and proceeds as normal
+
+There is a delay between step 1 and step 3.  During this time, it is possible
+for `vminfod` to give out stale data.
+
+For example, if an operator changes the ZFS quota for a VM, there is a delay
+(in the realm of milliseconds) before 1. ZFS fires a sysevent of the change
+and 2. `vminfod` catching this sysevent and pausing its work queue.  During
+this window, doing a `vmadm get $uuid` will have the old value for the ZFS
+quota.
+
+### Examples
+
+With the following VM created
+
+``` json
+{
+  "brand": "joyent-minimal",
+  "image_uuid": "01b2c898-945f-11e1-a523-af1afbe22822",
+  "alias": "foo"
+}
+```
+
+    # vmadm create < vm.json
+    Successfully created VM 6af640c5-9042-6985-bc94-ed532f779664
+
+### Updating an alias
+
+    # vmadm update 6af640c5-9042-6985-bc94-ed532f779664 alias=bar
+    Successfully updated VM 6af640c5-9042-6985-bc94-ed532f779664
+
+Relevant log lines from `vminfod`
+
+    [2016-06-07T16:12:19.233Z] DEBUG: vminfo/1002 on headnode: /etc/zones/6af640c5-9042-6985-bc94-ed532f779664.xml modified
+    [2016-06-07T16:12:19.233Z] DEBUG: vminfo/1002 on headnode: refreshing zoneData for 6af640c5-9042-6985-bc94-ed532f779664
+    [2016-06-07T16:12:19.233Z] DEBUG: vminfo/1002 on headnode: requesting new vmobj for 6af640c5-9042-6985-bc94-ed532f779664
+    ...
+
+This change is detected from the zones XML file being modified, which triggers
+a refresh of the VMs data.
+
+Output from `vminfod events` - these are the events emitted from `vminfod`
+
+    [2016-06-07T16:12:19.453Z] 6af640c5 modify: alias changed :: "foo" -> "bar"
+    [2016-06-07T16:12:19.453Z] 6af640c5 modify: last_modified changed :: "2016-06-07T16:11:39.000Z" -> "2016-06-07T16:12:19.000Z"
+
+### Updating memory
+
+    # vmadm update 6af640c5-9042-6985-bc94-ed532f779664 max_physical_memory=128
+    Successfully updated VM 6af640c5-9042-6985-bc94-ed532f779664
+
+Relevant log lines from `vminfod`
+
+    [2016-06-07T16:44:39.132Z] DEBUG: vminfo/8192 on headnode: /etc/zones/6af640c5-9042-6985-bc94-ed532f779664.xml modified
+    [2016-06-07T16:44:39.132Z] DEBUG: vminfo/8192 on headnode: refreshing zoneData for 6af640c5-9042-6985-bc94-ed532f779664
+    [2016-06-07T16:44:39.132Z] DEBUG: vminfo/8192 on headnode: requesting new vmobj for 6af640c5-9042-6985-bc94-ed532f779664
+
+Like the alias change, this change was triggered from the zones XML file
+being updated.
+
+Output from `vminfod events`
+
+    [2016-06-07T16:44:39.388Z] 6af640c5 modify: max_physical_memory changed :: 256 -> 128
+    [2016-06-07T16:44:39.388Z] 6af640c5 modify: max_locked_memory changed :: 256 -> 128
+    [2016-06-07T16:44:39.388Z] 6af640c5 modify: tmpfs changed :: 256 -> 128
+    [2016-06-07T16:44:39.388Z] 6af640c5 modify: last_modified changed :: "2016-06-07T16:44:30.000Z" -> "2016-06-07T16:44:39.000Z"
+
+### Updating a ZFS property
+
+    [root@headnode (emy-12) ~]# vmadm update 6af640c5-9042-6985-bc94-ed532f779664 quota=20
+    Successfully updated VM 6af640c5-9042-6985-bc94-ed532f779664
+
+Relevant log lines from `vminfod`
+
+    [2016-06-07T16:29:05.994Z] DEBUG: vminfo/1002 on headnode: handling zfs event for zones/6af640c5-9042-6985-bc94-ed532f779664
+    [2016-06-07T16:29:05.995Z] DEBUG: vminfo/1002 on headnode: refreshing vmobj 6af640c5-9042-6985-bc94-ed532f779664 after zfs event
+    [2016-06-07T16:29:05.995Z] DEBUG: vminfo/1002 on headnode: executing zfs
+    cmdline: /usr/sbin/zfs list -H -p -t filesystem,snapshot,volume -o compression,creation,filesystem_limit,mountpoint,name,quota,recsize,refreservation,snapshot_limit,type,userrefs,volblocksize,volsize,zoned
+    [2016-06-07T16:29:06.029Z] DEBUG: vminfo/1002 on headnode: zfs[7147] running
+
+This change is detected using sysevents fired from ZFS core, which
+triggers a refresh of the ZFS data for the VM.
+
+Output from `vminfod events` - events emitted from `vminfod` after the VM
+abstraction/translation has been applied
+
+    [2016-06-07T16:29:06.172Z] 6af640c5 modify: last_modified changed :: "2016-06-07T16:29:01.000Z" -> "2016-06-07T16:29:06.000Z"
+    [2016-06-07T16:29:06.172Z] 6af640c5 modify: quota changed :: 10 -> 20
+
+**NOTE:** because of the nature of the sysevents, the same effect could be seen
+with `vminfod` by running the following command instead
+
+    # zfs set quota=20G zones/6af640c5-9042-6985-bc94-ed532f779664 quota=20
+
+### Adding a nic
+
+``` json
+{
+    "add_nics": [
+        {
+            "physical": "net1",
+            "index": 1,
+            "nic_tag": "external",
+            "mac": "b2:1e:ba:a5:6e:71",
+            "ip": "10.2.121.71",
+            "netmask": "255.255.0.0",
+            "gateway": "10.2.121.1"
+        }
+    ]
+}
+```
+
+    # vmadm update 6af640c5-9042-6985-bc94-ed532f779664 < nics.json
+    Successfully updated VM 6af640c5-9042-6985-bc94-ed532f779664
+
+Relevant log lines from `vminfod`
+
+    [2016-06-07T16:48:11.072Z] DEBUG: vminfo/8192 on headnode: /etc/zones/6af640c5-9042-6985-bc94-ed532f779664.xml modified
+    [2016-06-07T16:48:11.073Z] DEBUG: vminfo/8192 on headnode: refreshing zoneData for 6af640c5-9042-6985-bc94-ed532f779664
+    [2016-06-07T16:48:11.073Z] DEBUG: vminfo/8192 on headnode: requesting new vmobj for 6af640c5-9042-6985-bc94-ed532f779664
+
+Same as the alias and memory changes, this refresh was caused by the zones XML
+file being modified.
+
+Output from `vminfod events`
+
+    [2016-06-07T16:48:11.299Z] 6af640c5 modify: nics.0 added :: null -> {"interface":"net0","mac":"b2:1e:ba:a5:6e:71","nic_tag":"external","gateway":"10.2.121.1","gateways":["10.2.121.1"],"netmask":"255.255.0.0","ip":"10.2.121.71","ips":["10.2.121.71/16"]}
+    [2016-06-07T16:48:11.299Z] 6af640c5 modify: last_modified changed :: "2016-06-07T16:44:39.000Z" -> "2016-06-07T16:48:11.000Z"
+
 Management
 ----------
 
@@ -225,7 +371,9 @@ running tasks
 
 ### CLI tool
 
-**NOTE:** usage subject to change
+**NOTE:** usage subject to change - this command will need to change to act
+more like `sdcadm` or `manta-adm` - ie. give something more user friendly
+than raw JSON that can be seen by curling the endpoints directly.
 
 There is `vminfod` CLI tool that can be used to query the daemon.
 This was mostly written for debugging purposes but has proven itself
@@ -318,6 +466,12 @@ request, or a flag day set for the SmartOS release)
 
 From there, deployment is as simple as merging the code into master, and
 building a new platform
+
+Before deploying cloud-wide however it would be wise to run `vminfod` in a
+dev or staging environment and stress-test it to see what I can do.
+
+For example, provision as many VMs as possible to see when a machine
+falls over, to properly adjust the max number of VMs tunable.
 
 ### Upgrading
 
