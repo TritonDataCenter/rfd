@@ -105,6 +105,9 @@ Suggestions include `gztools`, `global`, `gz`.
 
 Another consideration is whether to simply incorporate the changes proposed in
 this RFD into the existing `tools` set rather than have a distinct new set.
+This would have to continue using the `/opt/tools` prefix due to its use inside
+Joyent's pkgsrc build infrastructure, but otherwise could be reused quite
+easily.
 
 ### User management
 
@@ -147,10 +150,28 @@ The current pkgsrc SMF infrastructure is incompatible with the global zone.  By
 default packages will attempt to register SMF manifests with the system
 repository on install, but those imports will be lost on the next boot.
 
-SmartOS provides the `/opt/custom/smf` infrastructure to handle importing
-additional SMF manifests on boot, and we should look to integrate with that, or
-possible modify SmartOS to additionally look into the SMF directory configured
-for this package set to avoid clashes with pure user additions.
+pkgsrc currently installs SMF manifests to `${PREFIX}/lib/svc/manifest/` and
+then (unless the `PKG_SKIP_SMF` environment variable is set) executes
+`/usr/sbin/svccfg import /path/to/manifest.xml` to import the manifest into
+`/etc/svc/repository.db`.  This is the file which is wiped on boot, losing the
+import.
+
+SmartOS will automatically import manifests installed under `/opt/custom/smf`
+and `/var/svc/manifest` on boot, and so we should look to install or copy
+pkgsrc manifests into one of those directories, most likely the latter.  The
+existing `svccfg import` will take care of importing the manifest for the
+current boot, and the automatic import will handle future reboots.
+
+Two immediate issues are:
+
+* The pkgsrc SMF infrastructure is currently designed so that manifests must
+  reside under the pkgsrc `${PREFIX}`.  If we decide to install directly to one
+  of the automatic directories then this restriction will need to be relaxed.
+
+* User configuration should, if possible, be retained, so that if a user
+  decides to enable an SMF service rather than simply install it, this should
+  be reflected in the installed manifest so that the service is correctly
+  started on next boot.
 
 ### Packages and build options
 
@@ -167,6 +188,7 @@ loosely based on the current "tools" list with some extras:
 ```
 devel/git-base
 joyent/sun-jre6
+lang/nodejs
 lang/openjdk7
 lang/perl5
 net/cacti
