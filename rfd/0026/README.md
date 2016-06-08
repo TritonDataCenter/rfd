@@ -60,6 +60,8 @@ state: draft
         - [ListVolumeSnapshots GET /volume/volume-uuid/snapshots](#listvolumesnapshots-get-volumevolume-uuidsnapshots)
         - [DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesvolume-uuidsnapshotssnapshot-name)
         - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid)
+        - [ListVolumePackages GET /volumepackages](#listvolumepackages-get-volumepackages)
+        - [GetVolumePackage GET /volumepackages/volume-package-uuid](#getvolumepackage-get-volumepackagesvolume-package-uuid)
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
@@ -70,19 +72,29 @@ state: draft
         - [Input](#input)
         - [Output](#output)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
-    - [New `VOLAPI` service and API](#new-volapi-service-and-api)
-      - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
+    - [Changes to PAPI](#changes-to-papi)
+      - [Introduction of volume packages](#introduction-of-volume-packages)
+        - [Storage of volume packages](#storage-of-volume-packages)
+        - [Naming conventions](#naming-conventions)
+      - [CreateVolumePackage POST /volumepackages](#createvolumepackage-post-volumepackages)
         - [Input](#input-1)
         - [Output](#output-1)
-      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
-        - [Input](#input-2)
+      - [GetVolumePackage](#getvolumepackage)
         - [Output](#output-2)
-      - [CreateVolume POST /volumes](#createvolume-post-volumes)
-        - [Input](#input-3)
+      - [DeleteVolumePackage](#deletevolumepackage)
+    - [New `VOLAPI` service and API](#new-volapi-service-and-api)
+      - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
+        - [Input](#input-2)
         - [Output](#output-3)
-      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
-        - [Input](#input-4)
+      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
+        - [Input](#input-3)
         - [Output](#output-4)
+      - [CreateVolume POST /volumes](#createvolume-post-volumes)
+        - [Input](#input-4)
+        - [Output](#output-5)
+      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
+        - [Input](#input-5)
+        - [Output](#output-6)
       - [Snapshots](#snapshots)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot-1)
@@ -103,6 +115,9 @@ state: draft
     - [Implementation](#implementation)
       - [Limits](#limits)
   - [Support for operating shared volumes](#support-for-operating-shared-volumes)
+    - [New sdc-pkgadm command](#new-sdc-pkgadm-command)
+      - [Adding new volume packages](#adding-new-volume-packages)
+      - [Activating/deactivating a volume package](#activatingdeactivating-a-volume-package)
     - [New `sdc-voladm` command](#new-sdc-voladm-command)
       - [Listing shared volume zones](#listing-shared-volume-zones)
       - [Restarting shared volume zones](#restarting-shared-volume-zones)
@@ -287,6 +302,7 @@ triton volume create|list|get|delete
 
 triton volume create --opt network=mynetwork --name wp-uploads --size 100g
 triton volume create -n wp-uploads -s 100g
+triton volume create -n wp-uploads nfs1-100g
 ```
 
 #### Create
@@ -304,8 +320,15 @@ error.
 
 ###### Size
 
-The size of the shared volume. Matched with the closest available shared
-volume package.
+The size of the shared volume. If the size provided is not one of those made
+available by `tritonnfs` [volume packages](#volume-packages), the creation fails
+and outputs the list of available sizes. The available volume sizes can also be
+listed with [CloudAPI's ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
+
+When specifying a volume size without a suffix, gibibytes are assumed: a size of
+`10` means `10 gibibytes`. When using suffixes in the size parameter, binary
+units are assumed. That is: `10g` means `10 Gibibtyes`, same for `10G`, `10gb`
+and `10GB`.
 
 ###### Network
 
@@ -403,13 +426,22 @@ generated.
 
 ###### Size
 
-The size of the shared volume. Matched with the closest available shared
-volume package. This option is passed using docker's CLI's `--opt` command
-line switch:
+The size of the shared volume. This option is passed using docker's CLI's
+`--opt` command line switch:
 
 ```
 docker volume create --name --opt size=100g
 ```
+
+If the size provided is not one of those made available by `tritonnfs` [volume
+packages](#volume-packages), the creation fails and outputs the list of
+available sizes. The available volume sizes can also be listed with [CloudAPI's
+ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
+
+When specifying a volume size without a suffix, gibibytes are assumed: a size of
+`10` means `10 gibibytes`. When using suffixes in the size parameter, binary
+units are assumed. That is: `10g` means `10 Gibibtyes`, same for `10G`, `10gb`
+and `10GB`.
 
 ###### Network
 
@@ -935,6 +967,26 @@ to poll the volume object's `state` property.
 If resources are using the volume to be deleted, the request results in an error
 and the error contains a list of resources that are using the volume.
 
+##### ListVolumePackages GET /volumepackages
+
+###### Input
+
+| Param           | Type        | Description                             |
+| --------------- | ----------- | ----------------------------------------|
+| type            | String      | The type of the volume package object, e.g `'tritonnfs'` |
+
+###### Output
+
+An array of objects representing [volume packages](#volume-packages) with the
+type set to `type`.
+
+##### GetVolumePackage GET /volumepackages/volume-package-uuid
+
+###### Output
+
+An object representing the [volume package](#volume-packages) with UUID
+`volume-package-uuid`.
+
 #### Filtering shared volumes zones from the ListMachines endpoint
 
 Zones acting as shared volumes hosts need to [_not_ be included in
@@ -1038,6 +1090,180 @@ on VM aliases, shared volume zones' aliases will have the following form:
 ```
 alias='volume-$volumename-$volumeuuid'
 ```
+
+### Changes to PAPI
+
+#### Introduction of volume packages
+
+Storage volumes sharing the same traits will be grouped into _volume types_. For
+instance, NFS shared volumes will have the volume type "tritonnfs". Potential
+future "types" of volumes are "tritonebs" for "Triton Elastic Block Storage" or
+"tritonefs" for "Triton Elastic File System".
+
+Different settings (volume size, QoS, hardware, etc.) for a given volume type
+will be represented as _volume packages_. For instance, a 10 GiB tritonnfs
+volume will have its own package, and a different package will be used for a 20
+GiB tritonnfs volume.
+
+Each volume package has a UUID and a name, similarly to current packages used to
+provision compute instances. In order to avoid confusion, this document uses the
+term "compute packages" to explicitly distinguish these packages from volume
+packages.
+
+Here's an example of a volume package object represented as a JSON string:
+
+```
+{
+    "uuid": "df40d4bf-b4f4-4409-84e7-daa04a347c18",
+    "name": "nfs4-ssd-10g", // As in 10 GiB
+    "size": 10, // In GiB,
+    "type": "tritonnfs",
+    "created_at": "2016-05-30T17:54:51.511Z",
+    "description": "A shared NFS volume providing 10 GiB of storage",
+    "active": true
+}
+```
+
+Common properties of volume packages objects are:
+
+* `uuid`: a unique identifier for a volume package.
+* `name`: a unique name that represents a volume package. This name can be used
+  in lieu of the UUID to provide an ID that is easier to use and remember.
+* `type`: the kind of volume that a package is associated to. Currently, there
+  is only one type of volumes that users can create: `'tritonnfs'` volumes.
+  However in the future it is likely that other types of volumes will be
+  available.
+* `created_at`: a timestamp that represents when this volume package was
+  created. Note that a volume package cannot be deleted.
+* `description`: a string that gives further details to users about the package.
+* `owner_uuids`: if present, an array of user UUIDs that represents what users
+  can use (list, get and provision volumes with) a package. If empty, the
+  package can be used by everyone.
+* `active`: a boolean that determines whether a package can be used. Packages
+  with `active === false` cannot be used by any user. They can only be managed
+  by operators using VOLAPI directly.
+
+Volume packages are polymorphic. Different volume types are associated with
+different forms of volume packages. For instance, `'tritonnfs'` volumes are
+associated with packages that have a `size` property because these volumes are
+not elastic.
+
+Currently, there is just one volume type named `'tritonnfs'`, and its associated
+volume packages objects have only one specific property:
+
+* `size`: the storage capacity provided by volumes created with this package.
+* `compute_package_uuid`: the UUID of the compute package to use to provision
+  the storage VMs when a new volume using this package is created.
+
+Note that __volume packages are not used by DAPI to provision any VM__. Instead,
+when creating a volume requires provisioning a storage VM, a _compute_ package
+that matches the volume package used when creating the volume is used.
+
+__However, volume packages' UUIDs are used for billing purposes.__ This means
+that in the case of `tritonnfs` volume packages, their corresponding storage VMs
+packages are not used for billing.
+
+##### Storage of volume packages
+
+Volume packages data are stored in a separate Moray bucket than the one used to
+store compute packages. This has the advantage of not requiring to change and
+migrate the existing compute packages data, and overall makes the management of
+both compute and volume packages objects in Moray simpler.
+
+It implies some potential limitations, such as making listing all packages
+(compute and volume packages) and ordering them by e.g creation time cumbersome
+and not perform as well as a single indexed search. However that use case
+doesn't seem to be common enought to be a concern.
+
+##### Naming conventions
+
+Volume packages will have the following naming conventions:
+
+```
+$type$generation-$property1-$property2-$propertyn
+```
+
+where `$type` is a volume type such as `nfs`, $generation is a monotically
+increasing integer starting at `1`, and `$propertyX` are values for
+differentiating properties of the volume type `$type`, such as the size.
+
+For instance, the proposed names for tritonnfs volume packages are:
+
+* nfs1-10g
+* nfs1-20g
+* nfs1-30g
+* nfs1-40g
+* nfs1-50g
+* nfs1-60g
+* nfs1-70g
+* nfs1-80g
+* nfs1-90g
+* nfs1-100g
+* nfs1-200g
+* nfs1-300g
+* nfs1-400g
+* nfs1-500g
+* nfs1-600g
+* nfs1-700g
+* nfs1-800g
+* nfs1-900g
+* nfs1-1000g
+
+#### CreateVolumePackage POST /volumepackages
+
+##### Input
+
+| Param                | Type             | Description                              |
+| -------------------- | ---------------- | ---------------------------------------- |
+| type                 | String           | Required. The type of the volume package object, e.g `'tritonnfs'`. |
+| size                 | Number           | Required when type is `tritonnfs`, otherwise irrelevant. A number in GiB representing the size volumes created with this package. |
+| compute_package_uuid | String           | Required when type is `tritonnfs`, otherwise irrelevant. It represents the UUID of the compute package to use to provision the storage VMs when a new volume using this package is created. |
+| description          | String           | Required. A string that gives further details to users about the package. |
+| owner_uuids          | Array of strings | Optional. An array of user UUIDs that represents what users can use (list, get and provision volumes with) a package. If empty, the package can be used by everyone. |
+| active               | Boolean          | Required. A boolean that determines whether a package can be used. Packages with `active === false` cannot be used by any user. They can only be managed by operators using VOLAPI directly. |
+
+##### Output
+
+An object representing a volume package:
+
+```
+{
+    "uuid": "df40d4bf-b4f4-4409-84e7-daa04a347c18",
+    "name": "nfs4-ssd-10g", // As in 10 GiB
+    "size": 10, // In GiB,
+    "type": "tritonnfs",
+    "created_at": "2016-05-30T17:54:51.511Z",
+    "description": "A shared NFS volume providing 10 GiB of storage",
+    "active": true,
+    "storage_vm_pkg": "ab21792b-6852-4dab-8c78-6ef899172fab"
+}
+```
+
+#### GetVolumePackage
+
+```
+GET /volumepackages/uuid
+```
+
+##### Output
+
+```
+{
+    "uuid": "df40d4bf-b4f4-4409-84e7-daa04a347c18",
+    "name": "nfs4-ssd-10g", // As in 10 GiB
+    "hardware": "ssd",
+    "size": 10, // In GiB,
+    "type": "tritonnfs",
+    "created_at": "2016-05-30T17:54:51.511Z",
+    "description": "A shared NFS volume providing 10 GiB of storage",
+    "active": true,
+    "storage_vm_pkg": "ab21792b-6852-4dab-8c78-6ef899172fab"
+}
+```
+
+#### DeleteVolumePackage
+
+As for compute packages, volume packages cannot be destroyed.
 
 ### New `VOLAPI` service and API
 
@@ -1502,6 +1728,26 @@ Shared volumes are hosted on zones that need to be operated in a way similar
 than other user-owned containers. Operators need to be able to migrate, stop,
 restart, upgrade them, etc.
 
+### New sdc-pkgadm command
+
+A new sdc-pkgadm command line tool will be added, initially with support for
+volume packages only.
+
+#### Adding new volume packages
+
+```
+sdc-pkgadm volume add --name $volume-pkg-name -type $volume-type --size $volume-pkg-size [--storage-instance-pkg $storage-vm-pkg-uuid] --description '$description'
+```
+
+When creating a `tritonnfs` volume package, a matching compute package must be
+provided with the `--storage-instance-pkg` command line option.
+
+#### Activating/deactivating a volume package
+
+```
+sdc-pkgadm volume activate|deactivate $volume-pkg-uuid
+```
+
 ### New `sdc-voladm` command
 
 SDC operators need to be able to perform new operations using a new `sdc-voladm`
@@ -1769,8 +2015,7 @@ compute VMs. Instead, users would need to pass a `?type=nfs_volume` query
 parameter. Existing packages would be considered to have a `type` of `vm`.
 
 Packages that would actually be used to provision storage VMs would _not_ be
-visible to users. An additional property named `internal` would be used to
-identify private/exposed packages.
+visible to users and would be owned by the admin user.
 
 Pros:
   * allows the user to see the available sizes via `ListPackages` and anything
