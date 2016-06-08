@@ -104,13 +104,18 @@ Right now setting up an images.jo, for example, is very manually and not
 wholely documented. With M1 we'll fix that and integrate first class (i.e.
 scripted and documented) backup and restore.
 
-The overall plan here is to deploy using the same "imgapi" images used for
+The overall plan here is to deploy using the same "imgapi" images we build for
 core Triton IMGAPI zones. We'll add the additional software needed for
-standalone (HAproxy and stud for now), and add "standalone" boot scripts
+standalone mode (HAproxy and stud for now), and add "standalone" boot scripts
 (parallel to the standard Triton "boot/{setup,configure}.sh" boot scripts) so
 that running a standalone IMGAPI is as simple as: (a) (re-)provision with that
 image and (b) possibly ssh in to provide secrets (key access to Manta account,
 TLS cert).
+
+Metadata provided at provision-time tells the zone which mode to run it: In core
+Triton, a user-script that runs "/opt/smartdc/boot/setup.sh" is what triggers
+running on "dc" mode. For standalone mode we'll use a separate user-script or
+metadata key.
 
 
 ### Backup
