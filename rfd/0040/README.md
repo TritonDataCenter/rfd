@@ -301,6 +301,9 @@ See about tooling/scripted setup for letsencrypt-based auto TLS cert renewal.
 TODO: I need to reacquaint with the tooling here. Brian and I setup automatic
 renewal for mo.jo.
 
+Also look at getting standard A or higher rating on
+<https://www.ssllabs.com/ssltest/analyze.html>.
+
 
 ## M3: log rotation and upload
 
