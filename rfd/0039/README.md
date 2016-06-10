@@ -134,7 +134,7 @@ they request it.
 to this VM abstraction on a given system. Second, it is a cache for this
 information, only reaching out to the system when modifications are made - so it
 is very fast.  `vminfod` makes this information available over an HTTP
-interface to the global zone.
+interface to the global zone on port 9090 of 127.0.0.1.
 
 In the new world, any read-only actions with `vmadm` such as `vmadm list`,
 `vmadm lookup`, `vmadm get` will be thin wrappers around HTTP requests to
