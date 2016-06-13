@@ -1,8 +1,8 @@
-----
+---
 authors: Pedro Palazón Candel <pedro@joyent.com>, Trent Mick <trent@joyent.com>
 contributors: Robert Mustacchi <rm@joyent.com>, Joshua Clulow <jclulow@joyent.com>
 state: draft
-----
+---
 
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public

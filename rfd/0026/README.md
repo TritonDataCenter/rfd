@@ -60,28 +60,41 @@ state: draft
         - [ListVolumeSnapshots GET /volume/volume-uuid/snapshots](#listvolumesnapshots-get-volumevolume-uuidsnapshots)
         - [DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesvolume-uuidsnapshotssnapshot-name)
         - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid)
+        - [ListVolumePackages GET /volumepackages](#listvolumepackages-get-volumepackages)
+        - [GetVolumePackage GET /volumepackages/volume-package-uuid](#getvolumepackage-get-volumepackagesvolume-package-uuid)
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
       - [Filtering shared volumes zones from list endpoint](#filtering-shared-volumes-zones-from-list-endpoint)
       - [New `internal_role` property on VM objects](#new-internal_role-property-on-vm-objects)
-      - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
-    - [New `VOLAPI` service and API](#new-volapi-service-and-api)
-      - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
+      - [New internal `mounted_volumes` property on VM objects](#new-internal-mounted_volumes-property-on-vm-objects)
+      - [New `mounting_volume` parameter for the `ListVms` endpoint](#new-mounting_volume-parameter-for-the-listvms-endpoint)
         - [Input](#input)
         - [Output](#output)
-      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
+      - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
+    - [Changes to PAPI](#changes-to-papi)
+      - [Introduction of volume packages](#introduction-of-volume-packages)
+        - [Storage of volume packages](#storage-of-volume-packages)
+        - [Naming conventions](#naming-conventions)
+      - [CreateVolumePackage POST /volumepackages](#createvolumepackage-post-volumepackages)
         - [Input](#input-1)
         - [Output](#output-1)
-      - [GetVolumeReferences GET /volumes/volume-uuid/references](#getvolumereferences-get-volumesvolume-uuidreferences-1)
-        - [Input](#input-2)
+      - [GetVolumePackage](#getvolumepackage)
         - [Output](#output-2)
-      - [CreateVolume POST /volumes](#createvolume-post-volumes)
-        - [Input](#input-3)
+      - [DeleteVolumePackage](#deletevolumepackage)
+    - [New `VOLAPI` service and API](#new-volapi-service-and-api)
+      - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
+        - [Input](#input-2)
         - [Output](#output-3)
-      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
-        - [Input](#input-4)
+      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
+        - [Input](#input-3)
         - [Output](#output-4)
+      - [CreateVolume POST /volumes](#createvolume-post-volumes)
+        - [Input](#input-4)
+        - [Output](#output-5)
+      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
+        - [Input](#input-5)
+        - [Output](#output-6)
       - [Snapshots](#snapshots)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot-1)
@@ -102,6 +115,9 @@ state: draft
     - [Implementation](#implementation)
       - [Limits](#limits)
   - [Support for operating shared volumes](#support-for-operating-shared-volumes)
+    - [New sdc-pkgadm command](#new-sdc-pkgadm-command)
+      - [Adding new volume packages](#adding-new-volume-packages)
+      - [Activating/deactivating a volume package](#activatingdeactivating-a-volume-package)
     - [New `sdc-voladm` command](#new-sdc-voladm-command)
       - [Listing shared volume zones](#listing-shared-volume-zones)
       - [Restarting shared volume zones](#restarting-shared-volume-zones)
@@ -119,11 +135,15 @@ state: draft
     - [Security](#security)
     - [Can we limit the number of NFS volumes a single container can mount?](#can-we-limit-the-number-of-nfs-volumes-a-single-container-can-mount)
     - [Volume name limitations](#volume-name-limitations)
-    - [NFS server zone's packages](#nfs-server-zones-packages)
-      - [storage capacity](#storage-capacity)
-        - [Granularity of available volume sizes](#granularity-of-available-volume-sizes)
-        - [How to expose volume sizes to users?](#how-to-expose-volume-sizes-to-users)
-      - [CPU and memory requirements](#cpu-and-memory-requirements)
+    - [Granularity of available volume sizes](#granularity-of-available-volume-sizes)
+    - [How to expose volume sizes to users?](#how-to-expose-volume-sizes-to-users)
+      - [Exposing regular packages used to provision storage VMs](#exposing-regular-packages-used-to-provision-storage-vms)
+      - [Exposing specific volume packages](#exposing-specific-volume-packages)
+      - [Exposing a finite set of sizes as numbers](#exposing-a-finite-set-of-sizes-as-numbers)
+      - [Using documentation and error messages to communicate available sizes](#using-documentation-and-error-messages-to-communicate-available-sizes)
+      - [Transparently mapping (quantizing) input size parameter to available sizes](#transparently-mapping-quantizing-input-size-parameter-to-available-sizes)
+      - [Current position](#current-position)
+    - [CPU and memory requirements](#cpu-and-memory-requirements)
     - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
     - [Networking](#networking)
       - [Impact of networking changes](#impact-of-networking-changes)
@@ -282,6 +302,7 @@ triton volume create|list|get|delete
 
 triton volume create --opt network=mynetwork --name wp-uploads --size 100g
 triton volume create -n wp-uploads -s 100g
+triton volume create -n wp-uploads nfs1-100g
 ```
 
 #### Create
@@ -292,10 +313,22 @@ triton volume create --opt network=mynetwork --name wp-uploads --size 100g -e af
 
 ##### Options
 
+###### Name
+
+The name of the shared volume. If not specified, the command results in an
+error.
+
 ###### Size
 
-The size of the shared volume. Matched with the closest available shared
-volume package.
+The size of the shared volume. If the size provided is not one of those made
+available by `tritonnfs` [volume packages](#volume-packages), the creation fails
+and outputs the list of available sizes. The available volume sizes can also be
+listed with [CloudAPI's ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
+
+When specifying a volume size without a suffix, gibibytes are assumed: a size of
+`10` means `10 gibibytes`. When using suffixes in the size parameter, binary
+units are assumed. That is: `10g` means `10 Gibibtyes`, same for `10G`, `10gb`
+and `10GB`.
 
 ###### Network
 
@@ -386,15 +419,29 @@ docker volume create --name wp-uploads --opt size=100g
 
 ##### Options
 
+###### Name
+
+The name of the shared volume. If not specified, a unique name is automatically
+generated.
+
 ###### Size
 
-The size of the shared volume. Matched with the closest available shared
-volume package. This option is passed using docker's CLI's `--opt` command
-line switch:
+The size of the shared volume. This option is passed using docker's CLI's
+`--opt` command line switch:
 
 ```
 docker volume create --name --opt size=100g
 ```
+
+If the size provided is not one of those made available by `tritonnfs` [volume
+packages](#volume-packages), the creation fails and outputs the list of
+available sizes. The available volume sizes can also be listed with [CloudAPI's
+ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
+
+When specifying a volume size without a suffix, gibibytes are assumed: a size of
+`10` means `10 gibibytes`. When using suffixes in the size parameter, binary
+units are assumed. That is: `10g` means `10 Gibibtyes`, same for `10G`, `10gb`
+and `10GB`.
 
 ###### Network
 
@@ -531,28 +578,28 @@ be available to end users when provisioning compute instances.
 
 #### Packages sizes
 
-Each volume would have a minimum size of 10GB, and support resizing in units
-of 10GB and then 100GB as the volume size increases:
+Each volume would have a minimum size of 10 GiB, and support resizing in units
+of 10 GiB and then 100 GiB as the volume size increases:
 
-* 10GB
-* 20GB
-* 30GB
-* 40GB
-* 50GB
-* 60GB
-* 70GB
-* 80GB
-* 90GB
-* 100GB
-* 200GB
-* 300GB
-* 400GB
-* 500GB
-* 600GB
-* 700GB
-* 800GB
-* 900GB
-* 1,000GB
+* 10 GiB
+* 20 GiB
+* 30 GiB
+* 40 GiB
+* 50 GiB
+* 60 GiB
+* 70 GiB
+* 80 GiB
+* 90 GiB
+* 100 GiB
+* 200 GiB
+* 300 GiB
+* 400 GiB
+* 500 GiB
+* 600 GiB
+* 700 GiB
+* 800 GiB
+* 900 GiB
+* 1,000 GiB
 
 ### Placement of volume containers
 
@@ -785,9 +832,9 @@ determine when a volume being created is ready to be used.
 
 ###### Input
 
-| Param               | Type         | Description                     |
-| ------------------- | ------------ | --------------------------------|
-| uuid            | String       | The uuid of the volume object       |
+| Param           | Type         | Description                     |
+| --------------- | ------------ | --------------------------------|
+| uuid            | String       | The uuid of the volume object   |
 
 ###### Output
 
@@ -920,6 +967,26 @@ to poll the volume object's `state` property.
 If resources are using the volume to be deleted, the request results in an error
 and the error contains a list of resources that are using the volume.
 
+##### ListVolumePackages GET /volumepackages
+
+###### Input
+
+| Param           | Type        | Description                             |
+| --------------- | ----------- | ----------------------------------------|
+| type            | String      | The type of the volume package object, e.g `'tritonnfs'` |
+
+###### Output
+
+An array of objects representing [volume packages](#volume-packages) with the
+type set to `type`.
+
+##### GetVolumePackage GET /volumepackages/volume-package-uuid
+
+###### Output
+
+An object representing the [volume package](#volume-packages) with UUID
+`volume-package-uuid`.
+
 #### Filtering shared volumes zones from the ListMachines endpoint
 
 Zones acting as shared volumes hosts need to [_not_ be included in
@@ -957,6 +1024,63 @@ those representing NFS server zones. Changes will be made to CloudAPI's
 from its output and to all other machines-related CloudAPI endpoints to fail
 with a clear error message for such VMs.
 
+#### New internal `mounted_volumes` property on VM objects
+
+A VM object that represents a Docker container mounting a shared volumes will
+store a reference to that volume in a new _indexable_ property named
+`mounted_volumes`.
+
+This will allow VOLAPI to perform an indexed search on VMAPI to determine what
+uses a given volume when handling operations that depends on a volume's usage,
+e.g a `DeleteVolume` request.
+
+The new `mounted_volumes` property will be stored in moray as a string storing
+any number of volumes' UUIDs, as following:
+
+```
+volume-uuid-1_volume-uuid-2_volume-uuid-3
+```
+
+An underscore character (`_`) will be used to delimit volumes' UUIDs. Storing
+this property as a single string as opposed to a composite type (an array or an
+object) allows the implementation to index it and perform indexed searches.
+
+This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
+is used by VMAPI's `ListVms` endpoint to implement support for its new
+[`mounting_volume` input
+parameter](#new-mounting_volume-parameter-for-the-listvms-endpoint).
+
+#### New `mounting_volume` parameter for the `ListVms` endpoint
+
+While the [`mounted_volumes`
+property](#new-internal-mounted_volumes-property-on-vm-objects) on VM objects is
+internal, the `ListVms` API endpoint allows users to list _active_ VMs that
+mount a given volume.
+
+##### Input
+
+| Param           | Type         | Description                              |
+| --------------- | ------------ | ---------------------------------------- |
+| mounting_volume | String       | A string representing _one_ volume UUID for wich to list _active_ VMs that reference it. |
+
+##### Output
+
+A list of VMs that represent all active VMs that reference the volume
+represented by UUIDs represented by `mounting_volumes`, such as:
+
+```
+[
+  {
+    "uuid": "vm-uuid-1",
+    "alias": ...
+  },
+  {
+    "uuid": "vm-uuid-2",
+    "alias": ...
+  },
+]
+```
+
 #### Naming of shared volumes zones
 
 Shared volumes names are __unique per account__. Thus, in order to be able to
@@ -966,6 +1090,180 @@ on VM aliases, shared volume zones' aliases will have the following form:
 ```
 alias='volume-$volumename-$volumeuuid'
 ```
+
+### Changes to PAPI
+
+#### Introduction of volume packages
+
+Storage volumes sharing the same traits will be grouped into _volume types_. For
+instance, NFS shared volumes will have the volume type "tritonnfs". Potential
+future "types" of volumes are "tritonebs" for "Triton Elastic Block Storage" or
+"tritonefs" for "Triton Elastic File System".
+
+Different settings (volume size, QoS, hardware, etc.) for a given volume type
+will be represented as _volume packages_. For instance, a 10 GiB tritonnfs
+volume will have its own package, and a different package will be used for a 20
+GiB tritonnfs volume.
+
+Each volume package has a UUID and a name, similarly to current packages used to
+provision compute instances. In order to avoid confusion, this document uses the
+term "compute packages" to explicitly distinguish these packages from volume
+packages.
+
+Here's an example of a volume package object represented as a JSON string:
+
+```
+{
+    "uuid": "df40d4bf-b4f4-4409-84e7-daa04a347c18",
+    "name": "nfs4-ssd-10g", // As in 10 GiB
+    "size": 10, // In GiB,
+    "type": "tritonnfs",
+    "created_at": "2016-05-30T17:54:51.511Z",
+    "description": "A shared NFS volume providing 10 GiB of storage",
+    "active": true
+}
+```
+
+Common properties of volume packages objects are:
+
+* `uuid`: a unique identifier for a volume package.
+* `name`: a unique name that represents a volume package. This name can be used
+  in lieu of the UUID to provide an ID that is easier to use and remember.
+* `type`: the kind of volume that a package is associated to. Currently, there
+  is only one type of volumes that users can create: `'tritonnfs'` volumes.
+  However in the future it is likely that other types of volumes will be
+  available.
+* `created_at`: a timestamp that represents when this volume package was
+  created. Note that a volume package cannot be deleted.
+* `description`: a string that gives further details to users about the package.
+* `owner_uuids`: if present, an array of user UUIDs that represents what users
+  can use (list, get and provision volumes with) a package. If empty, the
+  package can be used by everyone.
+* `active`: a boolean that determines whether a package can be used. Packages
+  with `active === false` cannot be used by any user. They can only be managed
+  by operators using VOLAPI directly.
+
+Volume packages are polymorphic. Different volume types are associated with
+different forms of volume packages. For instance, `'tritonnfs'` volumes are
+associated with packages that have a `size` property because these volumes are
+not elastic.
+
+Currently, there is just one volume type named `'tritonnfs'`, and its associated
+volume packages objects have only one specific property:
+
+* `size`: the storage capacity provided by volumes created with this package.
+* `compute_package_uuid`: the UUID of the compute package to use to provision
+  the storage VMs when a new volume using this package is created.
+
+Note that __volume packages are not used by DAPI to provision any VM__. Instead,
+when creating a volume requires provisioning a storage VM, a _compute_ package
+that matches the volume package used when creating the volume is used.
+
+__However, volume packages' UUIDs are used for billing purposes.__ This means
+that in the case of `tritonnfs` volume packages, their corresponding storage VMs
+packages are not used for billing.
+
+##### Storage of volume packages
+
+Volume packages data are stored in a separate Moray bucket than the one used to
+store compute packages. This has the advantage of not requiring to change and
+migrate the existing compute packages data, and overall makes the management of
+both compute and volume packages objects in Moray simpler.
+
+It implies some potential limitations, such as making listing all packages
+(compute and volume packages) and ordering them by e.g creation time cumbersome
+and not perform as well as a single indexed search. However that use case
+doesn't seem to be common enought to be a concern.
+
+##### Naming conventions
+
+Volume packages will have the following naming conventions:
+
+```
+$type$generation-$property1-$property2-$propertyn
+```
+
+where `$type` is a volume type such as `nfs`, $generation is a monotically
+increasing integer starting at `1`, and `$propertyX` are values for
+differentiating properties of the volume type `$type`, such as the size.
+
+For instance, the proposed names for tritonnfs volume packages are:
+
+* nfs1-10g
+* nfs1-20g
+* nfs1-30g
+* nfs1-40g
+* nfs1-50g
+* nfs1-60g
+* nfs1-70g
+* nfs1-80g
+* nfs1-90g
+* nfs1-100g
+* nfs1-200g
+* nfs1-300g
+* nfs1-400g
+* nfs1-500g
+* nfs1-600g
+* nfs1-700g
+* nfs1-800g
+* nfs1-900g
+* nfs1-1000g
+
+#### CreateVolumePackage POST /volumepackages
+
+##### Input
+
+| Param                | Type             | Description                              |
+| -------------------- | ---------------- | ---------------------------------------- |
+| type                 | String           | Required. The type of the volume package object, e.g `'tritonnfs'`. |
+| size                 | Number           | Required when type is `tritonnfs`, otherwise irrelevant. A number in GiB representing the size volumes created with this package. |
+| compute_package_uuid | String           | Required when type is `tritonnfs`, otherwise irrelevant. It represents the UUID of the compute package to use to provision the storage VMs when a new volume using this package is created. |
+| description          | String           | Required. A string that gives further details to users about the package. |
+| owner_uuids          | Array of strings | Optional. An array of user UUIDs that represents what users can use (list, get and provision volumes with) a package. If empty, the package can be used by everyone. |
+| active               | Boolean          | Required. A boolean that determines whether a package can be used. Packages with `active === false` cannot be used by any user. They can only be managed by operators using VOLAPI directly. |
+
+##### Output
+
+An object representing a volume package:
+
+```
+{
+    "uuid": "df40d4bf-b4f4-4409-84e7-daa04a347c18",
+    "name": "nfs4-ssd-10g", // As in 10 GiB
+    "size": 10, // In GiB,
+    "type": "tritonnfs",
+    "created_at": "2016-05-30T17:54:51.511Z",
+    "description": "A shared NFS volume providing 10 GiB of storage",
+    "active": true,
+    "storage_vm_pkg": "ab21792b-6852-4dab-8c78-6ef899172fab"
+}
+```
+
+#### GetVolumePackage
+
+```
+GET /volumepackages/uuid
+```
+
+##### Output
+
+```
+{
+    "uuid": "df40d4bf-b4f4-4409-84e7-daa04a347c18",
+    "name": "nfs4-ssd-10g", // As in 10 GiB
+    "hardware": "ssd",
+    "size": 10, // In GiB,
+    "type": "tritonnfs",
+    "created_at": "2016-05-30T17:54:51.511Z",
+    "description": "A shared NFS volume providing 10 GiB of storage",
+    "active": true,
+    "storage_vm_pkg": "ab21792b-6852-4dab-8c78-6ef899172fab"
+}
+```
+
+#### DeleteVolumePackage
+
+As for compute packages, volume packages cannot be destroyed.
 
 ### New `VOLAPI` service and API
 
@@ -1089,29 +1387,6 @@ determine when a volume being created is ready to be used.
 ##### Output
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
-
-#### GetVolumeReferences GET /volumes/volume-uuid/references
-
-`GetVolumeReferences` can be used to list resources that are using the volume
-with UUID `volume-uuid`.
-
-##### Input
-
-| Param           | Type         | Description                     |
-| --------------- | ------------ | --------------------------------|
-| owner_uuid      | String       | The uuid of the volume's owner. If `owner_uuid` doesn't match the owner of volume with UUID `volume-uuid`, the request results in an error. |
-
-##### Output
-
-A list of URI pointing to resources (not necessarily VMs) that are using the
-volume with UUID `volume-uuid`:
-
-```
-[
-   "http://vmapi.triton-datacenter.tld/vms/some-vm-uuid/",
-   "http://vmapi.triton-datacenter.tld/vms/some-other-vm-uuid/"
-]
-```
 
 #### CreateVolume POST /volumes
 
@@ -1327,11 +1602,6 @@ Volumes are be represented as objects that share a common set of properties:
   state. Its value is an object with the following properties:
     * `message`: a string that describes the cause for the failure
     * `code`: a string code that identifies classes of errors
-* `references`: a relative path to a URI that can be used to list resources
-  (such as VMs, but other types of resources could reference a volume) that are
-  using that volume. See for instance [the section about volume deletion and
-  usage semantics](#deletion-and-usage-semantics) for more details on how this
-  list is used by various volumes APIs.
 * `snapshots`: a list of [snapshot objects](#snapshot-objects).
 * `tags`: a map of key/value pairs that represent volume tags. Docker volumes'
   labels are implemented with tags.
@@ -1352,23 +1622,18 @@ extra properties:
   filesystem in the host's filesystem.
 * `vm_uuid`: the UUID of the Triton VM running the NFS server that exports the
   actual storage provided by this volume.
-* `requested_size`: the storage size requested for this volume, in megabytes.
-  This is useful for debugging purposes, see the `reserved_size` property for
-  how to get the actual amount of usable storage.
-* `reserved_size`: the storage size available for this volume, in megabytes. It
-  is _not_ the currently used storage capacity. Tritonnfs volumes need both
-  `requested_size` and `reserved_size` properties, because the amount of storage
-  that is actually available to applications using that volume is quantized to
-  the set of values of nfs volumes packages.
+* `size`: the storage size available for this volume, in megabytes.
 
 ##### Deletion and usage semantics
 
-A volume is considered to be "in use" if the list of objects using it stored in
-[the volume's `references` property](#common-layout) is not empty. When a Docker
-container that mounts a shared volume is created, it is automatically added to
-its list of references. A container referencing a shared volume is considered to
-be using it when it's in any state except `failed` and `destroyed` -- in other
-words in any state that cannot transition to `running`.
+A volume is considered to be "in use" if the [`GetVolumeReferences`](#getvolumereferences-get-volumesvolume-uuidreferences-1)
+endpoint doesn't return an empty
+list of objects UUIDs. When a Docker container is created, it adds any of its
+mounted volumes to [an internal
+property](#new-internal-mounted_volumes-property-on-vm-objects). A container
+referencing a shared volume is considered to be using it when it's in any state
+except `failed` and `destroyed` -- in other words in any state that cannot
+transition to `running`.
 
 For instance, even if a _stopped_ Docker container is the only remaining Docker
 container that references a given shared volume, it won't be possible to delete
@@ -1384,33 +1649,6 @@ via the Docker API (e.g by using the `mount` command manually from within a VM),
 because currently there doesn't seem to be any way to track that usage cleanly
 and efficiently.
 
-###### Implementation
-
-In order to determine users of a shared volume, the Volumes API uses a reference
-counting mechanism. The `references` property of each Volumes object is a list
-of VM UUIDs. VMs that mount a shared volume have their UUID in its `references`
-list.
-
-After a shared volume is created, its references list is initially empty. When a
-Docker container mounts it, the VM's UUID is added to the references list. When
-the same VM is deleted, its UUID is removed from the `references` list.
-
-Stopped Docker container that mount a given volume are not removed from the
-`references` list to align the reference counting mechanism with Docker's
-engine's behavior.
-
-A shared volume can be deleted only when the `references` list is empty, or if a
-`force` flag is set on the requests that implement volume deletion.
-
-A counter could be used to implement the same mechanism, but having the UUID of
-all references helps when debugging issues related to reference counting.
-
-The first implementation of the APIs related to shared volumes will not be
-notified of state changes for VMs that reference shared volume objects, instead
-the list of references will be updated (e.g by doing an indexed search on VMAPI
-to find active VMs in the current set of references) when requests that need up
-to date data are handled (e.g when a `DeleteVolume` request is handled).
-
 ##### Persistent storage
 
 Volume objects of any type are stored in the _same_ moray bucket named
@@ -1418,7 +1656,7 @@ Volume objects of any type are stored in the _same_ moray bucket named
 performed in different tables, then aggregated and sometimes resorted when a
 sorted search is requested.
 
-Indices are setup for the followng searchable properties:
+Indices are setup for the following searchable properties:
 
 * `owner_uuid`
 * `name`
@@ -1489,6 +1727,26 @@ create a new snapshot.
 Shared volumes are hosted on zones that need to be operated in a way similar
 than other user-owned containers. Operators need to be able to migrate, stop,
 restart, upgrade them, etc.
+
+### New sdc-pkgadm command
+
+A new sdc-pkgadm command line tool will be added, initially with support for
+volume packages only.
+
+#### Adding new volume packages
+
+```
+sdc-pkgadm volume add --name $volume-pkg-name -type $volume-type --size $volume-pkg-size [--storage-instance-pkg $storage-vm-pkg-uuid] --description '$description'
+```
+
+When creating a `tritonnfs` volume package, a matching compute package must be
+provided with the `--storage-instance-pkg` command line option.
+
+#### Activating/deactivating a volume package
+
+```
+sdc-pkgadm volume activate|deactivate $volume-pkg-uuid
+```
 
 ### New `sdc-voladm` command
 
@@ -1699,52 +1957,43 @@ If so: how many?
 Can we limit to `[a-zA-Z0-9\-\_]`? If not, what characters do we need? How long
 should these names be allowed to be?
 
-### NFS server zone's packages
+### Granularity of available volume sizes
 
-#### storage capacity
-
-Currently, NFS shared volumes packages are available in sizes from 10 GBs to
-1000 GBs, with gap of 10 GBS from 10 to 100 GBs, and then of 100 GBs from 100 to
-1000 GBs.
-
-However, users will request NFS shared volumes of arbitrary sizes, and the
-current allocation design is to select the package that best matches the user's
-request.
-
-Thus, a few questions remain:
-
-##### Granularity of available volume sizes
+Currently, NFS shared volumes packages are available in sizes from 10 GiB to
+1000 GiB, with gaps of 10 GiB from 10 to 100 GiB, and then of 100 GiB from 100
+to 1000 GiB.
 
 Is the current list of available volume sizes granular enough to cover most use
 cases?
 
-##### How to expose volume sizes to users?
+### How to expose volume sizes to users?
 
 Because the underlying volume storage is provided by VMs running an NFS server,
 provisioning of volumes' storage uses the standard VM provisioning workflow.
 That workflow uses packages to determine, among other things, the storage
 capacity that a storage VM can use. As a result, all available volume sizes must
-be represented by a finite number of existing packages, and are discrete values.
+be represented by a finite number of existing packages, and their storage
+capacity are discrete values.
 
-Without exposing the available volume sizes, a user creating a NFS shared volume
-with a size of 101 GBs would, with the current packages design, actually be
-billed for a 200 GBs package. This doesn't help users making smart decisions
-about which size to choose for their volumes and potentially leads to a lot of
-wasted storage space.
+There are several ways of exposing available volume sizes, each with their pros
+and cons. This section tries to present all these potential solutions.
 
-There are two different ways of exposing available volume sizes:
+#### Exposing regular packages used to provision storage VMs
 
-1. by exposing packages used to provision storage VMs
-2. by providing a separate `ListVolumesSizes` API endpoint
-
-###### Exposing packages used to provision storage VMs
+Users would provide a package's name or UUID when creating a NFS shared volume.
+This package would have a `quota` attribute that would determine the storage
+capacity available in that volume.
 
 Pros:
   * allows the user to see the available sizes via `ListPackages` and anything
-    that builds on top of that (e.g `triton pkgs`).
+    that builds on top of that (e.g `triton pkgs`), without the need to add new
+    API endpoints.
   * allows for different families of volume packages, e.g. with traits to land
     on newer hardware, or to be on faster disks. Users could select from a
     family if willing to pay for the difference.
+  * similar to the previous point, provides a way for users to also specify CPU
+    and memory capacity for their storage VMs, which could potentially allow
+    them to better handle different types of I/O load.
 
 Cons:
   * couples storage VMs and NFS shared volumes tightly.
@@ -1753,7 +2002,38 @@ Cons:
     this could apply for KVM vs not-for-KVM packages, so work here wouldn't be
     unwelcome.
 
-###### Providing a separate `ListVolumesSizes` API endpoint
+#### Exposing specific volume packages
+
+Instead of exposing NFS shared volumes' sizes with traditional packages that
+include a number of CPUs and an amount of RAM, a set of packages of a different
+type are used.
+
+These packages only have one relevant attribute: a size in megabytes. They would
+not be outputed by PAPI's ListPackages endpoint by default, so that users would
+not be able to list these packages when e.g listing packages to provision
+compute VMs. Instead, users would need to pass a `?type=nfs_volume` query
+parameter. Existing packages would be considered to have a `type` of `vm`.
+
+Packages that would actually be used to provision storage VMs would _not_ be
+visible to users and would be owned by the admin user.
+
+Pros:
+  * allows the user to see the available sizes via `ListPackages` and anything
+    that builds on top of that (e.g `triton pkgs`), without the need to add new
+    API endpoints.
+  * keeps the way to associate resources used with cost consistent with all
+    other components of Triton.
+
+Cons:
+  * Makes PAPI's API more complex.
+
+#### Exposing a finite set of sizes as numbers
+
+Users would provide a number representing a size when creating a NFS shared
+volume. If that number is not included in the set of available sizes, the
+request would result in an error. The API would provide a separate
+`ListVolumesSizes` API endpoint that would allow users to know what sizes are
+available.
 
 Pros:
   * Keeps the one to one mapping between storage VMs and NFS shared volumes as
@@ -1762,8 +2042,94 @@ Pros:
 Cons:
   * Requires to document and communicate billing of different storage capacities
     without using packages, which is not common and might be confusing.
+  * In the future, `ListVolumesSizes` APIs and the concept of fixed volumes
+    sizes might not apply to every volumes' types. Thus, `ListVolumesSizes`
+    endpoints might need to have a `volume_type` parameter, which could make
+    them a bit confusing to use.
 
-#### CPU and memory requirements
+#### Using documentation and error messages to communicate available sizes
+
+Users would provie a number representing a size when creating a NFS shared
+volume. If that number is not included in the set of available sizes, the
+request would result in an error. The API would _not_ provide a separate
+`ListVolumesSizes` API endpoint that would allow users to know what sizes are
+available.
+
+Instead, users would find available NFS shared volumes' sizes in the error
+messages when passing invalid sizes, and in the volumes' APIs' documentation.
+
+Pros:
+  * Keeps the one to one mapping between storage VMs and NFS shared volumes as
+    an implementation detail.
+  * Does not require to add addition `ListVolumesSizes` API endpoints.
+
+Cons:
+  * Requires to document and communicate billing of different storage capacities
+    without using packages, which is not common and might be confusing.
+
+#### Transparently mapping (quantizing) input size parameter to available sizes
+
+Users would provide a number representing a size when creating a NFS shared
+volume. That number would be transparently quantized to the closest available
+size. The request would result in an error only if the input size parameter is
+greater than the maximum available size.
+
+Note that this the solution that the current prototype implements.
+
+Pros:
+  * Easy to use: users can specify almost arbitrary sizes and the request
+    succeeds most of the time (considering only failures related to the input
+    parameters validation).
+  * Keeps the one to one mapping between storage VMs and NFS shared volumes as
+    an implementation detail.
+  * Does not require to add addition `ListVolumesSizes` API endpoints.
+
+Cons:
+  * Actual allocated storage differs, sometimes by tens of GiB, from the
+    requested size, which could lead to users misunderstanding what storage is
+    actually allocated.
+  * Does not allow users to make smart decisions about requested size.
+    Requesting 101 GiB would mean allocating 200 GiB of storage, while
+    requesting 100 GiB would mean allocating 100 GiB less. A difference in 1 GiB
+    could mean a significant difference in cost that would not be explicitly
+    presented to users.
+  * Requires to document and communicate billing of different storage capacities
+    without using packages, which is not common and might be confusing.
+
+#### Current position
+
+If the goal of NFS shared volumes is to expose the mapping between a single VM
+and a single NFS shared volume explicitly, for instance to allow users to
+control the number of CPUs and ram their NFS shared volume uses depending on the
+I/O load that needs to be handled, exposing volumes' sizes as packages would to
+be the best fit.
+
+However, initial performance testing seems to indicate that NFS shared volumes'
+workloads are not CPU/memory bound and that it might not be desirable for users
+to change the number of CPUs or the amount of RAM that the NFS server software
+can use.
+
+Moreover, explicitly exposing the fact that NFS shared volumes' storage is
+backed by a VM for which the storage capacity, and eventually the number of CPUs
+and the amount of RAM can be chosen, is a form of contract between the service
+and its users. This contract would be broken by moving to another design that
+wouldn't allow the same control of allocated resources. If, as was mentioned in
+the previous paragraph, this contract doesn't bring value to users, it seems it
+would unnecessarily limit the implementation.
+
+On the other hand, exposing NFS shared volumes' sizes as numbers instead of
+packages still allows the implementation to provide at some point in the future
+a way to specify a package when creating a shared volume, if the advantages of
+doing outweight the potential issue of coupling VMs and NFS shared volumes too
+tightly.
+
+As a result, and given the small amount of data around how users are or will use
+these volumes, the current position is to expose NFS shared volumes' sizes as a
+number instead of via packages, and to use documentation and error messages to
+expose available sizes. While it is not an ideal choice, it allows for
+revisiting available options in the future when more data is available.
+
+### CPU and memory requirements
 
 In order to allow for both optimal utilization of hardware and good performance
 for I/O operations on shared volumes, the CPU and memory capacity of NFS server
@@ -1771,7 +2137,7 @@ zones must be chosen carefully.
 
 The current prototype makes NFS server zones have a `cpu_cap` of `100`, and
 memory and swap of `256`. Running ad-hoc, manual perfomance tests, CPU
-utilization and memory footprint while writing a 4 GBs file from one Docker
+utilization and memory footprint while writing a 4 GiB file from one Docker
 container to a shared volume while 9 other containers read the same file did not
 go over 40% and 115 MBs respectively.
 

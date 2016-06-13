@@ -59,7 +59,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 14 Signed ZFS Send](./rfd/0014/README.md) |
 | draft    | [RFD 15 Reduce/Eliminate runtime LX image customization](./rfd/0015/README.md) |
 | predraft | [RFD 16 Manta Metering](./rfd/0016/README.md) |
-| predraft | [RFD 17 Cloud Analytics v2](./rfd/0017/README.md) |
+| draft    | [RFD 17 Cloud Analytics v2](./rfd/0017/README.md) |
 | predraft | [RFD 19 Versioning For Workflow Modules](./rfd/0019/README.md) |
 | predraft | [RFD 18 Support for using labels to select networks and packages](./rfd/0018/README.md) |
 | draft    | [RFD 20 Manta Slop-Aware Zone Scheduling](./rfd/0020/README.md) |
@@ -75,11 +75,16 @@ formal writing that it has come to represent.)
 | predraft | [RFD 30 Handling "lastexited" for zones when CN is rebooted or crashes](./rfd/0030/README.md) |
 | draft    | [RFD 31 libscsi and uscsi(7I) Improvements for Firmware Upgrade](./rfd/0031/README.md)
 | draft    | [RFD 32 Multiple IP Addresses in NAPI](./rfd/0032/README.md) |
-| predraft | [RFD 33 Moray client v2](./rfd/0033/README.md) |
+| publish  | [RFD 33 Moray client v2](./rfd/0033/README.md) |
 | predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
 | predraft | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
 | predraft | [RFD 36 Mariposa](./rfd/0036/README.md) |
 | predraft | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
+| draft    | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
+| draft    | [RFD 39 VM Attribute Cache (vminfod)](./rfd/0039/README.md) |
+| draft    | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |
+| draft    | [RFD 41 Improved JavaScript errors](./rfd/0041/README.md) |
+| predraft | [RFD 42 Provide global zone pkgsrc package set](./rfd/0042/README.md) |
 
 
 ## Contents of an RFD

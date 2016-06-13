@@ -1,7 +1,7 @@
-----
+---
 authors: Nick Zivkovic <nick.zivkovic@joyent.com>
 state: predraft
-----
+---
 
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public
