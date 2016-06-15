@@ -85,6 +85,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |
 | draft    | [RFD 41 Improved JavaScript errors](./rfd/0041/README.md) |
 | predraft | [RFD 42 Provide global zone pkgsrc package set](./rfd/0042/README.md) |
+| predraft | [RFD 43 Rack Aware Network Pools](./rfd/0043/README.md) |
 
 
 ## Contents of an RFD
