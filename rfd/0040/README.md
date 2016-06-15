@@ -93,6 +93,12 @@ IMGAPI instance updates/deployments.
 
 ## M1: backup, deploy, restore
 
+Issues:
+
+- [IMGAPI-571](https://devhub.joyent.com/jira/browse/IMGAPI-571): re-do
+  images.jo/updates.jo deployment to be able use stock 'imgapi' images
+
+
 Milestones "M<number>" for proposed order of work done to pick of first the
 requirements, then the nice-to-haves.
 
@@ -343,8 +349,8 @@ if there are image files using local storage. With IMGAPI-536 there is now
 AdminChangeImageStor to easily migrate image files from local to manta storage.
 
 Load balancing (#3): For *Joyent's* services (images.jo, updates.jo) we could
-use the LB solution we use for other things. Another alternative is to use
-CNS and call it good enough.
+use the LB solution we use for other things. Another alternative is to use a
+CNAME to a CNS service record and call it good enough.
 
 Shared config (#4): Some things, like updates.jo's configured "channels"
 would need to be common between all instances. Some ideas here would be to
@@ -359,7 +365,8 @@ RethinkDB in pkgsrc (https://github.com/rethinkdb/rethinkdb/pull/4309). Lacking
 that, we'd probably run a separate set of RethinkDB instances in LX zones. So
 far we've had good experience with RethinkDB with thoth and sesat -- granted
 only with a single RethinkDB instance currently. Writing a RethinkDB backend
-for IMGAPI's database would not be difficult.
+for IMGAPI's database would not be difficult. We should also consider a
+Moray/Manatee cluster.
 
 
 ## XXX scratch notes, ignore this section
@@ -374,4 +381,3 @@ for IMGAPI's database would not be difficult.
        Fix: # Run the following where 'triton' is setup:
        Fix: ssh root@IP cat /data/imgapi/etc/imgapi.id_rsa.pub | triton -a bob key add -n 'imgapi-4dad5922-myimgapi1-20160607' -f -
     Impact: This IMGAPI server will not be able to complete initialization
-
