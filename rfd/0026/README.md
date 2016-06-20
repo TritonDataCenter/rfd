@@ -1034,17 +1034,6 @@ This will allow VOLAPI to perform an indexed search on VMAPI to determine what
 uses a given volume when handling operations that depends on a volume's usage,
 e.g a `DeleteVolume` request.
 
-The new `mounted_volumes` property will be stored in moray as a string storing
-any number of volumes' UUIDs, as following:
-
-```
-volume-uuid-1_volume-uuid-2_volume-uuid-3
-```
-
-An underscore character (`_`) will be used to delimit volumes' UUIDs. Storing
-this property as a single string as opposed to a composite type (an array or an
-object) allows the implementation to index it and perform indexed searches.
-
 This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
 is used by VMAPI's `ListVms` endpoint to implement support for its new
 [`mounting_volume` input
