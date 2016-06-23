@@ -86,6 +86,11 @@ rolled back and their database may not work. Basically: using this feature
 requires a firm understanding of its implementation and of ZFS. We need to make
 that clear in the documentation.
 
+Another important consideration here is KVM VMs. Should we support snapshot for
+KVM VMs the same way in that we only snapshot the OS disk and we leave the data
+disk alone? If so, that's fine. If not, and we're going to snapshot the whole
+machine there, that makes this API potentially even more confusing.
+
 
 ## Safety Considerations
 
@@ -208,6 +213,13 @@ rename the cloudapi endpoints to remove the name "Machine" and replace it with
 "Root". E.g. CreateRootSnapshot is more correct than CreateMachineSnapshot since
 there are many aspects of the machine that are not being snapshotted in this
 case.
+
+### KVM Snapshots
+
+If we're going to say it's fine for KVM snapshots to be of just the OS disk,
+things get simpler here and nothing needs to be done in this work to support
+that. If we want KVM snapshots to work the way originally described in say
+OS-1750, we should keep that in mind when building support for SmartOS VMs.
 
 
 ## Summary of Proposed Changes
