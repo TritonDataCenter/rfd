@@ -214,6 +214,9 @@ case.
  * Add support for a whitelist of users who are able to use this feature in
    cloudapi and sdc-docker while the feature is being beta tested.
 
+ * Remove existing code which prevents VMs with delegated datasets from being
+   snapshotted.
+
  * Add tests for all of the described behaviours.
 
  * Close out the existing tickets which were planning to implement this feature
