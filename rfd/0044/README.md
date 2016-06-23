@@ -36,7 +36,33 @@ be deployed for customer consumption.
 
 ## Use Cases
 
-[TODO]
+### Supporting zvols as Block Devices
+
+Some applications such as MapR expect to be able to manage their own data using
+a block device. Allowing customers to have their own delegated datasets will
+allow them to create zvols in their delegated dataset which will provide this
+functionality.
+
+### Supporting Different Blocksizes and Compression Settings
+
+Some applications will perform better with different values for compression and
+blocksizes than the default. Giving customers the ability to manage their own
+datasets will allow them to configure this themselves.
+
+### Supporting Future Reprovisioning
+
+When reprovision support is added to the APIs in the future, that could be
+combined with delegated datasets in order to allow customers to perform
+upgrades. The workflow would be:
+
+ * customer creates container with delegated dataset
+ * customer puts their data on the delegated dataset
+ * \[time passes\]
+ * customer wants to upgrade zoneroot, so they reprovision their instance with a
+   newer root dataset.
+ * customer reconfigures their instance to point at their delegated dataset's
+   data which was preserved while their zoneroot was replaced with a newer
+   image.
 
 ## API Considerations
 
