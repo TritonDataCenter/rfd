@@ -247,3 +247,30 @@ case.
 
  * Close out the existing tickets which were planning to implement this feature
    differently (to actually make the snapshots include all the datasets).
+
+
+## Open Questions
+
+Questions that should be resolved before starting work here.
+
+### Should the delegate\_dataset="safe" Happen in vmadm?
+
+There was a suggestion that we should go back to the idea of implementing the
+delegate\_dataset="safe" flag in vmadm as was originally discussed in OS-4195. If
+we decide to go this route we'll still need to add a min\_platform (to a platform
+that doesn't exist yet) at VMAPI so that no existing CNs are used for this
+feature.
+
+Another related suggestion was that we make "safe" mean that we must have a
+zfs\_snapshot\_limit value and zfs\_filesystem\_limit value and the limit\_priv
+option. And we'll only set the zfs\_snapshot\_limit and zfs\_filesystem limit when
+those are not already passed in from VMAPI. That would allow us to still change
+the default numbers we're passing in at VMAPI without a platform change.
+
+The reasoning here is that there may be other privileges that we add in the
+future that could be considered required for "safe". So platform A "safe" means
+one thing and platform B, "safe" means something else. The control at VMAPI
+for min\_platform would then mean "which is the oldest platform whose version of
+'safe' we trust". No provisions would go to platforms that don't meet that
+criteria. And if we find that platform A's version of safe is not safe enough,
+we'll bump the min\_platform for this feature to platform B's buildstamp.
