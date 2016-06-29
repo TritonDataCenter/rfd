@@ -1,6 +1,6 @@
 ---
 authors: Richard Kiene <richard.kiene@joyent.com>
-state: draft
+state: publish
 ---
 
 <!--
@@ -511,7 +511,7 @@ cpu | Exposes CPU statistics | kstat zones:::[nsec_user,nsec_waitrq] | aggregate
 filesystem | Exposes filesystem statistics, such as disk space used. | zfs list [used, available] | storage space used, available
 loadavg | Exposes load average. | kstat zones:::avenrun_1min | load average over one minute
 meminfo | Exposes memory statistics. | kstat memory_cap:::[rss,physcap,swap,swapcap] | aggregate usage, limit, swap, swap limit
-netdev | Exposes network interface statistics such as bytes transferred. | kstat:::[ipackets64,opackets64,rbytes64,obytes64] | aggregate packets in, out, bytes in, out
+netdev | Exposes network interface statistics such as bytes transferred. | kstat link:::[ipackets64,opackets64,rbytes64,obytes64] | aggregate packets in, out, bytes in, out
 time | Exposes the current system time. | gettimeofday(3C) | system's notion of the current time
 
 ## [Prometheus Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)

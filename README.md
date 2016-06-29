@@ -69,7 +69,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 24 Designation API improvements to facilitate platform update](./rfd/0024/README.md) |
 | draft    | [RFD 25 Pluralizing CloudAPI CreateMachine et al](./rfd/0025/README.md) |
 | draft    | [RFD 26 Network Shared Storage for SDC](./rfd/0026/README.md) |
-| draft    | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
+| publish  | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
 | predraft | [RFD 28 Improving syncing between Compute Nodes and NAPI](./rfd/0028/README.md) |
 | draft    | [RFD 29 Nothing in SDC should rely on ur outside bootstrapping and emergencies](./rfd/0029/README.md) |
 | predraft | [RFD 30 Handling "lastexited" for zones when CN is rebooted or crashes](./rfd/0030/README.md) |
@@ -79,7 +79,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
 | predraft | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
 | predraft | [RFD 36 Mariposa](./rfd/0036/README.md) |
-| predraft | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
+| draft    | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
 | draft    | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
 | draft    | [RFD 39 VM Attribute Cache (vminfod)](./rfd/0039/README.md) |
 | draft    | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |

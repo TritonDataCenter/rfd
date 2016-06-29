@@ -1,6 +1,6 @@
 ---
 authors: Richard Kiene <richard.kiene@joyent.com>
-state: pre-draft
+state: draft
 ---
 
 <!--
@@ -70,6 +70,9 @@ as Rust.
     itself.
 
 ## Approach
+The Metric Instrumenter Node module will be an abstraction on top of one or more
+[Node Addons](https://nodejs.org/api/addons.html)
+(e.g. [node-kstat](https://github.com/bcantrill/node-kstat)).
 
 Consumers of the Metric Instrumenter node module should not be required to
 understand the intricacies of the underlying OS metric sources. Instead,
@@ -77,6 +80,109 @@ consumers should only need to know which metric(s) they would like to consume.
 
 For example, a consumer should not need to know that they must retrieve data
 from `kstat zones:::nsec_user` to get aggregate user CPU usage. Instead the
-Metric Instrumenter will provide a method such as
-`getAggUserCPUusage(container_id, interval)` which will return the percent of
-user CPU usage for the given container_id over and for the given time interval.
+Metric Instrumenter will provide methods for metric retrieval, using predefined
+metric keys. The string to metric pairs will be documented with each release and
+programmatically discoverable via the module itself.
+
+Dynamic, or ad-hoc, instrumentation is not in scope. The goals of simplicity and
+proper abstraction are in conflict with dynamic instrumentation. Thankfully,
+nothing about the Metric Instrumenter should prevent consumers from combining it
+with a future Dynamic Metric Instrumenter.
+
+## Prerequisites
+
+* [node-kstat](https://github.com/bcantrill/node-kstat) needs to be updated so
+that it supports Node versions greater than 0.12.x.
+
+* `zfs list` needs to be profiled so we understand it's impact on the box when
+used frequently. Furthermore, a node module should be created that allows
+calling a native library rather than synchronously calling a shell command.
+
+## Default Metric Keys
+* `cpu_agg_usage` => `kstat zones:::nsec_user`
+* `cpu_wait_time` => `kstat zones:::nsec_waitrq`
+* `zfs_used` => `zfs list used`
+* `zfs_available` => `zfs list available`
+* `load_average` => `kstat zones:::averun_1min`
+* `mem_agg_usage` => `kstat memory_cap:::rss`
+* `mem_limit` => `kstat memory_cap:::physcap`
+* `mem_swap` => `kstat memory_cap:::swap`
+* `mem_swap_limit` => `kstat memory_cap:::swapcap`
+* `net_agg_packets_in` => `kstat link:::ipackets64`
+* `net_agg_packets_out` => `kstat link:::opackets64`
+* `net_agg_bytes_in` => `kstat link:::rbytes64`
+* `net_agg_bytes_out` => `kstat link:::obytes64`
+* `time_of_day` => `gettimeofday(3C)`
+
+## Methods
+* `getMetric(<metric_key>, function(err, metric_data))`
+  * metric_data example
+
+  ```
+  {
+      "origin": "kstat link:::rbytes64",
+      "unit": "bytes",
+      "base": 2,
+      "type": "counter",
+      "value": 1234
+  }
+  ```
+  * example usage
+
+  ```
+  instrumenter.getMetric('cpu_agg_usage', function(err, metric_data) {
+      if (err) {
+          assert(!err);
+      } else {
+          // do things with metric_data here
+      }
+  });
+  ```
+
+* `getMetrics(<metric_keys>, function(err, metrics_data))`
+  * metrics_data example
+
+  ```
+  {
+      "net_agg_bytes_in": {
+          "origin": "kstat link:::rbytes64",
+          "unit": "bytes",
+          "base": 2,
+          "type": "counter",
+          "value": 1234
+      },
+      "zfs_used": {
+          "origin": "zfs available",
+          "unit": "bytes",
+          "base": 2,
+          "type": "counter",
+          "value": 1234
+      }
+  }
+  ```
+  * example usage
+
+  ```
+  instrumenter.getMetrics(['mem_swap', 'zfs_used'], function(err, metric_data) {
+      if (err) {
+          assert(!err);
+      } else {
+          // do things with metrics_data here
+      }
+  });
+  ```
+
+* `getMetricKeys(function(err, keys)`
+  * keys example
+
+  ```
+  {
+    "net_agg_bytes_in": {
+        "origin": "kstat link:::rbytes64",
+        "unit": "bytes",
+        "base": 2,
+        "type": "counter"
+    },
+    ...
+  }
+  ```
