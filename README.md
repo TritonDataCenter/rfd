@@ -87,6 +87,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 42 Provide global zone pkgsrc package set](./rfd/0042/README.md) |
 | predraft | [RFD 43 Rack Aware Network Pools](./rfd/0043/README.md) |
 | predraft | [RFD 44 Create VMs with Delegated Datasets](./rfd/0044/README.md) |
+| draft    | [RFD 45 Tooling for code reviews and code standards](./rfd/0045/README.md) |
 
 
 ## Contents of an RFD
