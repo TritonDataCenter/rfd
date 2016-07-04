@@ -188,6 +188,11 @@ The 'request-id' form is preferred over 'x-request-id'.
 
 It is considered an error to include both x-request-id and request-id headers.
 
+We should also return the request-id header in all responses at any restify
+server. This way clients who make a request will receive back the request-id
+header and when they are looking up traces, they can use that ID to find the
+logs that match with their request.
+
 #### triton-span-id
 
 This header represents the span identifier (span\_id) of the span that this
@@ -263,7 +268,6 @@ restify servers such that:
        unmodified.
  * If triton-trace-enabled is 1, each span.log will result in a span being
    written to the bunyan logger. If it is 0 or unset, span.log will be a no-op.
-
 
 ## Planned Implementation
 
@@ -459,11 +463,11 @@ At an HTTP Request we should have available at least:
  * the HTTP path including query string (http.path)
  * the HTTP URL (http://<host>/ -- http.url)
  * the HTTP status code (http.statusCode, e.g. '200')
+ * the time the server spent handling the request (http.responseTime)
 
 when available we would also like to include other data such as:
 
  * the req.timers object from the restify server
- * the filter parameters for a moray/ufds request
  * the restify handler name (e.g. vmapi.updatevm)
 
 every request will also have available:
@@ -475,6 +479,27 @@ every request will also have available:
 
 and individual APIs and components will also be able to add additional data to
 help identify requests.
+
+### Non-HTTP Actions
+
+Non-HTTP actions such as the execution of a cmdline tool like /usr/sbin/zfs will
+not necessarily have all the data an HTTP action will have, but should always
+have at least:
+
+ * a number indicating the amount of time spent performing the action
+ * a name for the individual action
+ * an indication of whether the action was successful or failed
+ * the usual timestamp/name/pid/hostname that bunyan gives provides
+
+and may have additional data based on the specific command being executed. Some
+examples might be:
+
+ * command line parameters
+ * the filter parameters for a moray/ufds request
+ * number of retries if something retried before completing / failing
+
+but could include any data that might help the operator understand the behavior
+of the system.
 
 ## Visualization and Analysis of Data
 
@@ -631,6 +656,10 @@ order to be able to turn on additional logs and/or tags for traces.
 Another suggestion for future work was that we have an additional flag which
 indicates that we want something to be a "realtime trace" and that data to be
 sent to some external system in realtime.
+
+If after a future RFD, data is going in realtime to an external system, it will
+be possible for the client to use the request-id they're returned in order to
+lookup this data in that external system soon after the request has completed.
 
 ## Open Questions
 
