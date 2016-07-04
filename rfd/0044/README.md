@@ -221,6 +221,22 @@ things get simpler here and nothing needs to be done in this work to support
 that. If we want KVM snapshots to work the way originally described in say
 OS-1750, we should keep that in mind when building support for SmartOS VMs.
 
+An additional comment was added on this topic via email:
+
+```
+With KVM we probably want to snapshot the data disk, but allow the user
+to choose whether they want to revert "root" or "root + data" in that
+case. I can see users wanting it both ways, and here we have the
+benefit of their decided inability to remove snapshots of the data
+volume from inside KVM. For the reprovision case, if we ever support
+that for KVM machines, I suspect most of the images in existance would
+format the data disk on first boot anyway; this would obviously require
+a pretty large change to be useful.
+```
+
+So perhaps it's best if for this RFD we just continue to refuse to take
+snapshots of KVM VMs and leave KVM snapshots to its own RFD. Since those
+will potentially behave quite differently from non-KVM snapshots.
 
 ## Summary of Proposed Changes
 
@@ -286,3 +302,13 @@ for min\_platform would then mean "which is the oldest platform whose version of
 'safe' we trust". No provisions would go to platforms that don't meet that
 criteria. And if we find that platform A's version of safe is not safe enough,
 we'll bump the min\_platform for this feature to platform B's buildstamp.
+
+### Should OS-5484 be in scope?
+
+Feedback on this RFD suggested that OS-5484 should be in scope for this RFD
+and nob subject to its own separate RFD, and that we write new code to backfill
+this feature to old platforms (presumably back to the oldest platform that can
+support the delegate_dataset=safe option).
+
+If the majority agrees with this, the details of this feature will need to be
+filled out here as well.
