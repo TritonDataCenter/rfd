@@ -88,7 +88,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 43 Rack Aware Network Pools](./rfd/0043/README.md) |
 | predraft | [RFD 44 Create VMs with Delegated Datasets](./rfd/0044/README.md) |
 | draft    | [RFD 45 Tooling for code reviews and code standards](./rfd/0045/README.md) |
-
+| draft    | [RFD 46 Origin images for Triton and Manta core images](./rfd/0046/README.md) |
 
 ## Contents of an RFD
 
