@@ -271,28 +271,34 @@ restify servers such that:
 
 ## Planned Implementation
 
-The implementation of this work will consist of 3 parts:
+The implementation of this work will consist of several parts:
 
- 1) modifications to restify-client to support .child()
- 2) modifications to node-sdc-clients to support .child()
- 3) addition of the event tracing components to all Triton restify servers
- 4) modification of all Triton client calls to us sdc-client child()
- 5) modification of cn-agent
- 6) modification of node-vmadm
- 7) modification of vmadm
+1. modifications to restify-client to support .child()
+2. modifications to node-sdc-clients to support .child()
+3. addition of the event tracing components to all Triton restify servers
+4. modification of all Triton client calls to us sdc-client child()
+5. modification of cn-agent
+6. modification of node-vmadm
+7. modification of vmadm
 
 ### Modifications to restify-clients
 
-We will add a .child() method to restify clients. This will be called as:
+We will add a `.child()` method to restify clients. This will be called as:
 
+```
 client.child({
-    after: <function>,
-    before: <function>
+    after: function onAfter() {
+      // code that runs after a response is received
+    },
+    before: function onBefore() {
+      // code that runs before anything is sent to the server
+    }
 })
+```
 
-where all after and before are optional.
+where all `after` and `before` are optional.
 
-If an "after" function is passed, this will be called any time a client receives
+If an `after` function is passed, this will be called any time a client receives
 a response to a request with the following parameters:
 
 ```
@@ -300,11 +306,11 @@ callback(err, opts, req, res);
 ```
 
 and this callback will be called *before* the callback within restify for the
-.write() or .read() method (depending on the type of query).
+`.write()` or `.read()` method (depending on the type of query).
 
-If a "before" function is passed, this will be called at the beginning of the
-.write() or .read() method in the restify client, before anything is sent to the
-server. It will be called with the following parameters:
+If a `before` function is passed, this will be called at the beginning of the
+`.write()` or `.read()` method in the restify client, before anything is sent to
+the server. It will be called with the following parameters:
 
 ```
 callback(err, opts, req, body);
