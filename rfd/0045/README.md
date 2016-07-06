@@ -529,10 +529,10 @@ For any given repository, the steps would be:
 * disallow pushing to GitHub directly, or pushing to #master in Gerrit without
   going through the submission process
 
-To this end, we've set up a prototype Gerrit deployment inside staging-1 (on the
-engineering VPN).  You can reach it at:
+To this end, we've set up a prototype Gerrit deployment in west1.  You can reach
+it at:
 
-    http://cr.joyent.us:8080
+    https://cr.joyent.us
 
 **This isn't done yet!**  It's definitely usable, but it's missing things like
 commit message validation, `make check` and more.  It may be redeployed and
@@ -550,5 +550,5 @@ notification, GitHub replication) and which are on the TODO list.
 
 If you want to take a look at two real code reviews that went through Gerrit:
 
-* http://cr.joyent.us:8080/#/c/1/ (node-cueball)
-* http://cr.joyent.us:8080/#/c/14/ (node-jsprim)
+* https://cr.joyent.us/#/c/1/ (node-cueball)
+* https://cr.joyent.us/#/c/14/ (node-jsprim)
