@@ -543,10 +543,10 @@ playing with the prototype.
 There are instructions for getting set up with the prototype and importing
 projects here:
 
-https://gist.github.com/davepacheco/66694bf6336736f289651f612579de24
+    https://github.com/joyent/joyent-gerrit/tree/master/docs/user
 
-There's also a summary there of what features have been implemented (e.g., email
-notification, GitHub replication) and which are on the TODO list.
+That repository also has a summary there of what features have been implemented
+(e.g., email notification, GitHub replication) and which are on the TODO list.
 
 If you want to take a look at two real code reviews that went through Gerrit:
 
