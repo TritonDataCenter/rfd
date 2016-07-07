@@ -184,15 +184,32 @@ expect, and it remains part of the history (although some of that might
 disappear if people destroy their clones).
 
 Cons:
-* There are many downsides to GitHub diffs: e.g., they don't render manual
-  pages.  Some people prefer to be able to draft comments and revise them before
-  submitting them, but GitHub submits each individual piece of feedback right
-  away.
-* Incremental diffs are possible by submitting multiple commits, but then
-  additional work is required to squash them when it's time to integrate.  Also,
-  it's not always clear whether multiple commits are drafts of the same work
+* GitHub is a proprietary service over which we have no control; when it
+  is missing features that we deem necessary, changes their business model
+  around features that we depend on or deprecates features we deem essential,
+  we have no recourse.  This is a very, very significant con and alone
+  broadly disqualifies GitHub from further consideration.
+* GitHub's design center (namely, the social aspects of open source) does
+  not fit our use case (namely, the rigor of professional software
+  engineering):  it is not designed to rigidly mandate that integrations meet
+  certain criteria, formally track iterative review, separate review from
+  approval, etc.  Yes, there are analogues in GitHub for these constructs --
+  but GitHub's design decisions are unquestionably around making development
+  easily accessible not about making engineering well-formalized and
+  automatically enforced.
+* Incremental diffs are possible by submitting multiple commits, but it's not
+  always clear whether multiple commits are drafts of the same work
   (e.g., different checkpoints for reviewers to look at), or just intermediate
-  work that the author didn't want to squash yet.
+  work that the author didn't want to squash yet. This problem is compounded
+  for large bodies of work that has several rounds of review: GitHub makes
+  it difficult to find the delta between a new round and a previously-reviewed
+  version.
+* At a smaller scale, there are many downsides to GitHub diffs: e.g., they
+  don't render manual pages.  Some people prefer to be able to draft
+  comments and revise them before submitting them, but GitHub submits each
+  individual piece of feedback right away. That this can't be customized
+  or otherwise altered is a concrete example of the peril of depending on
+  a proprietary service.
 
 ### Webrev-based code review
 
