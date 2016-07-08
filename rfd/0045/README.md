@@ -525,7 +525,7 @@ control for repositories in Gerrit instead of GitHub, though.
 * Are there other workflows in use today that we want to keep supporting that
   Gerrit doesn't support?
 
-## Road map
+## Road map and next steps
 
 Here's the proposed plan, assuming we don't decide to abort partway through if
 we discover Gerrit won't work for us:
@@ -557,10 +557,8 @@ updated frequently.  The plan is to avoid blowing away any state there, but at
 this point, it's best to assume that changes there may get blown away as part of
 playing with the prototype.
 
-There are instructions for getting set up with the prototype and importing
-projects here:
-
-    https://github.com/joyent/joyent-gerrit/tree/master/docs/user
+There are [instructions for getting set up with the prototype and importing
+projects](https://github.com/joyent/joyent-gerrit/tree/master/docs/user).
 
 That repository also has a summary there of what features have been implemented
 (e.g., email notification, GitHub replication) and which are on the TODO list.
