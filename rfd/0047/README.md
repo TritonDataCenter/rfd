@@ -98,16 +98,16 @@ of top-level repositories lead to new builds being added. There are currently
 around 25k images, which naively (this doesn't count copies, or actual
 blocks used in Manta) takes 1.7 TiB of space.
 
-{code}
+```
 $ updates-imgadm -C '*' list -H | wc -l
    25335
 $ updates-imgadm -C '*' list -H -o size | awk '{s+=$1} END {print s}'
 1896458696205
-{code}
+```
 
 Updates.jo has channels, which are relevant for retention policy:
 
-{code}
+```
 $ updates-imgadm channels
 NAME          DEFAULT  DESCRIPTION
 experimental  -        feature-branch builds (warning: 'latest' isn't meaningful)
@@ -115,7 +115,7 @@ dev           true     main development branch builds
 staging       -        staging for release branch builds before a full release
 release       -        release bits
 support       -        Joyent-supported release bits
-{code}
+```
 
 One wrinkle is for Manta: Currently Manta's deployment procedure pulls images
 from the *default* "dev" channel, and not from release. This isn't currently
