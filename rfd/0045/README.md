@@ -244,141 +244,11 @@ reports about Gerrit and a negative report about Phabricator.
 
 ## Gerrit Deeper Dive
 
-### Quick demo
+This section has been replaced with the [cr.joyent.us user
+guide](https://github.com/joyent/joyent-gerrit/blob/master/docs/user/README.md).
 
-Let's walk through an example.  I've just created an empty repository on a
-prototype server at cr.joyent.us.  First, I clone it:
-
-    dap@sharptooth ~ $ git clone ssh://davepacheco@cr.joyent.us:29418/my-playground.git
-    Cloning into 'my-playground'...
-    remote: Counting objects: 2, done
-    remote: Finding sources: 100% (2/2)
-    remote: Total 2 (delta 0), reused 0 (delta 0)
-    Receiving objects: 100% (2/2), done.
-
-Now, let me add a README and commit that:
-
-    dap@sharptooth my-playground $ vim README.md
-    dap@sharptooth my-playground $ git add README.md 
-    dap@sharptooth my-playground $ git commit -m "add initial README"
-    [master 95a7c80] add initial README
-     1 file changed, 1 insertion(+)
-     create mode 100644 README.md
-
-Now I'm ready to send this out for review.  Gerrit first-classes the idea of a
-single logical change to the repository, and that's called a **Change** (of
-course).  This isn't just a single commit; it encapsulates multiple revisions of
-the work as well as the review and automated verification process around the
-change.  I can create a new change from my commit by pushing to the magic branch
-`refs/for/master`:
-
-    dap@sharptooth my-playground $ git push origin HEAD:refs/for/master
-    Counting objects: 4, done.
-    Writing objects: 100% (3/3), 266 bytes, done.
-    Total 3 (delta 0), reused 0 (delta 0)
-    remote: Processing changes: new: 1, refs: 1, done    
-    remote: 
-    remote: New Changes:
-    remote:   http://cr.joyent.us:8080/12 add initial README
-    remote: 
-    To ssh://davepacheco@cr.joyent.us:29418/my-playground.git
-     * [new branch]      HEAD -> refs/for/master
-
-Gerrit gave me back a URL that I can use to refer to this Change.  It also
-assigns it a ChangeId.  (There's a long ChangeId and a short one.  We can
-generally use the short one.  In this case, that's `12`.)
-
-Reviewers can be automatically notified and they can leave their feedback in the
-UI.  We won't go through that process here.
-
-Once I've got feedback, I might make some changes to the README:
-
-    dap@sharptooth my-playground $ vim README.md 
-    dap@sharptooth my-playground $ git add README.md 
-    dap@sharptooth my-playground $ git commit -m "forgot to add content"
-    [master f6eb4be] forgot to add content
-     1 file changed, 2 insertions(+)
-
-At this point, I want to upload a new revision of the same Change.  Gerrit calls
-each revision a **PatchSet**.  In order to submit it, I need to squash my
-change:
-
-    dap@sharptooth my-playground $ git rebase -i HEAD^^
-    [detached HEAD 920280c] initial README; forgot to add content
-     1 file changed, 3 insertions(+)
-     create mode 100644 README.md
-    Successfully rebased and updated refs/heads/master.
-
-And then I push that to the magical reference `refs/changes/12` (because this is
-a new PatchSet for Change 12):
-
-    dap@sharptooth my-playground $ git push origin HEAD:refs/changes/12
-    Counting objects: 4, done.
-    Delta compression using up to 8 threads.
-    Compressing objects: 100% (2/2), done.
-    Writing objects: 100% (3/3), 316 bytes, done.
-    Total 3 (delta 0), reused 0 (delta 0)
-    remote: Processing changes: updated: 1, refs: 1, done    
-    remote: 
-    remote: Updated Changes:
-    remote:   http://cr.joyent.us:8080/12 initial README; forgot to add content
-    remote: 
-    To ssh://davepacheco@cr.joyent.us:29418/my-playground.git
-     * [new branch]      HEAD -> refs/changes/12
-
-The Change's URL is the same as it was.  Now if you visit it, you'll see the
-latest patchset by default.  You can also view diffs against the previous
-patchset.
-
-When we're satisfied with everything, we can integrate the change directly from
-the Gerrit UI.  I've configured this project to only integrate changes into
-master if they can be fast-forwarded.  Once the review process is done, the
-Submit button will show up, and you click that to land the change.
-
-
-### More about Gerrit
-
-There are a few things to know about Gerrit before digging too far into it:
-
-1. Gerrit formalizes the notion of a Change and patchset.  See above.
-2. The process of "integrating" (or "landing") a change (either by merge,
-   rebase, fast-forward, or cherry-pick) is called **submitting** it.  This
-   might be confusing if you think of "submitting a change for review".  **In
-   Gerrit, submitting a change refers to integrating it into master.**
-3. Gerrit enforces that each patchset consists of exactly one commit.  This
-   matches our policy for pushes, although we do sometimes review changes that
-   aren't yet squashed.  You can still do this with Gerrit!  See the FAQ below.
-4. Gerrit also formalizes the notion of approval with a voting system.  It uses
-   numeric values, but these don't get added together.
-
-**Gerrit's voting system:** Each reviewer can vote one of five ways on a change.
-Note that **the votes do not get added together**.  By default, a Change must
-have at least one +2 and no -2's in order to be merged.  The way this is
-typically used is more like:
-
-* +2: A thumbs-up, plus an endorsement to integrate the change.  Think of this
-  as approval by a project owner to land the change in its current form.  In the
-  illumos world, this is like approval by an RTI advocate.
-* +1: The reviewer has given their thumbs-up for this change, but someone else
-  will have to +2 it.  This would be used by a reviewer who still wants someone
-  else to look at it.
-* 0 (default): Use this to leave feedback without weighing in one way or the
-  other.
-* -1: The reviewer has issues with this change, but not so severe that it should
-  block the change.
-* -2: The reviewer believes the change should absolutely not integrate as-is.
-
-In typical deployments, the policy is that a change requires one +2 (i.e., an
-owner has to endorse the change) and no -2s (i.e., nobody has vetoed the
-change).  You can see why no number of +1s add up to a +2 (and no number of -1s
-add up to a -2).
-
-The proposal is that we use "+2" to mean: "This looks like a good change and I'm
-satisfied with the level of code review, testing, and risk associated with the
-change."  (This does not mean that the person voting +2 has reviewed the code,
-though they may also do that.)
-
-Other nice things about Gerrit for our use-case:
+Besides code review, there are a few other nice things about Gerrit for our
+use-case:
 
 * It's got a REST API and CLI for working with changes.
 * It can integrate with GitHub auth.
@@ -530,8 +400,7 @@ control for repositories in Gerrit instead of GitHub, though.
 Here's the proposed plan, assuming we don't decide to abort partway through if
 we discover Gerrit won't work for us:
 
-* get a prototype Gerrit instance set up so that people can start playing with
-  it
+* done: get a Gerrit instance set up so that people can start playing with it
 * start fleshing out features of the Gerrit instance that we'll want (e.g.,
   commit message validation, running `make check`)
 * meanwhile, have interested people start using Gerrit in earnest for their
@@ -553,15 +422,13 @@ it at:
 
 **This isn't done yet!**  It's definitely usable, but it's missing things like
 commit message validation, `make check` and more.  It may be redeployed and
-updated frequently.  The plan is to avoid blowing away any state there, but at
-this point, it's best to assume that changes there may get blown away as part of
-playing with the prototype.
+updated frequently.  The plan is to avoid blowing away any state there.
 
-There are [instructions for getting set up with the prototype and importing
+There are [instructions for getting set up with cr.joyent.us and importing
 projects](https://github.com/joyent/joyent-gerrit/tree/master/docs/user).
 
-That repository also has a summary there of what features have been implemented
-(e.g., email notification, GitHub replication) and which are on the TODO list.
+That repository also has a summary of what features have been implemented (e.g.,
+email notification, GitHub replication) and which are on the TODO list.
 
 If you want to take a look at two real code reviews that went through Gerrit:
 
