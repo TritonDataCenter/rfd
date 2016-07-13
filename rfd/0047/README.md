@@ -69,7 +69,8 @@ Some considerations for a retention policy:
   images (including agents, platforms, etc.) in updates.joyent.com (see
   next section), headnode (aka COAL and USB) builds in
   `/Joyent_Dev/public/SmartDataCenter`, onprem headnode releases in
-  `/joyentsup/stor/???` (TODO: ask support). Exceptions to this:
+  `/joyentsup/stor/SDC7` (see
+  "/joyentsup/stor/SDC7/usb-joyent-release.latest.README"). Exceptions to this:
   `platform-debug`.
 - As an educated guess, my [Trent] bet is that the `headnode*` builds are the
   big culprit for the `Joyent_Dev` account usage.
@@ -146,6 +147,9 @@ Suggested retention policy for each channel:
 
 Deletion requirements:
 
+- Ability to do a dry run.
+- A script to confirm that the Triton component and platform images in use on
+  JPC are available in updates.jo (as some kind of pre-purge "health check").
 - The script should log all deletions to a log file that gets uploaded to
   Manta for verification.
 - If reasonable, it would be nice to have a "purgatory" for deleted images
@@ -194,5 +198,11 @@ Those "was not found" cases are, I think, cruft.
 ## Other stuff
 
 After an `mdu` implementation it should be easier to poke around looking for
-particularly heavy usage areas where we need spend effort. E.g. log updates,
-crash dumps.
+particularly heavy usage areas where we need spend effort.
+
+- logs: /{admin,Joyent_Dev}/stor/logs
+  JoshC suggested moving these, at least for the nightly and staging envs,
+  to the Staging Manta.
+- sdc data dumps: /{admin,Joyent_Dev}/stor/sdc
+  JoshC suggested moving these, at least for the nightly and staging envs,
+  to the Staging Manta.
