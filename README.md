@@ -90,8 +90,8 @@ formal writing that it has come to represent.)
 | draft    | [RFD 45 Tooling for code reviews and code standards](./rfd/0045/README.md) |
 | draft    | [RFD 46 Origin images for Triton and Manta core images](./rfd/0046/README.md) |
 | draft    | [RFD 47 Retention policy for Joyent engineering data in Manta](./rfd/0047/README.md) |
-| predraft | [RFD 48 Triton A&A Overhaul (AUTHAPI)](./rfd/0048/README.md) |
-| predraf  | [RFD 49 AUTHAPI Internals](./rfd/0049/README.md) |
+| (WIP)    | [RFD 48 Triton A&A Overhaul (AUTHAPI)](./rfd/0048/README.md) |
+| (WIP)    | [RFD 49 AUTHAPI Internals](./rfd/0049/README.md) |
 | predraft | [RFD 50 Enhanced Audit Trail for Instance Lifecycle Events](./rfd/0050/README.md) |
 
 ## Contents of an RFD
