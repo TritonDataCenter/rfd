@@ -93,6 +93,7 @@ formal writing that it has come to represent.)
 | (WIP)    | [RFD 48 Triton A&A Overhaul (AUTHAPI)](./rfd/0048/README.md) |
 | (WIP)    | [RFD 49 AUTHAPI Internals](./rfd/0049/README.md) |
 | predraft | [RFD 50 Enhanced Audit Trail for Instance Lifecycle Events](./rfd/0050/README.md) |
+| predraft | [RFD 51 The Purpose of Code Review](./rfd/0051/README.md) |
 
 ## Contents of an RFD
 
