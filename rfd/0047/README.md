@@ -160,39 +160,83 @@ Ticket: <https://devhub.joyent.com/jira/browse/IMGAPI-572>
 
 
 
-## Cruft dirs in `/Joyent_Dev/stor/builds`
+## Manual cruft and calculations
 
-```
-$ mls /Joyent_Dev/stor/builds | while read d; do echo "# $d"; mget /Joyent_Dev/stor/builds/${d}release-20160707-latest; done
-# firmware-tools/
-/Joyent_Dev/stor/builds/firmware-tools/release-20160707-20160707T045517Z
-# fwapi/
-mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/fwapi/release-20160707-latest was not found
-# headnode-joyent/
-/Joyent_Dev/stor/builds/headnode-joyent/release-20160707-20160707T062959Z
-# headnode-joyent-debug/
-/Joyent_Dev/stor/builds/headnode-joyent-debug/release-20160707-20160707T061159Z
-# mockcloud/
-/Joyent_Dev/stor/builds/mockcloud/release-20160707-20160707T044945Z
-# mockcn/
-mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/mockcn/release-20160707-latest was not found
-# old/
-mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/old/release-20160707-latest was not found
-# propeller/
-/Joyent_Dev/stor/builds/propeller/release-20160707-20160707T035011Z
-# sdc-system-tests/
-/Joyent_Dev/stor/builds/sdc-system-tests/release-20160707-20160707T045322Z
-# sdcsso/
-mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/sdcsso/release-20160707-latest was not found
-# vapi/
-mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/vapi/release-20160707-latest was not found
-# vmapi/
-mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/vmapi/release-20160707-latest was not found
-# volapi/
-mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/volapi/release-20160707-latest was not found
-```
+### Cruft dirs in `/Joyent_Dev/stor/builds`
+
+    $ mls /Joyent_Dev/stor/builds | while read d; do echo "# $d"; mget /Joyent_Dev/stor/builds/${d}release-20160707-latest; done
+    # firmware-tools/
+    /Joyent_Dev/stor/builds/firmware-tools/release-20160707-20160707T045517Z
+    # fwapi/
+    mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/fwapi/release-20160707-latest was not found
+    # headnode-joyent/
+    /Joyent_Dev/stor/builds/headnode-joyent/release-20160707-20160707T062959Z
+    # headnode-joyent-debug/
+    /Joyent_Dev/stor/builds/headnode-joyent-debug/release-20160707-20160707T061159Z
+    # mockcloud/
+    /Joyent_Dev/stor/builds/mockcloud/release-20160707-20160707T044945Z
+    # mockcn/
+    mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/mockcn/release-20160707-latest was not found
+    # old/
+    mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/old/release-20160707-latest was not found
+    # propeller/
+    /Joyent_Dev/stor/builds/propeller/release-20160707-20160707T035011Z
+    # sdc-system-tests/
+    /Joyent_Dev/stor/builds/sdc-system-tests/release-20160707-20160707T045322Z
+    # sdcsso/
+    mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/sdcsso/release-20160707-latest was not found
+    # vapi/
+    mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/vapi/release-20160707-latest was not found
+    # vmapi/
+    mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/vmapi/release-20160707-latest was not found
+    # volapi/
+    mget: ResourceNotFoundError: /Joyent_Dev/stor/builds/volapi/release-20160707-latest was not found
 
 Those "was not found" cases are, I think, cruft.
+
+
+### Cruft in `/Joyent_Dev/stor/logs`
+
+All the us-beta-4 stuff can be turfed IMO (Trent):
+
+    [trent.mick@us-east /Joyent_Dev/stor/logs]$ ls
+    us-beta-4
+    ...
+    [trent.mick@us-east /Joyent_Dev/stor/logs]$ ls fwadm
+    us-beta-4
+    [trent.mick@us-east /Joyent_Dev/stor/logs]$ ls vmadm
+    us-beta-4
+
+All the 'sf-2' stuff IMO (dates from Mar 2014 to Jan 2015):
+
+    /Joyent_Dev/stor/logs/sf-2
+
+
+### Triton Logs
+
+A Triton DC setup to upload logs to Manta, currently uploads about
+83 logsets, e.g.:
+
+```
+$ mls /Joyent_Dev/stor/logs/staging-1
+adminui/
+amon-agent/
+amon-master/
+binder/
+caaggsvc-auto0/
+caaggsvc-auto1/
+...
+```
+
+And one per hour, per instance. Assuming one instance for each (some typically
+have more: manatee, moray, binder), that is ~2000 log files per day.
+
+There are so many logs here, that `mfind /Joyent_Dev/stor/staging-1/logs` and
+similar is getting untenable (anecdote: I've been mfind'ing that dir
+for >1h now in a mlogin session).
+
+TODO: Get some data on num bytes of logs per day for different DCs.
+
 
 
 ## Other stuff
