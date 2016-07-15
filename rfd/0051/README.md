@@ -1,6 +1,6 @@
 ---
 author: Jerry Jelinek <jerry.jelinek@joyent.com>
-state: predraft
+state: draft
 ---
 
 # RFD 51 Code Review Guidance
@@ -43,6 +43,11 @@ generally best to contact the reviewer directly and have a discussion about
 the issue. The code review tool is not the best way to discuss a complicated
 issue.
 
+Before posting a code review, ensure that you're adhering to the programming
+style rules in the repository in which you're working and are consistent with
+the style of code you're modifying. Your reviewers should not have to wade
+through these kind of mistakes.
+
 ## The Reviewer
 
 As a reviewer you should follow the golden rule; give feedback with respect in
@@ -58,6 +63,10 @@ it is fine to propose that, but the code author is the one who is responsible
 for the code and they are free to choose the implementation that makes sense
 for them. However, algorithmic mistakes, such as order problems (big O), are
 valid objections for code review.
+
+New code should follow the style rules for the repository that it's in, but
+programming style is also very subjective. Changes can follow the style rules,
+but be different from your personal style. Avoid commenting on that.
 
 Be clear in your feedback. Don't confuse the author with your input. As noted
 above, if there is a complex issue, it is best to have a discussion with the
