@@ -113,6 +113,7 @@ being locked into permanent retention of workflow jobs. In addition, the
 performance penality of parsing large job logs to extract the audit trail may
 become prohibitive for scalability.
 
+### Volumes
 
 ## Open Questions
 
@@ -126,6 +127,18 @@ There is also the desire of having an event management framework, as part of
 callback may become the new paradigm for end-user API interactions.
 
 This is a major decision we have to make before moving forward.
+
+### How does this feature relate to `docker events`?
+
+Enhaced instance audit does not fully cover `docker events` but can bring us
+a step closer to it. Currently `docker events` supports:
+
+1. the life-streaming of events
+2. change tracking of images, networks, and volumes
+3. non-lifecycle events such as attach/detach and mount/unmount
+
+We can consider 2 and 3 in the next iteration. But the support for streaming
+is obviously based on the decision on the previous question.
 
 ### Should we track the changes made to internal attributes?
 
