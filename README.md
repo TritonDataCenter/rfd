@@ -94,6 +94,7 @@ formal writing that it has come to represent.)
 | (WIP)    | [RFD 49 AUTHAPI Internals](./rfd/0049/README.md) |
 | predraft | [RFD 50 Enhanced Audit Trail for Instance Lifecycle Events](./rfd/0050/README.md) |
 | draft    | [RFD 51 Code Review Guidance](./rfd/0051/README.md) |
+| draft    | [RFD 52 Moray test suite rework](./rfd/0052/README.md) |
 
 ## Contents of an RFD
 
