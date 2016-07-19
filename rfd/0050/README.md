@@ -9,7 +9,7 @@ state: predraft
 
 The existing `MachineAudit` CloudAPI endpoint allows Triton users to obtain the
 audit trail of lifecycle events for their compute instances. The audit trail is
-derived from the workflow jobs and covers only a small subset of the job
+derived from the workflow jobs and covers only a small subset of the request
 attributes. There are some major limitations with the API:
 
 1. Workflow job records are process logs in nature. They can take up a fair
@@ -68,7 +68,7 @@ instance on an ad hoc basis. For accounts that include subusers or projects,
 the owners should have the ability to narrow down the inquiries by subuser,
 projects or tags. 
 
-Audit trail may also serve as the input into monitoring applications for
+Audit trail may also serve as the input for monitoring applications for
 historical analysis of instance events. A common way to consume the data in
 this case is through regular polling for events that happened within a certain
 time window.
@@ -81,17 +81,25 @@ the use of one or multiple of the following filters:
 - subuser ID or login
 - project ID or name (when the [Project](https://github.com/joyent/rfd/tree/master/rfd/0013) feature is available)
 - machine tag key/value pair
+- event/action type
+
+A reasonable limit on the number of records returned in a single API call will
+be required for performance reasons. If the number of events based on the filtering
+criteria exceeds that limit, the API should support a way to traverse to the
+next set of records (e.g. by using event time as the offset).
 
 ### Inclusion of error and performance details about an event 
 
 The content of the audit trail can be expanded to include information such as
-event elapse times, error messages for failed actions, attribute values
-modified. These details are often useful for debugging and analytics.
+request ids (if applicable), event elapse times, error messages for failed actions,
+attribute values modified. These details are often useful for debugging and analytics.
 
 (**Note:** The ability to capture and return the error message for a failed
-request ties into a long-standing request for improved error handling raised in
-[RFD 22](https://github.com/joyent/rfd/blob/master/rfd/0022/README.md). This
-work is known to be non-trivial and may have to be handled as a separate project.)
+request ties into a long-standing request for improved error handling discussed
+in [RFD 22](https://github.com/joyent/rfd/blob/master/rfd/0022/README.md). This
+work is known to be non-trivial and may have to be handled as a separate project.
+As a start, we can extract the error messages that are readily available at the
+moment.)
 
 ### Inclusion of events that do not result in workflow jobs
 
@@ -105,15 +113,25 @@ for inclusion in the audit trail, if it is technically feasible:
 Changes made through vmadm and other downstack APIs by the operator should also
 be captured in the audit trail for completeness.
 
+In the event that the instances went down catastrophically (e.g. because of a
+forced reboot of the server), we can consider providing some way for the
+operator to add the instance kill/stop events manually.
+
 ### Ability to retain audit trail independent of workflow job records
 
-This requirement is not meant to dictate the implementation. But there is a good
-reason for persisting audit trail in a new Moray bucket, so that we can avoid
+This requirement is not meant to dictate the implementation. However, there is
+a good reason for persisting audit trail in a new Moray bucket as we can avoid
 being locked into permanent retention of workflow jobs. In addition, the
 performance penality of parsing large job logs to extract the audit trail may
 become prohibitive for scalability.
 
-### Volumes
+### Event tracking for other cloud objects
+
+Ideally, all other user-owned objects such as networks, images and volumes
+(introduced in [RFD 26](https://github.com/joyent/rfd/tree/master/rfd/0026))
+should have similar change tracking for audit purposes. These requirements can
+be considered as part of the future scope based on user demand. 
+
 
 ## Open Questions
 
@@ -126,45 +144,48 @@ There is also the desire of having an event management framework, as part of
 [Mariposa](https://github.com/joyent/rfd/tree/master/rfd/0036) where event
 callback may become the new paradigm for end-user API interactions.
 
-This is a major decision we have to make before moving forward.
+The current bias is to keep the API as a new revision of `MachineAudit` for
+two main reasons:
+
+1. There is an established mechanism for authentication and authorization.
+2. Unlike metrics which are needed for real-time monitoring and can
+   tolerate occasional data loss, audit trail availability allows a minor delay
+   but needs to be complete and persistent. 
 
 ### How does this feature relate to `docker events`?
 
-Enhaced instance audit does not fully cover `docker events` but can bring us
-a step closer to it. Currently `docker events` supports:
+Enhanced instance audit does not fully cover `docker events` but can bring us
+a step closer to it. Currently `docker events` supports
 
-1. the life-streaming of events
+1. the live-streaming of events
 2. change tracking of images, networks, and volumes
 3. non-lifecycle events such as attach/detach and mount/unmount
 
-We can consider 2 and 3 in the next iteration. But the support for streaming
+We can consider 2 and 3 in the next iteration, but the support for streaming
 is obviously based on the decision on the previous question.
 
 ### Should we track the changes made to internal attributes?
 
 Certain instance attributes are not exposed to the end users (e.g. cpu shares,
 billing tag). Change tracking for these internal attributes can still be
-useful for operators. But they are arguably noises to the end users. Perhaps
-we can have two classes of audit trail where the ones related to internal
+useful for operators but can be considered noises to the end users.
+We can have two classes of audit trail where the ones related to internal
 attributes are filtered out from the end-user API. For MVP, we can consider
 scoping out the tracking of internal attributes.
 
 ### How far do we go with capturing the details in update requests?
 
-Single attribute modifications (e.g. firewall enabled, owner uuid) is
-relatively easy to capture and present to the user. But some other changes may
-require the dumping of an entire request payload which contains the 'before'
-and 'after' snapshots of the attribute values. We'll probably need a flexible
-schema to avoid having to tailor the audit trail format for different events.
+Single attribute modifications (e.g. firewall enabled, owner uuid) are
+relatively easy to capture and present to the user, but some changes may
+require the dumping of the entire input and the 'after' attribute values.
+We'll probably need a flexible response format to avoid having to tailor
+the audit trail output for different events.
 
 ### Should we allow user to opt out of audit?
 
 A good reason for opting out is when users are dealing with dev/test instances
 that are rapidly created and destroyed. They are not concerned about the change
 history and do not want the associated overhead. The caveat is that users may
-find that they *do* need the audit trail when something has gone wrong.
-
-### What if a request failed catastrophically without any audit trail?
-
-This is an implementation detail I would gladly leave to someone more capable to
-recommend the solution!
+find that they *do* need the audit trail when something has gone wrong. As
+such, the bias is to make audit required all the time. The permission to query
+the audit trail is still controlled by RBAC as how it is currently.
