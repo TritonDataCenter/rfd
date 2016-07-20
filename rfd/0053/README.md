@@ -177,7 +177,7 @@ In both sdcadm and the browser it may be interesting to put something
 together like was done in the fishworks UI. The following image shows an
 example of what this looked like:
 
-![Fishworks UI](images/fw.png)
+![Fishworks UI](img/fw.png)
 
 This is a useful summary and way to view things. While it doesn't make
 sense to put this in the CLI server path, making a variant available
