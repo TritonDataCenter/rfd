@@ -96,6 +96,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 51 Code Review Guidance](./rfd/0051/README.md) |
 | draft    | [RFD 52 Moray test suite rework](./rfd/0052/README.md) |
 | predraft | [RFD 53 Improving ZFS Pool Layout Flexibility](./rfd/0053/README.md) |
+| predraft | [RFD 54 Remove 'autoboot' when VMs stop from within](./rfd/0054/README.md) |
 
 
 ## Contents of an RFD
