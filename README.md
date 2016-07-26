@@ -97,7 +97,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 52 Moray test suite rework](./rfd/0052/README.md) |
 | predraft | [RFD 53 Improving ZFS Pool Layout Flexibility](./rfd/0053/README.md) |
 | predraft | [RFD 54 Remove 'autoboot' when VMs stop from within](./rfd/0054/README.md) |
-| predraft | [RFD 55 LX support for Namespaces](./rfd/0055/README.md) |
+| draft | [RFD 55 LX support for Namespaces](./rfd/0055/README.md) |
 
 
 ## Contents of an RFD
