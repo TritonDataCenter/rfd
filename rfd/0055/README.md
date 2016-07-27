@@ -1,5 +1,5 @@
 ---
-author: Jerry Jelinek <jerry.jelinek@joyent.com>
+authors: Jerry Jelinek <jerry.jelinek@joyent.com>, Patrick Mooney <patrick.mooney@joyent.com>
 state: draft
 ---
 
@@ -30,12 +30,12 @@ be implemented within the framework.
 The Linux `namespaces(7)` man page provides details, but to summarize the
 support, there are three system calls which can involve namespaces; `clone`,
 `setns`, and `unshare`. There are six primary namespaces:
- 1. IPC         CLONE_NEWIPC    System V IPC, etc.
- 2. Mount       CLONE_NEWNS     Mount points
- 3. Network     CLONE_NEWNET    Network devices, stacks, ports, etc.
- 4. PID         CLONE_NEWPID    Process IDs
- 5. User        CLONE_NEWUSER   User and group IDs
- 6. UTS         CLONE_NEWUTS    Hostname and NIS domain names
+ 1. IPC         CLONE\_NEWIPC    System V IPC, etc.
+ 2. Mount       CLONE\_NEWNS     Mount points
+ 3. Network     CLONE\_NEWNET    Network devices, stacks, ports, etc.
+ 4. PID         CLONE\_NEWPID    Process IDs
+ 5. User        CLONE\_NEWUSER   User and group IDs
+ 6. UTS         CLONE\_NEWUTS    Hostname and NIS domain names
 
 The Linux `proc` file system exposes the following entries:
 - /proc/{pid}/ns/ipc
@@ -91,6 +91,45 @@ referencing the object exit. The LNS `inode` member is used for the
 
 The `setns` syscall must take a file descriptor for one of the `/proc/{pid}/ns`
 files and associate the correct `lx_proc_data_t` LNS pointer to that object.
+
+## Mount Namespace Requirements
+
+One of the pressing reasons to support namespaces, particularly the mount
+namespace, is the proliferation of the `PrivateTmp` functionality offered by
+systemd. An excerpt of the `systemd.exec(5)` man page describes the behavior:
+
+> If true, sets up a new file system namespace for the executed processes and
+> mounts private /tmp and /var/tmp directories inside it that is not shared by
+> processes outside of the namespace.
+
+Use of this option is proliferating as package maintainers add it to service
+manifests and systemd-enabled distributions see more use in production.  It
+must be a workflow which the LX emulation is capable of handling.
+
+In order to gain insight into the mechanisms in play, systemd was straced on a
+Linux machine while it started a PrivateTmp-enabled service.  These are the
+relevant actions which were recorded:
+
+```
+unshare(CLONE_NEWNS)
+mount(NULL, "/", NULL, MS_REC|MS_SLAVE, NULL)
+mount("/tmp/systemd-private-05a301e42bdd44cb9cb6cf41331ea4f1-test.service-uHYy7p/tmp", "/tmp", NULL, MS_BIND|MS_REC, NULL)
+mount("/var/tmp/systemd-private-05a301e42bdd44cb9cb6cf41331ea4f1-test.service-2PWYJy/tmp", "/var/tmp", NULL, MS_BIND|MS_REC, NULL)
+statfs("/tmp", ...)
+mount(NULL, "/tmp", NULL, MS_REMOUNT|MS_BIND, NULL)
+statfs("/var/tmp",  ...)
+mount(NULL, "/var/tmp", NULL, MS_REMOUNT|MS_BIND, NULL)
+mount(NULL, "/", NULL, MS_REC|MS_SHARED, NULL)
+```
+
+Which roughly corresponds to:
+ 1. Create a new mount namespace for the process.
+ 2. Recursively set `/` to `MS_SLAVE` mode.  This means that mounts in the parent namespace will appear in this one, but changes here will not propagate backwards.
+ 3. Bind-mount custom directories for `/tmp` and `/var/tmp`
+ 4. Check and re-apply mount flags for `/tmp` and `/var/tmp`.  This apparent no-op seems to be a consequence of code generalization in systemd.
+ 5. Recursively set the `MS_SHARED` mount flag on `/` and its children.  This does not "reattach" it to the parent namespace.
+
+
 
 ## Mount Namespace Example
 
