@@ -720,7 +720,7 @@ The `predicate` parameter is a JSON string that can be used to build a LDAP
 filter to search on the following indexed properties:
 
 * `name`
-* `owner_uuid`
+* `billing_id`
 * `type`
 * `state`
 * `tags`
@@ -1279,6 +1279,7 @@ or "VOLAPI".
 | --------------- | ------------ | ---------------------------------------- |
 | name            | String       | Allows to filter volumes by name. |
 | owner_uuid      | String       | When not empty, only volume objects with an owner whose UUID is `owner_uuid` will be included in the output |
+| billing_id      | String       | When not empty, only volume objects with a billing\_id whose UUID is `billing_id` will be included in the output |
 | type            | String       | Allows to filter volumes by type, e.g `type=tritonnfs`. |
 | state           | String       | Allows to filter volumes by state, e.g `state=failed`. |
 | predicate       | String       | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
@@ -1297,6 +1298,7 @@ on the following indexed properties:
 
 * `name`
 * `owner_uuid`
+* `billing_id`
 * `type`
 * `state`
 * `tags`
