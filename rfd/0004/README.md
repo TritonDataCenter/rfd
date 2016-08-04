@@ -44,21 +44,19 @@ will be imported into IMGAPI - simple huh!?
   - This base image may need to be pulled into the system
     - This requires an admin endpoint on sdc-docker to do the docker pull
     - Once pulled, base images get installed locally using imgadm get
-- After all commands run successfully, exports the config/container to IMGAPI
-  - the export needs to go through sdc-docker end-point?
+- After all commands run successfully, exports the config/container to
+  [IMGAPI](#IMGAPI)
 
 # Image Config
 
 - The image config starts from a base image template (JSON)
-- config gets stored as a file during build
-  - /zones/$uuid/config/docker-build/$imgUuid.config
-- Commands (like maintainer, label, ...) adjust the json config and save it
-  - Each modification creates a new imgUuid.config file
-  - After a build there can be many config files in this directory
-- Modify container commands will utilize this config to know the current state
+- This json config gets stored in memory during the build process
+- Commands (like maintainer, label, ...) adjust the json config
+  - Each modification creates a new config layer (based upon the old config)
+- Modify container commands will utilize the config to know the current state
   of the container (workdir, user, env, ...)
 - When the build completes successfully - all images (layers) are exported
-  to IMGAPI
+  to [IMGAPI](#IMGAPI)
   - when all layers are uploaded successfully, they are made active in IMGAPI
 
 ## Commands
@@ -110,8 +108,14 @@ These commands can occur multiple times (except FROM).
 
 # IMGAPI
 
-**TODO** - how are docker images (tar files) created from a container in order
-to be uploaded to IMGAPI?
+To upload an image, the cn-agent will perform the following:
+
+1. Ask sdc-docker to create a new (unactivated) image from the image metadata
+  (image config), which returns a new image uuid.
+2. Runs the zfs_snapshot_tar executable, which creates an image tar file stream
+3. Uploads the zfs image tar file stream into imgapi.
+4. Validates (checks sha256 sum of image) and then activates the image.
+5. Optionally tags the image (if a tag was specified in build command line).
 
 # Networking
 
