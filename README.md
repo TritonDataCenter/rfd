@@ -100,7 +100,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 55 LX support for Namespaces](./rfd/0055/README.md) |
 | predraft | [RFD 56 Revamp Cloudapi](./rfd/0056/README.md) |
 | predraft | [RFD 57 Moving to Content Addressable Docker Images](./rfd/0057/README.md) |
-| predraft | [RFD 59 Update external services to Node.js v4-TLS](./rfd/0059/README.md) |
+| predraft | [RFD 59 Update Triton to Node.js v4-TLS](./rfd/0059/README.md) |
 
 
 ## Contents of an RFD
