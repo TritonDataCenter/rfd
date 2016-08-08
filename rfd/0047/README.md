@@ -259,3 +259,5 @@ Engineering cleanup of Manta usage:
 
 - [MANTA-2961](https://devhub.joyent.com/jira/browse/MANTA-2961) "poseidon" using too much Manta space
 - [TOOLS-1508](https://devhub.joyent.com/jira/browse/TOOLS-1508) prep_dataset_in_jpc.sh using wrong "mantapath" dir for built image export
+- [RELENG-703](https://devhub.joyent.com/jira/browse/RELENG-703) clean out headnode builds in Manta per RFD 47
+- [RELENG-704](https://devhub.joyent.com/jira/browse/RELENG-704) clean out non-headnode builds in Manta per RFD 47
