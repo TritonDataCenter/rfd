@@ -60,8 +60,8 @@ formal writing that it has come to represent.)
 | draft    | [RFD 15 Reduce/Eliminate runtime LX image customization](./rfd/0015/README.md) |
 | predraft | [RFD 16 Manta Metering](./rfd/0016/README.md) |
 | draft    | [RFD 17 Cloud Analytics v2](./rfd/0017/README.md) |
-| predraft | [RFD 19 Versioning For Workflow Modules](./rfd/0019/README.md) |
 | predraft | [RFD 18 Support for using labels to select networks and packages](./rfd/0018/README.md) |
+| predraft | [RFD 19 Interface Drift In Workflow Modules](./rfd/0019/README.md) |
 | draft    | [RFD 20 Manta Slop-Aware Zone Scheduling](./rfd/0020/README.md) |
 | draft    | [RFD 21 Metadata Scrubber For Triton](./rfd/0021/README.md) |
 | draft    | [RFD 22 Improved user experience after a request has failed](./rfd/0022/README.md) |
@@ -100,6 +100,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 55 LX support for Namespaces](./rfd/0055/README.md) |
 | predraft | [RFD 56 Revamp Cloudapi](./rfd/0056/README.md) |
 | predraft | [RFD 57 Moving to Content Addressable Docker Images](./rfd/0057/README.md) |
+| predraft | [RFD 58 Moving Net-Agent Forward](./rfd/0058/README.md) |
 | predraft | [RFD 59 Update Triton to Node.js v4-TLS](./rfd/0059/README.md) |
 
 
