@@ -61,42 +61,24 @@ state, even if the change itself is flawless. For example, NAPI has been
 modified to store the UUID of the CN in the NIC object through a new `cn_uuid`
 property. NAPI (correctly) only did this for newly created NICs, leaving the
 old ones without the new property. To do otherwise would cost too much in terms
-of performance. For NAPI to backfill the `cn_uuid` onto old NICs, NAPI would
-have to do a scan over all of the NICs in the DC, lookup what CN it's
-associated VM is on (by making a request to VMAPI), and set the `cn_uuid`
-property of the NIC to the value of the CN's UUID. This first performance
-problem is that NAPI is single threaded, and having NAPI do a whole lot of work
-would introduce long latencies to requests that operators and other APIs make
-to NAPI. This can be mitigated by running this logic in a workflow. Workflow
-will execute the job in its own process, asynchronously. But the job itself
-would be single threaded, and long-running. The backfill workflow would need to
-be initiated either periodically or every time NAPI starts up, because (a) we
-can potentially have multiple instances of NAPI at different versions and (b)
-we can potentially downgrade NAPI. No matter what we do, putting NAPI in charge
-of backfilling the `cn_uuid` property, would put more load on the workflow
-container, the head-node's CPUs, and on VMAPI. Therefore, net-agent is the
-optimal place to put this functionality (see the Backfill section below), as
-that would put no extra load on any of our services on the head node, and would
-allow the backfill process to scale with the number of CNs.
+of performance.
 
-Another example in which a component's behavior may put the system in an
-inconsistent state, is when a component creates a NIC (the default state is
-`provisioning`), but forgets to update the state to `running`. VMAPI always
-does this update, while `sdcadm` does not. As a result NICs created by the
-latter end up stuck in `provisioning`. Net-agent should detect that this has
-happened and should sync up the state by changing it to `running`.
-
+As another example in which a component's behavior may put the system in an
+inconsistent state, some NICs get stuck in the `provisioning` state even if
+their VM is in a `running` state. It is not known why this happens, but
+net-agent still has to detect that it _has_ happened and needs to sync up the
+state by changing the state into `running`.
 
 ### Use of System Level Tools
 
 The use of Triton's system-level tools (like `vmadm`) is supported because
 operators may need to do things that are not currently possible using the
 Triton APIs, but absolutely _must_ be done. A prominent example of this kind of
-necessary task is migrations (currently unimplemented, see RFD 34). A
-first-class migration feature is desirable in Triton, but has been put off due
-to wanting to better understand the constraints on the problem.
+necessary but unimplemented task is migrations. A first-class migration feature
+is desirable in Triton, but has been put off due to wanting to better
+understand the constraints on the problem.
 
-System-level tools can empower anyone to arbitrarily change any state on the
+System level tools can empower anyone to arbitrarily change any state on the
 system. The agents should try to detect common side-effects that would result
 from the use of these tools (such as the disappearance of a VM due to the use
 of `zoneadm`). While agents can detect and react to simple side-effects such as
@@ -120,7 +102,7 @@ consistency.
 
 As mentioned above, net-agent has to reap the NICs that have been leaked by
 previous incarnations of net-agent. There are many ways to achieve this, but
-the most straightforward is to query NAPI for a list of all NICs that are
+the most straight-forward is to query NAPI for a list of all NICs that are
 associated with the agent's CN, and to make sure that each NIC's
 `belongs_to_uuid` points to a VM that is present on the CN. If not, we reap the
 NIC. This query only needs to be executed once when net-agent starts up. After
@@ -129,7 +111,7 @@ on the fly. Net-agent will have a random delay in the range of 2 to 10 minutes,
 before initiating the query and subsequent reap. This is so that the agents
 don't try to query NAPI at the same exact time, as that could overwhelm NAPI.
 
-Furthermore, some changes need to be made to NAPI. Currently, NAPI's `/nics`
+Furthermore, some changes need to be made to NAPI. Currently, NAPI's /nics
 endpoint does not support filtering NICs by `cn_uuid`. While net-agent _could_
 filter through this list of NICs on its own, this approach would be untenable
 from a bandwidth utilization point of view. In large data centers with many
@@ -163,13 +145,13 @@ endpoint to filter by `cn_uuid`.
 Net-agent should detect NICs that lack a `cn_uuid` property and set that
 property. This can be done as part of the reaping procedure. We use the
 `/search/nics` endpoint to load all of the NICs that are within net-agent's
-purview and have a `cn_uuid` set. We can then use `node-vmadm` to get a list of
-NICs that are on the CN itself. Any NIC that is in the latter list but not in
-the former list, is missing a `cn_uuid`, which should be set. Once this is
-done, we should add the NICs in the latter list to the former list, and get rid
-of the latter list. This way, when we begin a reap we will reap all the NICs
-that need to be reaped, even those that lacked a `cn_uuid`. In other words, we
-carry out the backfill before the reap.
+purview and have a `cn_uuid` set. We can then use `dladm` to get a list of NICs
+that are on the CN itself. Any NIC that is in the latter list but not in the
+former list, is missing a `cn_uuid`, which should be set. Once this is done, we
+should add the NICs in the latter list to the former list, and get rid of the
+latter list. This way, when we begin a reap we will reap all the NICs that need
+to be reaped, even those that lacked a `cn_uuid`. In other words, we carry out
+the backfill before the reap.
 
 
 ### NIC States
@@ -225,12 +207,3 @@ All interfaces remain backwards compatible.
 ## Repositories Affected
 
 `sdc-napi`, `sdc-net-agent`, `node-sdc-clients`.
-
-<!-- Issue Links -->
-[NAPI-327]: https://smartos.org/bugview/NAPI-327
-[NAPI-360]: https://smartos.org/bugview/NAPI-360
-[NAPI-347]: https://smartos.org/bugview/NAPI-347
-[ZAPI-725]: https://smartos.org/bugview/ZAPI-725
-
-<!-- RFDs -->
-[RFD 34]: ../rfd/0034
