@@ -3,7 +3,7 @@ authors: Josh Wilsdon <jwilsdon@joyent.com>
 state: draft
 ---
 
-# RFD 29 Nothing in SDC should rely on ur outside bootstrapping and emergencies
+# RFD 29 Nothing in Triton should rely on ur outside bootstrapping and emergencies
 
 ## Introduction
 
@@ -41,7 +41,7 @@ difficult to track since for the most part these commands are not logging what
 they're doing.
 
 In order to fix this, we should make sure that nothing except bootstrapping
-(joysetup + initial agents install) in SDC depends on Ur. This will force tools
+(joysetup + initial agents install) in Triton depends on Ur. This will force tools
 to use a more specific API and likely to add things to CNAPI/cn-agent that
 abstract away the details of the CN commands themselves.
 
