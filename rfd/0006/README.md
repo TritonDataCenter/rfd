@@ -13,19 +13,19 @@ state: draft
     Copyright 2015 Joyent Inc.
 -->
 
-# RFD 6 Improving SDC and Manta RAS Infrastructure
+# RFD 6 Improving Triton and Manta RAS Infrastructure
 
 This RFD covers the background of what exists in the operating system
 for reliability and serviceability (RAS) and then goes on from there to
 cover what it might look like to extend this to software components such
-as SDC and Manta. It also looks at hooking into existing RAS artifacts
+as Triton (formerly SmartDataCenter or SDC) and Manta. It also looks at hooking into existing RAS artifacts
 in the system such as the Fault Management Architecture (FMA) in
 illumos.
 
 This RFD serves as an introduction and a high level direction that we
 would like to proceed down. Future RFDs will cover more specific
 component interfaces and explicit APIs. Currently this is focused on
-*operators* of SDC and Manta; however, there's no reason that it could
+*operators* of Triton and Manta; however, there's no reason that it could
 not be extended to users in the future.
 
 
@@ -33,7 +33,7 @@ not be extended to users in the future.
 
 The following is the guiding principle for all of this work:
 
-SDC and Manta operators need to be able to quickly assess the status of
+Triton and Manta operators need to be able to quickly assess the status of
 the entire system and of individual components.  They also need to be
 notified with *actionable* messages whenever problems develop.
 
@@ -46,7 +46,7 @@ like to go through and talk about how this might be used.
 
 ### Actionable Notifications of Developing Problems
 
-As an operator of SDC or Manta who is currently doing something else, I
+As an operator of Triton or Manta who is currently doing something else, I
 need to be notified when problems occur that affect service (e.g., a
 critical service has gone offline) or that compromise the system's
 tolerance to future failures (e.g., a disk fails and a hot spare is
@@ -83,7 +83,7 @@ operator should do about it.  For example:
 
 ### System Status
 
-As an operator of SDC or Manta, I have reason to believe the system is
+As an operator of Triton or Manta, I have reason to believe the system is
 not working correctly.  (This may be because I was just notified or
 because a user has reported a problem.)  I want to walk up to the system
 and quickly assess the status of all components, highlighting those
@@ -168,12 +168,12 @@ article which informs the administrator what has happened, what the
 impact is, what actions have been taken, and what the operator's next
 steps are.
 
-However, while this exists on a per-CN basis, SDC is entirely unaware of
+However, while this exists on a per-CN basis, Triton is entirely unaware of
 it. It has no integration into any facilities to inform operators, be
 collected, logged, etc.
 
 In addition, at the moment there's no way to leverage the ideas of FMA
-inside of SDC. Components can't emit the equivalent of events like
+inside of Triton. Components can't emit the equivalent of events like
 ereports that can be transformed by something into knowledge articles
 which detail information that an operator can use.
 
@@ -331,7 +331,7 @@ Looking back at our use cases, today FMA handles the logic of operations
 A, B, and use cases 2 and 4 within the context of a single system, not
 across the cloud.
 
-Use case 3, on the other hand, listing degraded components, in SDC and
+Use case 3, on the other hand, listing degraded components, in Triton and
 Manta today. While the information can be both polled and pushed, today
 we poll it in the form of things such as sdc-healthcheck and madtom.
 While these may not be the final forms that we want things to take, they
@@ -339,20 +339,20 @@ at least form the starting points.
 
 If we now want to look at what we'd need to do, we'd want to create
 some new interface that helps provide a way for our new software to have
-these events noticed and emitted and have a new SDC component that is in
+these events noticed and emitted and have a new Triton component that is in
 charge of helping deal with these events and potentially perform
 diagnosis. That API would help facilitate the use cases of 1, 2, 4, and
 5 across the cloud and interact with the local fmd as appropriate.
 
 By integrating with the local fmd, we can provide operators a
 centralized view of the state of a given compute node's health. This
-will also allow the new SDC component to integrate with the current
+will also allow the new Triton component to integrate with the current
 notion of cases and retirement that fmd has today.
 
 We may also want to create a new fmd-like daemon which knows how to do
 simpler mappings of events to knowledge articles and tracking that which
 doesn't relate to the current fmd implementation, but leverages the same
-metadata. This would allow an sdc or manta component to emit an event
+metadata. This would allow an Triton or Manta component to emit an event
 that can be noticed, transformed into a knowledge article, and alert an
 operator.
 
@@ -376,7 +376,7 @@ we'd like to make sure are changed about this:
 To that end we have several goals. The biggest is getting tooling to
 make it easy to add non-conflicting events and to have this tooling live
 separate from the event repositories. This allows different event
-repositories, illumos, SDC, Manta, and anything else in the future to
+repositories, illumos, Triton, Manta, and anything else in the future to
 have different sets of events, but share the same tooling.
 
 One of the challenges we have here is that the system has codes for
@@ -417,7 +417,7 @@ center that we could want to talk about or other logical aspects that
 we'd want to consider.
 
 One of the things that operators would like to be able to do, and often
-SDC would like to better leverage, is to paint a picture of the data
+Triton would like to better leverage, is to paint a picture of the data
 center so we know what's in what rack, where. This covers more than just
 compute nodes, but also other things in the data center that operations
 staff have to manage, such as switches. Ideally, we could leverage
@@ -476,7 +476,7 @@ A lot of the things we've discussed have overlaps with existing APIs
 such as amon, cnapi, etc. At this time, this RFD isn't trying to suggest
 where something should or shouldn't be built. It's important that we
 co-exist well with amon's existing uses and make sure that this isn't a
-parallel world, but rather something we can move all of SDC and Manta
+parallel world, but rather something we can move all of Triton and Manta
 to. The specific mechanics of that will be left to future RFDs and
 research.
 

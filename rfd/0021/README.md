@@ -9,12 +9,12 @@ state: predraft
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 -->
 
-# RFD 21 Metadata Scrubber For SDC
+# RFD 21 Metadata Scrubber For Triton
 
 
 ## Background/Problem
 
-SDC services primarily store metadata in Moray, our key-value store. There are
+Triton (formerly SmartDataCenter or SDC) services primarily store metadata in Moray, our key-value store. There are
 relationships (and therefor dependencies) between the objects we put in there.
 However, we don't actually describe the relationships formally, and this
 sometimes results in unused KV pairs lingering in the store. We want some kind
@@ -63,7 +63,7 @@ following repos.
         sdc-designation
         sdcadm
 
-Clearly it is used to verify objects that are inbound to SDC. We may be able to
+Clearly it is used to verify objects that are inbound to Triton. We may be able to
 extend the `joyent-schemas` code to allow specifiying interdependencies between
 objects in Moray. If not, we will have to roll our own description format.
 

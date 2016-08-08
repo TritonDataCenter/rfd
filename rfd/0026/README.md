@@ -7,7 +7,7 @@ state: draft
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [RFD 26 Network Shared Storage for SDC](#rfd-26-network-shared-storage-for-sdc)
+- [RFD 26 Network Shared Storage for Triton](#rfd-26-network-shared-storage-for-Triton)
   - [Introduction](#introduction)
   - [Current prototype](#current-prototype)
   - [Use cases](#use-cases)
@@ -143,11 +143,11 @@ state: draft
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
-# RFD 26 Network Shared Storage for SDC
+# RFD 26 Network Shared Storage for Triton
 
 ## Introduction
 
-In general, support for network shared storage is antithetical to the SDC
+In general, support for network shared storage is antithetical to the Triton (formerly SmartDataCenter or SDC)
 philosophy. However, for some customers and applications it is a requirement.
 In particular, network shared storage is needed to support Docker volumes in
 configurations where the Triton zones are deployed on different compute nodes.
@@ -255,7 +255,7 @@ works and makes sense to him.
 
 ### Requirements
 
-1. The solution must work for both on-prem SDC users and Triton.
+1. The solution must work for both Triton Cloud and Triton Enterprise users (public cloud and on-prem).
 
 2. A shared volume size must be expandable (i.e. not a fixed quota size at
 creation time).
@@ -282,7 +282,7 @@ The `triton` CLI currently doesn't support the concept of (shared) volumes, so
 new commands and options will need to be added.
 
 The docker CLI already supports shared volumes, but some conventions will need
-to be established to allow Triton users to pass triton-specific input to SDC's
+to be established to allow Triton users to pass triton-specific input to Triton's
 Docker API.
 
 ### Triton
@@ -462,7 +462,7 @@ docker run -d -v wp-uploads:/var/wp-uploads:ro wp-server
 
 ## Shared storage implementation
 
-For reliability reasons, compute nodes never use network block storage and SDC
+For reliability reasons, compute nodes never use network block storage and Triton
 zones are rarely configured with any additional devices. Thus, shared block
 storage is not an option.
 
@@ -1252,7 +1252,7 @@ As for compute packages, volume packages cannot be destroyed.
 Even though shared volumes are implemented as actual zones in a way similar to
 regular instances, they represent an entirely different concept with different
 constraints, requirements and life cycle. As such, they need to be represented
-in SDC as different "Volume" objects.
+in Triton as different "Volume" objects.
 
 The creation, modification and deletion of these "Volume" objects could
 _technically_ be managed by VMAPI, but implementing this API as a separate
@@ -1736,7 +1736,7 @@ sdc-pkgadm volume activate|deactivate $volume-pkg-uuid
 
 ### New `sdc-voladm` command
 
-SDC operators need to be able to perform new operations using a new `sdc-voladm`
+Triton operators need to be able to perform new operations using a new `sdc-voladm`
 command
 
 #### Listing shared volume zones
@@ -1807,7 +1807,7 @@ similarly here.
 
 ### Ownership of NFS shared volumes' storage VMs
 
-In general, for any given object in SDC/Triton, being the owner of an object
+In general, for any given object in Triton, being the owner of an object
 means:
 
 1. being billed for its usage. For instance, VM owners are billed for their CPU
@@ -1872,7 +1872,7 @@ properly bill NAT zones' bandwidth usage to the right user. Using the same
 solution for NFS shared volumes would add another special case to the billing
 process, instead of having it "just work".
 
-Other components of SDC, such as operator tools that gather data about usage per
+Other components of Triton, such as operator tools that gather data about usage per
 user, would need to handle this special ownership representation.
 
 ##### Adding an additional property on VM objects
@@ -1893,17 +1893,17 @@ on VMs' ownership would work transparently. For instance, billing and operators
 tools would not have to be modified to match storage VMs with actual volumes'
 owners.
 
-In general, any tool or internal SDC component would be able to rely on an
+In general, any tool or internal Triton component would be able to rely on an
 internal stable interface when dealing with these internal VMs.
 
 ###### Cons
 
-The implementation of some core SDC components, such as VMAPI's ListVms endpoint
+The implementation of some core Triton components, such as VMAPI's ListVms endpoint
 would need to be modified to filter VMs on the newly added property. The
 `vmapi_vms` moray bucket's schema would need to be changed to add an index on
 this new property and existing objects would need to be backfilled if NAT zones
 were considered as "internal" VMs. In other words, these changes would require
-some additional work that could potentially impact almost every SDC component.
+some additional work that could potentially impact almost every Triton component.
 Depending on the perspective, this is not a problem, but it certainly is very
 much different than the first potential solution mentioned above in that
 respect.

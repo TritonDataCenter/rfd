@@ -14,18 +14,18 @@ state: draft
     Copyright 2015 Joyent Inc.
 -->
 
-# RFD 3 SDC Compute Nodes Reboot
+# RFD 3 Triton Compute Nodes Reboot
 
 ## Introduction
 
 A new `sdcadm experimental reboot-plan` collection of commands (unpromised
 interface) for working towards controlled and safe reboots of selected
-servers in a typical SDC setup.
+servers in a typical Triton (formerly SmartDataCenter or SDC) setup.
 
-One of the least specified and hardest parts of SDC upgrades right now is
+One of the least specified and hardest parts of Triton upgrades right now is
 managing the reboots of CNs and the headnode safely. In particular:
 
-- controlling reboots of the "core" servers (those with SDC core components,
+- controlling reboots of the "core" servers (those with Triton core components,
   esp. the HA binders and manatees)
 - reasonably helpful tooling for rebooting (subsets of) the other servers in a
   DC: rolling reboots, reboot rates
@@ -39,9 +39,9 @@ The list of desired subcommands should be able to handle:
 
 ## Terminology
 
-### How is a server reboot executed in SDC?
+### How is a server reboot executed in Triton?
 
-In order to reboot a SDC server, we execute the following CNAPI request
+In order to reboot a Triton server, we execute the following CNAPI request
 
     sdc-cnapi /servers/<UUID>/reboot -X POST
 
@@ -97,7 +97,7 @@ for completion of the reboot of each server.
 Execution of the reboot plan consists of the creation of the plan, queuing
 of the different servers to reboot at the provided concurrency, and the
 verification of the server reboot, either through CNAPI for servers not hosting
-core SDC components, or through a manatee instance for servers hosting core
+core Triton components, or through a manatee instance for servers hosting core
 components.
 
 ### Creation, modification and retrieval of the reboot plan information:
@@ -130,16 +130,16 @@ continue with that one or, optionally, ask the user to cancel such plan before
 attempting the execution of a new one (TBD).
 
 Once the new plan is created, this process will begin either with the reboot
-of the first core server, when dealing with CNs hosting SDC core components,
+of the first core server, when dealing with CNs hosting Triton core components,
 or with the reboot of the first batch of CNs not hosting core components.
 
 The process will first check `Workflow API` to verify that the reboot jobs
 have been successfully created and executed, and then will poll either `CNAPI`
 for reboot status of CNs, or use `manatee-adm` to check for the state of
-the manatee SDC shard when rebooting CNs with core components.
+the manatee Triton shard when rebooting CNs with core components.
 
-This routine will be repeated until all the CNs hosting SDC core members have
-been rebooted, or until we complete the reboot of all the CNs not hosting SDC
+This routine will be repeated until all the CNs hosting Triton core members have
+been rebooted, or until we complete the reboot of all the CNs not hosting Triton
 core instances, at the provided concurrency.
 
 As specified above, every time a server reboot has been completed, the process
@@ -152,11 +152,11 @@ using a sequence established by manatee's shard administration. The main
 problem would be to keep track of the reboot of these core CNs in terms of
 how long it took to reboot each one of these nodes and, of course, if we
 drive such CNs from the `sdcadm` process itself, we will not be able to
-_schedule_ reboot of CNs hosting core SDC components. Which I'd say has sense,
+_schedule_ reboot of CNs hosting core Triton components. Which I'd say has sense,
 since a failure in the reboot of these CNs will likely compromise the state
-of the whole SDC setup and, therefore, should be an attended operation.
+of the whole Triton setup and, therefore, should be an attended operation.
 
-The proposed solution is to always reboot first `CNs` hosting any SDC core
+The proposed solution is to always reboot first `CNs` hosting any Triton core
 component - even if those are not members of a manatee shard, or binder's
 cluster of ZooKeepers - for example, an imgapi instance.
 
@@ -209,7 +209,7 @@ the subcommands in charge of creating the reboot processes the ability to check
 if there's a reboot command not yet finished for the cases when the `sdcadm`
 process exits during the course of the reboot process.
 
-That's to say: if we issue `sdcadm reboot --concurrency=10` to an SDC
+That's to say: if we issue `sdcadm reboot --concurrency=10` to an Triton
 setup with 30 servers, and the `sdcadm` process exits in the middle of the
 reboots, we should make sure that the next invocation of this command,
 **whatever the provided arguments** would result in the ability to ask the
@@ -422,9 +422,9 @@ are self-explanatory for now.
                                 boot platform.
 
       Server selection:
-        -c, --core              Reboot the servers with SDC core components.
+        -c, --core              Reboot the servers with Triton core components.
                                 Note that this will include the headnode.
-        -o, --non-core          Reboot the servers without SDC core
+        -o, --non-core          Reboot the servers without Triton core
                                 components.
         -a, --all               Reboot all the servers.
 
