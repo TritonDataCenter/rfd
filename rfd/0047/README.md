@@ -13,13 +13,29 @@ retain and for how long.
 
 ## Current Status
 
-Still writing this up and discussing. Nothing is implemented.
+Dave Pacheco has worked on Manta (poseidon) usage. Trent has worked on
+Triton/Manta [builds](#builds) usage. The latter has a
+[purge-mg-builds](https://github.com/joyent/mountain-gorilla/blob/master/tools/purge-mg-builds)
+script that can be used to clean up builds outside the rention window.
+
+See the [Tickets](#tickets) section below for work that has been done cleaning
+up some usage.
 
 
 ## mdu
 
 Having `mdu` per <https://github.com/joyent/node-manta/issues/143> would be
 really helpful to understand how much is used where.
+
+Status:
+- Dave has a prototype here: <https://github.com/davepacheco/manta-mdu>
+  Importantly, Dave's does real `stat` calls on the storage CNs, so the
+  numbers more accurately reflect disk usage, rather than file size.
+- Trent has a couple poorman's prototypes here:
+  <https://mo.joyent.com/trentops/blob/master/bin/poormans-mdu-subdirs>,
+  <https://mo.joyent.com/trentops/blob/master/bin/poormans-mdu>
+- Trent had a start at one which involved changes to node-manta. This
+  is currently uncommited.
 
 
 ## builds
@@ -34,33 +50,18 @@ builds all get uploaded to one of:
 /Joyent_Dev/stor/builds/$name/$branch-$buildstamp
 ```
 
-E.g.:
+Retention policy for builds:
 
-```
-[trent.mick@us-east /Joyent_Dev/public/builds/vmapi]$ cat master-latest
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z
-
-[trent.mick@us-east /Joyent_Dev/public/builds/vmapi]$ find /Joyent_Dev/public/builds/vmapi/master-20160711T195342Z
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z/config.mk
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z/md5sums.txt
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z/vmapi
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z/vmapi/build.log
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z/vmapi/vmapi-pkg-master-20160711T195342Z-g678e087.tar.bz2
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z/vmapi/vmapi-zfs-master-20160711T195342Z-g678e087.imgmanifest
-/Joyent_Dev/public/builds/vmapi/master-20160711T195342Z/vmapi/vmapi-zfs-master-20160711T195342Z-g678e087.zfs.gz
-
-[trent.mick@us-east /Joyent_Dev/public/builds/vmapi]$ find release-20160707-20160707T035313Z
-release-20160707-20160707T035313Z
-release-20160707-20160707T035313Z/config.mk
-release-20160707-20160707T035313Z/md5sums.txt
-release-20160707-20160707T035313Z/vmapi
-release-20160707-20160707T035313Z/vmapi/build.log
-release-20160707-20160707T035313Z/vmapi/vmapi-pkg-release-20160707-20160707T035313Z-g354e119.tar.bz2
-release-20160707-20160707T035313Z/vmapi/vmapi-zfs-release-20160707-20160707T035313Z-g354e119.imgmanifest
-release-20160707-20160707T035313Z/vmapi/vmapi-zfs-release-20160707-20160707T035313Z-g354e119.zfs.gz
-```
-
+- Have a whitelist of build `name`s that will be deleted. This means new ones
+  won't get cleaned out by default -- i.e. safe by default.
+- Delete anything older than:
+    - for 'headnode*' builds: a month
+      A year of headnode* builds is too much. At ~1 per day * 4 build flavours
+      (`headnode[-joyent][-debug]`) * 6 GiB per build, that is 8 TiB of space.
+      At one month retention we are down to 744 GiB of space.
+    - for other builds: a year
+- Ensure that the `$branch-latest` "link" files are removed if the last
+  such dir was removed.
 
 
 Some considerations for a retention policy:
@@ -83,15 +84,12 @@ Some considerations for a retention policy:
   In discussion with rm, we felt that having release builds of the platform
   in updates.jo "release" channel going back years should be sufficient.
 
-Proposed retention policy for builds:
-
-- Have a whitelist of build `name`s that will be deleted. This means new ones
-  won't get cleaned out by default -- i.e. safe by default.
-- Delete anything older than a year.
-- Ensure that the `$branch-latest` "link" files stay up to date.
 
 
 ## updates.joyent.com
+
+Status: No implementation of a retention policy for updates.joyent.com
+is in place. IOW, all images in updates.joyent.com are currently living forever.
 
 The Joyent updates server holds all the images/platforms/agentsshars et al
 used for updating Triton builds after initial install. All commits to #master
@@ -250,3 +248,14 @@ particularly heavy usage areas where we need spend effort.
 - sdc data dumps: /{admin,Joyent_Dev}/stor/sdc
   JoshC suggested moving these, at least for the nightly and staging envs,
   to the Staging Manta.
+
+TODO: dig into size usage for these
+
+
+## Tickets
+
+Some relevant tickets in the course of discussing and implementing some
+Engineering cleanup of Manta usage:
+
+- [MANTA-2961](https://devhub.joyent.com/jira/browse/MANTA-2961) "poseidon" using too much Manta space
+- [TOOLS-1508](https://devhub.joyent.com/jira/browse/TOOLS-1508) prep_dataset_in_jpc.sh using wrong "mantapath" dir for built image export

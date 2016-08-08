@@ -3,12 +3,12 @@ authors: Cody Mello <cody.mello@joyent.com>
 state: draft
 ---
 
-# RFD 11 IPv6 and multiple IP addresses support in SDC
+# RFD 11 IPv6 and multiple IP addresses support in Triton
 
 # Introduction
 
 This proposal lays out the work that needs to be done to add support for IPv6 to
-SmartOS and SmartDataCenter (SDC). As the Internet grows and more people come
+SmartOS and Triton (formerly SmartDataCenter or SDC). As the Internet grows and more people come
 online around the globe, ISPs and online businesses are looking towards a future
 where they will need to support IPv6. Major ISPs like AT\&T, Verizon and Comcast
 have already started giving customers IPv6 service and IPv6-enabled modems and
@@ -22,7 +22,7 @@ Parts of the stack have made room for future IPv6 support, but almost everything
 that touches networking will require modifications and testing.
 
 This proposal also suggests a change to the relationship between Network
-Interface Cards (NICs) and IP addresses in SDC. Instead of always having one
+Interface Cards (NICs) and IP addresses in Triton. Instead of always having one
 address per NIC, it should be possible for multiple IP addresses to be placed on
 a single NIC. We call this interface-centric provisioning. The idea is that when
 a machine is being created, it should be possible to request multiple IP
@@ -32,7 +32,7 @@ or overlay.
 
 This document is approximately sorted in the order in which each step will need
 to be implemented. Basic tooling will come first, and then the plumbing through
-SDC. Once that is finished and tested, IPv6 support can be exposed through user
+Triton. Once that is finished and tested, IPv6 support can be exposed through user
 interfaces to end users and operators.
 
 # Support in tooling
@@ -104,11 +104,11 @@ The logic in the brand scripts that prepare the NICs for zones will also need to
 be updated, so that properties like **allowed-ips** and **dhcp-nospoof** will
 get set correctly.
 
-# Support in SDC API's
+# Support in Triton API's
 
 ## Networking API (napi)
 
-The Networking API is responsible for managing data about networks within SDC.
+The Networking API is responsible for managing data about networks within Triton.
 It also takes care of contacting VMAPI and CNAPI for adding, removing and
 updating NICs.
 
@@ -138,7 +138,7 @@ This work was finished in [FWAPI-212] and [FWAPI-225].
 
 # Compute Node Agents
 
-The SDC headnode communicates with each of the compute nodes through agents
+The Triton headnode communicates with each of the compute nodes through agents
 running in their Global Zone. These agents perform a variety of tasks locally,
 ranging from updating the headnode, to making sure that the state on the compute
 node matches what the headnode has stored.
@@ -173,7 +173,7 @@ resources in.
 
 ## Operations Portal (adminui)
 
-The Operations Portal is the web interface for managing SDC and provisioning new
+The Operations Portal is the web interface for managing Triton and provisioning new
 compute nodes and virtual machines. There are several things that will need to
 be updated here:
 
@@ -216,13 +216,13 @@ API will need to be improved to allow returning multiple IPv4 or IPv6 addresses.
 
 # IPv6 on the admin network
 
-Making it possible for SDC to have an IPv6 admin network would be a nice feature
+Making it possible for Triton to have an IPv6 admin network would be a nice feature
 to offer, but it is not essential. Since the admin network is usually a
 non-routable private network, there will probably never be a real need for it to
 support IPv6. As a result, some of these features may be put off for a while.
 They are enumerated here though as a point of reference. Note that as of
 [OS-4802], SmartOS hosts can use IPv6 from the global zone, but this cannot be
-used within SDC.
+used within Triton.
 
 The simplest path to assigning IPv6 addresses to nodes on the admin network
 would be to run [in.ndpd(1M)] alongside Booter, and send out Router
@@ -232,15 +232,15 @@ assigning addresses is needed, then it may be better to use DHCPv6.
 
 ## Binder
 
-Binder is the DNS server used within SDC for locating admin services and compute
-nodes. Currently, it only serves up IPv4 A records. Before SDC can be run on an
+Binder is the DNS server used within Triton for locating admin services and compute
+nodes. Currently, it only serves up IPv4 A records. Before Triton can be run on an
 IPv6 admin network, Binder will need to gain support for serving IPv6 AAAA
 records, so that various programs can continue to look up services on the admin
 network via DNS.
 
 ## Booter
 
-Booter is the DHCP and TFTP server used in SDC for assigning compute nodes IP
+Booter is the DHCP and TFTP server used in Triton for assigning compute nodes IP
 addresses and PXE booting them. In order for IPv6 to be used on the admin
 network, Booter will need to gain support for DHCPv6 so that compute nodes can
 get an IPv6 address and be sent the appropriate options and information to know
