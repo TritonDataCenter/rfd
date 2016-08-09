@@ -55,10 +55,10 @@ Retention policy for builds:
 - Have a whitelist of build `name`s that will be deleted. This means new ones
   won't get cleaned out by default -- i.e. safe by default.
 - Delete anything older than:
-    - for 'headnode*' builds: a month
-      A year of headnode* builds is too much. At ~1 per day * 4 build flavours
-      (`headnode[-joyent][-debug]`) * 6 GiB per build, that is 8 TiB of space.
-      At one month retention we are down to 744 GiB of space.
+    - for `headnode*` builds: a month
+      A year of `headnode*` builds is too much. At ~1 per day \* 4 build
+      flavours (`headnode[-joyent][-debug]`) \* 6 GiB per build, that is
+      8 TiB of space. At one month retention we are down to 744 GiB of space.
     - for other builds: a year
 - Ensure that the `$branch-latest` "link" files are removed if the last
   such dir was removed.
