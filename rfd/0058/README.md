@@ -40,7 +40,7 @@ conditions -- not detect removals of VMs through the `vmadm` interface, and
 would thus not destroy the NICs that used to belong to the VMs. This resulted
 in the leaking of NIC objects. As a result, the agent had to be modified to
 both (a) always detect removals of VMs and (b) reap the NICs that have been
-orphaned by the previous incarnation of the agent. See NAPI-327.
+orphaned by the previous incarnation of the agent. See [NAPI-327].
 
 Regardless of the source of the inconsistency between the metadata and the
 state on the CN, the agent must always bring them into sync. In the following
@@ -92,7 +92,7 @@ happened and should sync up the state by changing it to `running`.
 The use of Triton's system-level tools (like `vmadm`) is supported because
 operators may need to do things that are not currently possible using the
 Triton APIs, but absolutely _must_ be done. A prominent example of this kind of
-necessary task is migrations (currently unimplemented, see RFD 34). A
+necessary task is migrations (currently unimplemented, see [RFD 34]). A
 first-class migration feature is desirable in Triton, but has been put off due
 to wanting to better understand the constraints on the problem.
 
@@ -152,10 +152,10 @@ the NICs successfully when the backoff-timer hits zero.
 Note, also, that `node-sdc-clients` will need to get support for this new
 endpoint.
 
-See NAPI-327, NAPI-360, and NAPI-347 for more details. NAPI-327 describes the
-net-agent related changes, NAPI-360 describes the implementation of the new
-endpoint, and NAPI-347 adds, among other things, the ability for the old
-endpoint to filter by `cn_uuid`.
+See [NAPI-327], [NAPI-360], and [NAPI-347] for more details. [NAPI-327]
+describes the net-agent related changes, [NAPI-360] describes the
+implementation of the new endpoint, and [NAPI-347] adds, among other things,
+the ability for the old endpoint to filter by `cn_uuid`.
 
 
 ### Backfill
@@ -192,9 +192,9 @@ non-zone NICs from `provisioning` to `running` for non-zone NICs.
 ## Relationship Between Net-Agent and VMAPI
 
 Currently, VMAPI removes a VM's NIC as part of the destroy workflow. A ticket,
-ZAPI-725, has been opened requesting to remove this functionality as it is
+[ZAPI-725], has been opened requesting to remove this functionality as it is
 redundant with net-agent's functionality. This approach is not tenable because
-agents can, in theory, be downgraded. If ZAPI-725 got put back, and net-agent
+agents can, in theory, be downgraded. If [ZAPI-725] got put back, and net-agent
 was downgraded to the leaky version, we would leak NICs on _every_ VM
 destruction not just those initiated by system-level tools.
 
