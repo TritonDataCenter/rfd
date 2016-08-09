@@ -13,10 +13,10 @@ retain and for how long.
 
 ## Current Status
 
-Dave Pacheco has worked on Manta (poseidon) usage. Trent has worked on
-Triton/Manta [builds](#builds) usage. The latter has a
-[purge-mg-builds](https://github.com/joyent/mountain-gorilla/blob/master/tools/purge-mg-builds)
-script that can be used to clean up builds outside the rention window.
+Dave Pacheco has worked on Manta (poseidon) usage.
+
+Trent has worked on Triton/Manta [builds](#builds) usage. There is a
+`purge-mg-builds` script and Jenkins job to handle daily removal of old builds.
 
 See the [Tickets](#tickets) section below for work that has been done cleaning
 up some usage.
@@ -62,6 +62,12 @@ Retention policy for builds:
     - for other builds: a year
 - Ensure that the `$branch-latest` "link" files are removed if the last
   such dir was removed.
+
+This policy is hardcoded and handled by:
+    https://github.com/joyent/mountain-gorilla/blob/master/tools/purge-mg-builds
+and is run daily against `/Joyent_Dev/stor/builds` and
+`/Joyent_Dev/public/builds` by the Joyent-internal "purge-mg-builds" Jenkins
+job.
 
 
 Some considerations for a retention policy:
