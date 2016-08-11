@@ -102,6 +102,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 57 Moving to Content Addressable Docker Images](./rfd/0057/README.md) |
 | predraft | [RFD 58 Moving Net-Agent Forward](./rfd/0058/README.md) |
 | predraft | [RFD 59 Update Triton to Node.js v4-TLS](./rfd/0059/README.md) |
+| predraft | [RFD 60 Scaling the Designation API](./rfd/0060/README.md) |
 
 
 ## Contents of an RFD
