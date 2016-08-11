@@ -13,7 +13,7 @@ state: predraft
     Copyright 2016 Joyent, Inc.
 -->
 
-# RFD 57: Update Triton to Node.js v4-TLS
+# RFD 59: Update Triton to Node.js v4-TLS
 
 Triton uses node 0.10 heavily for its services, with node 0.8 and 0.12 being
 used in a few places. 0.8 is already EOL, with 0.10 EOL on October 1, and 0.12
