@@ -92,9 +92,7 @@ happened and should sync up the state by changing it to `running`.
 The use of Triton's system-level tools (like `vmadm`) is supported because
 operators may need to do things that are not currently possible using the
 Triton APIs, but absolutely _must_ be done. A prominent example of this kind of
-necessary task is migrations (currently unimplemented, see [RFD 34]). A
-first-class migration feature is desirable in Triton, but has been put off due
-to wanting to better understand the constraints on the problem.
+necessary task is migrations (currently unimplemented, see [RFD 34]).
 
 System-level tools can empower anyone to arbitrarily change any state on the
 system. The agents should try to detect common side-effects that would result
@@ -176,7 +174,7 @@ carry out the backfill before the reap.
 
 Some NICs end up stranded in the `provisioning` state. We update these NICs'
 states as part of the VM-event code path. Whenever net-agent detects that a
-VM-event has occured, it can fetch the VM's NICs fro NAPI (the MAC addresses
+VM-event has occured, it can fetch the VM's NICs from NAPI (the MAC addresses
 are stored in the VM's `nics` array). We check if any NIC has the state set to
 `provisioning`. If so, we set it to `running`. This method, however, only works
 for NICs that belong to VMs (`belongs_to_type` is set to `zone`). We do this as
