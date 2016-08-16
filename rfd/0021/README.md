@@ -178,7 +178,7 @@ Where should our inconsistency objects get stored? We know that each
 read-in by `scrubber0`. But will `scrubber0` store it in `Moray`? If we upgrade
 and then downgrade `scrubber0` what will it do with the new inconsistency
 objects that it does not (necessarily) recognize? If inconsistency objects get
-store in their own `Moray` bucket, will they also be checked for consistency by
+stored in their own `Moray` bucket, will they also be checked for consistency by
 `scrubber0` (or the `scrub-agents`)?
 
 
