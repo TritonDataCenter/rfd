@@ -94,10 +94,10 @@ consistency-checking calculations. But this has the obvious problem that it
 would _only_ be useful for newly generated data. Most of the wasted space in
 `$D` is likely to be old data.
 
-However, what one _can_ do without modifying format of any objects in `$D`, is
-to keep a list of inconsistencies (`$I`) (i.e. object `A` missing child `B`, or
-object `B` missing parent `A`, etc) and see if they are present the next time
-we scrub. If not, remove the insistency from list `$I`. Each inconsistency
+However, what one _can_ do without modifying the format of any objects in `$D`,
+is to keep a list of inconsistencies (`$I`) (i.e. object `A` missing child `B`,
+or object `B` missing parent `A`, etc) and see if they are present the next
+time we scrub. If not, remove the insistency from list `$I`. Each inconsistency
 should have a counter indicating how many times it was re-detected during a
 scrub. If the count is very high, we can suspect that something is (or was)
 wrong with the service `$S` that generated the objects that are part of the
