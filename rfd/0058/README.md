@@ -18,10 +18,13 @@ state: predraft
 
 ## Background
 
-In Triton the CNs are the source of truth, and this truth must eventually be
-reflected in the data returned by our APIs (VMAPI, NAPI, etc). Eventual
-consistency of this metadata is a goal in Triton, and some changes need to be
-made to net-agent to bring us closer to this goal.
+In Triton the CNs are usually the source of truth, and this truth must
+eventually be reflected in the data returned by our APIs (VMAPI, NAPI, etc).
+Eventual consistency of this metadata is a goal in Triton, and some changes
+need to be made to net-agent to bring us closer to this goal. There are
+situations in which the database (Moray) is the source of truth. For example
+this is true for higher-level objects such as the `network` object that NAPI
+creates.
 
 When a VM is deleted through CloudAPI or VMAPI, a workflow job is created that
 destroys the VM and its dependent data such as the NICs that were used by it.
@@ -33,7 +36,9 @@ The scope of net-agent's responsibilities is greater than simply destroying
 NICs. Net-agent is responsible for updating any metadata in NAPI that needs to
 be updated in order to make that metadata a more accurate reflection of the
 reality on the CNs that are managed by Triton. When this is not done,
-inconsistencies arise between the figurative map and territory.
+inconsistencies arise between the figurative map and territory. Currently,
+net-agent is responsible for the NIC-object that gets stored in Moray. However,
+it may have to manage other/new networking related objects in the future.
 
 Net-agent previously had a minor defect in which it would -- under certain
 conditions -- not detect removals of VMs through the `vmadm` interface, and
@@ -64,20 +69,12 @@ old ones without the new property. To do otherwise would cost too much in terms
 of performance. For NAPI to backfill the `cn_uuid` onto old NICs, NAPI would
 have to do a scan over all of the NICs in the DC, lookup what CN it's
 associated VM is on (by making a request to VMAPI), and set the `cn_uuid`
-property of the NIC to the value of the CN's UUID. This first performance
-problem is that NAPI is single threaded, and having NAPI do a whole lot of work
-would introduce long latencies to requests that operators and other APIs make
-to NAPI. This can be mitigated by running this logic in a workflow. Workflow
-will execute the job in its own process, asynchronously. But the job itself
-would be single threaded, and long-running. The backfill workflow would need to
-be initiated either periodically or every time NAPI starts up, because (a) we
-can potentially have multiple instances of NAPI at different versions and (b)
-we can potentially downgrade NAPI. No matter what we do, putting NAPI in charge
-of backfilling the `cn_uuid` property, would put more load on the workflow
-container, the head-node's CPUs, and on VMAPI. Therefore, net-agent is the
-optimal place to put this functionality (see the Backfill section below), as
-that would put no extra load on any of our services on the head node, and would
-allow the backfill process to scale with the number of CNs.
+property of the NIC to the value of the CN's UUID. The root of the problem of
+putting NAPI in charge of backfilling the `cn_uuid` property would put more
+load on the head-node's CPUs, its VNICs, and on VMAPI. Net-agent is the optimal
+place to put this functionality (see the Backfill section below), as that would
+put no extra load on any of our services on the head node, and would allow part
+of the backfill process to scale with the number of CNs.
 
 Another example in which a component's behavior may put the system in an
 inconsistent state, is when a component creates a NIC (the default state is
@@ -106,7 +103,13 @@ For example, in the case of migrations, it is imperative to disable net-agent
 on the destination node. The reason is that the agents are oblivous to each
 other, and not doing this would create a race between the source-agent and the
 destination-agent because they both think they own the NICs of the VM that is
-being migrated.
+being migrated. At first glance, it may seem that the `do_not_inventory` member
+would tell the agents to leave the NIC alone. However, it cannot be used in
+this capacity, because there is some latency from the point time when we set
+`do_not_inventory`in the store, and the poin in time when net-agent updates its
+view of the world via a `sendFullSample()` call. It is during this window, that
+net-agent can change/destroy a NIC that does not belong to it, specifically if
+it begins its reap-routine in this window.
 
 ## Improving Net Agent
 
@@ -122,17 +125,31 @@ the most straightforward is to query NAPI for a list of all NICs that are
 associated with the agent's CN, and to make sure that each NIC's
 `belongs_to_uuid` points to a VM that is present on the CN. If not, we reap the
 NIC. This query only needs to be executed once when net-agent starts up. After
-the initial reap, net-agent will properly react to VM-events, and destroy NICs
-on the fly. Net-agent will have a random delay in the range of 2 to 10 minutes,
-before initiating the query and subsequent reap. This is so that the agents
-don't try to query NAPI at the same exact time, as that could overwhelm NAPI.
+the initial reap, net-agent will discard the list it obtained from NAPI, and
+will properly react to VM-events (all obtained from a child `zoneevent`
+process's stdout), and destroy NICs on the fly. The only exception to this
+on-the-fly destruction, is if a VM-event gets dropped (`zoneevent` can drop
+events under high system load). If this happens, net-agent will run `vmadm
+lookup` (at some long, pre-determined interval) on its set of VMs and will
+compare all the metadate of the VMs on the CN to the metadata it keeps in
+memory. If there is a difference it will react to that difference. In other
+words, net-agent _will_ react to all VM-related changes, within some amount of
+time. This is situation is logically equivalent to having a single VM-event
+source that _never_ drops events but delivers them in batches every `T` units
+of time in random order. This in no way hinders net-agent's ability to maintain
+eventual consistency of the NIC objects in Moray.
+
+But back to the reaping procedure. Net-agent will have a random delay in the
+range of 2 to 10 minutes, before initiating the query and subsequent reap. This
+is so that the agents don't try to query NAPI at the same exact time, as that
+could overwhelm NAPI.
 
 Furthermore, some changes need to be made to NAPI. Currently, NAPI's `/nics`
 endpoint does not support filtering NICs by `cn_uuid`. While net-agent _could_
-filter through this list of NICs on its own, this approach would be untenable
-from a bandwidth utilization point of view. In large data centers with many
-CNs, NAPI would be sending a list of all the NICs in the DC to each and every
-CN. 
+filter through this list of NICs on its own, this approach is very wasteful
+of the available bandwidth that could be utilized for other purposes. In large
+data centers with many CNs, NAPI would be sending a list of all the NICs in the
+DC to each and every CN.
 
 While this filtering support needs to be in the `/nics` endpoint, we will also
 need to create a new `/search/nics` endpoint which is an alias to `/nics`. The
