@@ -38,7 +38,7 @@ In the abstract, scrubbing is a process. Let's refer to it as `$P`. The details
 of how we implement this process are not -- for the moment -- entirely
 relevant. Triton's distributed nature and immense size, give us many possible
 ways to implement scrubbing.  Before we become too attached to any single
-scrubbing, method, we will want to describe the process of scrubbing as if it
+scrubbing method, we will want to describe the process of scrubbing as if it
 were done 'magically', without consuming any concrete system resources.
 
 In a scrubbing process, there are a few essential elements that we need to be
