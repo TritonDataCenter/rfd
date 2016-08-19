@@ -55,11 +55,11 @@ code needs. This of course isn't necessarily the case, and can give rise to
 flag days. Flag days are very undesirable, since they involve relying on an
 actual human being to do the right thing. In fact, it sometimes involves
 relying on _multiple_ human beings doing the exact same right thing, which is
-unlikely to happen, and will simply result in at least one underemployed person
-writing an unflattering blog post about the Triton upgrade experience. It is
-therefore the goal to reduce the number of future flag-days to as small a
-number as possible -- ideally zero. It is the goal of this RFD to eliminate
-flag-days that result from interface drift in workflow modules.
+unlikely to happen, and may result in a frustrating and time-consuming
+experience for both the operator and the developer. It is therefore the goal
+to reduce the number of future flag-days to as small a number as possible --
+ideally zero. It is the goal of this RFD to eliminate flag-days that result
+from interface drift in workflow modules.
 
 Currently the consumers of workflow blindly send job code over, without regard
 for whether the workflow service that's currently running can actually execute
@@ -145,7 +145,7 @@ consumers.
 
 Speaking of consumers, let's look at the consumer side of version awareness.
 The job code's awareness of available module-versions would require metadata on
-`sdc-workflow`'s side of things, that's similar to the `imports` information.
+`sdc-workflow`'s side of things that's similar to the `imports` information.
 
 The most commonly used modules in workflow jobs are as follows:
 
@@ -286,15 +286,8 @@ service.
 
 In summary, this solution requires more physical resources, a larger number of
 changes, and changes to the _roles_ of both workflow and its consumers, than
-the versioning solution. Whether or not this cost is justified by the
-'versionlessness' of this solution is hard to determine without some empirical
-analysis.
-
-## Empirical Analysis
-
-It seems that before any kind of meaningful discussion can take place on the
-merits of each approach, we will need to do some empirical analysis to make the
-discussion about concrete quantitites, rather than abstract ideas. Simple
-prototypes of each solution should be implemented and tested. What tests we
-should be doing and what the prototypes should look like, is open to
+the versioning solution. Furthermore we don't get rid of the workflow service
+or any of its code, because backwards compatibility is a constraint. We can end
+up not _using_ workflow, but we will never get rid of it. Whether or not these
+costs are justified by the 'versionlessness' of this solution is up for
 discussion.
