@@ -35,43 +35,44 @@ interdependencies.
 
 ## Terminology
 
-Throughout this document we'll use the terminology which seems most prevelant in
-the industry and has its roots in the Dapper paper.
-
 ### Trace
 
-Every user initiated request that comes into Triton starts an associated trace.
-The trace represents the initial request combined with all other actions taken
-in order to satisfy that request. This can include further requests, execution
-of commands, or any other noteworthy work. These individual components of work
-are called spans (see below).
+Every user initiated request that comes into Triton starts an associated
+"trace." The trace represents the initial request combined with all other
+actions taken in order to satisfy that request. This can include: further
+requests, execution of commands, or any other work a program has been
+instrumented to expose. These individual components of work are called spans
+(see below).
 
 ### Span
 
 Every individual logical action performed can be considered a span. In the case
-of an HTTP request typically this span will have 4 individual components of the
-span. There will be:
+of an HTTP request typically this span will have 4 individual components. There
+will be:
 
- * the point where the client sends the request
- * the point where the server receives the request
- * the point where the server responds to the request
- * the point where the client receives the response
+ * the event where the client sends the request
+ * the event where the server receives the request
+ * the event where the server responds to the request
+ * the event where the client receives the response
 
-after the last component has completed the span will be finished. It is also
-common for a span to create additional child spans. In this HTTP example, the
-most common case would be the server calling other APIs after receiving the
-client's request, but before responding to it. In that case those new requests
-are considered separate new spans, but the current span is attached to those
-through what we call a "parent span id" which is just the identifier of the span
-that created this new span. By creating parent-child relationship for each span
-after the initial user request, the trace becomes a tree.
+after the last component has completed the span will be finished.
 
-### Logs
+NOTE: See [Open Questions](#OpenQuestions) section below for discussion on
+another option here.
 
-As each individual component of a span is written out, it is called a log.
-For the example span above we'd have 4 logs, one for each of its components.
-Through this RFD we'll also treat each of these logs as a separate call to one
-of the bunyan logger's log methods.
+It is also common for a span to create additional child spans. In this HTTP
+example, the most common case would be the server calling other APIs after
+receiving the client's request, but before responding to it. In that case those
+new requests are considered separate new spans, but the current span is attached
+to those through what we call a "parent span id" which is just the identifier of
+the span that created this new span. By creating parent-child relationship for
+each span after the initial user request, the trace becomes a tree.
+
+### Logs / Events
+
+As each individual events on a span is written out, it is called a log.
+For the example span above we'd have 4 logs, one for each of its events.
+Logging requires at least a name for the event.
 
 ### Tags
 
@@ -80,6 +81,16 @@ terminology here. This is basically just a set of key/value pairs that are
 attached to a span in order to add additional data about the span. This data can
 be added at any point in a span which means it's easy to add tags at the point
 that the data is available.
+
+Examples of things that might be tags include:
+
+ * the HTTP method for the request
+ * the IP address of the remote host
+ * the query string for a request
+ * the HTTP status code for a response
+
+See "Open Questions" section for some discussion about alternative layouts for
+spans.
 
 ## Goals
 
@@ -117,6 +128,13 @@ support tracing to libraries used for RPC/REST. The Dapper paper calls this
 By adding code to the library, the work required to support tracing of new
 programs is minimized. Simplifying the use of tracing in programs this way also
 ensures that it is done correctly.
+
+Moving things like the individual headers we use into the libraries also allows
+us to change these without modification to application code. Application code
+needs to have instrumentation turned on once and then the library handles all
+the details. If we want to change so that tracing goes to a separate 3rd party
+system we should be able to do that without further modification to the
+application code.
 
 #### Low Overhead
 
@@ -166,8 +184,8 @@ the community.
 
 ## Overview of Proposed Solution
 
-This section describes the solution proposed to gather the information required to achieve the goals
-laid out above.
+This section describes the solution proposed to gather the information required
+to achieve the goals laid out above.
 
 ### Headers
 
@@ -198,14 +216,6 @@ logs that match with their request.
 This header represents the span identifier (span\_id) of the span that this
 request is part of. A new span is started by the client for each request, so the
 span\_id sent by the client be treated as the current span\_id on the server.
-
-The value of this header must be a UUID.
-
-#### triton-parent-span-id
-
-This header represents the span identifier of the span that is the parent of the
-current span. A client making a request should set this as the current span
-identifier then generate a new span identifier for the new request.
 
 The value of this header must be a UUID.
 
@@ -249,20 +259,15 @@ restify servers such that:
  * When an inbound request includes a triton-span-id header, we use that as our
    span identifier (span\_id). When a request does not include this, a new
    span\_id is generated.
- * When an inbound request includes a triton-parent-span-id header, we use that
-   as our parent span identifier (parent\_span\_id). Where the request does not
-   include one, parent\_span\_id is set to "0".
- * It will be an error to include one of triton-parent-span-id or triton-span-id
-   headers, and to not include the other.
- * It will be an error to include either of triton-parent-span-id or
-   triton-span-id and not include a request-id or x-request-id header.
+ * It will be an error to include triton-span-id and not include a request-id or
+   x-request-id header.
  * For every restify route handled, we generate a bunyan log on request on
    response.
  * For every restify client request (usually through node-sdc-clients) we will:
      * add a request-id header which matches the trace\_id of this trace
      * add a new triton-span-id header for this new span (client requests are
        always a new span)
-     * add a triton-parent-span-id header which matches the span\_id of the span
+     * add a parent span property which matches the span\_id of the span
        that is causing the request to be made.
      * pass through the the triton-trace-enabled and triton-trace-extra headers
        unmodified.
@@ -275,11 +280,12 @@ The implementation of this work will consist of several parts:
 
 1. modifications to restify-client to support .child()
 2. modifications to node-sdc-clients to support .child()
-3. addition of the event tracing components to all Triton restify servers
-4. modification of all Triton client calls to us sdc-client child()
-5. modification of cn-agent
-6. modification of node-vmadm
-7. modification of vmadm
+3. creation of an opentracing implementation for Triton
+4. addition of the event tracing components to all Triton restify servers
+5. modification of all Triton client calls to us sdc-client child()
+6. modification of cn-agent
+7. modification of node-vmadm
+8. modification of vmadm
 
 ### Modifications to restify-clients
 
@@ -313,7 +319,7 @@ If a `before` function is passed, this will be called at the beginning of the
 the server. It will be called with the following parameters:
 
 ```
-callback(err, opts, req, body);
+callback(opts);
 ```
 
 The "opts" parameter here will be the passed API options and can be modified in
@@ -336,7 +342,7 @@ client.child({
             error: (err ? true : undefined),
             statusCode: code
         }, 'got response');
-    }, before: function _afterRequest (err, opts, req, body) {
+    }, before: function _afterRequest (opts) {
         // [handle err]
 
         opts.headers['trace-id'] = trace_id;
@@ -366,7 +372,6 @@ var client = restify.createJsonClient({
     requireHeaders: [
         "request-id",
         "triton-span-id",
-        "triton-parent-span-id",
         "triton-trace-enabled"
     ]
     ...
@@ -377,6 +382,9 @@ which would ensure we're always sending the required tracing headers for every
 request made by "client".
 
 This would also be used by the "tritonHeaders" option in sdc-clients.
+
+NOTE: There's a preliminary prototype of these modifications to restify-clients
+in https://github.com/joshwilsdon/restify-clients.
 
 ### Modifications to node-sdc-clients
 
@@ -405,18 +413,24 @@ client would include the trace context for the request being handled so the
 headers would be added correctly on these requests and the logs are written out
 appropriately.
 
-### Addition of Event Tracing Components for Servers
+### Creation of an OpenTracing implementation for Triton
 
-The prototype at https://github.com/joshwilsdon/evt-tracer will be cleaned up
-and moved to https://github.com/joyent. All of the Triton servers will then be
-modified to add the tracing handler. This handler will be responsible for:
+In order to use [the opentracing javascript
+library](https://github.com/opentracing/opentracing-javascript) we need to
+create an "implementation". This implementation will be plugged into the
+opentracing tracer.
+
+All of the Triton servers will then be modified to add the tracing handler.
+This handler will be responsible for:
 
  * logging all incoming requests and responses
- * attaching a .traceContext to all requests with the trace_id, span_id and
-   parent_span_id of the span for the initial request
+ * attaching the data for a span to all `req` objects
 
 it will be up to the modifications of the client calls (next section) to ensure
 that the headers are added on all outbound requests.
+
+NOTE: there are some experiments (with examples) of this at:
+https://github.com/joshwilsdon/triton-tracer
 
 ### Modification of Triton Client Calls
 
@@ -468,8 +482,8 @@ At an HTTP Request we should have available at least:
  * the HTTP method (http.method, e.g. 'POST')
  * the HTTP path including query string (http.path)
  * the HTTP URL (http://<host>/ -- http.url)
- * the HTTP status code (http.statusCode, e.g. '200')
- * the time the server spent handling the request (http.responseTime)
+ * the HTTP status code (http.status_code, e.g. '200')
+ * the time the server spent handling the request (http.response_time)
 
 when available we would also like to include other data such as:
 
@@ -673,6 +687,46 @@ lookup this data in that external system soon after the request has completed.
 
 This document describes tracing for Triton only. If tracing for Manta is
 required, is it acceptable that this be a separate RFD?
+
+### Breaking down Spans
+
+This document assumes that we want Zipkin-like spans where we've got the client
+and server portions for an individual request as part of the same span.
+OpenTracing seems to guide implementers toward instead treating the components
+that occur on separate systems as separate spans. The difference here would be:
+
+Current Description:
+
+```
+ TRACE X
+  \_ SPAN Y
+      \_ [client] send request
+      \_ [server] receive request
+      \_ [server] send response
+      \_ [client] receive response
+```
+
+Alternative:
+
+```
+ TRACE X
+  \_ SPAN Y
+      \_ [client] send request
+      \_ [client] receive response
+      \_ [child of Y] SPAN Z
+          \_ [server] receive request
+          \_ [server] send response
+```
+
+in both cases we would still be able tie things together. The difference is just
+whether these events are part of one or 2 spans. This also in turn impacts the
+scope of tags and the operation name of the span.
+
+The biggest reason I can see that we might want to do this would be that we
+could add a tag `component` that indicates `restifyclient` or `restifyserver`
+potentially also with a tag for version. As it is now the span would have a
+single component tag or separate component tags for the client and server. So
+it's just a slightly different way of representing the data.
 
 ### Sampling
 
