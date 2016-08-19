@@ -122,6 +122,7 @@ These are listed in rough order of impact today:
    they're more significantly affected by transient issues (because retries end
    up taking a very long time), and they're subject to new failure modes (like
    Manta killing the job for using zones for too long).
+7. The automatically generated per-user reports and activity logs grow unbounded.
 
 Solutions to these problems can be grouped into a few broad categories:
 
@@ -149,7 +150,8 @@ Solutions to these problems can be grouped into a few broad categories:
   of the daily pipeline to produce a much larger number of objects for each
   table (rather than one), which would allow the rest of the jobs to start on
   much smaller tasks.
-
+* To address item (7), we could  could allow customers to opt-in and out of the 
+  metering reports being delivered.
 
 ## Important parts of the existing implementation
 
