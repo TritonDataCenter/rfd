@@ -61,8 +61,8 @@ of one or more *roles*. Roles, then, grant *permissions* to access certain
 rules -- tuples of the form `(action, resource)` representing actions that will
 be allowed.
 
-If no permissions is granted via a role for a given principal to take an
-action, then that action is denied. This is a so-called *default-deny*
+If no permissions are granted via a role for a given principal to take an
+action, then that action is denied. This is known as a *default-deny*
 authorization model.
 
 # A&A in Triton: a short history
@@ -110,7 +110,7 @@ model used in Manta, and make the two share their data.
 Unfortunately, Triton would actually have been a better fit for something closer
 to the stock NIST model, as it is not organised as a hierarchical filesystem. To
 resolve the mismatch, it was simply decided that the role tags would be applied
-to CloudAPI URLs (which look like an hierarchical filesystem if you squint a
+to CloudAPI URLs (which look like a hierarchical filesystem if you squint a
 bit).
 
 The action verbs used by the Manta model were also defined largely by the
@@ -120,14 +120,14 @@ documentation) as the action names. This creates some curious points of overlap,
 where the endpoint in question has to be doubly stated by the administrator:
 first in the action name, and then in the resource to be role-tagged.
 
-While this adoption of the Manta model in Triton was certainly expedient at the
-time, it has not enjoyed very much success. This seems to be due it being
-considered difficult to use and poorly documented. Little material was ever
-written or supplied to users to explain how to use the RBAC model with Triton,
-and the APIs used to control it were not very discoverable. There is no way, for
-example, to list all of the available verbs, or discover what the correct
-resource URL to use for a particular Triton object should be, making the writing
-of effective policy quite challenging indeed.
+While this adoption of the Manta model in Triton was expedient from a
+development perspective, it has not enjoyed broad adoption by users. The
+facility is generally seen as difficult to use and little documentation was
+ever produced to dispel that perception. The APIs used to interact with RBAC in
+Triton were not very discoverable: there is no way to list all of the available
+verbs, or to discover the correct resource URL to use in policy for a
+particular Triton object. The writing of effective policy under these
+conditions is extremely difficult.
 
 ## Triton Authentication
 
@@ -141,17 +141,24 @@ This, combined with a dissatisfaction with other existing LDAP databases, lead
 to the development of UFDS.
 
 UFDS is an LDAP server implemented atop Moray, the key-value document store
-developed primarily for use in Manta. Manta is very well-served by the key-
-value paradigm, as most of its stored data is very close to immutable, and
-very rarely looked up by anything other than a single primary key (e.g. an
-object's path in the filesystem hierarchy). LDAP's underlying X.509 directory
-structure, however, is a strict tree, and LDAP servers generally expect to
-serve a lot of workload on lookups that are not on primary keys (DNs or
-distinguished names). LDAP objects also experience frequent updates to single
-properties (such as to change a password or update a timestamp). There is thus
-a very high impedance mismatch between the key-value document store paradigm
-that Moray provides, and the LDAP paradigm that UFDS must show to the outside
-world. This is generally considered unfortunate.
+developed primarily for use in Manta. Manta is well-served by the key-value
+paradigm; most stored data is small in size and very close to immutable. Most
+values are accessed directly by primary key; e.g., object metadata is
+identified and accessed by its path in the exposed file system hierarchy.
+
+By contrast, LDAP's underlying X.509 directory structure is a strict tree, and
+LDAP servers generally expect to serve a lot of queries that are not on primary
+keys (DNs or distinguished names). LDAP objects also experience frequent
+updates to single properties, such as to change a password or update a
+timestamp. There is thus a very high impedance mismatch between the key-value
+document store paradigm that Moray provides, and the LDAP paradigm that UFDS
+exposes to consumers.
+
+<!-- NOTE: As I read the above, I am left a bit unsatisfied by the
+     justification.  Manta is a strict tree as well; it feels like
+     the substantive difference is that LDAP servers have historically just
+     had more appropriate indexes and query planners for the kind of
+     queries that are being done. -->
 
 LDAP could have had some interesting advantages for Triton, such as being able
 to integrate with PAM and the operating system authentication and authorization
@@ -219,7 +226,7 @@ The new model, to whit:
    listed in exactly one Service, which may be part of exactly one Project. An
    instance may also be listed directly in one Project without an intermediary
    Service.
- * *Foreign principals* are principals whose identity is cannot be verified
+ * *Foreign principals* are principals whose identity cannot be verified
    by Triton or Manta itself, but who have been authenticated by a trusted
    external means (further information below).
  * Principals (either *accounts*, *sub-users*, or *foreign principals*) can
@@ -408,7 +415,7 @@ be arbitrarily long. Service images will be required to continue being able to
 operate in both a UFDS-only or AUTHAPI-only world (or a mixed environment) for
 at least the year or two following general availability of AUTHAPI.
 
-AUTHAPI will support high-availability operation from day 1 of general
+AUTHAPI will support multi-instance operation from day 1 of general
 availability. Multiple AUTHAPI instances can be run in any datacenter. Some
 components of its operation (particularly cross-data-center replication) require
 one instance to take a special role in the cluster. A ZooKeeper leader election
