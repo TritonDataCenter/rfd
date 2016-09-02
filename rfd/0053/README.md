@@ -1,18 +1,24 @@
 ---
 author: Robert Mustacchi <rm@joyent.com>
-state: predraft
+state: draft
 ---
 
 # RFD 53 Improving ZFS Pool Layout Flexibility
 
-Today, Triton effectively requires a very specific pool layout. This is
-done by some of the logic in
+Each compute node in Triton is based off of SmartOS. All file system
+data is managed by ZFS in a single pool (zpool) of storage. This zpool
+is traditionally named `zones`. This zpool is created when the compute
+node (or headnode) is first set up.
+
+Today, Triton effectively hard-codes specific zpool layouts. This is
+implemented by some of the logic in
 [disklayout(1M)](http://smartos.org/man/1m/disklayout). While disklayout
 logically allows for a couple of different layouts to be used, Triton
-does not allow administrators to set this. While in an ideal, more
-appliance centric world, this would just be a thing, reality is not
-quite that. In fact, over the life time of disklayout.js, there have
-been many numerous changes based on sometimes contradictory customer
+does not allow administrators to specify them. In an ideal, more
+appliance centric world, this continue being determined automatically;
+however, reality does not allow us to be quite so rigid.  In fact, over
+the life time of disklayout.js, there have been many changes to these
+hard-code defaults based on sometimes contradictory customer
 requirements.
 
 As such, we've reached the point where instead of hard-coding this
@@ -22,20 +28,22 @@ additional complexity.
 
 ## Exposed Options
 
-There are two different ways we could choose to expose the pool
-topology. The first is to describe it a style like `disklayout(1M)` does
-today, where we describe the available layouts. If we did that and opted
-to expose what exists today, that would allow users to realistically
-select something like:
+### Exposing RAID Stripe Options
 
-* Mirror - Indicating drives should be mirrored and then striped.
-* RAIDz2 - Indicating that drives should be put into RAIDz2 stripes
+There are two different ways we could choose to expose the pool
+topology. The first is to describe pool layouts in a style similar to
+`disklayout(1M)`. `disklayout(1M)` has the notion of different layouts,
+like `mirror`, that describe how disks are laid out. The supported
+profiles today are:
+
+* mirror - Indicating drives should be mirrored and then striped.
+* raidz1 - Indicating that drives should be put into a RAID-Z1 stripe
+* raidz2 - Indicating that drives should be put into RAID-Z2 stripes
 
 If we moved forward with this, we need to also add support for the
 following:
 
-* RAIDz1 - Indicating that drives should be put into a RAIDz1 stripe
-* RAIDz3 - Indicating that drives should be put into a RAIDz3 stripe
+* raidz3 - Indicating that drives should be put into a RAID-Z3 stripe
 
 Note that this is only intended to allow the operator to have a broad
 level of specification. This is not meant to allow or force the operator
@@ -58,16 +66,20 @@ basically prioritize the following three axis:
 
 The challenge with expressing things here is that it makes it harder for
 us to set expectations and to really help customers understand what
-they'll be ending up with. It also may end up causing us to repeat the
-same mistakes as last time.
+they'll be ending up with. It also may end up causing us to repeat a
+similar class of mistakes and issues that we have with the current
+generation of storage layout. Mainly that the ideas of what is best for
+performance or capacity may change on a per-customer basis, forcing us
+to have conflicting and contradictory desires for what these different
+axis represent in terms of actual layouts.
 
 On the other hand, it may also allow us more flexibility and require us
 to teach customers less. You don't have to explain how the RAID profiles
 work.
 
-Another issue is a hybrid world where certain tooling has some logic
-which translates qualitative items here into the explicit pool layout
-options.
+It is the author's belief that while this options is interesting and has
+merits (and was in fact the first idea we had here), it's not the most
+useful idea or approach for this problem.
 
 ## User Interfaces
 
@@ -118,7 +130,7 @@ Note, the actual way that this information gets passed to the compute
 node as part of set up should be worked out by those who are working on
 this.
 
-#### Propagating failure
+#### Propagating Failure
 
 An important part of extending this interface is to make the error very
 clear that when an unsupported layout gets passed through the stack.
@@ -159,14 +171,19 @@ console.
 
 It may also make sense to have a `sdcadm server setup` which allows for
 specifying the hostname, pool layout override, and others. As well as
-using that as the vector for the storage pool layout dry run.
+using that as the vector for the storage pool layout dry run. If we add
+the `sdcadm server setup` option, we should make sure that it and the
+`sdc-server` code can share implementation where possible and start the
+process of deprecating sdc-server in favor of `sdcadm server`.
 
 ### Storage Profile Dry Runs
 
 One of the first things that'll come up as soon as we introduce options
-is that an operator will ask what do the different pools look like and
-what do they result in. As they'll want to know how much storage they'll
-have available to them.
+is that an operator will ask what do the different pools look like,
+what are the trade-offs associated with them, and how much storage is
+available is available with a given layout. As part of presenting these,
+we should make sure that we take into account the dump and swap space
+required, so they get a sense of the fixed costs and their impact.
 
 We'll want to have some kind of ability to perform a storage layout
 dry-run. In other words, we should go and run disklayout on the compute
