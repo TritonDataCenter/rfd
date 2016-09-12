@@ -13,7 +13,7 @@ state: publish
     Copyright 2016 Joyent
 -->
 
-# RFD 0027 Triton Container Monitoring
+# RFD 0027 Triton Container Monitor
 ## Introduction
 Presently, Triton does not offer a always-on mechanism for engineers and
 operators to collect metrics about their containers and have them ingested by
@@ -180,7 +180,7 @@ the optional metric forwarding, users with existing time-series stores can also
 get up to speed quickly.
 
 ## Components
-### Metric Agent
+### Agent (Container Monitor Agent)
 * Must operate under the following hard constraints
   * Minimal impact on compute nodes / prevent brownout
   * Must be operational even when operator and customer zones are not
@@ -197,12 +197,12 @@ GET <cn_admin_ip>/vms/<vm_uuid>/metrics
     ...
 ```
 
-The Metric Agent caches values and allows for a configurable expiration/TTL.
+The Agent caches values and allows for a configurable expiration/TTL.
 Metrics are always be retrievable, however they will remain unchanged for the
 duration of the cached value TTL. Metric Agent collection will only be made if a
 cached value does not exist or the currently cached value is expired.
 
-The Metric Agent should support an operator configurable global minimum polling
+The Agent should support an operator configurable global minimum polling
 frequency. This will allow an operator to dial back metric collection on an
 overloaded compute node and potentially avoid stopping the Metric Agent.
 
@@ -224,20 +224,20 @@ the Metric agent living in the global zone, a crash will result in all zones on
 that CN lacking data until it comes back up. It is also easier for the agent to
 become a noisy neighbor.
 
-### Metric Agent Proxy
+### Proxy (Container Monitor)
 * Must operate under the following hard constraints
   * The same user limitations as sdc-docker
   * Flexible enough to support future versions of RBAC
   * Highly available
   * Prevent causing system brownout
 
-The Metric Agent Proxy lives between a customers Prometheus server and the
-Metric Agents that live on each compute node. It is also a highly available
+The Proxy lives between a customers Prometheus server and the
+Agents that live on each compute node. It is also a highly available
 cluster per data center.
 
-Every container will have a DNS CNAME record which points at the Metric Agent
-Proxy cluster. In this way, the Metric Agent Proxy can respond as if it was the
-monitored instance itself by multiplexing on the request hostname.
+Every container will have a DNS CNAME record which points at the Proxy cluster. 
+In this way, the Metric Agent Proxy can respond as if it was the monitored 
+instance itself by multiplexing on the request hostname.
 
 This is an operator controlled zone, deployed with sdcadm. The zone will need to
 have a leg on the admin network in order to talk with the Metric Agent, and a
@@ -253,8 +253,8 @@ Customers existing SSH key(s) (the same key(s) used for accessing instances and
 sdc-docker) will be used.
 
 Authentication and authorization will also be leveraged to decide how many
-polling requests an end user is allowed to make to the Metric Agent Proxy
-within a configurable amount of time.
+polling requests an end user is allowed to make within a configurable amount 
+of time.
 
 User request quota will default to an operator set value, and an optional per
 user maximum can also be set by an operator.
@@ -271,11 +271,11 @@ receive a [HTTP 429](https://tools.ietf.org/html/rfc6585#page-3) response.
 
 ### Discovery
 
-When Metric Agent Proxies are provisioned or destroyed CNS will detect the
-change and create or remove a Metric Agent Proxy A record automatically.
+When Proxies are provisioned or destroyed CNS will detect the change and 
+create or remove a Proxy A record automatically.
 
 ```
-    <region>.map<instance number>.triton.zone A 10.99.99.7
+    <region>.cmon<instance number>.triton.zone A 10.99.99.7
 ```
 
 When existing containers are backfilled and when new containers are created, CNS
@@ -288,12 +288,10 @@ will detect the change and create the following DNS records
 ```
 
 for each container. Going forward all new containers will get a Container
-Monitor CNAME record automatically. Similarly, Metric Agent Proxy records will
-be added and removed when proxies come and go, along with corresponding CNAME
-records.
+Monitor CNAME record automatically. Similarly, Proxy records will be added 
+and removed when proxies come and go, along with corresponding CNAME records.
 
-Each CNAME record represents a virtual Prometheus endpoint backed by the Metric
-Agent Proxy.
+Each CNAME record represents a virtual Prometheus endpoint backed by a Proxy.
 
 A CloudAPI based Prometheus service discovery module will be built and hopefully
 accepted for inclusion in the main Prometheus repository. This will function and
@@ -307,11 +305,11 @@ equivalent experience to the CloudAPI based discovery without having to upgrade
 their Prometheus installation.
 
 ## Architecture Overview
-![Container Monitor Layout](http://us-east.manta.joyent.com/shmeeny/public/container_monitor.png)
+![Container Monitor Layout](http://us-east.manta.joyent.com/shmeeny/public/ContainerMonitor_rev2.png)
 
 ## Happy Path Walk Through
 
-### Metric Agent Proxy Creation
+### Proxy Creation
 * Operator deploys new Metric Agent Proxies using sdcadm
 * VMAPI pushes a changefeed event to CNS
 * CNS creates A records of the form
@@ -331,7 +329,7 @@ for each Metric Agent Proxy deployed with sdcadm
 <vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
 ```
 
-  for each Metric Agent Proxy IP.
+  for each Proxy IP.
 
 ### End User Configuration
 * Install and run a Prometheus server
@@ -389,9 +387,9 @@ for each Metric Agent Proxy deployed with sdcadm
      ```
      https://fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
      ```
-    * Metric Agent Proxy validates the end users key and cert file
-    * Metric Agent Proxy determines which compute node the container is on and
-      makes an HTTP call to its Metric Agent
+    * Proxy validates the end users key and cert file
+    * Proxy determines which compute node the container is on and
+      makes an HTTP call to its Agent
 
       ```
         GET 10.99.99.7/vms/fbb8e583-9c87-4724-ac35-7cefb46c0f7b/metrics
@@ -419,8 +417,8 @@ for each Metric Agent Proxy deployed with sdcadm
         memcaps_allocfail 0
         ...
       ```
-    * Metric Agent Proxy proxies the Metric Agent response back to the calling
-      Prometheus server.
+    * The proxy marshals the agent response back to the calling Prometheus 
+      server.
     * Container Monitor data is now available in the users Prometheus endpoint
 
 ### Container Destroyed
@@ -429,43 +427,43 @@ for each Metric Agent Proxy deployed with sdcadm
 * CNS removes the CNAME records associated with the container
 
 ### Metric Agent Proxy destroyed
-* Operator destroys a Metric Agent Proxy
+* Operator destroys a proxy
 * VMAPI pushes a changefeed event to CNS
-* CNS removes the A record associated with the Metric Agent Proxy and all CNAME
-  records that reference it.
+* CNS removes the A record associated with the proxy and all CNAME records that
+  reference it.
 
 ## High Availability
-### Metric Agent
+### Agent
 This is a single agent on a compute or head node, it has no more availability
 than the other supporting agents like cn-agent and vm-agent. Additional agents
 would only be helpful in the case of an agent crash, and not node failure. At
 this time it does not make sense to provide guarantees beyond SMF restarts.
 
-### Metric Agent Proxy
+### Proxy
 This is an entirely stateless service and because of that there is no limit to
 the number of proxies that can be in use at a given time. The proxy can be
 deployed with sdcadm to multiple nodes in a given data center. The recommended
 deployment is three Metric Agent Proxies, one on the headnode and the other two
 on different compute nodes which are ideally in different racks.
 
-When multiple Metric Agent Proxies are in use, CNS and round robin DNS
+When multiple proxies are in use, CNS and round robin DNS
 (e.g. multiple A records per <vm_uuid>.cm.triton.zone) will be leveraged.
-To ensure minimum disruption in the case of a Metric Agent Proxy failure, a low
-TTL should be used.
+To ensure minimum disruption in the case of a proxy failure, a low TTL should 
+be used.
 
 ## Scaling
-### Metric Agent
-Because the Metric Agent is a single agent running on a compute or head node,
-there is no good way of scaling it. That said, it does need to be sensitive to
+### Agent
+Because the Agent is a single agent running on a compute or head node, there 
+is no good way of scaling it. That said, it does need to be sensitive to
 overloading the global zone.
 
-In order to protect the global zone, the Metric Agent will have a runtime
-configurable throttle.
+In order to protect the global zone, the Agent will have a runtime configurable
+throttle.
 
-### Metric Proxy
-Multiple Metric Proxy zones can be added as load requires and without penalty.
-When new Metric Proxies are added, CNS will detect this and add new A records as
-well as the necessary CNAME records.
+### Proxy
+Multiple Proxy zones can be added as load requires and without penalty. When 
+new Proxies are added, CNS will detect this and add new A records as well as 
+the necessary CNAME records.
 
 ## Dynamic metrics (e.g. on-demand DTrace integration)
 Dynamic metrics are out of scope for version one of Container Monitor. The
@@ -518,10 +516,10 @@ time | Exposes the current system time. | gettimeofday(3C) | system's notion of 
 
 ## [Example agent code](https://github.com/joyent/sdc-cn-agent/blob/rfd27/lib/monitor-agent.js)
 
-## Metric Forwarder
+## Forwarder
 For customers that need to have data pushed to them, and can't use an existing
-Prometheus plugin, a Metric Forwarder zone can be deployed. This zone will poll
-a configurable set of Metric Proxy endpoints for data (just like a Prometheus
+Prometheus plugin, a Forwarder zone can be deployed. This zone will poll
+a configurable set of Proxy endpoints for data (just like a Prometheus
 server), translate it to the desired metric format
 (e.g. [InfluxDB](https://influxdata.com/), Syslog, etc.), and push the
 translated data to the customers existing system.
