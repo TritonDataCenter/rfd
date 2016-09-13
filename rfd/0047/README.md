@@ -251,9 +251,13 @@ particularly heavy usage areas where we need spend effort.
 - logs: /{admin,Joyent_Dev}/stor/logs
   JoshC suggested moving these, at least for the nightly and staging envs,
   to the Staging Manta.
+  TOOLS-1523 has done this for nightly's usage -- old nightly-1 data has not
+  yet been removed.
 - sdc data dumps: /{admin,Joyent_Dev}/stor/sdc
   JoshC suggested moving these, at least for the nightly and staging envs,
   to the Staging Manta.
+  TOOLS-1523 has done this for nightly's usage -- old nightly-1 data has not
+  yet been removed.
 
 TODO: dig into size usage for these
 
@@ -267,3 +271,5 @@ Engineering cleanup of Manta usage:
 - [TOOLS-1508](https://devhub.joyent.com/jira/browse/TOOLS-1508) prep_dataset_in_jpc.sh using wrong "mantapath" dir for built image export
 - [RELENG-703](https://devhub.joyent.com/jira/browse/RELENG-703) clean out headnode builds in Manta per RFD 47
 - [RELENG-704](https://devhub.joyent.com/jira/browse/RELENG-704) clean out non-headnode builds in Manta per RFD 47
+- [TOOLS-1523](https://devhub.joyent.com/jira/browse/TOOLS-1523) switch nightly-1 to staging Manta, and get nightly's IMGAPI to use Manta
+- [CMON-9](https://devhub.joyent.com/jira/browse/CMON-9) add cmon builds to purge-mg-builds process
