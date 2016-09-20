@@ -63,7 +63,7 @@ single IMGAPI process is behind the HAproxy.
 ## Requirements
 
 The base requirements of a standalone IMGAPI plan (i.e. good enough that
-are happy to live with for images.jo and updates.jo) are:
+we are happy to live with for images.jo and updates.jo) are:
 
 1. data (manifests, image files) is *durable*
 2. *redeployable*: There is a simple documented procedure for getting on a
@@ -91,6 +91,38 @@ via cloudapi so theoretically those could be used for easier/quicker standalone
 IMGAPI instance updates/deployments.
 
 
+## Current Status
+
+IMGAPI-567 will implement milestone 0 (M0). Remaining milestones are incomplete
+and not currently scheduled. M0 implemented a significant part of M1
+(backup, deploy, restore) and M3 (log file rotation and upload). Good enough
+for now.
+
+
+## M0: a better and documented deploy/update/backup/restore
+
+Issues:
+
+- [IMGAPI-567](https://devhub.joyent.com/jira/browse/IMGAPI-567)
+
+The milestones below are nice and I'd still like to do them. However, priorities
+call, so I need to get images.jo and updates.jo on a modern base and updateable
+in the shorter term. That's what this milestone is about. It will:
+
+- Update sdc-imgapi.git such that the resultant "imgapi" images can be used both
+  for DC-mode IMGAPI instances and for standalone IMGAPI instances (like
+  images.jo).
+- Document how to setup and maintain a new standalone imgapi zone for images.jo
+  or updates.jo.
+- Include a number of improvements for standalone IMGAPI instances:
+    - log file rotation and upload
+    - HTTP signature authkeys can be added to Manta and are sync'd from there
+    - background hourly backup (and support for restore)
+
+Basically this milestone stops short of HA IMGAPI and image manifests are
+only backed up to durable storage (Manta) hourly.
+
+
 ## M1: backup, deploy, restore
 
 Issues:
@@ -99,8 +131,8 @@ Issues:
   images.jo/updates.jo deployment to be able use stock 'imgapi' images
 
 
-Milestones "M<number>" for proposed order of work done to pick of first the
-requirements, then the nice-to-haves.
+Milestone "M<number>" sections are for proposed order of work done to pick off
+first the requirements, then the nice-to-haves.
 
 Here I'm making the assumption that the answer to the open question in the
 "Requirements" section is "yes, periodic backups, with a documented/scripted
@@ -118,7 +150,7 @@ that running a standalone IMGAPI is as simple as: (a) (re-)provision with that
 image and (b) possibly ssh in to provide secrets (key access to Manta account,
 TLS cert).
 
-Metadata provided at provision-time tells the zone which mode to run it: In core
+Metadata provided at provision-time tells the zone which mode to run in. In core
 Triton, a user-script that runs "/opt/smartdc/boot/setup.sh" is what triggers
 running on "dc" mode. For standalone mode we'll use a separate user-script or
 metadata key.
@@ -140,10 +172,10 @@ Specifics: A standalone IMGAPI's local data dir looks like this:
         # The stuff we don't want to backup:
         etc/
             imgapi.config.json
-            imgapi.id_rsa{,.pub}
+            imgapi-$shortzonename-$datestamp.id_rsa{,.pub}
             cert.pem
         archive/...
-        logs/...
+        logs/...            # NYI
 
 Given a `manta.user=bob` and `manta.baseDir=myimages`
 the Manta base dir is: `/bob/stor/myimages'.  The regular backup
@@ -369,7 +401,7 @@ for IMGAPI's database would not be difficult. We should also consider a
 Moray/Manatee cluster.
 
 
-## XXX scratch notes, ignore this section
+## Trent's scratch notes, ignore this section
 
     [root@4dad5922 myimages0]$ imgapiadm status
     State: initfail
