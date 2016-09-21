@@ -82,7 +82,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
 | draft    | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
 | draft    | [RFD 39 VM Attribute Cache (vminfod)](./rfd/0039/README.md) |
-| draft    | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |
+| publish  | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |
 | draft    | [RFD 41 Improved JavaScript errors](./rfd/0041/README.md) |
 | predraft | [RFD 42 Provide global zone pkgsrc package set](./rfd/0042/README.md) |
 | predraft | [RFD 43 Rack Aware Network Pools](./rfd/0043/README.md) |

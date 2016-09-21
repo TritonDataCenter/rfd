@@ -1,6 +1,6 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
-state: draft
+state: publish
 ---
 
 # RFD 40 Standalone IMGAPI deployment
@@ -93,10 +93,10 @@ IMGAPI instance updates/deployments.
 
 ## Current Status
 
-IMGAPI-567 will implement milestone 0 (M0). Remaining milestones are incomplete
-and not currently scheduled. M0 implemented a significant part of M1
-(backup, deploy, restore) and M3 (log file rotation and upload). Good enough
-for now.
+IMGAPI-567/IMGAPI-571 will implement milestone 0 (M0). Remaining milestones are
+incomplete and not currently scheduled. M0 implements a significant part of M1
+(backup, deploy, restore) and M3 (log file rotation and upload). Good enough for
+now.
 
 
 ## M0: a better and documented deploy/update/backup/restore
