@@ -401,15 +401,60 @@ for IMGAPI's database would not be difficult. We should also consider a
 Moray/Manatee cluster.
 
 
-## Trent's scratch notes, ignore this section
+## Trent's notes to self
 
-    [root@4dad5922 myimages0]$ imgapiadm status
-    State: initfail
-    ...
+### nice to haves for IMGAPI work
 
-     Error: Cannot connect to Manta storage
-     Error:      NotAuthorized: ...   (error message from client)
-    Reason: Likely this instance's SSH key has not been added to the 'bob' account
-       Fix: # Run the following where 'triton' is setup:
-       Fix: ssh root@IP cat /data/imgapi/etc/imgapi.id_rsa.pub | triton -a bob key add -n 'imgapi-4dad5922-myimgapi1-20160607' -f -
-    Impact: This IMGAPI server will not be able to complete initialization
+- imgapi-standalone-reprovision confirmation should be *before* the
+  remote image is imported or changed
+- ssh host key after reprov: Deal with this.
+
+        $ triton ssh imagesjo0
+        @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        @    WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED!     @
+        @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+        IT IS POSSIBLE THAT SOMEONE IS DOING SOMETHING NASTY!
+        ...
+
+- Prometheus usage:
+    - /stats with the elements of imgapi-standalone-status
+    - a prom server
+- able to pass imgapi-standalone-status right after creation and key
+  addition. Not sure how.
+- letsencrypt support
+- `x-server-name: $zonename`
+  We are now setting hostname to other than $zonename, and `os.hostname()`
+  is used for the x-server-name header from IMGAPI. Perhaps that
+  should stick to being the
+- quiesce for reprov:
+    - quiesce active connections
+    - to make a call whether to start the reprov and start quiescing, it
+      would be nice to have an ETA on current connections. I.e. did we
+      just start a huge download? Also useful for monitoring. Kang.
+    - rotate logs and put logs for upload on delegate dataset. are there
+      space concerns there?
+- restify (to v4)
+- manta-sync's bunyan to newer to get latest dtrace-provider
+- imgapi.git: drop nopt, used in main.js. Move main.js over to lib/ dir.
+- stud should run as 'nobody', ditto haproxy (or perhaps as the 'stud' user added by pkgsrc?)
+- get 'imgapi' off the path (in $prefix/bin/imgapi), don't need it and want
+  `imgapiadm` to be easy with tab-complete
+- `imgapiadm status` report an error if setup status is failed
+- RFD on logrotation v2 for triton:
+    - drop : and - separators in the log filenames
+    - 'upload' dir is just for the actual uploads. Then theoretically don't
+      need the "retain_time" feature in hermes and uploading can be
+      simpler -- e.g. a la the manta zones' upload script and what services
+      not using hermes could use.
+        - logadm to rotate to /var/log/triton/$name-*.log
+        - post_command renames to /var/log/triton/upload/
+          (with option to *ln* instead of just mv, that would allow "retain time"
+          to be per the '-C N' configuration on the logadm.conf line)
+    - nodename: hostname vs zonename. Actually we are using "nodename" which is
+      `uname -n`. Looks like we just don't set hostname on sdc core zones.
+- regular building (and retention policy) for 'imgapi-standalone' images
+  by the Joyent_SW user, so don't have to play these games. Do we want/need
+  `triton build` for this?
+- A monitoring story:
+    - backup failures
+    - API server perf/status
