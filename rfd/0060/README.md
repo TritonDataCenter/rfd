@@ -1,6 +1,6 @@
 ---
 authors: Marsell Kukuljevic <marsell@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
@@ -22,6 +22,19 @@ server and container data is loaded before being passed into dapi. This large
 wad of data presents a scaling problem.
 
 
+## Dapi's Purpose
+
+When Triton receives a request to provision a new container, it needs to
+determine which server the new container will live on.
+
+As part of a new provision, Triton passes details of the requested container to
+dapi. Dapi looks at the fleet of servers, and determines which server fulfills
+all of the new container's requirements (e.g. amount of RAM and disk) and also
+is more desirable for that allocation (e.g. a server with a more recent
+platform version). A fair number of details are considered by dapi when
+allocating a new container.
+
+
 ## History
 
 SDC 6.5 did much of its allocation logic within Postgres, thus had less
@@ -34,26 +47,48 @@ While this presented a clean architecture, it also had (and has) an important
 limitation: data and code are potentially kept far apart. Moving data to code
 can get very expensive.
 
-Initially, the workflow retrieved server and container information from cnapi,
-before passing it to dapi. This involved two serialization and deserialization
-steps. As long as there were very few servers and containers, this worked fine.
+Initially, the workflow retrieved bothserver and container information from
+cnapi, before passing it to dapi. This involved several serialization and
+deserialization steps. Roughly, server data traveled like this:
 
-That didn't last long, because the data quickly ballooned to several MiB of
-JSON.
+    Postgres
+      |
+      |  postgres protocol
+      v
+    Moray (deserialize Postgres data and serialize as JSON)
+      |
+      |  JSON over FAST
+      v
+    cnapi (deserialize JSON, do some transforms, serialize results as JSON)
+      |
+      |  JSON over HTTP
+      v
+    workflow (deserialize and reserialize JSON)
+      |
+      |  JSON over HTTP
+      v
+    dapi (deserialize JSON)
 
-This was solved by converting dapi from a service to a library, and embedding
-that library within cnapi. Once cnapi had retrieved the server details from
-Moray, it was immediately passed on to dapi within the same process. The
-allocation time dropped to a few milliseconds once cnapi had the details.
+As long as there were very few servers and containers, this worked fine.
+
+That didn't last long, because the data quickly ballooned to several MB of
+JSON. A lot of time was spent de/serializing data and shuffling it between
+services.
+
+This data movement was reduced by converting dapi from a service to a library,
+and embedding that library within cnapi. This eliminated the last two steps in
+the above diagram; once cnapi had retrieved the server details from Moray, it
+was immediately passed on to dapi within the same process. The allocation time
+dropped to a few milliseconds once cnapi had the details.
 
 More recently, we have been trying to clean up cnapi's storage of container
 details. vmapi is the canonical service for container information, but cnapi
 maintains its own copy of container information in a 'vms' object attached to
-server objects. Alas, this introduces an additional
-serialization/deserialization step on container information, when that
+server objects. Alas, querying vmapi introduces an additional
+serialization/deserialization step on container information, where that
 information is pulled from vmapi to cnapi, before being fed to dapi.
 
-This results in allocation taking several seconds in some production
+This results in allocations taking several seconds in some production
 environments, and will become a much more serious limitation with server and
 container scaling targets we wish to hit before the end of 2016.
 
@@ -75,14 +110,14 @@ dapi poor scaling:
   this becomes increasingly expensive (specifically Θ(sc), with number of
   (s)ervers and (c)ontainers).  
 
-  We have reduced this a bit by pushing the filtering logic for setup servers
+  We have reduced this a bit by pushing some filtering logic for setup servers
   towards Moray. Instead of Javascript doing filtering on the 'setup' attribute
   on server objects, this is sent as a query to Moray. NB: dapi still retains
   the Javascript filtering step for setup servers just in case there is ever a
   bug in the Moray query; this will likely be removed.
 
   We need to do more of this. Unfortunately, Moray's querying capabilities are
-  fairly limited.
+  limited.
 
 - Dapi as a pure function.
 
@@ -91,14 +126,14 @@ dapi poor scaling:
   by its inputs (some intentional addition of randomess aside). Many of Triton's
   services were conceived this way to reduce bugs.
 
-  This has certainly aided debuggin problems, especially on remote sites. It has
-  also pessimized data requirements: since dapi cannot make its own queries, and
-  we won't know what information it'll need beforehand, we need to provide dapi
-  with everything it could possibly use. 
+  This has certainly aided debugging problems, especially on remote sites. It
+  has also pessimized data requirements: since dapi cannot make its own queries,
+  and we won't know what information it'll need beforehand, we need to provide
+  dapi with everything it could possibly use.
 
   When it comes to scaling, we need to reduce the amount of data fed to dapi.
-  Loading unnecessary data is contrary to that, which seems to imply we need to
-  lose the pure functionality.
+  Loading unnecessary data is contrary to that, which implies we need to lose
+  the pure functionality.
 
 - Dapi as a single conceptual entity.
 
@@ -113,71 +148,163 @@ dapi poor scaling:
 
 ### Phase 1
 
-Reorder the filter plugins called by dapi so that simple checks that can also be
-done by Moray are at the top. Then move these all to Moray arguments, removing
-them from dapi.
+Reorder the filter plugins. We need to push the usage of container data, or any
+data derived from container data (e.g. the unreserved\_\* attributes), as late
+as possible. In Phase 2, we add support for dapi to query vmapi for container
+information, meaning that we should filter out as many servers as possible
+beforehand, so we need to make fewer queries to vmapi.
+
+We would also like to have fewer servers given to dapi to begin with, by
+providing more query arguments to Moray when initially constructing a list of
+servers to consider. This is a tad less surprising when these simple filters
+are at the top of the plugin list.
+
+The proposed (albeit simplified) plugin chain is as follows:
+
+    hard-filter-setup
+    hard-filter-running
+    // servers above invalid-servers could contain gibberish
+    hard-filter-invalid-servers
+    // keep volumes-from early; if present, it cuts down number
+    // of servers to just one:
+    hard-filter-volumes-from
+    hard-filter-reserved
+    hard-filter-vlans
+    hard-filter-platform-versions
+    hard-filter-traits
+    hard-filter-headnode
+    hard-filter-overprovision-ratios
+    // above plugins do not need vm info
+    // we defer vm loading as late as possible:
+    load-server-vms
+    calculate-ticketed-vms
+    hard-filter-capness
+    hard-filter-vm-count
+    hard-filter-sick-servers
+    calculate-server-unreserved
+    hard-filter-min-ram
+    hard-filter-min-cpu
+    hard-filter-min-disk
+    hard-filter-locality-hints
+    hard-filter-owners-servers
+    hard-filter-reservoir
+    hard-filter-large-servers
+    soft-filter-locality-hints
+    // final scoring steps
+    score-unreserved-ram
+    score-unreserved-disk
+    score-num-owner-zones
+    score-current-platform
+    score-next-reboot
+    score-uniform-random
+
+Those filters which can be replaced with a query argument to Moray will be left
+in for the time being, in case of bugs, but will be removed in the long run.
+
 
 ### Phase 2
 
 Provided that we continue down the path of removing cached container data from
 cnapi in lieu of the canonical data from vmapi, we shouldn't load all the
-container information up-front. Instead, dapi should receive a vmapi client
-upon initialization, and use that to query vmapi for container data when needed.
-In short: move from strict to lazy loading.
+container information up-front. Instead, dapi will receive two functions upon
+initialization, and use that to query vmapi for container data when needed.
+In short: move from strict to lazy loading of container data.
 
-cnapi should no longer load container details from vmapi for every server before
-feeding the data to dapi. dapi would contain a load-vms.js in its plugin chain,
-after all the server filtering, but before the first plugin that needs container
-informationi -- likely calculate-server-unreserved.js.
+cnapi will no longer load container details from vmapi for every server before
+feeding the data to dapi. dapi will contain a load-server-vms.js plugin in its
+plugin chain, after much of the server filtering that doesn't depend on
+container or container-derived data has been run.
 
-load-vms.js would then use the vmapi client provided to dapi to pull in
-container information from vmapi for all remaining servers that dapi is still
-considering for allocation.
+The two async functions are getVm() and getServerVms(). getVm() is needed by the
+hard-filter-volumes-from plugin, which is early in the plugin chain.
+getServerVms() is needed by a new plugin, load-server-vms.js; after that plugin
+is run, the `vms` attributes on server objects are populated with container
+information retrieved from vmapi.
 
-XXX more details
-
-cnapi currently continues to keep container information because of the
+cnapi currently continues to cache container information because of the
 unreserved\_\* attributes that are added when calling ServerGet, or ServerList
 with a ?extras=capacity or ?extras=all. This invokes dapi's serverCapacity(),
 which requires container information. If cnapi did not cache container
-information in its server objects, and all invocation of the above calls would
+information in its server objects, all invocations of the above calls would
 require a further call to vmapi to pull in the required container information.
 
 cnapi's container cache is largely outside the scope of this document, but
-dapi's plugins should support server objects which have already had their 'vms'
-attribute loaded with container information. The proposed load-vms.js should
-skip any server object it receives which already has a 'vms' attribute.
+dapi's plugins will also support server objects which have already had their
+'vms' attribute loaded with container information:
+
+load-server-vms.js must support a null getServerVms() -- if getServerVms()
+isn't provided to dapi, dapi assumes the servers' objects' `vms` attribute is
+already populated. This is the case when serverCapacity() is called, and also
+for actual allocation when ALLOC\_USE\_CNAPI\_VMS is set in cnapi's sapi
+metadata -- cnapi populates all servers with container data it has cached in
+Moray.
 
 
 ### Phase 3
 
-Do not load all servers at once, but rather in constant-sized batches. Provided
-that servers can be selected randomly by Moray (it currently cannot), there is a
-high probability that an allocation can be fulfilled with a single call. If a DC
-has little spare capacity, or heavy traits usage, an allocation is still
-guaranteed to succeed if it's possible, since all servers can be checked in the
-worst case.
+Ideally, we would not load all servers at once, but rather in constant-size
+batches. Each batch would be loaded and fed into dapi until dapi finds an
+eligible server.
 
-XXX more details
+An unfortunate limitation of Moray -- and one that can be a tad tricky to
+efficiently solve with the backing Postgres -- is the ability to sort results
+randomly. Without this ability, it's not possible to load servers in batches
+without biasing servers towards the beginning of the sort order. As a result,
+all eligible servers need to be pulled up-front from Moray by cnapi.
 
-There are a couple important challenges here, both related to randomness. In
-order to avoid biasing servers which haven't yet been scored, we need some means
-of querying Moray with a random sort (i.e. sort: 'RANDOM'). Moray's docs claim
-that FindObjects isn't a streaming interface, which presents the second problem:
-how to divide random selection into pages using limit/offset.
+However, we can still dramatically reduce the amount of data movement by feeding
+these servers in batches to dapi -- cnapi would retrieve all eligible servers
+from Moray, sort them randomly, and then feed batches from this list into dapi.
+While this will not reduce the number of servers loaded by cnapi, it will
+dramatically cut the amount of vmapi queries needed by dapi for a large fleet
+of servers: rather than dapi filtering all servers and then querying vmapi
+information for the (e.g.) 50% of surviving servers, dapi would filter servers
+in batches, and pull in the vmapi information for (e.g.) 50% of the batch size.
 
-A less invasive and less efficient work-around is loading all server objects
-from Moray, randomizing their order, and feeding batches of that result to dapi.
-Every allocation would load all servers, but it would further reduce the number
-of containers that need to be loaded. Making dapi batch internally would achieve
-a similar effect.
+Unless the spare aggregate capacity of a fleet of servers is approaching full,
+operating in batches will cut the typical amount of vmapi information to be
+loaded to only one batch. If a fleet has little spare capacity, or heavy traits
+usage, an allocation is still guaranteed to succeed if it's possible, since all
+servers will be checked in the worst case. Worst-case loading of vmapi
+information is the same as before support for batching is added to cnapi/dapi.
+
+A statistical rule-of-thumb is thirty samples (or larger) gives a reasonable
+approximation of an underlying distribution; we'll go with a batch size of
+fifty servers.
+
+NB: to reduce memory usage, after each batch is run, cnapi should delete the
+'vms' attribute on the batched server objects.
 
 
 ### Phase 4
 
-Depending on the amount of data loaded in a typical allocation, moving dapi to
-vmapi would likely reduce cost a lot. There can be several hundred containers on
-a single server.
+Moving dapi to vmapi will reduce the worst-case movement of data by at least
+an order of magnitude. The current default maximum number of containers per
+server is 224, and this number will go up in the future. Container data from
+vmapi for 224 servers is ~70KB data, whereas the data for a single (unpopulated)
+server is ~5KB. The break-even point, where server data is more than the
+container data, is roughly twenty or fewer containers.
+
+cnapi will still load all servers, and still perform batching, but instead of
+invoking dapi directly, it wll send that batch to vmapi. vmapi will feed the
+batch to dapi directly, whereupon dapi will work the same as in Phase 3. The
+only material difference is that the getVm() and getServerVms() functions
+provided to dapi by vmapi will contain logic to query the local vmapi, instead
+of making an HTTP call (from cnapi to vmapi).
+
+After Phase 4, the server and container scaling targets we wish to hit by the
+end of 2016 will sadly still require ~5MB of server data to be pulled in to
+cnapi, and in a worst case an additional ~5MB to be sent to vmapi, but this
+is an sizeable improvement compared with the ~75MB of data needed before
+Phase 1.
+
+Phase 4 will also likely render the container caching in cnapi to be largely
+unnecessary. Since cnapi already has a vmapi dependency when invoking dapi, we
+do not lose much by utilizing vmapi more from cnapi. When doing server listings
+that require the unreserved\_\* attributes to be populated, cnapi can pass a
+copy of this list of servers to vmapi, where dapi can calculate the
+unreserved\_\* attributes, and vmapi would then pass back to cnapi solely those
+three attributes per server.
 
 
 ## Wild ideas
@@ -186,6 +313,11 @@ a single server.
   altogether. Possibly abuse PL/pgSQL to reduce calls even further. This would
   lagely solve the data movement problem, but presents difficulties with JSON
   and the version of Postgres Triton uses. Bug prone and brittle.
+
+- Add support to Moray to return raw Postgres data, instead of deserializing
+  it and reserializing as JSON. However, this would break Moray's abstraction,
+  and add unwanted dependencies on Moray's Postgres schema (as with the previous
+  wild idea).
 
 - Turn dapi into a stateful cached service and feed it vmapi and cnapi events.
   Allocations would take milliseconds. Very bug prone.
