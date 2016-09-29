@@ -18,7 +18,7 @@ state: predraft
 Triton uses node 0.10 heavily for its services, with node 0.8 and 0.12 being
 used in a few places. 0.8 is already EOL, with 0.10 EOL on October 1, and 0.12
 EOL on December 31. Node.js v4 is currently specified for Long-Term Support
-(LST), and will remain supported until April 2018.
+(LTS), and will remain supported until April 2018.
 
 It is not critical for internal services to be updated to LTS, although it is
 desirable, but external services (e.g. Cloudapi and sdc-docker) should be
@@ -102,6 +102,10 @@ to hostile networks, and thus have the most pressing need of security patches:
 * cloudapi
 * sdc-docker
 * muskie
+* imgapi
+* CMON
+* adminui
+* portal
 
 Come October 1, we'd prefer to have these all tested and happily running on
 Node v4.
@@ -128,10 +132,104 @@ Specifically, Node.js v4 binaries are linked against newer versions of the C++
 runtime library, but the linker is linking against older versions of that
 runtime than is allowed (a newer one isn't available). This should not happen.
 To say this accidentally-running binary is a dodgy situation is putting it
-mildly. 
+mildly.
 
 Josh Wilson observes that agents need to support running on platforms back to
 2013. Since the runtime linker problem may well need a platform update to fix,
 this throws a serious roadblock in the way of updating the Node.js version of
 agents and the GZ copy to v4.
 
+Some discussion here: https://jabber.joyent.com/logs/mib@conference.joyent.com/2016/08/18.html#22:26:46.155580
+
+
+## Notes on specific node packages
+
+### bunyan
+
+tl;dr: Update to latest 1.x. No compat issues to worry about.
+
+Bunyan >= 1.5.1 supports building against node v4. However it is suggested
+that at least Bunyan 1.8.1 be used because it includes this fix to the CLI
+to use `bunyan -p` on node 4.x and above:
+
+- [issue #370] Fix `bunyan -p ...` (i.e. DTrace integration) on node
+  4.x and 5.x.
+
+The only incompatible change in Bunyan was from 0.x to 1.x with the CLI's
+`bunyan -c CODE` option. IOW, there hasn't been an incompatibility in the
+node.js module usage and therefore there isn't a reason to not upgrade to
+the latest 1.x.
+
+
+### ldapjs
+
+tl;dr: If you are just building filters for Moray: switch to `moray-filter`.
+If you are just building filters for UFDS: switch to `ldap-filter`.
+Else if you aren't node-ufds.git or sdc-ufds.git, let's talk and perhaps 0.8.0
+is adequate.
+
+If your app is only using the "filters" functionality of ldapjs, it is
+suggested that you switch to 'node-ldap-filter'
+(https://github.com/pfmooney/node-ldap-filter).
+
+- 1.0.0: This was a large change that added node v4 support (by updating its
+  deps), but also incompatibilities for which we don't necessarily grok
+  all the implications.
+
+    [Patrick Mooney]
+    > 1.0 changed error handling
+    > ...
+    > IIRC, the circumstances of when error objects are emitted for things like
+    > socket errors, etc
+    > when/how those errors are emitted
+
+  At this point, switching from 0.7.x to 1.0.0 would require some digging
+  and testing. Consider 0.8.0 as an alternative.
+
+- 0.8.0: This was a quiet compatibility release that Patrick added after
+  Trent and he discussed the issues here. The branch point was commit
+  aed6d2b043715e1a37c45a6293935c25c023ebce -- a number of commits after
+  v0.7.1, and the commit upon which node-ufds currently depends -- and
+  then it updated dependencies required to get a clean 'npm install' with
+  node v4.
+
+- 0.7.1: The last release before 1.0.0. It has a optional dep on
+  dtrace-provider@0.2.8, so while it installs with just a warning, there is
+  a lot of noise (and dtrace-y features won't work):
+
+    ```
+    gyp ERR! node -v v4.5.0
+    gyp ERR! node-gyp -v v3.4.0
+    gyp ERR! not ok
+    npm WARN optional dep failed, continuing dtrace-provider@0.2.8
+    [10:45:33 trentm@danger0:~/src/node-ldapjs ((0a88109...))]
+    $ echo $?
+    0
+    ```
+
+- 0.7.0: This has required "dependencies" that don't compile on node v4, e.g.
+  dtrace-provider.
+
+
+### moray
+
+tl;dr: Update to latest, or at least the following commit to get node v4
+support. I don't know of any compat issues.
+
+
+```
+commit 31c0902f47408d43bc9684e200b1ee93e13c2477
+Author: Marsell Kukuljevic <marsell@joyent.com>
+Date:   Sun Jul 3 19:52:27 2016 +1000
+
+    MORAY-342: updates deps for node 4.x support, try no. 2.
+```
+
+### sdc-clients
+
+TODO: lots here
+
+
+### ufds
+
+Move to the "1.2.0" release if you can.
