@@ -103,6 +103,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 58 Moving Net-Agent Forward](./rfd/0058/README.md) |
 | predraft | [RFD 59 Update Triton to Node.js v4-LTS](./rfd/0059/README.md) |
 | draft    | [RFD 60 Scaling the Designation API](./rfd/0060/README.md) |
+| predraft | [RFD 61 CNAPI High Availability](./rfd/0061/README.md) |
 
 ## Contents of an RFD
 

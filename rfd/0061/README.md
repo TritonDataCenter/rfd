@@ -1,6 +1,6 @@
 ---
 authors: Orlando Vazquez <orlando@joyent.com>
-state: draft
+state: predraft
 ---
 
 <!--
@@ -13,26 +13,31 @@ state: draft
     Copyright 2016 Joyent, Inc.
 -->
 
-# RFD 61: CNAPI High Availability
+# RFD 61 CNAPI High Availability
+
+## Introduction
 
 The Trition Compute Node API (or CNAPI) fulfills an important role within the
 hiearchy of the Triton stack. It not only maintains an up to date picture of
-compute nodes running in the datacenter, and their lifecycle-related data, such
+compute nodes running in the datacenter and their lifecycle-related data, such
 as compute node status, hardware dimensions, boot parameters, etc, but also
-serializes and controls access to compute node resources, prepares and
-handles actions performed by compute nodes, such as container and compute node
-operations.
+serializes and controls access to compute node resources, prepares and handles
+actions performed to be performed on compute nodes or their containers.
 
 Given the position it occupies on the critical path of normal operation of the
 Triton stack, it is therefore not surprising that if the CNAPI service is
-interrupted, because of scheduled maintenance or headnode failure, the
-potential impact on the datacenter is great. Should the situation arise where a
-CNAPI instance becomes unavailable, it will be desireable to have service
-requests flow to sibling instances, allowing them to pick up the slack,
-striving for minimal disruption to upstream dependents. Running multiple
-concurrent instances of CNAPI is a step to mitigating the risk should one of
-those instances experience problems as a result of software, hardware.
-Distribution of the workload amongst redundant instances is a side-benefit.
+interrupted, because of scheduled maintenance or headnode failure, the impact
+to the datacenter is great. Should the situation arise where a CNAPI instance
+becomes unavailable, it is desireable to have service requests flow to
+sibling instances to pick up the slack. The main idea is to minimize disruption to
+upstream dependents.
+
+While distribution of the workload amongst redundant instances is a potential
+side-benefit, running multiple instances of CNAPI is a primarily a step to
+mitigating the risk should one of those instances experience problems as a
+result of software, hardware or network faults.
+
+## This RFD
 
 The ultimate goal of this document is to:
 
@@ -42,16 +47,16 @@ The ultimate goal of this document is to:
       of itself and be be brought up to the model described above.
 
 Because CNAPI is composed of a number of subsystems it is worthwhile to look at
-each subsystem in turn. We shall examine what they do and what changes if any are
-required to in order to benefit from multiple CNAPI instances running alongside
-each other. As currently designed some CNAPI subsystems are more able to deal
-other instances (without unwanted or undefined behavior, such as clobbering of
-data) of itself running in parallel than others.
+each subsystem in turn. We shall examine what each does and what changes, if
+any, are required to in order to correctly operate multiple CNAPI instances. As
+currently designed some CNAPI subsystems are more able to deal other instances
+(without unwanted or undefined behavior, such as clobbering of data) of itself
+running in parallel than others.
 
-In general, the guiding principle to any changes should be to allow any
-instance of CNAPI to provide correct and up to date information and
-successfully fulfill any request, regardless of which other CNAPI instance may
-have initiated or performed the work.
+In general, the guiding principle should be to allow any CNAPI instance to
+provide correct and up to date information and successfully fulfill any
+request, regardless of which other CNAPI instance may have initiated or
+performed the work.
 
 
 ## CNAPI subsystems
@@ -76,24 +81,26 @@ facilities, such as creation of zones, gathering metrics, etc.
 One such agent is the compute node agent, or `cn-agent`. It allows CNAPI to
 execute actions on and receive periodic data from the compute node. It's role
 with respect to CNAPI, as well as strategies to allow multiple CNAPI to service
-its requests will be examined in greater depth in the following sections.
+its requests will be examined in greater depth in the subsequent sections.
 
 
-### Ur Messages
+### Relationship with the Ur Agent
 
-When a compute node comes comes online, it will start the Ur agent, which is
-always present, even if the compute node is unsetup and other agents are not
-installed. It connects to the datacenter rabbitmq AMQP server (on which CNAPI
-listens) and broadcasts a message to the routing key `ur.startup.#`. Unsetup
-compute nodes will periodically emit messages to `ur.sysinfo` to alert any
-listening CNAPI instances that the server exists. Both of these types of
-messages contain the compute node's current `sysinfo` payload at the time the
-message was sent.
+When a compute node comes comes online, it starts the Ur agent. Ur is always
+present on a compute node, even if the compute node is unsetup and other agents
+are not yet installed. It connects to the datacenter rabbitmq AMQP server (on
+which CNAPI listens) and broadcasts a message to the routing key
+`ur.startup.#`. Unsetup compute nodes periodically emit messages to
+`ur.sysinfo` to alert any listening CNAPI instances that the server exists.
+Both of these types of messages contain the compute node's current `sysinfo`
+payload at the time the message was sent.
 
-When CNAPI starts up it will also broadcast a request to all
-listening Ur agents for their sysinfo payloads. It will connect to the
-`ur.cnapi` queue. It will then bind to this queue the routing keys,
-`ur.startup.#` and `ur.sysinfo.#`. 
+When CNAPI starts up it also broadcasts a request to all listening Ur agents
+for their sysinfo payloads. It connects to the `ur.cnapi` queue. It then binds
+to this queue the routing keys, `ur.startup.#` and `ur.sysinfo.#`. 
+
+
+### Ur messages
 
 When multiple CNAPI consumers are connected to a single queue, the expected
 behaviour is round-robin distribution of messages amongst connected consumer
@@ -111,7 +118,7 @@ These actions include:
     - update `status`, in the case of unsetup servers
 
 
-## Waitlist
+### Waitlist
 
 One of the facilities CNAPI provides is the ability of creating waitlist
 tickets. These objects enable clients to wait on a queue for sequential access
@@ -123,7 +130,7 @@ create waitlist tickets around a particular (resource type, resource id, server
 uuid) combination.
 
 
-## Compute node heartbeats
+### Compute node heartbeats
 
 `cn-agent` on start-up does a DNS request for the CNAPI IP address. Every 5
 seconds, `cn-agent` POSTs a message to the CNAPI at that IP address to let 
@@ -135,12 +142,12 @@ destroyed, the CNAPI instance at the IP-address we may have on-hand could be
 unvavailable.
 
 
-## Compute Node Agent Task Execution
+### Compute Node Agent Task Execution
 
 One method CNAPI use to execute code on a compute node is via `cn-agent`.
 
 
-## VM Status Updates
+### VM Status Updates
 
 A compute node's `status` property indicates whether we have heard from the
 compute node within a certain amount of time. When `cn-agent` starts, it looks
