@@ -120,26 +120,35 @@ this could turn into a rather troublesome update. As a result, these updates
 will likely be last.
 
 
-### Problems with the GZ
+### Node in the GZ
 
-There are two problems facing updating the private Node.js version in the global
-zone to v4.
+There are some issues that make running Node >=v4.x in the GZ difficult:
 
-The first is a possible problem with illumos' runtime linker that Julien Gilli
-and Robert Mustacchi dug into: https://gist.github.com/misterdjules/1eb7987dc0d59034efb4
+- There is a bug in the illumos' runtime linker where a binary that requires
+  a lib version newer than that in the platform still runs instead of failing.
+  Details from Julien Gilli and Robert Mustacchi here:
+  https://gist.github.com/misterdjules/1eb7987dc0d59034efb4
+  (and more notes here: https://gist.github.com/misterdjules/eae9ec70dc1d91fb8dd1).
+  This issue is just relevant to be away that some binaries might appear to
+  run fine until they run into a crash if a newer lib version symbol is
+  actually used. Julien indicates that this is likely the case for coming
+  Node v7 changes.
+- Node v4 and greater require at least gcc v4.8 to build. Our older images
+  only have v4.7. This means we need to update to v15.4.x LTS origin images.
+- That newer gcc means linking to a gcc runtime that is newer than what is
+  provided in the platform. The solution here is to include the needed GCC
+  runtime libs with our sdcnode builds and set node's RPATH/RUNPATH to
+  pick those up. See TOOLS-1555 and TOOLS-1558 for this work.
 
-Specifically, Node.js v4 binaries are linked against newer versions of the C++
-runtime library, but the linker is linking against older versions of that
-runtime than is allowed (a newer one isn't available). This should not happen.
-To say this accidentally-running binary is a dodgy situation is putting it
-mildly.
+As of TOOLS-1558, there is now a sdcnode v4.6.0 build for 'gz' usage. E.g.:
 
-Josh Wilson observes that agents need to support running on platforms back to
-2013. Since the runtime linker problem may well need a platform update to fix,
-this throws a serious roadblock in the way of updating the Node.js version of
-agents and the GZ copy to v4.
+    NODE_PREBUILT_TAG = gz
+    NODE_PREBUILT_VERSION = v4.6.0
+    NODE_PREBUILT_IMAGE = 18b094b0-eb01-11e5-80c1-175dac7ddf02
 
-Some discussion here: https://jabber.joyent.com/logs/mib@conference.joyent.com/2016/08/18.html#22:26:46.155580
+Likely will require changing the jenkins job params to build on a slave
+using a multiarch-*@15.4.1 image.  See sdc-imgapi.git for an example
+(after IMGAPI-587 is complete).
 
 
 ## Notes on specific node packages
