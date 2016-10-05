@@ -234,11 +234,39 @@ Date:   Sun Jul 3 19:52:27 2016 +1000
     MORAY-342: updates deps for node 4.x support, try no. 2.
 ```
 
+## restify
+
+It is suggested that you upgrade to restify 4.x.
+
+If you are updating from before restify v4 beware a breaking change in the
+function signature for custom `formatters`. See this comment:
+<https://github.com/restify/node-restify/pull/851#issuecomment-251541881>
+
+If you are updating from before restify v3, note this breaking change:
+
+```
+- #753 **BREAKING** Include `err` parameter for all \*Error events:
+  Error events will all have the signature `function (req, res, err, cb)` to
+  become consistent with the handling functionality introduced in 2.8.5.
+  Error handlers using the `function (req, res, cb)` signature must be updated.
+```
+
+For example if you have `server.on('NotFound', ...)` or similar.
+
+
 ### sdc-clients
 
-TODO: lots here
+For node v4 support, update to sdc-clients@10.0.0 or later. Note that this
+version is a major bump that dropped the UFDS client. If you use the UFDS
+client from sdc-clients, switch to "ufds@1.2.0" or later.
 
 
 ### ufds
 
 Move to the "1.2.0" release if you can.
+
+
+## wf-client
+
+Move to "wf-client@0.2.0" or later.
+https://github.com/joyent/sdc-wf-client
