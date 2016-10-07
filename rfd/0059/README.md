@@ -223,3 +223,64 @@ Move to the "1.2.0" release if you can.
 
 Move to "wf-client@0.2.0" or later.
 https://github.com/joyent/sdc-wf-client
+
+
+## How to update a zone to node v4
+
+1. You need a 15.4.x-generation origin image. Until RFD 46 comes along that
+   means (a) sdc-minimal-multiarch-lts@15.4.1 plus (b) adding a few pkgsrc
+   package beyond minimal. Make changes similar to this to MG:
+
+    ```
+    -    "image_uuid": "fd2cc906-8938-11e3-beab-4359c665ac99",
+    +    "// image_uuid": "sdc-minimal-multiarch-lts@15.4.1",
+    +    "image_uuid": "18b094b0-eb01-11e5-80c1-175dac7ddf02",
+         "pkgsrc": [
+    +        "coreutils-8.23nb2",
+    +        "curl-7.47.1",
+    +        "dateutils-0.3.1nb1",
+    +        "grep-2.22",
+    +        "gsed-4.2.2nb4",
+    +        "patch-2.7.5",
+    +        "sudo-1.8.15"
+         ],
+    ```
+
+    This set of pkgsrc packages comes from
+    <https://github.com/joyent/rfd/tree/master/rfd/0046#q2-base--or-minimal--or-something-in-between>.
+
+2. Update your Makefile to get a 4.x sdcnode build. Something like this:
+
+    ```
+    -NODE_PREBUILT_VERSION=v0.10.46
+    +NODE_PREBUILT_VERSION=v4.6.0
+     ifeq ($(shell uname -s),SunOS)
+            NODE_PREBUILT_TAG=zone
+    -       # Allow building on a SmartOS image other than sdc-smartos@1.6.3.
+    -       NODE_PREBUILT_IMAGE=fd2cc906-8938-11e3-beab-4359c665ac99
+    +       # Allow building on other than image sdc-minimal-multiarch-lts@15.4.1.
+    +       NODE_PREBUILT_IMAGE=18b094b0-eb01-11e5-80c1-175dac7ddf02
+     endif
+    ```
+
+3. Update your Node modules deps and code per the "Node modules" section notes
+   above. For a complete example see the change to IMGAPI for this:
+   <https://github.com/joyent/sdc-imgapi/commit/7d0b4b7dedc7c36ba1eec23394d009567b6ef35a>
+
+4. To test your changes, one way is to use Jenkins' `TRY_BRANCH` builds:
+
+    (a) Push your changes to a feature branch (of MG and your repo, say,
+        sdc-cnapi.git)
+    (b) Make a `TRY_BRANCH=<feature branch name>` build in Jenkins.
+    (c) Update your COAL to that image, e.g.: `sdcadm up -C experimental cnapi`
+    (d) Or possibly build a COAL with your image, by adding something like this
+        to `build.spec.local` in your sdc-headnode.git clone:
+
+        ```
+        "zones": {
+            "cnapi": {
+                "source": "manta",
+                "branch": "<feature branch name>"
+            }
+        },
+        ```
