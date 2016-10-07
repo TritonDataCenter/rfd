@@ -53,8 +53,8 @@ to hostile networks, and thus have the most pressing need of security patches:
 * cloudapi
 * sdc-docker
 * muskie
-* imgapi (IMGAPI-587)
-* CMON
+* imgapi (IMGAPI-587, done)
+* CMON (CMON-11)
 * adminui
 * portal
 
