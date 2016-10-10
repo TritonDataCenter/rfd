@@ -120,9 +120,10 @@ function is similarly simple, although it will verify two things:
    which which would require un-branding a `cred_t` (except during `crfree()`)
    are apparent at this time.
 
-An assertion will be added to `crsetzone`, checking that `cr_brand` is `NULL`.
-This is a safety precaution as `cr_brand` should always be `NULL` for GZ
-processes entering a NGZ.  (It should never be called NGZ-to-GZ.)
+In addition to `cr_brand`, a `zone_t *cr_brand_zone` field will also be
+included in the `cred_t` definition.  Its purpose, explained in the
+_Psetzoneid_ section below, is to hold a reference to the originating zone when
+branded `cred_t` entities are temporarily reassigned to a different zone.
 
 ### Brand Hooks
 
@@ -140,6 +141,31 @@ which has recently entered the zone (like zlogin or init).  In order to
 facilitate `cred_t` destruction, the `b_credclear` hook is called to release and
 deallocate brand data during `crfree()`.  Finally, `b_creddup` is called to
 allocate and duplicate brand data when a branded `cred_t` undergoes `crdup()`.
+
+### The Psetzoneid Problem
+
+Normally, processes stay locked inside a single zone for their entire lifetime.
+There are two primary activities where this is not the case: When a `zsched`
+processes is created as part of zone boot and during `zone_enter` as performed
+by `zlogin(1)`.  Both are a GZ-to-NGZ transition and are performed carefully
+from a branding perspective.  Transitions from NGZ-to-GZ are generally
+forbidden, given the security ramifications, but there is one prominent
+exception.  When altering `zone.*` rctls for an NGZ process, prctl will
+temporarily assign the `cred_t` of the process into the global zone so it has
+appropriate permissions to alter the zone rctls.  This is performed via
+`Psetzoneid(3PROC)` which results in a `crsetzone` call.
+
+Dealing with the potential for branded `cred_t` entities to be temporarily
+moved into the global zone presents a problem.  The `cr_zone` field cannot be
+reliably used to determine the brand to which the data is associated with.  In
+order to mitigate this shortcoming, an additional field `cr_brand_zone` should
+be setup to hold a reference to the original zone when the `cred_t` transitions
+into the GZ.  When it transitions back, the reference can be dropped.
+
+The `prctl` implementation will ideally be updated at some point to remove the
+need for `Psetzoneid` machinations.  If that occurs, and the whole `Psetzoneid`
+interface is removed from procfs, then `cr_brand_zone` and its associated logic
+can be removed from the `cred_t` handling.
 
 ## Alternatives
 
