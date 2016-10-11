@@ -1,6 +1,6 @@
 ---
-authors: Marsell Kukuljevic <marsell@joyent.com>
-state: predraft
+authors: Marsell Kukuljevic <marsell@joyent.com>, Trent Mick <trent.mick@joyent.com>
+state: publish
 ---
 
 <!--
@@ -50,13 +50,13 @@ Expected work:
 The most pressing updates are to external services. These services are exposed
 to hostile networks, and thus have the most pressing need of security patches:
 
-* cloudapi
-* sdc-docker
-* muskie
+* cloudapi (PUBAPI-1310)
+* sdc-docker (DOCKER-947)
+* muskie (MANTA-2999)
 * imgapi (IMGAPI-587, done)
 * CMON (CMON-11)
-* adminui
-* portal
+* adminui (ADMINUI-2314)
+* portal (PORTAL-2113)
 
 Internal services (including agents) are less pressing.
 
