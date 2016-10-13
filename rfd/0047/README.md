@@ -1,6 +1,6 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
-state: draft
+state: publish
 ---
 
 # RFD 47 Retention policy for Joyent engineering data in Manta
@@ -60,6 +60,8 @@ Retention policy for builds:
       flavours (`headnode[-joyent][-debug]`) \* 6 GiB per build, that is
       8 TiB of space. At one month retention we are down to 744 GiB of space.
     - for other builds: a year
+- "master" builds are special: Always retain at least one (the latest) master
+  build, even if it older than the configured cut off.
 - Ensure that the `$branch-latest` "link" files are removed if the last
   such dir was removed.
 
