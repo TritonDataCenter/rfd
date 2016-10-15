@@ -197,9 +197,6 @@ configured to work the old way (both described below).  Thus, all consumers of
 both will have to opt into the new versions, but the expectation is that this
 will be trivial for node-moray consumers.
 
-cueball currently requires Node v0.12, so the new node-moray client will
-implicitly depend on Node v0.12 as well.
-
 Although the Fast client will get a major version bump, the protocol itself is
 not being changed.  As a result, there should be no issue if either servers or
 clients are upgraded in any order after this change.  To verify this, the new
@@ -335,14 +332,17 @@ This change will publish a new node-moray major version to the npm registry.
 Clients wishing to upgrade a project from the old version to this version
 should:
 
-* Update the project to use Node v0.12 or later.
+* Make sure the project is using Node v0.10 or v0.12.  (The client appears to
+  largely work with v4 as well, but that has not been extensively tested.)
 * Ensure that the project does not use the node-moray `version()` function.  If
   it does, this behavior needs to be removed before updating to the new
   version.  If there's any confusion about this, see the section above on
   versioning.
 * Ensure that the project does not check the `name` of Errors emitted by
   node-moray.  If so, these should be changed to depend on `node-verror` and
-  use `VError.findCauseByName`.
+  use `VError.findCauseByName`.  In the short term, you can use the
+  "unwrapErrors" constructor argument to work around this, but this will make
+  error messages less useful, so it's better to update the error handling.
 * Update the project's package.json to depend on node-moray via the npm
   registry rather than a git URL.
 * Consider updating the way the Moray client is constructed to take advantage
@@ -496,10 +496,8 @@ to see in production systems.  At the very least, we'll want to:
   suite as is reasonable against a server running bits from before this project
 * pass the existing node-moray test suite.  This is tricky because the
   node-moray test process is normally just to run the moray server test suite
-  using the client to be tested as the client.  But the new client depends on
-  Node 0.12, and the existing server is stuck on 0.10 and will require
-  substantial dependency work to upgrade to 0.12.  It may be that we run the
-  test suite by hand on Node 0.10, which seems to work.
+  using the client to be tested as the client.  But the client and server may be
+  running at different versions.  See [RFD 52](../0052/README.md) for details.
 
 We'll want to manually test:
 
