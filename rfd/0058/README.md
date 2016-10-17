@@ -106,10 +106,10 @@ destination-agent because they both think they own the NICs of the VM that is
 being migrated. At first glance, it may seem that the `do_not_inventory` member
 would tell the agents to leave the NIC alone. However, it cannot be used in
 this capacity, because there is some latency from the point time when we set
-`do_not_inventory`in the store, and the poin in time when net-agent updates its
-view of the world via a `sendFullSample()` call. It is during this window, that
-net-agent can change/destroy a NIC that does not belong to it, specifically if
-it begins its reap-routine in this window.
+`do_not_inventory` in the store, and the point in time when net-agent updates
+its view of the world via a `sendFullSample()` call. It is during this window,
+that net-agent can change/destroy a NIC that does not belong to it, specifically
+if it begins its reap-routine in this window.
 
 ## Improving Net Agent
 
