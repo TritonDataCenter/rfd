@@ -238,7 +238,6 @@ https://github.com/joyent/sdc-wf-client
          "pkgsrc": [
     +        "coreutils-8.23nb2",
     +        "curl-7.47.1",
-    +        "dateutils-0.3.1nb1",
     +        "gsed-4.2.2nb4",
     +        "patch-2.7.5",
     +        "sudo-1.8.15"
@@ -247,6 +246,11 @@ https://github.com/joyent/sdc-wf-client
 
     This set of pkgsrc packages comes from
     <https://github.com/joyent/rfd/tree/master/rfd/0046#q2-base--or-minimal--or-something-in-between>.
+
+    TODO: Is `dateutils-0.3.1nb1` required? IMGAPI is using it right now but
+    there is not history for why that package (which isn't included in the RFD
+    46 set) was included. For now we should exclude it from future users, and
+    test removing it from IMGAPI's current list.
 
 2. Update your Makefile to get a 4.x sdcnode build. Something like this:
 
