@@ -226,6 +226,10 @@ image:
         | grep -v ^sdcboot | grep -v ^sdcadm  | grep -v Makefile \
         | grep -v .ldif  | grep -v min.js | grep -v /docs/
     ```
+  Actually for a while there DATASET-1269 meant that the GNU grep from pkgsrc
+  *was* required for sm-set-hostname (if used, it was for standalone IMGAPI
+  scripts). But now that that is fixed, there is no known requirement for
+  GNU grep in Triton setup scripts.
 - gsed: Include it. At least a couple core zones' setup scripts use `gsed`.
 - gtar: Exclude it. The GZ gtar should suffice.
 - less: Exclude it. GZ `less` should suffice.
@@ -463,7 +467,3 @@ Here are links to a chat discussions relevant to this RFD:
   https://jabber.joyent.com/logs/scrum@conference.joyent.com/2016/07/06.html#16:07:55.442834
   and then continued after bot's scrum here:
   https://jabber.joyent.com/logs/scrum@conference.joyent.com/2016/07/06.html#16:33:04.165302
-
-
-
-

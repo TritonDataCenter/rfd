@@ -239,7 +239,6 @@ https://github.com/joyent/sdc-wf-client
     +        "coreutils-8.23nb2",
     +        "curl-7.47.1",
     +        "dateutils-0.3.1nb1",
-    +        "grep-2.22",
     +        "gsed-4.2.2nb4",
     +        "patch-2.7.5",
     +        "sudo-1.8.15"
