@@ -1,6 +1,6 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
@@ -12,6 +12,7 @@ state: predraft
 <!--
     Copyright 2016 Joyent
 -->
+
 
 # RFD 35 Distributed Tracing for Triton
 
@@ -46,37 +47,36 @@ instrumented to expose. These individual components of work are called spans
 
 ### Span
 
-Every individual logical action performed can be considered a span. In the case
-of an HTTP request typically this span will have 4 individual components. There
-will be:
+Every individual action performed can be considered a span. For example any of:
 
- * the event where the client sends the request
- * the event where the server receives the request
- * the event where the server responds to the request
- * the event where the client receives the response
+ * a client request
+ * a server handling a single request
+ * execution of a function
 
-after the last component has completed the span will be finished.
+would be represented by a span. Each of these spans has at least a start and an
+end point but may also have other points logged through the course of execution.
 
 NOTE: See [Open Questions](#OpenQuestions) section below for discussion on
-another option here.
+another option here which was also used in previous versions of this RFD.
 
-It is also common for a span to create additional child spans. In this HTTP
-example, the most common case would be the server calling other APIs after
-receiving the client's request, but before responding to it. In that case those
-new requests are considered separate new spans, but the current span is attached
-to those through what we call a "parent span id" which is just the identifier of
-the span that created this new span. By creating parent-child relationship for
-each span after the initial user request, the trace becomes a tree.
+It is also common for a span to create additional child spans. Given an example
+of an HTTP request, the most common case would be the server calling other APIs
+after receiving a client's request, but before responding to it. In that case
+those new requests are considered separate new spans, but the current span (the
+one handling the client's request itself) is attached to those through what we
+call "parent span id" which is just the identifier of the span that created this
+new span. By creating parent-child relationship for each span after the initial
+user request, the trace becomes a tree.
 
 ### Logs / Events
 
 As each individual events on a span is written out, it is called a log.
-For the example span above we'd have 4 logs, one for each of its events.
-Logging requires at least a name for the event.
+As mentioned above most spans have at least 2 logs one for the start of the span
+and one for the end. Logging requires at least a name for the event.
 
 ### Tags
 
-What Dapper calls "Annotations", OpenTracing.io calls Tags and we'll use that
+What Dapper calls "Annotations", OpenTracing.io calls Tags, and we'll use that
 terminology here. This is basically just a set of key/value pairs that are
 attached to a span in order to add additional data about the span. This data can
 be added at any point in a span which means it's easy to add tags at the point
@@ -257,12 +257,12 @@ restify servers such that:
    that as our trace identifier (trace\_id). When a request does not include
    this, a new trace\_id is generated.
  * When an inbound request includes a triton-span-id header, we use that as our
-   span identifier (span\_id). When a request does not include this, a new
-   span\_id is generated.
+   parent span identifier (parent\_span\_id) and create a new span which is a
+   child of that span. When a request does not include this, the new span is
+   considered a root span.
  * It will be an error to include triton-span-id and not include a request-id or
    x-request-id header.
- * For every restify route handled, we generate a bunyan log on request on
-   response.
+ * For every restify route handled, we generate a single bunyan log.
  * For every restify client request (usually through node-sdc-clients) we will:
      * add a request-id header which matches the trace\_id of this trace
      * add a new triton-span-id header for this new span (client requests are
@@ -274,7 +274,7 @@ restify servers such that:
  * If triton-trace-enabled is 1, each span.log will result in a span being
    written to the bunyan logger. If it is 0 or unset, span.log will be a no-op.
 
-## Planned Implementation
+## Planned Implementation (Option A)
 
 The implementation of this work will consist of several parts:
 
@@ -293,10 +293,10 @@ We will add a `.child()` method to restify clients. This will be called as:
 
 ```
 client.child({
-    after: function onAfter() {
+    afterSync: function onAfter() {
       // code that runs after a response is received
     },
-    before: function onBefore() {
+    beforeSync: function onBefore() {
       // code that runs before anything is sent to the server
     }
 })
@@ -308,7 +308,7 @@ If an `after` function is passed, this will be called any time a client receives
 a response to a request with the following parameters:
 
 ```
-callback(err, opts, req, res);
+onAfter(err, req, res, ctx);
 ```
 
 and this callback will be called *before* the callback within restify for the
@@ -319,7 +319,7 @@ If a `before` function is passed, this will be called at the beginning of the
 the server. It will be called with the following parameters:
 
 ```
-callback(opts);
+onBefore(opts, ctx);
 ```
 
 The "opts" parameter here will be the passed API options and can be modified in
@@ -333,7 +333,7 @@ These changes will allow a caller to do something like:
 trace_id = uuid();
 
 client.child({
-    after: function _afterRequest (err, opts, req, res) {
+    afterSync: function _afterRequest (err, opts, req, res) {
         // [handle err]
 
         var code = (res && res.statusCode && res.statusCode.toString());
@@ -342,10 +342,10 @@ client.child({
             error: (err ? true : undefined),
             statusCode: code
         }, 'got response');
-    }, before: function _afterRequest (opts) {
+    }, beforeSync: function _beforeRequest (opts) {
         // [handle err]
 
-        opts.headers['trace-id'] = trace_id;
+        opts.headers['request-id'] = trace_id;
 
         req.log.debug({
             href: opts.href,
@@ -356,14 +356,15 @@ client.child({
 });
 ```
 
-which would add a `trace-id: <trace_id>` header to every outbound request and
+which would add a `request-id: <trace_id>` header to every outbound request and
 would also log the request and response using the request's own bunyan logger.
 
-We will also add an option to the create*Client() option "requiredHeaders"
+We will also add an option to the create*Client() functions "requiredHeaders"
 which would be an array of headers that our begin handler should always be
-adding. This allows us to treat it as a [programmer error](https://www.joyent.com/node-js/production/design/errors)
-when an outbound request is made without first adding the header. To use this
-one would use:
+adding. This allows us to treat it as a [programmer
+error](https://www.joyent.com/node-js/production/design/errors) when an
+outbound request is made without first adding the header. To use this one would
+use:
 
 ```
 var client = restify.createJsonClient({
@@ -381,10 +382,17 @@ var client = restify.createJsonClient({
 which would ensure we're always sending the required tracing headers for every
 request made by "client".
 
-This would also be used by the "tritonHeaders" option in sdc-clients.
+This would also be used by the "tritonHeaders" option in sdc-clients that
+passes all these options.
 
 NOTE: There's a preliminary prototype of these modifications to restify-clients
-in https://github.com/joshwilsdon/restify-clients.
+in https://github.com/joshwilsdon/restify-clients in the "upstream" branch
+which has also been submitted upstream as:
+
+https://github.com/restify/clients/pull/77
+
+though the current state is that this PR is stalled on some decisions around
+alternative implementation options (discussed further below).
 
 ### Modifications to node-sdc-clients
 
@@ -432,6 +440,22 @@ that the headers are added on all outbound requests.
 NOTE: there are some experiments (with examples) of this at:
 https://github.com/joshwilsdon/triton-tracer
 
+#### Alternative
+
+Instead of creating an opentracing implementation and using the
+opentracing-javascript library, we may also want to just create our own tracing
+implementation and skip opentracing. The reason for this is that
+opentracing-javascript is pretty unstable (several times minor and even patch
+versions have changed the API) and the implementation is also fairly complex.
+Also what we're using of it is pretty minimal. It seems that a much simpler
+implementation is possible which would also make it much easier to debug. If we
+created a new module that exposed the same basic API as opentracing, it seems
+we'd potentially be much better off.
+
+The opentracing-javascript library also does things like for example "minifying"
+some of the source which makes it very difficult to look at in mdb with
+`::jssource` or `::jsstack -v`.
+
 ### Modification of Triton Client Calls
 
 All SDC/Triton services which use restify will be modified such that their
@@ -465,12 +489,150 @@ passed through from node-vmadm/cn-agent, it will output span logs for every
 command it calls so that we have details on how long each executed command takes
 to run.
 
-## New APIs
+### New APIs
 
-New APIs can be included in the traces by:
+New APIs and services can be included in the traces by:
 
  * including the tracer module and instrumenting any restify servers created
  * always accessing restify clients through <client>.child(req)
+
+
+## Planned Implementation (Option B)
+
+After working for a while on the prototype of "Option A" above, I learned about
+something called continuation-local-storage. This lead to prototyping an
+alternative implementation with a number of very nice features but a few new
+problems.
+
+To implement this option we'd need:
+
+1. modifications to restify-clients but no need for .child()
+2. modifications to node-sdc-clients to use modified client
+3. creation of an opentracing implementation for Triton (same as above)
+4. very minimal modifications to existing Triton services
+5. modification of cn-agent
+6. modification of node-vmadm
+7. modification of vmadm
+
+### Brief overview of the "CLS" functionality
+
+When using the continuation-local-storage module or any of the
+AsyncListener/async_wrap/async_hooks implementations, the fundamental idea is to
+add hooks (init/before/after) to all functions that queue async work to the
+event loop such that we can keep track of the entire callchain even across
+asynchronous events. Combining the mechanism that keeps track of the calls (via
+an id) and some some storage that's associated with that continuation chain,
+it's possible to store data in this "continuation local storage" instead of
+having to pass data through every intervening method and manually passing things
+across async calls using closures.
+
+For further investigation, some links (in no particular order):
+
+ - [AsyncWrap Tutorial](http://blog.trevnorris.com/2015/02/asyncwrap-tutorial-introduction.html)
+ - [Node.js – Preserving Data Across Async Callbacks](https://datahero.com/blog/2014/05/22/node-js-preserving-data-across-async-callbacks/)
+ - [Conquering Asynchronous Context with CLS](http://fredkschott.com/post/2014/02/conquering-asynchronous-context-with-cls/)
+ - [node-continuation-local-storage (github)](https://github.com/othiym23/node-continuation-local-storage)
+ - [async-listener (github)](https://github.com/othiym23/async-listener)
+ - [cls-hooked (github)](https://github.com/jeff-lewis/cls-hooked)
+ - [How we instrument node.js (Opbeat)](https://opbeat.com/community/posts/how-we-instrument-nodejs/)
+ - [Talk by Forest Norvell (2014)](https://www.youtube.com/watch?v=xyjvFBTyFSE)
+ - [https://github.com/nodejs/diagnostics/tree/master/tracing/AsyncWrap](AsyncWrap doc from the WG)
+ - [Updated async_hooks API (proposed)](https://github.com/nodejs/node-eps/blob/e35d4813fdbbd99a751296e24361dba0d0dd9e10/XXX-asyncwrap-api.md) (from: [PR 18](https://github.com/nodejs/node-eps/pull/18]))
+ - [pull request that adds support for async_hooks](https://github.com/nodejs/node/pull/8531)
+
+### Modification to restify-clients
+
+The modifications required for restify-clients would be much the same as with
+Option A with one important exception. Unlike Option A, we can distinguish
+between requests without passing through the req object to each call. As such,
+there's no need to have a .child() object created for each client. Instead the
+original clients themselves can have a .beforeSync and .afterSync option which
+has the added benefit that in core files the objects will be "real" restify
+client objects instead of generic cloned objects that behave like restify
+clients.
+
+### Modifications to node-sdc-clients
+
+The modifications to sdc-clients in Option B are minimal. The only changes
+required will be to change the require statements so that a wrapper is called
+for the create*Client functions that adds the beforeSync and afterSync options.
+In the prototype, this happens via a wrapper that lives in the triton-tracer
+repo. As with restify-clients, objects created here will not need a .child()
+for Option B and will be "real" sdc-clients objects.
+
+### Creation of Opentracing implmentation
+
+This work would be almost exactly the same as with Option A. Only a few minor
+changes are required to use the CLS mechanism(s) for passing the traces instead
+of the req objects.
+
+See also "Creation of an OpenTracing implementation for Triton" section in
+Option A above.
+
+### Modification to existing Triton services
+
+This is the point where Option A and Option B differ the most. With Option B,
+adding tracing to an existing service or a new service will require adding just
+a few lines of code and should not require any modification to handlers, just
+initialization. As such, far fewer files are modified and the integration is
+*much* easier.
+
+### Modification of cn-agent, node-vmadm and vmadm
+
+The modification of these will be the same or easier than with Option A.
+Definitely no harder.
+
+### Additional complications of Option B
+
+All the points above make Option B seem like the clear choice and indeed this
+functionality was designed exactly for the sort of use-case we're trying to use
+it here. But there are some additonal complications this option brings which
+leave Option A on the table.
+
+The biggest decision to make here between the Option A and Option B is whether
+we can find an acceptable way to use the CLS/AsyncListener/AsyncWrap/AsyncHooks
+functionality. This depends somewhat on which version of node we'll be shipping
+too. The current state of affairs follows...
+
+#### node v0.10
+
+Almost everything that would be traced is at the time of this writing
+(2016-10-19) using node v0.10.x even though this version was intended to be EOL
+at the beginning of October 2016 and was extended to the end of October 2016
+due only to a mistake. So it seems reasonable to think that everything will
+need to move to at least v4.x in the timeframe that tracing is ready to be
+rolled into master. As such, it could be quite reasonable to require moving to
+v4.x to have tracing enabled.
+
+If for some reason this is *not* the case, we can also use the
+[node-continuation-local-storage](https://github.com/othiym23/node-continuation-local-storage)
+module which uses [async-listener](https://github.com/othiym23/async-listener)
+which polyfills the v0.11 AsyncListener API for node v0.10, though this is
+sub-optimal for a number of reasons including a large number of monkey-patches
+to node core APIs.
+
+#### node v4.x
+
+Node versions 4.5+ can use the
+[cls-hooked](https://github.com/jeff-lewis/cls-hooked) implementation of the
+CLS pattern. This has exactly the same API as node-continuation-local-storage
+(it was forked from this) but implements using
+[async-hook](https://github.com/AndreasMadsen/async-hook) instead which uses
+node's built-in async_wrap functionality and only a few monkey-patches.
+
+There's also new async hooks functionality that's being worked on via [a PR in
+the tracing WG](https://github.com/nodejs/node/pull/8531) that might be
+backported to v6 and v4 when it's done. That would allow for even fewer (perhaps
+none?) monkey patches with this same functionality.
+
+### Option A vs Option B
+
+Option B seems nicer in almost every way from the perspective of just updating
+an individual service. There are far fewer changes required to instrument a
+service and implementing in a new service will also be trivial. The biggest
+challenge for Option B however is working out a way to do this that's going to
+be acceptable with regard to debugging and performance. Experimentation in this
+area is ongoing.
 
 ## Trace Data
 
@@ -681,6 +843,15 @@ If after a future RFD, data is going in realtime to an external system, it will
 be possible for the client to use the request-id they're returned in order to
 lookup this data in that external system soon after the request has completed.
 
+As part of the prototype, I've written a very quick tool called "ziploader":
+
+https://github.com/joyent/ziploader
+
+which can upload traces with a small delay to a zipkin server. This works by
+running in the GZ after being pointed at a zipkin instance and watching the logs
+on the node. As log messages come in about spans, these are batched up and
+pushed to zipkin.
+
 ## Open Questions
 
 ### Manta
@@ -690,12 +861,12 @@ required, is it acceptable that this be a separate RFD?
 
 ### Breaking down Spans
 
-This document assumes that we want Zipkin-like spans where we've got the client
+When this work was started, we assumed that we'd want Zipkin-like spans where we've got the client
 and server portions for an individual request as part of the same span.
 OpenTracing seems to guide implementers toward instead treating the components
 that occur on separate systems as separate spans. The difference here would be:
 
-Current Description:
+Zipkin-style:
 
 ```
  TRACE X
@@ -706,7 +877,7 @@ Current Description:
       \_ [client] receive response
 ```
 
-Alternative:
+Opentracing-style:
 
 ```
  TRACE X
@@ -722,11 +893,23 @@ in both cases we would still be able tie things together. The difference is just
 whether these events are part of one or 2 spans. This also in turn impacts the
 scope of tags and the operation name of the span.
 
-The biggest reason I can see that we might want to do this would be that we
-could add a tag `component` that indicates `restifyclient` or `restifyserver`
-potentially also with a tag for version. As it is now the span would have a
-single component tag or separate component tags for the client and server. So
-it's just a slightly different way of representing the data.
+The biggest reason I can see that we might want to go with Opentracing-style is that we
+can add a tag `component` that indicates `restifyclient` or `restifyserver`
+potentially also with a tag for version. It also simplifies implementation
+somewhat since you're *always* creating a new span and never trying to continue
+a span.
+
+If there are strong arguments for Zipkin-style, we can reconsider.
+
+### Data propagation
+
+See also the Planned Implementation sections above and specifically the section
+on "Option A vs Option B". We need to make a decision on this before any changes
+are merged to master. If we're going with Option A, then that mostly excludes
+Option B from being as useful (since all code changes that Option A requires
+will have already been completed removing much of the benefit of Option B). If
+we're going with Option B, we'll need to figure out a working mechanism for that
+that's acceptable to Joyent Engineering.
 
 ### Sampling
 

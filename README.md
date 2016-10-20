@@ -77,7 +77,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 32 Multiple IP Addresses in NAPI](./rfd/0032/README.md) |
 | publish  | [RFD 33 Moray client v2](./rfd/0033/README.md) |
 | predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
-| predraft | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
+| draft | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
 | predraft | [RFD 36 Mariposa](./rfd/0036/README.md) |
 | draft    | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
 | draft    | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
