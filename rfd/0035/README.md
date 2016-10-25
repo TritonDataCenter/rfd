@@ -456,6 +456,15 @@ The opentracing-javascript library also does things like for example "minifying"
 some of the source which makes it very difficult to look at in mdb with
 `::jssource` or `::jsstack -v`.
 
+The biggest risk of doing our own thing w/o using the official
+opentracing-javascript would be that if OpenTracing really takes off and we want
+to use some community components that only work with OpenTracing and somehow
+don't work with our implementation that could be a problem. Since all the
+tracing is independent of the APIs however, it still seems like this sort of
+change would be possible to do in one place (triton-tracer) and not require
+anything more than an update to the APIs. Worth more discussion however on
+pros/cons.
+
 ### Modification of Triton Client Calls
 
 All SDC/Triton services which use restify will be modified such that their
@@ -593,6 +602,30 @@ The biggest decision to make here between the Option A and Option B is whether
 we can find an acceptable way to use the CLS/AsyncListener/AsyncWrap/AsyncHooks
 functionality. This depends somewhat on which version of node we'll be shipping
 too. The current state of affairs follows...
+
+### Advantages of Option B
+
+It's hard to overstate how much less intrusive Option B is vs Option A for
+existing code. For Option A: *a lot* of functions need to have to be modified
+including *a lot* of function prototypes. This is required because when we
+currently have a handler(req, res, next) for an endpoint, that handler often
+does not pass the `req` object to the backend that's actually going to deal with
+the request. In those cases, we need to modify all functions that the handler
+calls, and all functions that those functions call until `req` is passed to
+every function that might ever need to make an outbound request to handle the
+request or might perform any local work (which is basically everything).
+
+Changing so many functions across so many files is both tedious and dangerous.
+It also makes the code more brittle since any additional function that gets
+added may accidentally break tracing if it doesn't pass the `req` through
+everywhere. The `req` is needed since that's the object we've got the span
+context tied too (since we need one for each request we're handling).
+
+With Option B we can avoid all these modifications. The modifications to
+existing code and new code are very minimal. Most likely this will require the
+addition of less than 10 lines of code plus modification of some includes. The
+rest of the code will not be modified and it should be much easier to avoid
+accidentally introducing new bugs.
 
 #### node v0.10
 
@@ -929,6 +962,21 @@ probability between 0 and 1.
 The open question here is whether this support needs to be in the initial
 version or whether this can be a future enhancement.
 
+How I expect this would work is that when starting a new trace (i.e. entrypoint
+into triton whether this is as a client or server) a set of criteria can be
+passed in which indicate probabilities that a given trace should be enabled or
+not. For most endpoints I expect that the probability would be 1, meaning trace
+always. But for others (/ping especially) we might want a much smaller
+probability. When the entrypoint decides it sets the triton-trace-enabled flag
+which gets passed along to all other services down the stack.
+
+When a service receives a message, it always passes along the headers even when
+the tracing is disabled. This ensures that other logs still contain the correct
+request-id per the Joyent Engineering Guidelines and if something crashes we'll
+be able to still track it back to which request by pulling that data out of the
+core dump. The only difference between triton-trace-enabled true and false will
+be whether the traces get written out when span.finish() is called.
+
 ### Translating existing vmadm messages
 
 With [OS-3902](https://github.com/joyent/smartos-live/commit/d73d040) some
@@ -936,3 +984,20 @@ initial experimental support was added to vmadm to log event messages. We will
 investigate whether there's some way to include some of these messages from old
 platforms in traces while we modify vmadm to log in the new format.
 
+### Volume of data
+
+Since this tracing will be writing out a lot of data, we should do some
+investigation into how acceptable this will be. Suggested plan of attack here is
+to look at existing logs from Triton and use existing numbers of requests for
+various services combined with prototype numbers of logs per request to
+determine how much additional data this might be.
+
+If at some point we determine that this will be too much data to write to disk,
+we should be able to change the target of the data by adding a separate bunyan
+log backend that sends the data somewhere other than the disk. A previous
+experiment had created:
+
+https://github.com/joshwilsdon/effluent-logger
+
+which plugs into bunyan and sends messages to fluentd. We could have these go to
+some other system in a simlar manner and not write them to local disk.
