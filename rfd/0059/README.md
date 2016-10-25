@@ -189,22 +189,55 @@ Date:   Sun Jul 3 19:52:27 2016 +1000
 
 ## restify
 
-It is suggested that you upgrade to restify 4.x.
+It is suggested that you upgrade to restify 4.x. Some update notes:
 
-If you are updating from before restify v4 beware a breaking change in the
-function signature for custom `formatters`. See this comment:
-<https://github.com/restify/node-restify/pull/851#issuecomment-251541881>
+1. Restify v4 introduced a breaking change in the function signature for custom
+   `formatters`. For example, if you pass custom formatters to `restify.createServer`
+   like this code in VMAPI (https://github.com/joyent/sdc-vmapi/blob/af77e72ae7b26f51d4ac3b5cb9484cd8d04b27dc/lib/vmapi.js#L179):
 
-If you are updating from before restify v3, note this breaking change:
+    ```
+    this.server = restify.createServer({
+        name: 'VMAPI',
+        log: log.child({ component: 'api' }, true),
+        formatters: {
+            'application/json': formatJSON,    // <---- HERE
+    ...
+    ```
 
-```
-- #753 **BREAKING** Include `err` parameter for all \*Error events:
-  Error events will all have the signature `function (req, res, err, cb)` to
-  become consistent with the handling functionality introduced in 2.8.5.
-  Error handlers using the `function (req, res, cb)` signature must be updated.
-```
+    then you will need to change your formatter function to take and call
+    a callback. For example, this VMAPI change did that:
+    <https://github.com/joyent/sdc-vmapi/commit/3f90d04>
 
-For example if you have `server.on('NotFound', ...)` or similar.
+   See this restify issue for details:
+   <https://github.com/restify/node-restify/pull/851#issuecomment-251541881>
+
+2. restify v3 introduced this breaking change:
+
+    ```
+    - #753 **BREAKING** Include `err` parameter for all \*Error events:
+      Error events will all have the signature `function (req, res, err, cb)` to
+      become consistent with the handling functionality introduced in 2.8.5.
+      Error handlers using the `function (req, res, cb)` signature must be updated.
+    ```
+
+    For example if you have `server.on('NotFound', ...)` or similar.
+    Note that this does **not** apply to `uncaughtException`, which continues
+    to have this signature:
+
+    ```
+    server.on('uncaughtException', function (req, res, route, err) {
+        ...
+    });
+    ```
+
+3. restify v4 introduced a breaking subtlety in query string parsing (i.e.
+   usage of the `queryParser()` plugin). This happened because of a default
+   behaviour change in the "qs" module that `queryParser` uses for parsing.
+
+   TODO: details coming. Trent is working on an update to restify@4 to provide
+   a workaround.
+
+   See <https://devhub.joyent.com/jira/browse/ZAPI-744> for gory details.
 
 
 ### sdc-clients
