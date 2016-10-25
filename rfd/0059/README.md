@@ -52,6 +52,7 @@ Expected work:
     - cmon (CMON-11)
 
 ```
+$ grep NODE_PREBUILT_VERSION */Makefile | awk -F '(/|=)' '{print $1 " " $3}' | awk '{printf("%-10s %s\n", $2, $1)}' | sort
 v0.10.24   mantamon
 v0.10.24   moray
 v0.10.25   electric-moray
