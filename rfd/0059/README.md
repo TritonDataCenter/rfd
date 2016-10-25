@@ -43,6 +43,12 @@ Expected work:
   [Node modules](#node-modules) section below.
 - 'sdcnode' now includes node v4 builds for usage both in zones using
   sdc-minimal-multiarch-lts@15.4.1 as an origin, and in the GZ.
+- In progress (as of 25 Oct 2016):
+    - cloudapi (PUBAPI-1310)
+    - vmapi (joshw)
+    - v8plus (TOOLS-1586)
+    - sdc-docker (DOCKER_947)
+    - platform's node (OS-5742)
 
 
 ## Order of service updates
@@ -102,6 +108,16 @@ As of TOOLS-1558, there is now a sdcnode v4.6.0 build for 'gz' usage. E.g.:
 Likely will require changing the jenkins job params to build on a slave
 using a multiarch-*@15.4.1 image.  See sdc-imgapi.git for an example
 (after IMGAPI-587 is complete).
+
+
+## v8plus
+
+The following binary modules use v8plus: zonename, lockfd, zutil, zsock,
+illumos_contract, zsock-async. v8plus doesn't work with node v4 yet.
+jclulow mentioned in chat that he could look at making v8plus work with v4.
+A start at that work: https://github.com/joyent/v8plus/commits/jclulow
+It was agreed that updating v8plus is worth at least looking at first:
+<https://smartos.org/bugview/TOOLS-1586>.
 
 
 ## Node modules
