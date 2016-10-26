@@ -312,14 +312,38 @@ It is suggested that you upgrade to restify 4.x. Some update notes:
    behaviour change in the "qs" module that `queryParser` uses for parsing.
 
    TODO: details coming. Trent is working on an update to restify@4 to provide
-   a workaround.
+   a workaround. It will be restify@4.2.0. The PR is here:
+   <https://github.com/restify/node-restify/pull/1209>.
 
    See <https://devhub.joyent.com/jira/browse/ZAPI-744> for gory details.
 
 
+### restify-clients
+
+If your repo only needs the clients (and possibly the error classes) from
+restify, then you should switch to restify-clients@1.x and restify-errors@3.x.
+
+The current suggested minimum version of these deps is as follows.
+For modules/libraries (where my suggestion is to use semver ranges):
+
+    "restify-clients": "^1.4.1",
+    "restify-errors": "^3.0.0",
+
+For apps (where the suggestion is to pin versions):
+
+    "restify-clients": "1.4.1",
+    "restify-errors": "3.1.0",
+
+**Note**: We are intentionally avoiding restify-errors@4 which introduced a
+backward incompatible change in error code names. The plan is a coming
+restify-errors@5 that restores the compatible behaviour with v3 and
+restify (the server component) before this change. See
+<https://github.com/restify/clients/pull/42#issuecomment-251758900> for
+discussion and details.
+
 ### sdc-clients
 
-For node v4 support, update to sdc-clients@10.0.0 or later. Note that this
+For node v4 support, update to sdc-clients@10.x or later. Note that this
 version is a major bump that dropped the UFDS client. If you use the UFDS
 client from sdc-clients, switch to "ufds@1.2.0" or later.
 
