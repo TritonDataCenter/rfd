@@ -311,9 +311,24 @@ It is suggested that you upgrade to restify 4.x. Some update notes:
    usage of the `queryParser()` plugin). This happened because of a default
    behaviour change in the "qs" module that `queryParser` uses for parsing.
 
-   TODO: details coming. Trent is working on an update to restify@4 to provide
-   a workaround. It will be restify@4.2.0. The PR is here:
-   <https://github.com/restify/node-restify/pull/1209>.
+   The suggested way to handle this is to (a) use restify@4.2.0 at least
+   and (b) use the `queryParser` plugin as follows:
+
+    ```
+    restify.queryParser({allowDots: false, plainObjects: false})
+    ```
+
+   When eventually we move to restify 5.x and beyond (**but don't move to
+   restify@5.x yet!**), the plugins are unbundled to a separate restify-plugins.
+   Use at least restify-plugins@XXX (Trent has yet to submit the PR to
+   restify-plugins with this functionality), and use the same options to
+   queryParser (those will actually be the new default options):
+
+    ```
+    var restifyPlugins = require('restify-plugins');
+    ...
+    restifyPlugins.queryParser({allowDots: false, plainObjects: false})
+    ```
 
    See <https://devhub.joyent.com/jira/browse/ZAPI-744> for gory details.
 
