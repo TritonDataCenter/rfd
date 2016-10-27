@@ -47,7 +47,7 @@ Expected work:
     - cloudapi (PUBAPI-1310)
     - vmapi (joshw)
     - v8plus (TOOLS-1586)
-    - sdc-docker (DOCKER_947)
+    - sdc-docker (DOCKER-947)
     - platform's node (OS-5742)
     - cmon (CMON-11)
 
@@ -266,7 +266,8 @@ Date:   Sun Jul 3 19:52:27 2016 +1000
 
 ## restify
 
-It is suggested that you upgrade to restify 4.x. Some update notes:
+It is suggested that you upgrade to restify 4.x (at least restify@4.2.0). Some
+update notes:
 
 1. Restify v4 introduced a breaking change in the function signature for custom
    `formatters`. For example, if you pass custom formatters to `restify.createServer`
