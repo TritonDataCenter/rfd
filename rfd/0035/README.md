@@ -286,6 +286,7 @@ The implementation of this work will consist of several parts:
 6. modification of cn-agent
 7. modification of node-vmadm
 8. modification of vmadm
+9. modification of node-moray
 
 ### Modifications to restify-clients
 
@@ -498,6 +499,13 @@ passed through from node-vmadm/cn-agent, it will output span logs for every
 command it calls so that we have details on how long each executed command takes
 to run.
 
+### Modification of node-moray
+
+The node-moray module will be modified such that we are able to trace between
+request and response for each moray request at least on the client side. Ideally
+this will also include information about which moray instance handled the
+request.
+
 ### New APIs
 
 New APIs and services can be included in the traces by:
@@ -522,6 +530,7 @@ To implement this option we'd need:
 5. modification of cn-agent
 6. modification of node-vmadm
 7. modification of vmadm
+8. modification of node-moray
 
 ### Brief overview of the "CLS" functionality
 
@@ -586,7 +595,7 @@ a few lines of code and should not require any modification to handlers, just
 initialization. As such, far fewer files are modified and the integration is
 *much* easier.
 
-### Modification of cn-agent, node-vmadm and vmadm
+### Modification of cn-agent, node-vmadm, vmadm and node-moray
 
 The modification of these will be the same or easier than with Option A.
 Definitely no harder.
@@ -1001,3 +1010,24 @@ https://github.com/joshwilsdon/effluent-logger
 
 which plugs into bunyan and sends messages to fluentd. We could have these go to
 some other system in a simlar manner and not write them to local disk.
+
+### Impact on post-mortem debugging
+
+A question came up about how using CLS (assuming we're going with Option B for
+implementation) would impact debugging using post-mortem debugging.
+
+After some discussion internally, it seems that it is unlikely that CLS will
+have any impact on post-mortem facilities, especially if care is taken to fork
+libraries where required to not catch exceptions. The libraries investigated so
+far do sometimes catch exceptions, but a fork has already been created that does
+not and this will not impact our ability to use them at all.
+
+The facilities themselves in node here also should not lead to any new
+complications for debugging using mdb.
+
+One complication if we implement this functionality using Option A is that
+because we're cloning objects, the JsonClient and StringClient and HttpClient
+objects from restify would show up with a prototype of Object instead of
+JsonClient in mdb. This problem is eliminated using CLS since no object cloning
+is involved. With CLS/Option B, we'll also not need to create a clone for every
+used client for each request.
