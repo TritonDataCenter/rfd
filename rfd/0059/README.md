@@ -96,7 +96,7 @@ v0.10.29   sdc-napi-ufds-watcher
 v0.10.26   sdc-net-agent
 v0.10.43   sdc-nfsserver
 v4.4.0     sdc-nfsserver
-v0.10.26   sdc-papi
+v4.6.1     sdc-papi
 v0.10.32   sdc-portolan
 v0.10.26   sdc-sapi
 v0.10.29   sdc-sdc
@@ -109,6 +109,9 @@ v0.10.40   sdc-volapi
 v0.10.26   sdc-workflow
 v0.10.26   sdcadm
 v0.12.9    triton-cns
+
+$ grep NODE_PREBUILT_VERSION */Makefile | awk -F '(/|=)' '{print $1 " " $3}' | sort | awk '{printf("%-10s %s\n", $2, $1)}' | grep -v '^v4\.6' | wc -l
+      53
 ```
 
 
