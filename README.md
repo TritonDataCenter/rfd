@@ -107,6 +107,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 62 Replace Workflow API](./rfd/0062/README.md) |
 | predraft | [RFD 63 Adding branding to kernel cred\_t](./rfd/0063/README.md) |
 | predraft | [RFD 64 Hardware Inventory GRUB Menu Item](./rfd/0064/README.md) |
+| predraft | [RFD 65 Multipart Uploads for Manta](./rfd/0065/README.md) |
 
 ## Contents of an RFD
 
