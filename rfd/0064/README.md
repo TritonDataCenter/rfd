@@ -26,7 +26,7 @@ the output of the following commands for hardware validation:
 - `diskinfo`
 
 A significant number of customers are using VGA consoles, so they are unable
-to cut/paste the output easily. Additoinally, in most cases the customers
+to cut/paste the output easily. Additionally, in most cases the customers
 are not able to or unable to bring networking up in order to allow the files
 to be moved/sent from another system.
 
