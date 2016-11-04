@@ -1,6 +1,6 @@
 ---
 authors: Jordan Hendricks <jordan.hendricks@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
