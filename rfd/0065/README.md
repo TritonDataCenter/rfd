@@ -73,7 +73,7 @@ In terms of API constraints, we will adopt many of Amazon s3's general constrain
 
 ### Implementation Discussion
 
-With these goals and constraints in mind, we can now begin to design of the multipart upload implementation in Manta.
+With these goals and constraints in mind, we can now begin to design the multipart upload implementation in Manta.
 
 #### Storing Parts
 Similar to the Manta jobs API, which stores information about jobs at `/$ACCOUNT/jobs` in Manta, we can store multipart uploads under a special uploads directory at the root of the account. 
@@ -346,12 +346,19 @@ Desired Operations:
 * Initiate a multipart upload for an object: `create-mpu`
 * Upload the parts of that object: `upload-part`
 * Indicate that the upload is completed after all parts are uploaded: `commit`
-
-Implementation Requirements and Constraints:
 * Canceling an upload in progress: `abort`
 * Querying an upload's state: `get-mpu`
 * Listing parts that have been uploaded for an upload: `list-parts`
 * See all multipart uploads in progress: `list-mpu`
+
+Implementation Requirements and Constraints:
+
+1. A place to store the parts as they are uploaded: `/$ACCOUNT/uploads/[0-f]/uuid`
+2. A mechanism to create the final object from the uploaded parts: `mako-finalize`
+3. Ensure that parts may be listed easily: All parts stored in same directory (and thus their metadata is on the same shard)
+4. Ensure that uploads may be listed easily: All uploads listed in a small number of directories (few shards to contact)
+5. Account for multiple clients and component failures, particularly when considering finalizing an upload: atomic and idempotent `commit`/`abort`
+6. Account for cleanup of upload metadata and part data: garbage collection.
 
 ## Affected Repositories
 At a minimum, this feature will require changing the following repositories:
