@@ -328,23 +328,17 @@ the new source:
 
 ## Instructions for node-moray consumers
 
-This change will publish a new node-moray major version to the npm registry.
+This change published a new node-moray major version to the npm registry.
 Clients wishing to upgrade a project from the old version to this version
 should:
 
 * Make sure the project is using Node v0.10 or v0.12.  (The client appears to
   largely work with v4 as well, but that has not been extensively tested.)
-* Ensure that the project does not use the node-moray `version()` function.  If
-  it does, this behavior needs to be removed before updating to the new
-  version.  If there's any confusion about this, see the section above on
-  versioning.
-* Ensure that the project does not check the `name` of Errors emitted by
-  node-moray.  If so, these should be changed to depend on `node-verror` and
-  use `VError.findCauseByName`.  In the short term, you can use the
-  "unwrapErrors" constructor argument to work around this, but this will make
-  error messages less useful, so it's better to update the error handling.
 * Update the project's package.json to depend on node-moray via the npm
   registry rather than a git URL.
+* Review the [breaking
+  changes](https://github.com/joyent/node-moray/blob/master/CHANGES.md) and deal
+  with them appropriately in the project.
 * Consider updating the way the Moray client is constructed to take advantage
   of the better control afforded by the new constructor options.
 * **Verify that the component still works as expected**.  It would be a bug if
