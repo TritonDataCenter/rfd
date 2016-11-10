@@ -1389,13 +1389,13 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
 ##### Output
 
-An object with the following properties:
+A [volume object](#volume-objects) representing the volume with UUID `uuid`. The
+`state` property of the volume object is either `creating` or `failed`.
 
-* `volume_uuid`: the UUID of the newly created volume.
-* `job_uuid`: the UUID of the job that is creating the volume.
-
-When creating a volume, polling the job using the `job_uuid` can be used to
-determine when the volume is created and can be used.
+If the `state` property of the newly created volume is `creating`, sending
+`GetVolume` requests periodically can be used to determine when the volume is
+either ready to use (`state` === `'ready'`) or when it failed to be created
+(`state` === `'failed'`.
 
 #### DeleteVolume DELETE /volumes/volume-uuid
 
@@ -1578,11 +1578,12 @@ Volumes are be represented as objects that share a common set of properties:
   properties](#type-specific-properties).
 * `create_timestamp`: a timestamp that indicates the time at which the volume
   was created.
-* `state`: `creating`, `ready`, `deleted`, `failed` or `rolling_back`. Indicates
-  in which state the volume currently is. `deleted` and `failed` volumes are
-  still persisted to Moray for troubleshooting/debugging purposes. See the
-  section [Volumes state machine](#volumes-state-machine) for a diagram and
-  further details about the volumes' state machine.
+* `state`: `creating`, `ready`, `deleting`, `deleted`, `failed` or
+  `rolling_back`. Indicates in which state the volume currently is. `deleted`
+  and `failed` volumes are still persisted to Moray for
+  troubleshooting/debugging purposes. See the section [Volumes state
+  machine](#volumes-state-machine) for a diagram and further details about the
+  volumes' state machine.
 * `error`: an optional property present when the `state` property is `failed`.
   It allows users to get further details on why a volume is in the `failed`
   state. Its value is an object with the following properties:
@@ -1642,7 +1643,7 @@ Volume objects of any type are stored in the _same_ moray bucket named
 performed in different tables, then aggregated and sometimes resorted when a
 sorted search is requested.
 
-Indices are setup for the following searchable properties:
+Indexes are setup for the following searchable properties:
 
 * `owner_uuid`
 * `name`
