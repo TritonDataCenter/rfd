@@ -109,6 +109,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 64 Hardware Inventory GRUB Menu Item](./rfd/0064/README.md) |
 | draft | [RFD 65 Multipart Uploads for Manta](./rfd/0065/README.md) |
 | draft | [RFD 66 USBA improvements for USB 3.x](./rfd/0066/README.md) |
+| predraft | [RFD 67 Triton headnode resilience](./rfd/0067/README.md) |
 
 ## Contents of an RFD
 
