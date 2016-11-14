@@ -1,5 +1,5 @@
 ---
-author: Robert Mustacchi <rm@joyent.com>
+authors: Robert Mustacchi <rm@joyent.com>, Jerry Jelinek <jerry@joyent.com>
 state: draft
 ---
 
@@ -15,7 +15,7 @@ implemented by some of the logic in
 [disklayout(1M)](http://smartos.org/man/1m/disklayout). While disklayout
 logically allows for a couple of different layouts to be used, Triton
 does not allow administrators to specify them. In an ideal, more
-appliance centric world, this continue being determined automatically;
+appliance centric world, this continues being determined automatically;
 however, reality does not allow us to be quite so rigid.  In fact, over
 the life time of disklayout.js, there have been many changes to these
 hard-code defaults based on sometimes contradictory customer
@@ -26,24 +26,22 @@ information, we should instead choose to expose it. The challenge is to
 make this useful to administrators without introducing too much
 additional complexity.
 
-## Exposed Options
+## Alternatives for Exposing Options
+
+There are two different ways we could choose to expose control of the
+pool topology to the administrator.
 
 ### Exposing RAID Stripe Options
 
-There are two different ways we could choose to expose the pool
-topology. The first is to describe pool layouts in a style similar to
+The first alternative is to describe pool layouts in a style similar to
 `disklayout(1M)`. `disklayout(1M)` has the notion of different layouts,
 like `mirror`, that describe how disks are laid out. The supported
 profiles today are:
 
+* single - Indicating a single drive should be used for the pool.
 * mirror - Indicating drives should be mirrored and then striped.
 * raidz1 - Indicating that drives should be put into a RAID-Z1 stripe
 * raidz2 - Indicating that drives should be put into RAID-Z2 stripes
-
-If we moved forward with this, we need to also add support for the
-following:
-
-* raidz3 - Indicating that drives should be put into a RAID-Z3 stripe
 
 Note that this is only intended to allow the operator to have a broad
 level of specification. This is not meant to allow or force the operator
@@ -52,13 +50,14 @@ automatically:
 
 1. Stripe Size
 2. Assignment of devices as SLOGs and Cache Devices
-3. Number of spares
+
+This is the approach that we have ultimately settled upon.
 
 ### Qualitative Descriptions
 
-Another option that we could go for is allowing for the user to describe
+Another alternative would be to allow for the user to describe
 and pick more qualitative options. In this world, the user would have to
-basically prioritize the following three axis:
+basically prioritize the following three axes:
 
 1. Capacity of Storage
 2. Performance of Storage
@@ -77,58 +76,74 @@ On the other hand, it may also allow us more flexibility and require us
 to teach customers less. You don't have to explain how the RAID profiles
 work.
 
-It is the author's belief that while this options is interesting and has
-merits (and was in fact the first idea we had here), it's not the most
-useful idea or approach for this problem.
+It is our belief that while this option is interesting and has
+merits (and was in fact the first idea we had), it's not the most
+useful solution for this problem.
+
+## Exposing Disk Layout
+
+To enable the configuration flexibility required by this RFD we have chosen
+the first alternative; extending and exposing `disklayout(1M)`. The following
+enhancements will be made.
+
+* An option will be added to allow the administrator to specify the number
+of spares. This will explicitly include the choice of 0 spares.
+* An option will be added to allow the administrator to specify that no
+cache device should be allocated.
+* Support for the `raidz3` layout profile will be added.
 
 ## User Interfaces
 
 This choice should be presented as part of setting up a compute node.
 Setting this information should always be considered *optional*. In
 other words, existing installations shouldn't have to change anything in
-their processes and scripts. For the purpose of this discussion, I'm
-going to describe this using the world where we're exposing the specific
-pool layouts like `mirror` or `raidz2`.
+their processes and scripts.
 
 ### SAPI Properties
 
-A new SAPI property should be introduced that is used to describe the
-default pool layout. Tools need to treat the absence of this property as
-basically saying that there is no default pool layout and thus we should
-have today's default behavior.
+New SAPI properties be introduced that are used to describe the default pool
+layout, number of spares, and cache control. Tools need to treat the absence
+of these properties as equivalent to today's default behavior.
 
-The name of the SAPI property is beyond the scope of this document;
+The name of the SAPI properties are beyond the scope of this document;
 however, users themselves should never directly interact with SAPI and
 instead this should be covered by other means of manipulating the
-property as described below.
+properties as described below.
 
 ### Changes to Compute Node Setup
 
-When setting up a compute node whether via AdminUI or via sdc-server a
-new optional argument to pass the layout should be provided. If no
+When setting up a compute node, either via AdminUI or via sdc-server,
+new optional arguments to control the layout will be provided. If no
 layout is provided, it should consult SAPI using the new property
 described above.
 
-For the `sdc-server` command an explicit layout option may be specified
-through something like a new `-l` option or as a parameter that's at the
-end. These may look like:
+For `sdc-server` the following new command line options will be added:
+
+* layout
+* spares
+* cache
+
+When fully specified, the command would look like this:
 
 ```
-sdc-server setup [-s] [-l layout] <uuid> [PARAMS]
-sdc-server setup [-s] <uuid> [layout=<str>] [PARAMS]...
+sdc-server setup <uuid> layout=raidz2 spares=0 cache=false [PARAMS]...
 ```
 
-In addition, a similar change should be made to AdminUI, allowing a
-specific layout to be selected. Like with sdc-server if nothing is
-selected, it should default to checking SAPI.
+In addition, similar changes should be made to AdminUI, allowing a
+specific layout and the other options to be selected. As with sdc-server,
+if nothing is selected, it should default to checking SAPI.
 
 To help deal with the software being at different versions, the lack of
-a property in SAPI should always be treated as no property being set
+the new properties in SAPI should always be treated as no property being set,
 which should be equivalent to the default behavior.
 
-Note, the actual way that this information gets passed to the compute
-node as part of set up should be worked out by those who are working on
-this.
+The way that this information gets passed to the compute node as part of
+set up is via CNAPI, which will be enhanced to add the following (optional)
+entries into the node.config file:
+
+* layout
+* spares
+* cache
 
 #### Propagating Failure
 
@@ -145,11 +160,10 @@ This likely could be extended to other parts of the CN setup process.
 
 ### Managing the Default
 
-As part of this, we've suggested that there should be a new property.
-That property needs to be made available to the operator and they need
-the ability to inspect and change that, as well as understand their
-options. These needs to be represented in both AdminUI and through
-`sdcadm`.
+As part of this, we've suggested that there should be new properties.
+These properties need to be made available to the operator and they need
+the ability to inspect and change them, as well as understand their
+options. This needs to be represented in both AdminUI and through `sdcadm`.
 
 In AdminUI, the option to set the default should be added to some set of
 defaults page for servers.
@@ -176,7 +190,9 @@ the `sdcadm server setup` option, we should make sure that it and the
 `sdc-server` code can share implementation where possible and start the
 process of deprecating sdc-server in favor of `sdcadm server`.
 
-### Storage Profile Dry Runs
+### Future Enhancements
+
+#### Storage Profile Dry Runs
 
 One of the first things that'll come up as soon as we introduce options
 is that an operator will ask what do the different pools look like,
@@ -203,7 +219,7 @@ there and in the UI is important.
 On the CLI this might be a good fit for something under `sdcadm server`,
 whether under a setup command or other option.
 
-### Headnode Setup
+#### Headnode Setup
 
 The last piece of this picture is dealing with headnode setup. We should
 put together a new question to prompt what the user wants as the layout
