@@ -24,3 +24,11 @@ milestones for more manual recovery processes.
 TODO: more details coming, obviously
 
 
+# Trent's scratch notes
+
+Want/need a recovery boot mode? I.e. this isn't a CN, it'll be a headnode, but
+*don't* go through the full headnode setup.
+
+Noodling on:
+    sdcadm recover [arg]
+
