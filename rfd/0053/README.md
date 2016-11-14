@@ -137,13 +137,13 @@ that this is the reason set up failed should be obvious.
 
 This likely could be extended to other parts of the CN setup process.
 
-### Future Enhancements
+## Future Enhancements
 
-#### AdminUI
+### AdminUI
 
 AdminUI can be enhanced to expose the same new options as sdc-server,
 
-#### SAPI Properties
+### SAPI Properties
 
 New SAPI properties can be introduced that are used to describe the default
 pool layout, number of spares, and cache control. Tools would need to treat
@@ -158,7 +158,7 @@ To help deal with the software being at different versions, the lack of
 the new properties in SAPI should always be treated as no property being set,
 which should be equivalent to the default behavior.
 
-##### Managing the Defaults
+#### Managing the Defaults
 
 The new SAPI properties need to be made available to the operator and they
 need the ability to inspect and change them, as well as understand their
@@ -186,7 +186,7 @@ the `sdcadm server setup` option, we should make sure that it and the
 `sdc-server` code can share implementation where possible and start the
 process of deprecating sdc-server in favor of `sdcadm server`.
 
-#### Storage Profile Dry Runs
+### Storage Profile Dry Runs
 
 One of the first things that'll come up as soon as we introduce options
 is that an operator will ask what do the different pools look like,
@@ -213,7 +213,7 @@ there and in the UI is important.
 On the CLI this might be a good fit for something under `sdcadm server`,
 whether under a setup command or other option.
 
-#### Headnode Setup
+### Headnode Setup
 
 The last piece of this picture is dealing with headnode setup. We should
 put together a new question to prompt what the user wants as the layout
