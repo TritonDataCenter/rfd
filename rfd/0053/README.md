@@ -92,30 +92,17 @@ of spares. This will explicitly include the choice of 0 spares.
 cache device should be allocated.
 * Support for the `raidz3` layout profile will be added.
 
-## User Interfaces
+## Command Line and Compute Node Setup Changes
 
 This choice should be presented as part of setting up a compute node.
 Setting this information should always be considered *optional*. In
 other words, existing installations shouldn't have to change anything in
 their processes and scripts.
 
-### SAPI Properties
-
-New SAPI properties be introduced that are used to describe the default pool
-layout, number of spares, and cache control. Tools need to treat the absence
-of these properties as equivalent to today's default behavior.
-
-The name of the SAPI properties are beyond the scope of this document;
-however, users themselves should never directly interact with SAPI and
-instead this should be covered by other means of manipulating the
-properties as described below.
-
-### Changes to Compute Node Setup
-
-When setting up a compute node, either via AdminUI or via sdc-server,
-new optional arguments to control the layout will be provided. If no
-layout is provided, it should consult SAPI using the new property
-described above.
+When setting up a compute node via sdc-server, new optional arguments to
+control the layout will be provided. If no layout is provided then the
+behavior will be unchanged and `disklayout` will be responsible for
+selecting the layout using its built-in heuristics.
 
 For `sdc-server` the following new command line options will be added:
 
@@ -129,14 +116,6 @@ When fully specified, the command would look like this:
 sdc-server setup <uuid> layout=raidz2 spares=0 cache=false [PARAMS]...
 ```
 
-In addition, similar changes should be made to AdminUI, allowing a
-specific layout and the other options to be selected. As with sdc-server,
-if nothing is selected, it should default to checking SAPI.
-
-To help deal with the software being at different versions, the lack of
-the new properties in SAPI should always be treated as no property being set,
-which should be equivalent to the default behavior.
-
 The way that this information gets passed to the compute node as part of
 set up is via CNAPI, which will be enhanced to add the following (optional)
 entries into the node.config file:
@@ -145,7 +124,7 @@ entries into the node.config file:
 * spares
 * cache
 
-#### Propagating Failure
+### Propagating Failure
 
 An important part of extending this interface is to make the error very
 clear that when an unsupported layout gets passed through the stack.
@@ -158,15 +137,32 @@ that this is the reason set up failed should be obvious.
 
 This likely could be extended to other parts of the CN setup process.
 
-### Managing the Default
+### Future Enhancements
 
-As part of this, we've suggested that there should be new properties.
-These properties need to be made available to the operator and they need
-the ability to inspect and change them, as well as understand their
+#### AdminUI
+
+AdminUI can be enhanced to expose the same new options as sdc-server,
+
+#### SAPI Properties
+
+New SAPI properties can be introduced that are used to describe the default
+pool layout, number of spares, and cache control. Tools would need to treat
+the absence of these properties as equivalent to today's default behavior.
+
+The name of the SAPI properties are beyond the scope of this document;
+however, users themselves should never directly interact with SAPI and
+instead this should be covered by other means of manipulating the
+properties as described below.
+
+To help deal with the software being at different versions, the lack of
+the new properties in SAPI should always be treated as no property being set,
+which should be equivalent to the default behavior.
+
+##### Managing the Defaults
+
+The new SAPI properties need to be made available to the operator and they
+need the ability to inspect and change them, as well as understand their
 options. This needs to be represented in both AdminUI and through `sdcadm`.
-
-In AdminUI, the option to set the default should be added to some set of
-defaults page for servers.
 
 For sdcadm, I'd suggest that we add a new endpoint to sdcadm for
 managing servers explicitly. This is a bit of a straw man and subsumes a
@@ -189,8 +185,6 @@ using that as the vector for the storage pool layout dry run. If we add
 the `sdcadm server setup` option, we should make sure that it and the
 `sdc-server` code can share implementation where possible and start the
 process of deprecating sdc-server in favor of `sdcadm server`.
-
-### Future Enhancements
 
 #### Storage Profile Dry Runs
 
