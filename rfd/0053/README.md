@@ -124,19 +124,6 @@ entries into the node.config file:
 * spares
 * cache
 
-### Propagating Failure
-
-An important part of extending this interface is to make the error very
-clear that when an unsupported layout gets passed through the stack.
-Today, many set up failures are hard to diagnose. The work associated
-with this rfd should ensure that the following is true:
-
-1. Final validation of the layout is done on the CN during setup
-2. When an unknown layout is specified, setup is failed and the fact
-that this is the reason set up failed should be obvious.
-
-This likely could be extended to other parts of the CN setup process.
-
 ## Future Enhancements
 
 ### AdminUI
@@ -185,6 +172,17 @@ using that as the vector for the storage pool layout dry run. If we add
 the `sdcadm server setup` option, we should make sure that it and the
 `sdc-server` code can share implementation where possible and start the
 process of deprecating sdc-server in favor of `sdcadm server`.
+
+### Propagating Failure
+
+An important part of extending this interface is to make the error very
+clear when an invalid configuration gets passed through the stack to the CN.
+Today, many set up failures are hard to diagnose. Future work should ensure
+that when an invalid configuration is specified, it should be obvious to the
+administrator the reason that zpool creation, and thus CN initialization,
+failed.
+
+This likely could be extended to other parts of the CN setup process.
 
 ### Storage Profile Dry Runs
 
