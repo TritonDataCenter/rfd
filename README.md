@@ -111,6 +111,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 66 USBA improvements for USB 3.x](./rfd/0066/README.md) |
 | predraft | [RFD 67 Triton headnode resilience](./rfd/0067/README.md) |
 | predraft | [RFD 68 Triton versioning](./rfd/0068/README.md) |
+| predraft | [RFD 69 Metadata socket improvements](./rfd/0069/README.md) |
 
 ## Contents of an RFD
 
