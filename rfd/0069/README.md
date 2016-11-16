@@ -42,7 +42,7 @@ mechanism is slightly different between the kvm brand and other zone brands.
 For KVM instances, the qemu process is started with an option that creates an a
 serial tty device which shows up as a unix domain socket in the zoneroot and a
 serial device inside the KVM's guest OS. The metadata agent connects to the
-socket which is in <zoneroot>/tmp/vm.ttyb of the instance and starts a server
+socket which is in `<zoneroot>/tmp/vm.ttyb` of the instance and starts a server
 which the guest can connect to via the second serial port using the
 [mdata-client](https://github.com/joyent/mdata-client) tools.
 
@@ -65,18 +65,17 @@ potentially untrusted users, we must do something different to create these
 sockets and the current mechanism is to use a zsocket via
 [node-zsock](https://github.com/mcavage/node-zsock).
 
-What node-zsock does, is to `zone\_enter` a zone and create a unix domain socket
+What node-zsock does, is to `zone_enter` a zone and create a unix domain socket
 within the zone. It then passes the file descriptor for this socket using
 sendmsg() through a socketpair() back to the metadata agent process in the GZ.
 The metadata agent then does a `server.listen({fd: fd});` to start an instance
 of the metadata API listening on this socket. From that point the clients in the
 zone can connect to the socket and talk to the metadata API.
 
-The consequences of using this mechanism that are relevant to the rest of the
-discussion in this RFD include:
-
- * the zone must be running in order to create a zsock
- * ...
+The most important consequence of using this mechanism that is relevant to the
+rest of the discussion in this RFD is that in order to create a zsock, the zone
+must be running. The zsock implementation also adds significant complexity to
+debugging efforts and has itself been the source of a number of bugs.
 
 ## Problems specific to Manta's "marlin"
 
@@ -119,20 +118,20 @@ roll back to has a metadata.sock socket in it.
 In order to improve this situation and ensure more reliable metadata service,
 this RFD proposes a few things. A summary of the proposals are:
 
- * moving /.zonecontrol (/native/.zonecontrol in LX) to be mounted into zones
+ * moving `/.zonecontrol` (`/native/.zonecontrol` in LX) to be mounted into zones
    (readonly lofs) rather than being written into the zoneroot dataset.
  * eliminating the need for and use of zsock by creating sockets in
-   /zones/zonecontrol/<uuid>/metadata.sock directly instead of inside the
+   `/zones/zonecontrol/<uuid>/metadata.sock` directly instead of inside the
    zoneroot.
- * mounting the zonecontrol dataset into the zone while it is in the ready state
-   so there is no window where the zone is running and we need to wait for the
-   metadata.sock to show up.
+ * mounting the zonecontrol directory into the zone while it is in the ready
+   state so there is no window where the zone is running and we need to wait for
+   the metadata.sock to show up.
  * eliminating the periodic checking of the "stat signature" of sockets by
    creating the sockets on metadata agent or zone startup, and not providing a
    mechansim for them to be changed by the zone even in the case of a marlin
    reset / snapshot rollback.
 
-Additional changes to be explored include:
+Additional changes to be explored in the future (not part of this RFD) include:
 
  * having zone create/destroy notify the metadata agent so that it doesn't need
    to rely solely on unreliable sysevents and periodically running `zoneadm
@@ -224,7 +223,7 @@ With these changes, non-kvm zones should always be using
 same location as before within the zone).
 
 After doing this we can also change the metadata agent so that instead of
-creating a zsock through zone_enter, it creates a regular unix domain socket in
+creating a zsock through `zone_enter`, it creates a regular unix domain socket in
 `/zones/zonecontrol/<uuid>` for the zone. This socket can then be left in place
 across zone reboots, resets and even reprovisions since it is not attached to
 the zoneroot. Since the dataset is mounted read-only inside the zone, it should
