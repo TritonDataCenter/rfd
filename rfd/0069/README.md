@@ -138,6 +138,99 @@ Additional changes to be explored include:
    to rely solely on unreliable sysevents and periodically running `zoneadm
    list` to work around this unreliability.
 
-The rest of this document will discuss these proposed changes.
+## Implementation
 
-\[To be continued...\]
+Instead of creating a `<zoneroot>/.zonecontrol` (or
+`<zoneroot>/native/.zonecontrol` directory within the zoneroot I'm proposing
+making the following changes to smartos-live:
+
+```
+diff --git a/overlay/generic/usr/lib/brand/jcommon/cuninstall b/overlay/generic/usr/lib/brand/jcommon/cuninstall
+index 54a8102..c496c57 100644
+--- a/overlay/generic/usr/lib/brand/jcommon/cuninstall
++++ b/overlay/generic/usr/lib/brand/jcommon/cuninstall
+@@ -67,6 +67,7 @@ fi
+ [[ -n ${ORIGIN} && ${ORIGIN} != "-" ]] && zfs destroy -F $ORIGIN
+
+ rm -rf $ZONEPATH
++rm -rf /zones/${ZONENAME}/zonecontrol
+
+ jcommon_uninstall_hook
+
+diff --git a/overlay/generic/usr/lib/brand/jcommon/statechange b/overlay/generic/usr/lib/brand/jcommon/statechange
+index 339510f..16ea53b 100644
+--- a/overlay/generic/usr/lib/brand/jcommon/statechange
++++ b/overlay/generic/usr/lib/brand/jcommon/statechange
+@@ -622,6 +622,9 @@ setup_fw()
+ #
+ setup_fs()
+ {
++       # create directory for metadata socket
++       mkdir -m755 -p /zones/zonecontrol/${ZONENAME}
++
+        uname -v > $ZONEPATH/lastbooted
+        [[ -n "$jst_simplefs" ]] && return
+
+diff --git a/overlay/generic/usr/lib/brand/joyent-minimal/platform.xml b/overlay/generic/usr/lib/brand/joyent-minimal/platform.xml
+index f778768..9b82bca 100644
+--- a/overlay/generic/usr/lib/brand/joyent-minimal/platform.xml
++++ b/overlay/generic/usr/lib/brand/joyent-minimal/platform.xml
+@@ -34,6 +34,9 @@
+        <global_mount special="/dev" directory="/dev" type="dev"
+            opt="attrdir=%R/root/dev"/>
+
++       <global_mount special="/%P/zonecontrol/%z" directory="/.zonecontrol"
++           opt="rw" type="lofs" />
++
+        <global_mount special="/lib" directory="/lib"
+            opt="ro,nodevices" type="lofs" />
+        <global_mount special="%P/manifests/joyent" directory="/lib/svc/manifest"
+diff --git a/overlay/generic/usr/lib/brand/joyent/platform.xml b/overlay/generic/usr/lib/brand/joyent/platform.xml
+index 4efeb82..237bdb6 100644
+--- a/overlay/generic/usr/lib/brand/joyent/platform.xml
++++ b/overlay/generic/usr/lib/brand/joyent/platform.xml
+@@ -34,6 +34,8 @@
+        <global_mount special="/dev" directory="/dev" type="dev"
+            opt="attrdir=%R/root/dev"/>
+
++       <global_mount special="/%P/zonecontrol/%z" directory="/.zonecontrol"
++           opt="ro" type="lofs" />
+        <global_mount special="/lib" directory="/lib"
+            opt="ro,nodevices" type="lofs" />
+        <global_mount special="%P/manifests/joyent"
+```
+
+and the following to illumos-joyent (sadly the platform.xml files are not in the
+same place):
+
+```
+diff --git a/usr/src/lib/brand/lx/zone/platform.xml b/usr/src/lib/brand/lx/zone/platform.xml
+index 4a7010f..28c4b57 100644
+--- a/usr/src/lib/brand/lx/zone/platform.xml
++++ b/usr/src/lib/brand/lx/zone/platform.xml
+@@ -59,6 +59,8 @@
+            opt="ro" type="lofs" />
+        <global_mount special="/etc/zones/%z.xml"
+            directory="/native/etc/zones/%z.xml" opt="ro" type="lofs" />
++       <global_mount special="/%P/zonecontrol/%z" directory="/native/.zonecontrol"
++           opt="ro" type="lofs" />
+
+        <!-- Local filesystems to mount when booting the zone -->
+        <mount special="/native/dev" directory="/dev" type="lx_devfs" />
+```
+
+With these changes, non-kvm zones should always be using
+`/zones/zonecontrol/<uuid>/metadata.sock` for their metadata (mounted at the
+same location as before within the zone).
+
+After doing this we can also change the metadata agent so that instead of
+creating a zsock through zone_enter, it creates a regular unix domain socket in
+`/zones/zonecontrol/<uuid>` for the zone. This socket can then be left in place
+across zone reboots, resets and even reprovisions since it is not attached to
+the zoneroot. Since the dataset is mounted read-only inside the zone, it should
+be safe for metadata agent to create its file in the GZ path without concern
+for someone having created a symlink from within the zone.
+
+The code in metadata agent can also be simplified to avoid the need to poll the
+metadata socket's fs.stat() signature.
+
