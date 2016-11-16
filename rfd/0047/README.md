@@ -37,6 +37,15 @@ Status:
 - Trent had a start at one which involved changes to node-manta. This
   is currently uncommited.
 
+## mprune
+
+The [mprune tool](https://github.com/joyent/manta-mprune) can be used to
+automate purging of old objects inside date-organized directory structures.  See
+"Manta's Manatee backups" below for an example.
+
+This tool is still pretty simple, but could be extended to support additional
+use-cases.
+
 
 ## builds
 
@@ -243,6 +252,25 @@ for >1h now in a mlogin session).
 
 TODO: Get some data on num bytes of logs per day for different DCs.
 
+
+### Manta's Manatee backups
+
+Manta backs up a full copy of each shard's database every day.  These get stored
+into Manta in /poseidon/stor/manatee\_backups.  There is no automatic cleanup of
+old backups.  We run the [mprune tool](https://github.com/joyent/manta-mprune)
+manually as needed to implement the following policy:
+
+* keep shard 1 backups forever.  These are relatively small, and it's
+  occasionally useful to debug old Marlin jobs from these dumps.
+* for the rest of the shards, for backups older than 1 year, we keep two backups
+  per calendar month.
+* for the rest of the shards, for backups within the last year, we keep all
+  backups.
+
+See MANTA-2961 and MANTA-3033 for examples.
+
+This policy is believed to be relatively conservative.  We could potentially
+prune more of the older backups or prune more backups from within the last year.
 
 
 ## Other stuff
