@@ -1031,3 +1031,24 @@ objects from restify would show up with a prototype of Object instead of
 JsonClient in mdb. This problem is eliminated using CLS since no object cloning
 is involved. With CLS/Option B, we'll also not need to create a clone for every
 used client for each request.
+
+### Feature flag
+
+In order to deal with many of the non-specific or yet undeveloped concerns
+people have mentioned about tracing with regard to post-mortem debugging,
+performance and other impacts on Triton components one proposed option has been
+to add a "feature flag" which allows tracing to be fully disabled as a
+configuration option. With the tracing feature disabled, the system should
+behave the same as it would have without tracing support and ideally the only
+code run would be the init function (which would setup to make other trace
+initializers be no-ops).
+
+When confidence is gained in the feature, support for disabling tracing could be
+removed.
+
+This feature flag feature itself has also proven controversial. The argument
+against doing so is that we'd need to test both with and without the feature
+flag. This may be mitigated somewhat by the fact that the code without the
+feature is a subset of the code with the feature and there's no *different* code
+run with the feature disabled, just less total code. But it is still something
+worth mentioning here.
