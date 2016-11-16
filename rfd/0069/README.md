@@ -16,6 +16,10 @@ state: predraft
 
 # RFD 69 Metadata socket improvements
 
+## Related reading
+
+ * [OS-5783](https://smartos.org/bugview/OS-5783)
+
 ## How metadata works
 
 To understand the proposal here, it is helpful to have a general understanding
