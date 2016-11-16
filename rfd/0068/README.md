@@ -1,6 +1,6 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
-state: predraft
+state: draft
 ---
 
 # RFD 68: Triton versioning
