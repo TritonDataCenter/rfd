@@ -121,7 +121,7 @@ this RFD proposes a few things. A summary of the proposals are:
  * moving `/.zonecontrol` (`/native/.zonecontrol` in LX) to be mounted into zones
    (readonly lofs) rather than being written into the zoneroot dataset.
  * eliminating the need for and use of zsock by creating sockets in
-   `/zones/zonecontrol/<uuid>/metadata.sock` directly instead of inside the
+   `/zones/<uuid>/zonecontrol/metadata.sock` directly instead of inside the
    zoneroot.
  * mounting the zonecontrol directory into the zone while it is in the ready
    state so there is no window where the zone is running and we need to wait for
@@ -165,7 +165,7 @@ index 339510f..16ea53b 100644
  setup_fs()
  {
 +       # create directory for metadata socket
-+       mkdir -m755 -p /zones/zonecontrol/${ZONENAME}
++       mkdir -m755 -p /zones/${ZONENAME}/zonecontrol
 +
         uname -v > $ZONEPATH/lastbooted
         [[ -n "$jst_simplefs" ]] && return
@@ -178,7 +178,7 @@ index f778768..9b82bca 100644
         <global_mount special="/dev" directory="/dev" type="dev"
             opt="attrdir=%R/root/dev"/>
 
-+       <global_mount special="/%P/zonecontrol/%z" directory="/.zonecontrol"
++       <global_mount special="%R/zonecontrol" directory="/.zonecontrol"
 +           opt="rw" type="lofs" />
 +
         <global_mount special="/lib" directory="/lib"
@@ -192,7 +192,7 @@ index 4efeb82..237bdb6 100644
         <global_mount special="/dev" directory="/dev" type="dev"
             opt="attrdir=%R/root/dev"/>
 
-+       <global_mount special="/%P/zonecontrol/%z" directory="/.zonecontrol"
++       <global_mount special="%R/zonecontrol" directory="/.zonecontrol"
 +           opt="ro" type="lofs" />
         <global_mount special="/lib" directory="/lib"
             opt="ro,nodevices" type="lofs" />
@@ -211,7 +211,7 @@ index 4a7010f..28c4b57 100644
             opt="ro" type="lofs" />
         <global_mount special="/etc/zones/%z.xml"
             directory="/native/etc/zones/%z.xml" opt="ro" type="lofs" />
-+       <global_mount special="/%P/zonecontrol/%z" directory="/native/.zonecontrol"
++       <global_mount special="%R/zonecontrol" directory="/native/.zonecontrol"
 +           opt="ro" type="lofs" />
 
         <!-- Local filesystems to mount when booting the zone -->
@@ -219,12 +219,12 @@ index 4a7010f..28c4b57 100644
 ```
 
 With these changes, non-kvm zones should always be using
-`/zones/zonecontrol/<uuid>/metadata.sock` for their metadata (mounted at the
+`/zones/<uuid>/zonecontrol/metadata.sock` for their metadata (mounted at the
 same location as before within the zone).
 
 After doing this we can also change the metadata agent so that instead of
 creating a zsock through `zone_enter`, it creates a regular unix domain socket in
-`/zones/zonecontrol/<uuid>` for the zone. This socket can then be left in place
+`/zones/<uuid>/zonecontrol` for the zone. This socket can then be left in place
 across zone reboots, resets and even reprovisions since it is not attached to
 the zoneroot. Since the dataset is mounted read-only inside the zone, it should
 be safe for metadata agent to create its file in the GZ path without concern
