@@ -217,6 +217,7 @@ latter. There are a couple surprises with using pre-release versions that I see:
   in version fields, and because this is part of `imgadm` in the platform we'd
   need to get it in imgadm *and* get the Triton-supported `min_platform` past
   that version. Wanh wanh. This kills using build metadata for now.
+  FWIW, <https://devhub.joyent.com/jira/browse/OS-5798> will be allowing '+'.
 
 
 ### build time or published_at
@@ -260,18 +261,23 @@ two are well related.
   sometime because either (a) there weren't any VMAPI changes, or (b) the
   package.json version wasn't bumped for a change.
 
-  This is my second favourite option.
+  JoshW mentions that he really doesn't like have two separate (and differing)
+  builds with the same "version". Fair. I agree that sucks. FWIW, it breaks
+  this semver rule: <http://semver.org/#spec-item-3>.
 
 - `X.Y.Z` (e.g. "1.2.3"), no buildstamp, bump ver for all changes.
   One *could* require that versions are bumped for all changes, but I
-  think that would be difficult to ensure.
-
+  think that would be difficult and perhaps burdensome to require of all
+  changes to all our top-level repos.
 
 - `X.Y.$buildtime` (e.g. `2.1.20140925042127`). This *would* give immediate
   semver sorting for the semver version (ignoring patch-level) plus buildtime.
   However it is subtle and gross (dropping the patch-level and not matching
   the package.json version). It also doesn't include the helpful branch and
   git sha.
+
+  JoshW prefers this to any alternative that doesn't include any build info
+  to avoid the issue of multiple differing images with the same version value.
 
 - `$buildstamp` (e.g. "master-20160527T190021Z-gd6f0708"). This is the current
   format for most zone images (vmapi, imgapi, etc.). It defeats one of the goals
