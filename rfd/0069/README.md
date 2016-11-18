@@ -179,7 +179,7 @@ index f778768..9b82bca 100644
             opt="attrdir=%R/root/dev"/>
 
 +       <global_mount special="%R/zonecontrol" directory="/.zonecontrol"
-+           opt="rw" type="lofs" />
++           opt="ro" type="lofs" />
 +
         <global_mount special="/lib" directory="/lib"
             opt="ro,nodevices" type="lofs" />
