@@ -19,9 +19,12 @@ As of 2016-11 Joyents maintains upwards of 400 repositories.  The vast majority 
  * For a library we maintain, are all Joyent depends above version x.y.z? For a 3rd party library, how many unique version of it are we using?
  * Which repositories should be branched/tagged for a release?
  * Which repositories should be indexed by Hound or another tool?
+ * Are all of the right repositories in Gerrit?
+ * Audit github permissions or some other policy.
  * What are all of the open GitHub issues on active projects that been linked to an internal ticket that is now closed?
  * When testing a change to a 3rd party library we use, I'd like a reasonable path for computers to do all of the `package.json` mangling to build all of the CoaL services with the patched library.
  * An large customer might wish to know all 3rdparty packages that make up "Triton" (or "Manta") or have other compliance requirements that require a full dependency graph.
+ * [Farther out] Pragmatically generate jenkins jobs.
 
 
 ## Proposal
@@ -221,10 +224,13 @@ For example, something with tags or a directory structure.  This again would be 
 
 ### Other Tools
 
-There are a few other "manage a bunch of git repo" projects.  They appear more focused on running ad-hoc commands on *existing* checkouts, and not describing remotes.
+There are a few other "manage a bunch of git repo" projects:
  * [myrepos](https://myrepos.branchable.com/)
  * [mu-repo](https://fabioz.github.io/mu-repo/)
  * [gr](http://mixu.net/gr/)
+ * [vcspull](http://vcspull.readthedocs.io/en/latest/)
+
+Most appear more focused on running ad-hoc commands on *existing* checkouts, and not describing remotes.  `vcspull` is closest in spirit -- there is a config file! -- but is narrowly focused on the checkout & sync cycle of a simple hierarchy.
 
 There are also several ways of taking an existing large repository and working with it as if it were a series of smaller repositories, but that is the opposite of the current problem.
 
