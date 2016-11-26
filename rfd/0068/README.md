@@ -115,6 +115,9 @@ field. The question here is what should be the format of that image "version".
 
 ### Plan
 
+*(Note this isn't an agreed plan. The "Image Versioning" section is still
+very much in discussion.)*
+
 Triton images should move to `X.Y.Z-BUILDSTAMP` for the version string format.
 The "BUILDSTAMP" is meant for build information and **not** for version
 precedence. Version precendence for builds is determined by:
@@ -251,6 +254,15 @@ two are well related.
 
   This is my favourite option and would have been the suggested plan except for
   this issue.
+
+- New idea: change the `$buildstamp` to be `$buildtime-$branch-$gitsha` so
+  that it is sortable for build time. Then `X.Y.Z-$buildstamp` would roughly
+  sort appropriately. We still have the `semver.satisfies` surprises to watch
+  out for.
+
+- XXX chris' idea
+
+- XXX dap's feedback
 
 - `X.Y.Z` (e.g. "1.2.3"), no buildstamp, surface the build info in tooling.
   Perhaps tooling like `sdcadm insts` and the "SDC Agents" key in sysinfo
