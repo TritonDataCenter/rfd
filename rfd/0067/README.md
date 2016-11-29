@@ -1,6 +1,6 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
-state: predraft
+state: draft
 ---
 
 # RFD 67: Triton headnode resilience
@@ -151,6 +151,8 @@ Quick TODOs to not forget about:
   (e.g. headnode0, headnode1).
 
 - Wildcard: how does being a UFDS master or slave affect things here?
+
+- Grok https://github.com/joyent/rfd/tree/master/rfd/0058 relevance, if any.
 
 ## data to save
 
