@@ -1,0 +1,115 @@
+---
+authors: Elijah Zupancic <elijah.zupancic@joyent.com>
+state: draft
+---
+
+<!--
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+-->
+
+<!--
+    Copyright 2016 Joyent Inc.
+-->
+
+# RFD 71 Manta Client-side Encryption
+
+## Introduction
+
+This document will describe the proposed design and implementation of a client-side encryption mechanism for Manta, similar to the functionality provided by Amazon S3's Java, .NET, and Ruby SDKs.
+
+In section 1, we discuss the proposed design for this feature in detail: first outlining the changes needed to implement client-side encryption in a general sense, then reviewing design constraints and requirements for implementing such a feature in Manta, and finally, reasoning through each piece of the design. If you are interested in the motivation behind client-side encryption in Manta, you should read this section.
+
+In section 2, we provide a detailed summary of the design of the JDK implementation.
+
+In section 3, we provide a detailed summary of the design of the node.js implementation.
+
+## 1. Design Discussion
+
+### Client-side Encryption Description
+
+Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the client.ciphertext Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on behalf of the client. This RFD will be focused solely on client-side encryption.
+
+### Desired Client-side Encryption Functionality
+
+In order for an object store client SDK to provide encryption and decryption as a seamless part of its API, there needs to be support for the following operations and constraints:
+
+ * Client-side encryption can be selectively enabled or disabled.
+ * Streamable operations can be encrypted or decrypted without changing the API from non-encrypted operations.
+ * Retryable operations are not affected by enabling encryption.
+ * Encryption is memory efficient.
+ * HTTP range requests of ciphertext can be decrypted.
+ * Multipart uploads can be encrypted and decrypted.
+ * Client-side encryption implementation is compatible between all client SDKs.
+ * Users of the SDK can select cipher and strength of encryption algorithm used.
+ * Metadata is optionally encrypted.
+ * Manta jobs can be supplied encryption credentials and operate normally.
+ * Standardize headers to inform Manta that the object is encrypted.
+
+### Unsupported Operations
+
+Due to the inherent limitations of client-side encryptions, some operations will not be supported. The list of operations not supported is as follows:
+
+ * Decryption via signed links will not be supported.
+ * Objects contained in the public directory will not be automatically decrypted unless accessed via a client SDK that supports client-side encryption.
+
+### HTTP Headers Used with Client-side Encryption
+
+In order to give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext doesn't compress well and we would be able to selectively disable compression for encrypted files.
+
+```
+X-Encryption-Support: client
+```
+
+To provide an audit trail to the consumers of client-side encryption, we set a header indicating the id of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future.
+
+```
+X-Encryption-Key-Id: XXXXXXXXX
+```
+
+In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to encrypt the object.
+
+```
+X-Encryption-Cipher: AES
+```
+
+### Metadata Support
+
+`TODO: Potentially use an additional prefix to imply encrypted metadata: m-e-NAME: <CIPHERTEXT>`
+
+### Manta Job Support
+
+### Future considerations
+
+## 2. JDK SDK Design and Implementation
+
+### Cipher Selection and Library Support
+
+`TODO: research how the OpenJDK handles strong encryption algorithms.`
+
+In the Oracle JDK there is limited default support for strong encryption algorithms. In order to enable stronger encryption, you must download and install the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html). Strong encryption algorithms are also supported using the [JCE API](https://en.wikipedia.org/wiki/Java_Cryptography_Extension) by [The Legion of the Bouncy Castle](http://www.bouncycastle.org/java.html) project.
+
+Ideally, we should support algorithms supplied by Bouncy Castle and the Java runtime via the [JCE API](http://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html). The Java Manta SDK currently bundles Bouncy Castle dependencies because they are used when doing [authentication via HTTP signed requests](https://github.com/joyent/java-http-signature).
+
+### Key Management
+
+### Stream Support
+
+### File Support
+
+### Range Support
+
+#### Random Operation Support with [MantaSeekableByteChannel](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java)
+
+### Multipart Support
+
+### Metadata Support
+
+### Failure Handling
+
+#### Key Failures
+
+#### Decryption Failures
+
+## 3. Node.js SDK Design and Implementation

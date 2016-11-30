@@ -113,6 +113,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 68 Triton versioning](./rfd/0068/README.md) |
 | publish | [RFD 69 Metadata socket improvements](./rfd/0069/README.md) |
 | draft | [RFD 70 Joyent Repository Metadata](./rfd/0070/README.md) |
+| predraft | [RFD 71 Manta Client-side Encryption](./rfd/0071/README.md) |
 
 ## Contents of an RFD
 
