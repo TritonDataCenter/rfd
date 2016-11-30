@@ -1,6 +1,6 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
-state: draft
+state: publish
 ---
 
 <!--
@@ -294,8 +294,10 @@ The path `/etc/zonecontrol` was also briefly considered, but this would not have
 avoided the mentioned problems with being on `/` though it does have the added
 benefit that the directory would be empty when the system is rebooted.
 
-### Prototype
+### Code Review
 
-There's a prototype of this work in the OS-5783 branch of
-[smartos-live](https://github.com/joyent/smartos-live/tree/OS-5783) and
-[illumos-joyent](https://github.com/joyent/illumos-joyent/tree/OS-5783).
+The changes described above are now available for code review. Once review and
+testing is complete, they'll be merged to master.
+
+ * [CR for smartos-live](https://cr.joyent.us/1028)
+ * [CR for illumos-joyent](https://cr.joyent.us/1027)
