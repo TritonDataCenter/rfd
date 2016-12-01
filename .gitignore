@@ -1,2 +1,5 @@
 # macos frustration
 .DS_Store
+
+# intellij frustration
+.idea
