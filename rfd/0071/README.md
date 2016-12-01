@@ -31,7 +31,7 @@ In section 3, we provide a detailed summary of the design of the node.js impleme
 
 Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the client.ciphertext Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on behalf of the client. This RFD will be focused solely on client-side encryption.
 
-`TODO: Provide discussion about how the DC operators are potential enimies.`
+Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is ensured because the client has full control over encryption algorithms, keys and authentication. When server-side encryption is not available on an object store, client-side encryption can be used to provide similar functionality by relaxing requirements such as ciphertext authentication and thereby supporting random reads from streamable ciphers. This can make sense when the provider of the object-store is not viewed as a potential adversary and is a trusted party.  
 
 ### Desired Client-side Encryption Functionality
 
@@ -51,7 +51,7 @@ In order for an object store client SDK to provide encryption and decryption as 
 
 ### Unsupported Operations
 
-Due to the inherent limitations of client-side encryptions, some operations will not be supported. The list of operations not supported is as follows:
+Due to the inherent limitations of client-side encryption, some operations will not be supported. The list of operations not supported is as follows:
 
  * Decryption via signed links will not be supported.
  * Objects contained in the public directory will not be automatically decrypted unless accessed via a client SDK that supports client-side encryption.
@@ -100,31 +100,31 @@ Manta-Encrypt-Plaintext-Content-Length: 1048576
 
 ```
 
-#### `Manta-Encrypt-Headers`
+#### `Manta-Encrypt-Metadata`
 Like the free form `m-*` metadata headers, we support free form encrypted metadata. The value of this header is ciphertext encoded in base64. Metadata stored in plaintext is written as JSON. The value of this header will be limited to a maximum of 4k bytes as base64 ciphertext. 
 ```
-Manta-Encrypt-Headers: XXXXXXXXX
+Manta-Encrypt-Metadata: XXXXXXXXX
 
 ```
 
-#### `Manta-Encrypt-Headers-IV`
-Like `Manta-Encrypt-IV` we store the IV for the ciphertext for the HTTP header `Manta-Encrypt-Headers`. 
+#### `Manta-Encrypt-Metadata-IV`
+Like `Manta-Encrypt-IV` we store the IV for the ciphertext for the HTTP header `Manta-Encrypt-Metadata`. 
 ```
-Manta-Encrypt-Headers-IV: XXXXXXXXX
+Manta-Encrypt-Metadata-IV: XXXXXXXXX
 
 ```
 
-#### `Manta-Encrypt-Headers-MAC`
-Like `Manta-Encrypt-MAC` we store the MAC in base64 for the ciphertext for the HTTP header `Manta-Encrypt-Headers` so that we can verify the authenticity of the header ciphertext.
+#### `Manta-Encrypt-Metadata-MAC`
+Like `Manta-Encrypt-MAC` we store the MAC in base64 for the ciphertext for the HTTP header `Manta-Encrypt-Metadata` so that we can verify the authenticity of the header ciphertext.
 ```
-Manta-Encrypt-Headers-MAC: XXXXXXXXX
+Manta-Encrypt-Metadata-MAC: XXXXXXXXX
 
 ```
 
-#### `Manta-Encrypt-Headers-Cipher`
-Like `Manta-Encrypt-Cipher` we store the cipher for the ciphertext for the HTTP header `Manta-Encrypt-Headers` so that our client can easily choose the right algorithm for decryption.
+#### `Manta-Encrypt-Metadata-Cipher`
+Like `Manta-Encrypt-Cipher` we store the cipher for the ciphertext for the HTTP header `Manta-Encrypt-Metadata` so that our client can easily choose the right algorithm for decryption.
 ```
-Manta-Encrypt-Headers-Cipher: aes-256-cbc
+Manta-Encrypt-Metadata-Cipher: aes-256-cbc
 ```
 
 ### Metadata Support
@@ -144,6 +144,13 @@ Encrypted metadata will be supported by serializing to a JSON data structure tha
 In the Oracle JDK there is limited default support for strong encryption algorithms. In order to enable stronger encryption, you must download and install the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html). Strong encryption algorithms are also supported using the [JCE API](https://en.wikipedia.org/wiki/Java_Cryptography_Extension) by [The Legion of the Bouncy Castle](http://www.bouncycastle.org/java.html) project.
 
 Ideally, we should support algorithms supplied by Bouncy Castle and the Java runtime via the [JCE API](http://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html). The Java Manta SDK currently bundles Bouncy Castle dependencies because they are used when doing [authentication via HTTP signed requests](https://github.com/joyent/java-http-signature).
+
+We've identified the following ciphers as the best candidates for streamable encryption:
+
+```
+TODO: Alex Wilso - please add reccomendations from JCE and BouncyCastle. Please note if they are compatible with OpenSSL.
+
+```
 
 ### Key Management
 
