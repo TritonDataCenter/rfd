@@ -59,58 +59,69 @@ Due to the inherent limitations of client-side encryptions, some operations will
 
 ### HTTP Headers Used with Client-side Encryption
 
+#### `Manta-Encrypt-Support`
 In order to give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext doesn't compress well and we would be able to selectively disable compression for encrypted files.
 
 ```
 Manta-Encrypt-Support: client
 ```
 
+#### `Manta-Encrypt-Key-Id`
 To provide an audit trail to the consumers of client-side encryption, we set a header indicating the id of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future.
 
 ```
 Manta-Encrypt-Key-Id: XXXXXXXXX
 ```
 
+#### `Manta-Encrypt-IV`
 In order to make sure that the same ciphertext is not generated each time the same file is encrypted, we use an [initialization vector (IV)](https://en.wikipedia.org/wiki/Initialization_vector). This IV is stored in Manta as convenience so that this value is easily available when decrypting.   
 ```
 Manta-Encrypt-IV: XXXXXXXXX
 ```
 
+#### Manta-Encrypt-MAC
 A cryptographic checksum of the ciphertext is stored in this header so that ciphertext can be authenticated. This prevents classes of attacks that involve tricky changes to the ciphertext binary file. When using AEAD ciphers, it will contain the authentication data (AD) instead of [hash-based message authentication (HMAC)](https://en.wikipedia.org/wiki/Hash-based_message_authentication_code) data. The value of the header will be stored in base64 encoding.
 ```
 Manta-Encrypt-MAC: XXXXXXXXX
 
 ```
 
+#### `Manta-Encrypt-Cipher`
 In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to encrypt the object. This header is in the form of `cipher-width-mode`.
 
 ```
 Manta-Encrypt-Cipher: aes-256-cbc
 ```
 
+#### `Manta-Encrypt-Plaintext-Content-Length`
 For a plethora of use cases it is valuable for the client to be able to be aware of the unencrypted file's size. We store that in bytes.
 ```
 Manta-Encrypt-Plaintext-Content-Length: 1048576
 
 ```
 
-Like the free form `m-*` metadata headers, we support free form encrypted metadata. The value of this header is ciphertext encoded in base64. Metadata stored in plaintext is written as JSON. 
+#### `Manta-Encrypt-Headers`
+Like the free form `m-*` metadata headers, we support free form encrypted metadata. The value of this header is ciphertext encoded in base64. Metadata stored in plaintext is written as JSON. The value of this header will be limited to a maximum of 4k bytes as base64 ciphertext. 
 ```
 Manta-Encrypt-Headers: XXXXXXXXX
 
 ```
 
+#### `Manta-Encrypt-Headers-IV`
 Like `Manta-Encrypt-IV` we store the IV for the ciphertext for the HTTP header `Manta-Encrypt-Headers`. 
 ```
 Manta-Encrypt-Headers-IV: XXXXXXXXX
 
 ```
 
+#### `Manta-Encrypt-Headers-MAC`
 Like `Manta-Encrypt-MAC` we store the MAC in base64 for the ciphertext for the HTTP header `Manta-Encrypt-Headers` so that we can verify the authenticity of the header ciphertext.
 ```
 Manta-Encrypt-Headers-MAC: XXXXXXXXX
 
 ```
+
+#### `Manta-Encrypt-Headers-Cipher`
 Like `Manta-Encrypt-Cipher` we store the cipher for the ciphertext for the HTTP header `Manta-Encrypt-Headers` so that our client can easily choose the right algorithm for decryption.
 ```
 Manta-Encrypt-Headers-Cipher: aes-256-cbc
@@ -118,7 +129,7 @@ Manta-Encrypt-Headers-Cipher: aes-256-cbc
 
 ### Metadata Support
 
-
+Encrypted metadata will be supported by serializing to a JSON data structure that will be encrypted and converted to base64 encoding. This will be stored as metadata on the object via the HTTP header `Manta-Encrypt-Headers`. 
 
 ### Manta Job Support
 
