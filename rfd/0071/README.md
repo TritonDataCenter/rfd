@@ -31,7 +31,9 @@ In section 3, we provide a detailed summary of the design of the node.js impleme
 
 Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the client.ciphertext Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on behalf of the client. This RFD will be focused solely on client-side encryption.
 
-Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is ensured because the client has full control over encryption algorithms, keys and authentication. When server-side encryption is not available on an object store, client-side encryption can be used to provide similar functionality to server-side encryption by relaxing requirements such as ciphertext authentication and thereby supporting random reads from streamable ciphers. This can make sense when the provider of the object-store is not viewed as a potential adversary and is a trusted party.  
+Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is ensured because the client has full control over encryption algorithms, keys and authentication. When server-side encryption is not available on an object store, client-side encryption can be used to provide similar functionality to server-side encryption by relaxing requirements such as ciphertext authentication and thereby supporting random reads from streamable ciphers. This can make sense when the provider of the object-store is not viewed as a potential adversary and is a trusted party.
+  
+From a design perspective the implementation of client-side encryption in Manta loosely resembles the Java S3 SDK implementation. Like the S3 implementation, we use the JVM's support for encryption facilities to do encryption, we support fully client-managed private keys, we support loosening strict checking of ciphertext authentication so we can do more operations (such as HTTP range requests), we support multi-part uploads and encrypting streams.
 
 ### Desired Client-side Encryption Functionality
 
@@ -129,6 +131,8 @@ Manta-Encrypt-Metadata-Cipher: aes/256/cbc
 ```
 
 ```
+The following headers are stored by S3, but aren't addressed above:
+
 TODO: Find out if we need to store cipher and/or key padding settings.
 TODO: Find out if we need to store AEAD tag length.
 ```
@@ -139,10 +143,14 @@ Depending on the threat model determined by the consumer of the client SDK, diff
 
  * `StrictlyAuthenticated` (default)
  * `LooselyAuthenticated`
+ 
+We only provide two modes unlike S3 which provides three modes (`EncryptionOnly`, `AuthenticatedEncryption`, and `StrictAuthenticatedEncryption`). `EncryptionOnly` mode in S3 does not authenticate ciphertext at all, `AuthenticatedEncryption` authenticates ciphertext when it is possible with the operation being performed and `StrictAuthenticatedEncryption` always authenticates and will cause an exception to be thrown if the operation can't be performed with authentication.   
 
 ### Key Management
 
 Initially, there will be no support server-side for key management. All key management will need to be done by the implementer of the SDK. The default key format and location will be standardized across all implementations of Manta client-side encryption in their respective SDKs.
+
+S3 provides a Key Management Service (KMS) and the design of any equivalent service is beyond the scope of this RFD. 
 
 ```
 TODO: Define the default location for encryption keys.
@@ -186,6 +194,8 @@ TODO: Explicitly define the configuration parameters needed for client-side encr
 TODO: Do we want to support multiple keys?
 
 We will need:
+ClientSideEncryptionEnabled: true | false (default)
+PermitUnencryptedDownloads: true | false (true)
 EncryptionAuthenticationMode: Loose | Strict (default)
 EncryptionPrivateKeyPath or EncryptionPrivateKeyBytes (one or the other need to be selected)
 
@@ -195,30 +205,54 @@ EncryptionPrivateKeyPath or EncryptionPrivateKeyBytes (one or the other need to 
 
 All operations within the Java Manta SDK *should* be currently thread-safe. Any client-encryption implementation will need to also be thread-safe because consumers of the SDK are assuming thread safety. 
 
+### Streamable Checksums
+
+There has been an [open feature request](https://github.com/joyent/java-manta/issues/95) for some time to calculate MD5s when putting objects to Manta. This feature would need to be implemented to allow for authentication of ciphertext. The S3 SDK does it with their own class `com.amazonaws.services.s3.internal.MD5DigestCalculatingInputStream`. However, the JVM runtime provides a class ([`java.security.DigestInputStream`](https://docs.oracle.com/javase/8/docs/api/java/security/DigestInputStream.html)) that does equivalent functionality and it should be investigated as a first option.
+
 ### Stream Support
+
+In order to encrypt Java streams, it is desirable to create a wrapping stream that allows for setting an encryption algorithm and multipart settings. This approach is similar to how the S3 SDK handles encrypting streams in the `com.amazonaws.services.s3.internal.crypto.CipherLiteInputStream` class. Using a wrapping stream allows the implementer of the SDK to use provide their own streams in the same way for encrypted operations as unencrypted operations. Moreover, it allows us to easily control specific multipart behaviors and the opening and closing of potentially thread-unsafe resources used for encryption.   
 
 ### File Support
 
-### Range Support
+Currently, when we send a file to Manta via the SDK, we create an instance of `com.google.api.client.http.FileContent` that has a reference to the `java.io.File` instance passed to its constructor. This allows the put operation to Manta to be retryable. When we add client-side encryption support, we will need to encrypt the file on the filesystem and write it to a temporary file and then reference that (the temporary file) when creating a new `FileContent` instance. This will preserve the retryability settings so that it behaves in the same manner as the unencrypted API call. 
 
-#### Random Operation Support with [MantaSeekableByteChannel](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java)
+### HTTP Range / Random Read Support
+
+Authenticating ciphertext and decrypting random sections of ciphertext can't be done as one operation without reading the entirety of the ciphertext. This mode of operation is inefficient when a consumer of an object store wants to read randomly from an object that is stored using client-side encryption because it would require them to download the entire object and authenticate it before decrypting the random section. Thus, we will only allow HTTP range requests to be performed when `EncryptionAuthenticationMode` is set to `Loose`. In those cases, the server-side content-md5 could still be compared to a record that the client keeps for additional security. However, it would not be bulletproof because the server could still send differing binary data to the client for the range and that binary data could not be authenticated. In the end, this mode of operation requires trusting the provider.
+   
+When reading randomly from an remote object in ciphertext, the byte range of the plaintext object does not match the byte range of the cipher text object. Any implementation would need to provide a cipher-aware translation of byte-ranges. Moreover, some ciphers do not support random reads at all. In those cases, we want to throw an exception to inform the implementer that the operation is not possible.
+
+In the S3 SDK, range requests are supported by finding the cipher's lower and upper block bounds and adjusting the range accordingly. An example of this operation can be found in `com.amazonaws.services.s3.internal.crypto.S3CryptoModuleBase`. We will likewise need to do a similar operation. Furthermore, we will need to rewrite the range header when it is specified in [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) and client-side encryption is enabled.  
+
+#### Random Operation Support with [`MantaSeekableByteChannel`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java)
+
+We will need to refactor [`MantaSeekableByteChannel`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java) so that it uses the methods provided in [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) to do ranged `GET` operations so that we do not have to duplicate our ciphertext range translation code.  
 
 ### Multipart Support
 
 ```
-TODO: Figure out how to encrypt each MPU part in isolation so that they can be assembled by the server into a single decryptable unit.
+TODO: Figure out how to encrypt each MPU part in isolation so that they can be assembled by the server into a single decryptable unit. S3 is able to do multipart uploads in strict mode, so it is entirely possible using the encryption algoritims provided in the JCE.
 ```
 
 ### Metadata Support
 
 A new class will be created called `EncryptedMantaMetadata`. This class will support the `Map<K, V>` interface because the backing format for metadata will be JSON. This should allow the implementers of the SDK define their own structure for free form Metadata.  
 
-A new property called `encryptedMetadata` of the type `EncryptedMantaMetadata` would be added to the `MantaHttpHeaders` class. Inside the `HttpHelper` class we would serialize the `EncryptedMantaMetadata` instance to JSON, encrypt it, base64 it and write it (metadata ciphertext), the MAC and the IV as HTTP headers. U 
+A new property called `encryptedMetadata` of the type `com.joyent.manta.client.EncryptedMantaMetadata` would be added to the [`com.joyent.manta.client.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaHttpHeaders.java) class. Inside the [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) class we would serialize the `EncryptedMantaMetadata` instance to JSON, encrypt it, base64 it and write it (metadata ciphertext), the MAC and the IV as HTTP headers. Likewise for reading headers, we would reverse the operations and write the value back to the a method that would allow the consumer to define their own generic types upon read. 
 
 ### Failure Handling
 
+A number of new `RuntimeException` classes will need to be created that map to the different encryption failure modes. These classes will represent states such as invalid keys, invalid ciphertext and ciphertext authentication failures.
+  
+Furthermore, the SDK should be smart enough to handle unencrypted downloads when an object is unencrypted and the `PermitUnencryptedDownloads` flag is set to `true`.  
+
 #### Key Failures
 
+Private key format failures should be detected upon startup of the SDK and cause an exception to be thrown. This allows for the early alerting to implementers of the SDK of any problems in their key configuration.
+
 #### Decryption Failures
+
+Failures due to problems decoding the ciphertext will be pushed up the stack from the underlying JCE implementation. We need to be careful to preserve such exceptions and to wrap them with our own exception types that provide additional context that allows for ease in debugging.
 
 ## 3. Node.js SDK Design and Implementation
