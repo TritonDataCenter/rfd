@@ -128,12 +128,27 @@ Like `Manta-Encrypt-Cipher` we store the cipher for the ciphertext for the HTTP 
 Manta-Encrypt-Metadata-Cipher: aes/256/cbc
 ```
 
+```
+TODO: Find out if we need to store cipher and/or key padding settings.
+TODO: Find out if we need to store AEAD tag length.
+```
+
 ### Authentication Modes
 
 Depending on the threat model determined by the consumer of the client SDK, different modes of authentication of the ciphertext would be desirable. If the consumer trusts the object store provider, then enabling a mode that skips authentication when it prevents an operation from operating efficiently makes sense. One example of an operation that would not work in an authenticated mode would be random reads (e.g. HTTP range requests). With a security in mind, the client SDK will operate by default in a fully authenticated mode unless explicitly disabled. Thus, consumers of SDKs supporting client-side encryption would be able to choose between one of two modes:
 
  * `StrictlyAuthenticated` (default)
  * `LooselyAuthenticated`
+
+### Key Management
+
+Initially, there will be no support server-side for key management. All key management will need to be done by the implementer of the SDK. The default key format and location will be standardized across all implementations of Manta client-side encryption in their respective SDKs.
+
+```
+TODO: Define the default location for encryption keys.
+TODO: Define the default portable format for encryption keys.
+
+```
 
 ### Metadata Support
 
@@ -145,13 +160,15 @@ Ideally, our client-side encryption implementation will be designed such that wh
 
 ## 2. Java Manta SDK Client-side Encryption Design and Implementation
 
-
+Client-side encryption within the Java Manta SDK will be implemented as an optional operation that wraps streams going to and from Manta. Client-side encryption will be enabled using configuration and from an API consumer's perspective there will not be a change in the API. When operations are not supported by the encryption settings, then appropriate exceptions will be thrown indicating the conflict between the setting and the operation. An example of this would be an attempt to use a HTTP range operation when `StrictlyAuthenticated` is enabled. Furthermore, care will need to be taken to allow for operations that are retryable to continue to be retryable - such as sending [File](https://docs.oracle.com/javase/8/docs/api/java/io/File.html) objects.   
 
 ### Cipher Selection and Library Support
 
+The JVM implementation of client-side encryption relies on the encryption algorithms and ciphers as provided as part of the running JVM's implementation of the Java Cryptography Extension (JCE)](https://en.wikipedia.org/wiki/Java_Cryptography_Extension). Thus, users of client-side encryption are assumed to trust the security of the JCE implementation in the JVM that they choose to run.
+
 In the Oracle JDK there is limited default support for strong encryption algorithms. In order to enable stronger encryption, you must download and install the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html). This isn't an issue with the OpenJDK. Also, strong encryption algorithms are supported using the [JCE API](https://en.wikipedia.org/wiki/Java_Cryptography_Extension) by [The Legion of the Bouncy Castle](http://www.bouncycastle.org/java.html) project.
 
-Ideally, we should support algorithms supplied by Bouncy Castle and the Java runtime via the [JCE API](http://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html). The Java Manta SDK currently bundles Bouncy Castle dependencies because they are used when doing [authentication via HTTP signed requests](https://github.com/joyent/java-http-signature).
+We will also support algorithms supplied by Bouncy Castle and the Java runtime via the [JCE API](http://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html). The Java Manta SDK currently bundles Bouncy Castle dependencies because they are used when doing [authentication via HTTP signed requests](https://github.com/joyent/java-http-signature).
 
 We've identified the following ciphers as the best candidates for streamable encryption:
 
@@ -160,11 +177,23 @@ TODO: Alex Wilson - please add reccomendations from JCE and BouncyCastle. Please
 
 ```
 
-### Key Management
-
 ### Configuration
 
-#### Enabling Unauthenticated Range Requests
+All settings related to client-side encryption will be defined as part of the Java Manta SDK's [ConfigContext](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/config/ConfigContext.java) interface. This allows for the Java Manta SDK to be easily integrated into other libraries' configuration systems.
+  
+```
+TODO: Explicitly define the configuration parameters needed for client-side encryption.
+TODO: Do we want to support multiple keys?
+
+We will need:
+EncryptionAuthenticationMode: Loose | Strict (default)
+EncryptionPrivateKeyPath or EncryptionPrivateKeyBytes (one or the other need to be selected)
+
+```
+
+### Thread-safety
+
+All operations within the Java Manta SDK *should* be currently thread-safe. Any client-encryption implementation will need to also be thread-safe because consumers of the SDK are assuming thread safety. 
 
 ### Stream Support
 
@@ -176,7 +205,15 @@ TODO: Alex Wilson - please add reccomendations from JCE and BouncyCastle. Please
 
 ### Multipart Support
 
+```
+TODO: Figure out how to encrypt each MPU part in isolation so that they can be assembled by the server into a single decryptable unit.
+```
+
 ### Metadata Support
+
+A new class will be created called `EncryptedMantaMetadata`. This class will support the `Map<K, V>` interface because the backing format for metadata will be JSON. This should allow the implementers of the SDK define their own structure for free form Metadata.  
+
+A new property called `encryptedMetadata` of the type `EncryptedMantaMetadata` would be added to the `MantaHttpHeaders` class. Inside the `HttpHelper` class we would serialize the `EncryptedMantaMetadata` instance to JSON, encrypt it, base64 it and write it (metadata ciphertext), the MAC and the IV as HTTP headers. U 
 
 ### Failure Handling
 
