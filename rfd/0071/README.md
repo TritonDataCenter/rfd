@@ -31,7 +31,7 @@ In section 3, we provide a detailed summary of the design of the node.js impleme
 
 Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the client.ciphertext Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on behalf of the client. This RFD will be focused solely on client-side encryption.
 
-Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is ensured because the client has full control over encryption algorithms, keys and authentication. When server-side encryption is not available on an object store, client-side encryption can be used to provide similar functionality by relaxing requirements such as ciphertext authentication and thereby supporting random reads from streamable ciphers. This can make sense when the provider of the object-store is not viewed as a potential adversary and is a trusted party.  
+Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is ensured because the client has full control over encryption algorithms, keys and authentication. When server-side encryption is not available on an object store, client-side encryption can be used to provide similar functionality to server-side encryption by relaxing requirements such as ciphertext authentication and thereby supporting random reads from streamable ciphers. This can make sense when the provider of the object-store is not viewed as a potential adversary and is a trusted party.  
 
 ### Desired Client-side Encryption Functionality
 
@@ -53,6 +53,7 @@ In order for an object store client SDK to provide encryption and decryption as 
 
 Due to the inherent limitations of client-side encryption, some operations will not be supported. The list of operations not supported is as follows:
 
+ * Manta jobs cannot be supported with client-side encrypted objects. Clients can of course upload the keys to Manta themselves and import them into jobs as assets if they need to, but there will be no first class support for such operations.
  * Decryption via signed links will not be supported.
  * Objects contained in the public directory will not be automatically decrypted unless accessed via a client SDK that supports client-side encryption.
  * If using a [Authenticated Encryption with Associated Data (AEAD) cipher](https://en.wikipedia.org/wiki/Authenticated_encryption), authentication will not be possible when doing HTTP range requests.
@@ -74,9 +75,9 @@ Manta-Encrypt-Key-Id: XXXXXXXXX
 ```
 
 #### `Manta-Encrypt-IV`
-In order to make sure that the same ciphertext is not generated each time the same file is encrypted, we use an [initialization vector (IV)](https://en.wikipedia.org/wiki/Initialization_vector). This IV is stored in Manta as convenience so that this value is easily available when decrypting.   
+In order to make sure that the same ciphertext is not generated each time the same file is encrypted, we use an [initialization vector (IV)](https://en.wikipedia.org/wiki/Initialization_vector). This IV is stored in Manta as header metadata in base64 encoding.   
 ```
-Manta-Encrypt-IV: XXXXXXXXX
+Manta-Encrypt-IV: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 ```
 
 #### Manta-Encrypt-MAC
@@ -87,16 +88,16 @@ Manta-Encrypt-MAC: XXXXXXXXX
 ```
 
 #### `Manta-Encrypt-Cipher`
-In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to encrypt the object. This header is in the form of `cipher-width-mode`.
+In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to encrypt the object. This header is in the form of `cipher/width/mode`.
 
 ```
-Manta-Encrypt-Cipher: aes-256-cbc
+Manta-Encrypt-Cipher: aes/256/cbc
 ```
 
-#### `Manta-Encrypt-Plaintext-Content-Length`
+#### `Manta-Unencrypted-Content-Length`
 For a plethora of use cases it is valuable for the client to be able to be aware of the unencrypted file's size. We store that in bytes.
 ```
-Manta-Encrypt-Plaintext-Content-Length: 1048576
+Manta-Unencrypted-Content-Length: 1048576
 
 ```
 
@@ -110,7 +111,7 @@ Manta-Encrypt-Metadata: XXXXXXXXX
 #### `Manta-Encrypt-Metadata-IV`
 Like `Manta-Encrypt-IV` we store the IV for the ciphertext for the HTTP header `Manta-Encrypt-Metadata`. 
 ```
-Manta-Encrypt-Metadata-IV: XXXXXXXXX
+Manta-Encrypt-Metadata-IV: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 
 ```
 
@@ -124,31 +125,38 @@ Manta-Encrypt-Metadata-MAC: XXXXXXXXX
 #### `Manta-Encrypt-Metadata-Cipher`
 Like `Manta-Encrypt-Cipher` we store the cipher for the ciphertext for the HTTP header `Manta-Encrypt-Metadata` so that our client can easily choose the right algorithm for decryption.
 ```
-Manta-Encrypt-Metadata-Cipher: aes-256-cbc
+Manta-Encrypt-Metadata-Cipher: aes/256/cbc
 ```
+
+### Authentication Modes
+
+Depending on the threat model determined by the consumer of the client SDK, different modes of authentication of the ciphertext would be desirable. If the consumer trusts the object store provider, then enabling a mode that skips authentication when it prevents an operation from operating efficiently makes sense. One example of an operation that would not work in an authenticated mode would be random reads (e.g. HTTP range requests). With a security in mind, the client SDK will operate by default in a fully authenticated mode unless explicitly disabled. Thus, consumers of SDKs supporting client-side encryption would be able to choose between one of two modes:
+
+ * `StrictlyAuthenticated` (default)
+ * `LooselyAuthenticated`
 
 ### Metadata Support
 
 Encrypted metadata will be supported by serializing to a JSON data structure that will be encrypted and converted to base64 encoding. This will be stored as metadata on the object via the HTTP header `Manta-Encrypt-Headers`. 
 
-### Manta Job Support
-
 ### Future considerations
 
-## 2. JDK SDK Design and Implementation
+Ideally, our client-side encryption implementation will be designed such that when we build server-side encryption support customers can seamlessly migrate between schemes. This can be possible if we have consistent headers/metadata for identifying ciphers, MAC, IV and key ids. 
+
+## 2. Java Manta SDK Client-side Encryption Design and Implementation
+
+
 
 ### Cipher Selection and Library Support
 
-`TODO: research how the OpenJDK handles strong encryption algorithms.`
-
-In the Oracle JDK there is limited default support for strong encryption algorithms. In order to enable stronger encryption, you must download and install the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html). Strong encryption algorithms are also supported using the [JCE API](https://en.wikipedia.org/wiki/Java_Cryptography_Extension) by [The Legion of the Bouncy Castle](http://www.bouncycastle.org/java.html) project.
+In the Oracle JDK there is limited default support for strong encryption algorithms. In order to enable stronger encryption, you must download and install the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html). This isn't an issue with the OpenJDK. Also, strong encryption algorithms are supported using the [JCE API](https://en.wikipedia.org/wiki/Java_Cryptography_Extension) by [The Legion of the Bouncy Castle](http://www.bouncycastle.org/java.html) project.
 
 Ideally, we should support algorithms supplied by Bouncy Castle and the Java runtime via the [JCE API](http://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html). The Java Manta SDK currently bundles Bouncy Castle dependencies because they are used when doing [authentication via HTTP signed requests](https://github.com/joyent/java-http-signature).
 
 We've identified the following ciphers as the best candidates for streamable encryption:
 
 ```
-TODO: Alex Wilso - please add reccomendations from JCE and BouncyCastle. Please note if they are compatible with OpenSSL.
+TODO: Alex Wilson - please add reccomendations from JCE and BouncyCastle. Please note if they are compatible with OpenSSL.
 
 ```
 
