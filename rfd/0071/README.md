@@ -25,6 +25,15 @@ In section 2, we provide a detailed summary of the design of the JDK implementat
 
 In section 3, we provide a detailed summary of the design of the node.js implementation.
 
+## Terms
+
+| Term           | Definition                                                  |
+| -------------- | ----------------------------------------------------------- |
+| Plaintext      | [Unencrypted data](https://en.wikipedia.org/wiki/Plaintext) |
+| Ciphertext     | [Encrypted data](https://en.wikipedia.org/wiki/Ciphertext) |
+| Authentication | [Cryptographic authentication](https://en.wikipedia.org/wiki/Message_authentication) - such as [MAC](https://en.wikipedia.org/wiki/Message_authentication_code) or [AE](https://en.wikipedia.org/wiki/Authenticated_encryption) |
+| Metadata       | Refers to metadata about objects stored in Manta |
+
 ## 1. Design Discussion
 
 ### Client-side Encryption Description
