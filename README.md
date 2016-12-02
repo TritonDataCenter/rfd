@@ -114,6 +114,7 @@ formal writing that it has come to represent.)
 | publish | [RFD 69 Metadata socket improvements](./rfd/0069/README.md) |
 | draft | [RFD 70 Joyent Repository Metadata](./rfd/0070/README.md) |
 | predraft | [RFD 71 Manta Client-side Encryption](./rfd/0071/README.md) |
+| predraft | [RFD 72 Chroot-independent Device Access](./rfd/0072/README.md) |
 
 ## Contents of an RFD
 
