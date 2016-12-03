@@ -38,9 +38,9 @@ In section 3, we provide a detailed summary of the design of the node.js impleme
 
 ### Client-side Encryption Description
 
-Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the client.ciphertext Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on behalf of the client. This RFD will be focused solely on client-side encryption.
+Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the client. Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on behalf of the client. This RFD will be focused solely on client-side encryption.
 
-Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is ensured because the client has full control over encryption algorithms, keys and authentication. When server-side encryption is not available on an object store, client-side encryption can be used to provide similar functionality to server-side encryption by relaxing requirements such as ciphertext authentication and thereby supporting random reads from streamable ciphers. This can make sense when the provider of the object-store is not viewed as a potential adversary and is a trusted party.
+Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is ensured because the client has full control over encryption algorithms, keys and authentication. Additionally, when server-side encryption is not available on an object store, client-side encryption can be used to provide similar functionality to server-side encryption provided that the user is willing to relax requirements such as authentication. This can make sense when the provider of the object-store is not viewed as a potential adversary and is a trusted party.
   
 From a design perspective the implementation of client-side encryption in Manta loosely resembles the Java S3 SDK implementation. Like the S3 implementation, we use the JVM's support for encryption facilities to do encryption, we support fully client-managed private keys, we support loosening strict checking of ciphertext authentication so we can do more operations (such as HTTP range requests), we support multi-part uploads and encrypting streams.
 
@@ -51,28 +51,31 @@ In order for an object store client SDK to provide encryption and decryption as 
  * Client-side encryption can be selectively enabled or disabled.
  * Streamable operations can be encrypted or decrypted without changing the API from non-encrypted operations.
  * Retryable operations are not affected by enabling encryption.
- * Encryption is memory efficient.
+ * Encryption algorithms supporting O(1) additional memory per operation are supported. 
  * HTTP range requests of ciphertext can be decrypted.
- * Multipart uploads can be encrypted and decrypted.
- * Client-side encryption implementation is compatible between all client SDKs.
+ * Objects uploaded through the multipart upload interface can be encrypted and decrypted.
+ * The schemes for client-side encryption should be compatible between all supported client SDKs. Objects encrypted using one SDK can be seamlessly decrypted with other SDKs that support client-side encryption.
+ * The encryption key file formats are compatible between all supported SDKs.
+ * The encryption key default file paths and environment variables are compatible between all supported SDKs.
  * Users of the SDK can select cipher and strength of encryption algorithm used.
- * Metadata is optionally encrypted.
- * Manta jobs can be supplied encryption credentials and operate normally.
- * Standardize headers to inform Manta that the object is encrypted.
+ * Functionality to allow for encrypted metadata is provided.
+ * Standardized headers are set that inform Manta that a given object is encrypted.
 
 ### Unsupported Operations
 
 Due to the inherent limitations of client-side encryption, some operations will not be supported. The list of operations not supported is as follows:
 
  * Manta jobs cannot be supported with client-side encrypted objects. Clients can of course upload the keys to Manta themselves and import them into jobs as assets if they need to, but there will be no first class support for such operations.
- * Decryption via signed links will not be supported.
- * Objects contained in the public directory will not be automatically decrypted unless accessed via a client SDK that supports client-side encryption.
+ * Decryption via signed links will not natively be supported by Manta server-side operations. A client could still download a signed link and decrypt it themself.
+ * Decryption of objects contained in the public directory will not be natively supported by Manta server-side operations. 
  * If using a [Authenticated Encryption with Associated Data (AEAD) cipher](https://en.wikipedia.org/wiki/Authenticated_encryption), authentication will not be possible when doing HTTP range requests.
 
 ### HTTP Headers Used with Client-side Encryption
 
+The following headers will be added to manta as natively supported headers like `Durability-Level` and not treated from an API perspective as "metadata" (`m-*` parameter). The rational behind this is that it is enforcing the contract for consistent behavior between client-side encryption implementations across SDKs.
+
 #### `Manta-Encrypt-Support`
-In order to give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext doesn't compress well and we would be able to selectively disable compression for encrypted files.
+In order to give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext does not compress well and we would be able to selectively disable compression for encrypted files. Another example is that it could be used as a basis for a identifying files that would be candidates for a future migration to server-side encryption.
 
 ```
 Manta-Encrypt-Support: client
@@ -105,10 +108,10 @@ In order to allow differing clients to easily select the correct encryption algo
 Manta-Encrypt-Cipher: aes/256/cbc
 ```
 
-#### `Manta-Unencrypted-Content-Length`
+#### `Manta-Encrypt-Original-Content-Length`
 For a plethora of use cases it is valuable for the client to be able to be aware of the unencrypted file's size. We store that in bytes.
 ```
-Manta-Unencrypted-Content-Length: 1048576
+Manta-Encrypt-Original-Content-Length: 1048576
 
 ```
 
@@ -146,12 +149,12 @@ TODO: Find out if we need to store cipher and/or key padding settings.
 TODO: Find out if we need to store AEAD tag length.
 ```
 
-### Authentication Modes
+### Cryptographic Authentication Modes
 
 Depending on the threat model determined by the consumer of the client SDK, different modes of authentication of the ciphertext would be desirable. If the consumer trusts the object store provider, then enabling a mode that skips authentication when it prevents an operation from operating efficiently makes sense. One example of an operation that would not work in an authenticated mode would be random reads (e.g. HTTP range requests). With a security in mind, the client SDK will operate by default in a fully authenticated mode unless explicitly disabled. Thus, consumers of SDKs supporting client-side encryption would be able to choose between one of two modes:
 
- * `StrictlyAuthenticated` (default)
- * `LooselyAuthenticated`
+ * `MandatoryObjectAuthentication` (default)
+ * `OptionalObjectAuthentication`
  
 We only provide two modes unlike S3 which provides three modes (`EncryptionOnly`, `AuthenticatedEncryption`, and `StrictAuthenticatedEncryption`). `EncryptionOnly` mode in S3 does not authenticate ciphertext at all, `AuthenticatedEncryption` authenticates ciphertext when it is possible with the operation being performed and `StrictAuthenticatedEncryption` always authenticates and will cause an exception to be thrown if the operation can't be performed with authentication.   
 
@@ -177,7 +180,7 @@ Ideally, our client-side encryption implementation will be designed such that wh
 
 ## 2. Java Manta SDK Client-side Encryption Design and Implementation
 
-Client-side encryption within the Java Manta SDK will be implemented as an optional operation that wraps streams going to and from Manta. Client-side encryption will be enabled using configuration and from an API consumer's perspective there will not be a change in the API. When operations are not supported by the encryption settings, then appropriate exceptions will be thrown indicating the conflict between the setting and the operation. An example of this would be an attempt to use a HTTP range operation when `StrictlyAuthenticated` is enabled. Furthermore, care will need to be taken to allow for operations that are retryable to continue to be retryable - such as sending [File](https://docs.oracle.com/javase/8/docs/api/java/io/File.html) objects.   
+Client-side encryption within the Java Manta SDK will be implemented as an optional operation that wraps streams going to and from Manta. Client-side encryption will be enabled using configuration and from an API consumer's perspective there will not be a change in the API. When operations are not supported by the encryption settings, then appropriate exceptions will be thrown indicating the conflict between the setting and the operation. An example of this would be an attempt to use a HTTP range operation when `MandatoryObjectAuthentication` is enabled. Furthermore, care will need to be taken to allow for operations that are retryable to continue to be retryable - such as sending [File](https://docs.oracle.com/javase/8/docs/api/java/io/File.html) objects.   
 
 ### Cipher Selection and Library Support
 
@@ -205,10 +208,14 @@ TODO: Do we want to support multiple keys?
 We will need:
 ClientSideEncryptionEnabled: true | false (default)
 PermitUnencryptedDownloads: true | false (true)
-EncryptionAuthenticationMode: Loose | Strict (default)
+EncryptionAuthenticationMode: Optional | Mandatory (default)
 EncryptionPrivateKeyPath or EncryptionPrivateKeyBytes (one or the other need to be selected)
 
 ```
+
+### Headers
+
+The additional headers specifying in [HTTP Headers Used with Client-side Encryption](HTTP-Headers-Used-with-Client-side-Encryption) would be added as properties of the [`com.joyent.manta.client.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaHttpHeaders.java) class. These properites would be set without intervention from the implementer of the SDK in the relevant section of [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) by the uploading logic. For `Manta-Encrypt-Original-Content-Length` when streaming we will need to wrap the plaintext stream in a [`org.apache.commons.io.CountingInputStream`](https://commons.apache.org/proper/commons-io/javadocs/api-2.5/org/apache/commons/io/input/CountingInputStream.html) in order to calculate the content length.  
 
 ### Thread-safety
 
@@ -228,7 +235,7 @@ Currently, when we send a file to Manta via the SDK, we create an instance of `c
 
 ### HTTP Range / Random Read Support
 
-Authenticating ciphertext and decrypting random sections of ciphertext can't be done as one operation without reading the entirety of the ciphertext. This mode of operation is inefficient when a consumer of an object store wants to read randomly from an object that is stored using client-side encryption because it would require them to download the entire object and authenticate it before decrypting the random section. Thus, we will only allow HTTP range requests to be performed when `EncryptionAuthenticationMode` is set to `Loose`. In those cases, the server-side content-md5 could still be compared to a record that the client keeps for additional security. However, it would not be bulletproof because the server could still send differing binary data to the client for the range and that binary data could not be authenticated. In the end, this mode of operation requires trusting the provider.
+Authenticating ciphertext and decrypting random sections of ciphertext can't be done as one operation without reading the entirety of the ciphertext. This mode of operation is inefficient when a consumer of an object store wants to read randomly from an object that is stored using client-side encryption because it would require them to download the entire object and authenticate it before decrypting the random section. Thus, we will only allow HTTP range requests to be performed when `EncryptionAuthenticationMode` is set to `Optional`. In those cases, the server-side content-md5 could still be compared to a record that the client keeps for additional security. However, it would not be bulletproof because the server could still send differing binary data to the client for the range and that binary data could not be authenticated. In the end, this mode of operation requires trusting the provider.
    
 When reading randomly from an remote object in ciphertext, the byte range of the plaintext object does not match the byte range of the cipher text object. Any implementation would need to provide a cipher-aware translation of byte-ranges. Moreover, some ciphers do not support random reads at all. In those cases, we want to throw an exception to inform the implementer that the operation is not possible.
 
