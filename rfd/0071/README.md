@@ -272,3 +272,15 @@ Private key format failures should be detected upon startup of the SDK and cause
 Failures due to problems decoding the ciphertext will be pushed up the stack from the underlying JCE implementation. We need to be careful to preserve such exceptions and to wrap them with our own exception types that provide additional context that allows for ease in debugging.
 
 ## 3. Node.js SDK Design and Implementation
+
+### Assumptions
+
+- Key management is beyond the scope of this work. Therefore, this solution should not depend on a particular key management choice.
+- There shouldn't be any server-side changes needed to make this solution work.
+- Files uploaded and encrypted using the Node.js manta client should support being decrypted/verified using other clients (Java).
+- The manta SDK for Node.js lowercases the header keys, therefore, assume that the `m-*` are all lowercase
+
+
+### Limitations
+
+- 
