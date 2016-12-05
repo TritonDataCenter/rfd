@@ -286,4 +286,13 @@ Failures due to problems decoding the ciphertext will be pushed up the stack fro
 - GCM is the only supported authentication encryption cipher supported by Node.js: https://nodejs.org/api/crypto.html#crypto_cipher_setaad_buffer
 
 
+### API
 
+#### `get(path, options, callback)`
+
+Retrieve an encrypted object stored at `path` inside Manta and decrypt it. The `options` object expects a property named `getKey` that will be a function that will be executed to get the secret key used to encrypt the object stored at `path`. Below are possible scenarios to consider:
+
+1. `m-encrypt-support` doesn't exist or doesn't have the value `'client'`, in which case the object is assumed not to be encrypted and the normal processing of the file occurs, without decryption
+1. `m-encrypt-cipher` is set to an algorithm that isn't supported by Node.js, in which case an error should be returned in the callback
+1. `m-encrypt-key-id` isn't found by the `getKey` function or an error is returned on the callback. In this scenario the error will be forwarded to the callback function.
+1. `getKey` doesn't exist and `m-encrypt-support` is set to `'client'`, this will result in an error being passed on the callback.
