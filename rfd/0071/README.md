@@ -81,11 +81,11 @@ In order to give the maintainers of Manta and client SDKs more options when impl
 Manta-Encrypt-Support: client
 ```
 
-#### `Manta-Encrypt-Key-Id`
-To provide an audit trail to the consumers of client-side encryption, we set a header indicating the id of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future.
+#### `m-encrypt-key-id`
+To provide an audit trail to the consumers of client-side encryption, we set a header indicating the ID of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future.
 
 ```
-Manta-Encrypt-Key-Id: XXXXXXXXX
+manta-encrypt-key-id: XXXXXXXXX
 ```
 
 #### `Manta-Encrypt-IV`
