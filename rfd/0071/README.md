@@ -353,13 +353,51 @@ Upload an object to Manta and optionally encrypt it using the cipher details pro
 1. Generate an Initialization Vector (IV)
 1. Calculate the cipher from the input stream and IV
 1. Calculate the HMAC using the calculated cipher and `key`, this should use 'sha256' or we should save the configured HMAC algorithm in a separate header
+1. Set the `m-encrypt-support` header to `'client'`
 1. Set the `m-encrypt-key-id` header sent to Manta using the `options.keyId`
 1. Set the `m-encrypt-iv` header to the IV value encoded as base64
 1. Set the `m-encrypt-cipher` header to the `options.cipher`
 1. Set the `m-encrypt-mac` header to the HMAC calculated value encoded as base64
 1. Calculate the cipher for the `metadata` using similar steps when the metadata also needs to be encrypted
 
+##### Usage example
+
+```js
+'use strict';
+
+const Fs = require('fs');
+const Manta = require('manta');
+
+const client = Manta.createClient({
+    sign: Manta.privateKeySigner({
+        key: Fs.readFileSync(process.env.HOME + '/.ssh/id_rsa', 'utf8'),
+        keyId: process.env.MANTA_KEY_ID,
+        user: process.env.MANTA_USER
+    }),
+    user: process.env.MANTA_USER,
+    url: process.env.MANTA_URL
+});
+
+const file = Fs.createReadStream(__dirname + '/README.md');
+const keyId = 'dev/test';
+const key = 'FFFFFFFBD96783C6C91E2222';
+const cipher = 'aes/192/cbc';
+
+client.put('~~/stor/encrypted', file, { key, keyId, cipher }, (err, res) => {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  }
+});
+```
 
 #### `info(path, options, callback)`
 
 Retrieve metadata and headers for an object stored in Manta. When metadata is encrypted, info should decrypt and validate the integrity of the stored data, providing a decrypted form of the metadata.
+
+The `headers` will be checked and if `m-encrypt-support` is set to `'client'` and if there is a `m-encrypt-metadata` header, then info should decrypt the value of `m-encrypt-metadata` using the information in other headers, perform an integrity check using the `m-encrypt-metadata-mac` value, then set the decrypted metadata on `m-encrypt-metadata-decypted`.
+
+
+#### `chattr(path, options, callback)`
+
+The change attribute function will also need to be updated to support setting metadata headers with encrypted values.
