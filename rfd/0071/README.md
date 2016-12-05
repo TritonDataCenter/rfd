@@ -321,10 +321,6 @@ const vault = Vault({
   token: '1234'
 });
 
-const file = Fs.createReadStream(__dirname + '/README.md');
-const path = '~~/stor/encrypted';
-const key = 'FFFFFFFBD96783C6C91E2222';   // 24 bytes
-
 const getKey = function (keyId, callback) {
   vault.read('secret/' + keyId).then((result) => {
     callback(null, result);
@@ -334,7 +330,7 @@ const getKey = function (keyId, callback) {
 };
 
 
-Manta.get(path, { client, getKey }, (err, stream) => {
+client.get('~~/stor/encrypted', { getKey }, (err, stream) => {
   if (err) {
     console.error(err);
     process.exit(1);
