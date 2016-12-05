@@ -283,4 +283,4 @@ Failures due to problems decoding the ciphertext will be pushed up the stack fro
 
 ### Limitations
 
-- 
+- GCM is the only supported authentication encryption cipher supported by Node.js: https://nodejs.org/api/crypto.html#crypto_cipher_setaad_buffer
