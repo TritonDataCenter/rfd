@@ -74,72 +74,72 @@ Due to the inherent limitations of client-side encryption, some operations will 
 
 The following headers will be added to manta as natively supported headers like `Durability-Level` and not treated from an API perspective as "metadata" (`m-*` parameter). The rational behind this is that it is enforcing the contract for consistent behavior between client-side encryption implementations across SDKs.
 
-#### `manta-encrypt-support`
+#### `m-encrypt-support`
 In order to give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext does not compress well and we would be able to selectively disable compression for encrypted files. Another example is that it could be used as a basis for a identifying files that would be candidates for a future migration to server-side encryption.
 
 ```
-manta-encrypt-support: client
+m-encrypt-support: client
 ```
 
 #### `m-encrypt-key-id`
 To provide an audit trail to the consumers of client-side encryption, we set a header indicating the ID of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future.
 
 ```
-manta-encrypt-key-id: XXXXXXXXX
+m-encrypt-key-id: XXXXXXXXX
 ```
 
-#### `manta-encrypt-iv`
+#### `m-encrypt-iv`
 In order to make sure that the same ciphertext is not generated each time the same file is encrypted, we use an [initialization vector (IV)](https://en.wikipedia.org/wiki/Initialization_vector). This IV is stored in Manta as header metadata in base64 encoding.   
 ```
-manta-encrypt-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
+m-encrypt-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 ```
 
-#### manta-encrypt-mac
+#### m-encrypt-mac
 A cryptographic checksum of the ciphertext is stored in this header so that ciphertext can be authenticated. This prevents classes of attacks that involve tricky changes to the ciphertext binary file. When using AEAD ciphers, it will contain the authentication data (AD) instead of [hash-based message authentication (HMAC)](https://en.wikipedia.org/wiki/Hash-based_message_authentication_code) data. The value of the header will be stored in base64 encoding.
 ```
-manta-encrypt-mac: XXXXXXXXX
+m-encrypt-mac: XXXXXXXXX
 
 ```
 
-#### `manta-encrypt-cipher`
+#### `m-encrypt-cipher`
 In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to encrypt the object. This header is in the form of `cipher/width/mode`.
 
 ```
-manta-encrypt-cipher: aes/256/cbc
+m-encrypt-cipher: aes/256/cbc
 ```
 
-#### `manta-encrypt-original-content-length`
+#### `m-encrypt-original-content-length`
 For a plethora of use cases it is valuable for the client to be able to be aware of the unencrypted file's size. We store that in bytes.
 ```
-manta-encrypt-original-content-length: 1048576
+m-encrypt-original-content-length: 1048576
 
 ```
 
-#### `manta-encrypt-metadata`
+#### `m-encrypt-metadata`
 Like the free form `m-*` metadata headers, we support free form encrypted metadata. The value of this header is ciphertext encoded in base64. Metadata stored in plaintext is written as JSON. The value of this header will be limited to a maximum of 4k bytes as base64 ciphertext. 
 ```
-manta-encrypt-metadata: XXXXXXXXX
+m-encrypt-metadata: XXXXXXXXX
 
 ```
 
-#### `manta-encrypt-metadata-iv`
-Like `Manta-Encrypt-IV` we store the IV for the ciphertext for the HTTP header `manta-encrypt-metadata`. 
+#### `m-encrypt-metadata-iv`
+Like `m-encrypt-iv` we store the IV for the ciphertext for the HTTP header `m-encrypt-metadata`. 
 ```
-manta-encrypt-metadata-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
+m-encrypt-metadata-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 
 ```
 
-#### `manta-encrypt-metadata-mac`
-Like `manta-encrypt-mac` we store the MAC in base64 for the ciphertext for the HTTP header `manta-encrypt-metadata` so that we can verify the authenticity of the header ciphertext.
+#### `m-encrypt-metadata-mac`
+Like `m-encrypt-mac` we store the MAC in base64 for the ciphertext for the HTTP header `m-encrypt-metadata` so that we can verify the authenticity of the header ciphertext.
 ```
-manta-encrypt-metadata-mac: XXXXXXXXX
+m-encrypt-metadata-mac: XXXXXXXXX
 
 ```
 
-#### `manta-encrypt-metadata-cipher`
-Like `manta-encrypt-cipher` we store the cipher for the ciphertext for the HTTP header `manta-encrypt-metadata` so that our client can easily choose the right algorithm for decryption.
+#### `m-encrypt-metadata-cipher`
+Like `m-encrypt-cipher` we store the cipher for the ciphertext for the HTTP header `m-encrypt-metadata` so that our client can easily choose the right algorithm for decryption.
 ```
-manta-encrypt-metadata-cipher: aes/256/cbc
+m-encrypt-metadata-cipher: aes/256/cbc
 ```
 
 ```
@@ -172,7 +172,7 @@ TODO: Define the default portable format for encryption keys.
 
 ### Metadata Support
 
-Encrypted metadata will be supported by serializing to a JSON data structure that will be encrypted and converted to base64 encoding. This will be stored as metadata on the object via the HTTP header `Manta-Encrypt-Headers`. 
+Encrypted metadata will be supported by serializing to a JSON data structure that will be encrypted and converted to base64 encoding. This will be stored as metadata on the object via the HTTP header `m-encrypt-headers`. 
 
 ### Future considerations
 
