@@ -296,3 +296,51 @@ Retrieve an encrypted object stored at `path` inside Manta and decrypt it. The `
 1. `m-encrypt-cipher` is set to an algorithm that isn't supported by Node.js, in which case an error should be returned in the callback
 1. `m-encrypt-key-id` isn't found by the `getKey` function or an error is returned on the callback. In this scenario the error will be forwarded to the callback function.
 1. `getKey` doesn't exist and `m-encrypt-support` is set to `'client'`, this will result in an error being passed on the callback.
+
+
+##### Usage example
+
+```js
+'use strict';
+
+const Fs = require('fs');
+const Manta = require('manta');
+const Vault = require('node-vault');
+
+const client = Manta.createClient({
+    sign: Manta.privateKeySigner({
+        key: Fs.readFileSync(process.env.HOME + '/.ssh/id_rsa', 'utf8'),
+        keyId: process.env.MANTA_KEY_ID,
+        user: process.env.MANTA_USER
+    }),
+    user: process.env.MANTA_USER,
+    url: process.env.MANTA_URL
+});
+
+const vault = Vault({
+  token: '1234'
+});
+
+const file = Fs.createReadStream(__dirname + '/README.md');
+const path = '~~/stor/encrypted';
+const key = 'FFFFFFFBD96783C6C91E2222';   // 24 bytes
+
+const getKey = function (keyId, callback) {
+  vault.read('secret/' + keyId).then((result) => {
+    callback(null, result);
+  }).catch((err) => {
+    callback(err);
+  });
+};
+
+
+Manta.get(path, { client, getKey }, (err, stream) => {
+  if (err) {
+    console.error(err);
+    process.exit(1);
+  }
+
+  stream.pipe(process.stdout);
+  console.log('\n');
+});
+```
