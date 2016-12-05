@@ -277,20 +277,25 @@ Failures due to problems decoding the ciphertext will be pushed up the stack fro
 
 - Key management is beyond the scope of this work. Therefore, this solution should not depend on a particular key management choice.
 - There shouldn't be any server-side changes needed to make this solution work.
-- Files uploaded and encrypted using the Node.js manta client should support being decrypted/verified using other clients (Java).
-- The manta SDK for Node.js lowercases the header keys, therefore, assume that the `m-*` are all lowercase
+- Files uploaded and encrypted using the Node.js Manta client should support being decrypted/verified using other clients (Java).
+- The Manta SDK for Node.js lowercases the header keys, therefore, assume that the `m-*` headers are all lowercase
 
 
 ### Limitations
 
 - GCM is the only supported authentication encryption cipher supported by Node.js: https://nodejs.org/api/crypto.html#crypto_cipher_setaad_buffer
+- The `chattr` Manta SDK function will not auto-encrypt metadata headers set on the `m-encrypt-metadata` header location
 
 
 ### API
 
 #### `get(path, options, callback)`
 
-Retrieve an encrypted object stored at `path` inside Manta and decrypt it. The `options` object expects a property named `getKey` that will be a function that will be executed to get the secret key used to encrypt the object stored at `path`. Below are possible scenarios to consider:
+Update the existing `get` function with support for retrieving encrypted objects, validating their integrity, and passing the decrypted version to the developer. The `options` object will be updated to expect a property named `getKey` that will be a function that will be executed to get the secret key used to encrypt the object stored at `path`. `getKey` is only required when retrieving an encrypted object.
+
+##### Potential Failures to Consider
+
+Below are possible scenarios/failures to consider
 
 1. `m-encrypt-support` doesn't exist or doesn't have the value `'client'`, in which case the object is assumed not to be encrypted and the normal processing of the file occurs, without decryption
 1. `m-encrypt-cipher` is set to an algorithm that isn't supported by Node.js, in which case an error should be returned in the callback
@@ -299,6 +304,18 @@ Retrieve an encrypted object stored at `path` inside Manta and decrypt it. The `
 1. Required header information is missing from the object stored in Manta. This results in an error passed to the callback.
 1. `m-encrypt-mac` doesn't match the calculated HMAC of the encrypted object. This results in an error passed to the callback.
 
+##### Logical Workflow
+
+Below are the steps that will take place inside of `get` when encountering an encrypted object
+
+1. Detect if an object is encrypted by checking if the `m-encrypt-support` header is set to `'client'`
+1. Validate the required encryption headers are stored with the object
+1. Retrieve the secret key using the `m-encrypt-key-id` value and `getKey` function passed on the option object
+1. Calculate the HMAC using 'sha256' with the key from getKey() and the encrypted object
+1. Verify that the calculated HMAC matches the `m-encrypt-mac` value
+1. Decrypt the object using the `m-encrypt-iv`, key retrieved from `getKey()` and the cipher specified in `m-encrypt-cipher`
+1. Verify that the object byte size matches the stored `m-encrypt-original-content-length`
+1. Pass the decrypted object to the callback function as a stream
 
 ##### Usage example
 
@@ -345,7 +362,12 @@ client.get('~~/stor/encrypted', { getKey }, (err, stream) => {
 
 #### `put(path, input, options, callback)`
 
-Upload an object to Manta and optionally encrypt it using the cipher details provided. When encryption occurs, additional `m-*` headers will be saved along with the object. Below are the steps that should take place when encrypting an object.
+Upload an object to Manta and optionally encrypt it using the cipher details provided. When encryption occurs, additional `m-*` headers will be saved along with the object. 
+
+
+##### Logical Workflow
+
+Below are the steps that should take place when encrypting an object.
 
 1. Check that encryption should take place
 1. Assert that all required options are present for encryption: `key`, `keyId`, `cipher`. `cipher` should use the alg/width/mode structure
@@ -397,7 +419,3 @@ Retrieve metadata and headers for an object stored in Manta. When metadata is en
 
 The `headers` will be checked and if `m-encrypt-support` is set to `'client'` and if there is a `m-encrypt-metadata` header, then info should decrypt the value of `m-encrypt-metadata` using the information in other headers, perform an integrity check using the `m-encrypt-metadata-mac` value, then set the decrypted metadata on `m-encrypt-metadata-decypted`.
 
-
-#### `chattr(path, options, callback)`
-
-The change attribute function will also need to be updated to support setting metadata headers with encrypted values.
