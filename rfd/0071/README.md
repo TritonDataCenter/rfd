@@ -296,6 +296,8 @@ Retrieve an encrypted object stored at `path` inside Manta and decrypt it. The `
 1. `m-encrypt-cipher` is set to an algorithm that isn't supported by Node.js, in which case an error should be returned in the callback
 1. `m-encrypt-key-id` isn't found by the `getKey` function or an error is returned on the callback. In this scenario the error will be forwarded to the callback function.
 1. `getKey` doesn't exist and `m-encrypt-support` is set to `'client'`, this will result in an error being passed on the callback.
+1. Required header information is missing from the object stored in Manta. This results in an error passed to the callback.
+1. `m-encrypt-mac` doesn't match the calculated HMAC of the encrypted object. This results in an error passed to the callback.
 
 
 ##### Usage example
@@ -340,3 +342,24 @@ client.get('~~/stor/encrypted', { getKey }, (err, stream) => {
   console.log('\n');
 });
 ```
+
+#### `put(path, input, options, callback)`
+
+Upload an object to Manta and optionally encrypt it using the cipher details provided. When encryption occurs, additional `m-*` headers will be saved along with the object. Below are the steps that should take place when encrypting an object.
+
+1. Check that encryption should take place
+1. Assert that all required options are present for encryption: `key`, `keyId`, `cipher`. `cipher` should use the alg/width/mode structure
+1. Assert that the provided `cipher` algorithm is valid and supported by the platform
+1. Generate an Initialization Vector (IV)
+1. Calculate the cipher from the input stream and IV
+1. Calculate the HMAC using the calculated cipher and `key`, this should use 'sha256' or we should save the configured HMAC algorithm in a separate header
+1. Set the `m-encrypt-key-id` header sent to Manta using the `options.keyId`
+1. Set the `m-encrypt-iv` header to the IV value encoded as base64
+1. Set the `m-encrypt-cipher` header to the `options.cipher`
+1. Set the `m-encrypt-mac` header to the HMAC calculated value encoded as base64
+1. Calculate the cipher for the `metadata` using similar steps when the metadata also needs to be encrypted
+
+
+#### `info(path, options, callback)`
+
+Retrieve metadata and headers for an object stored in Manta. When metadata is encrypted, info should decrypt and validate the integrity of the stored data, providing a decrypted form of the metadata.
