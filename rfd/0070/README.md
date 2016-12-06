@@ -88,6 +88,7 @@ Background Links:
  * [Getting Started on Android](https://source.android.com/source/downloading.html#installing-repo)
  * [Format "Spec"](https://gerrit.googlesource.com/git-repo/+/master/docs/manifest-format.txt)
  * [Android Manifest](https://android.googlesource.com/platform/manifest/+/master/default.xml)
+ * [ChromeOS Manifeset](https://chromium.googlesource.com/chromiumos/manifest.git/+/master/full.xml)
  * [3rd party blog](https://harrow.io/blog/using-repo-to-manage-complex-software-projects/)
 
 Note that this is *not* a proposal to make the use of `repo` mandatory, to bless a particular hierarchical structure of Joyent repositories as the One True Way that you Must Use on your workstation, or adopt other parts of the Android workflow.
@@ -95,6 +96,12 @@ Note that this is *not* a proposal to make the use of `repo` mandatory, to bless
 See [#Initial Layout and Tagging]() for a proposed initial layout.  The intent of the on-disk layout is to provide some clues to humans (so they don't have 400+ repos in one directory) while groups will  provide the metadata for computer programs.  ("manta" and "triton" are well known examples, but likely poor choices due to overlap.  A more likely example would be a node library could be tagged with both "manta" and "triton" and placed in lib/js.)
 
 This model *would* struggle with private and internal repositories.  Having the manifest be private would be lame, while gluing multiple public and private repositories together would be error prone.  It's possible that the set of repositories that are still active *and* private is sufficiently small that no further format structure is needed.
+
+### Future of Repo tool
+
+In late 2016 proposals were [published](https://storage.googleapis.com/gerrit-talks/summit/2016/bye-bye-repo.pdf) for Android to [migrate away](https://groups.google.com/d/topic/repo-discuss/tyteGt1rHME/discussion) from `repo` in favor of sub-modules (contingent on future improvements to sub-modules).  While there is now a surprising plurality of non-Google contributors, this does cause some concern about the longevity of the tool.
+
+It also illustrates a divergences of use cases between `repo` and this RFD.  The raison d'être of `repo` the fervent wish that there was only one repository with all of the Android code.  The grouping of repositories (the most important part for this RFD) is secondary or subservient to that goal.
 
 ## Option B (roll our own)
 
@@ -250,6 +257,10 @@ Internal RELENG tooling has a `repos.json` with partial coverage.
 Some of the doc building tools (ie apidocs) have a smaller list of repos to pull from.
 
 ## Appendix
+
+### jrepo command
+
+TODO: git worktree *appears* to work well enough (and is cleaner than repo's symlink party), although unmapping remote branches is needed.
 
 ### Json Schema for Option B
 
