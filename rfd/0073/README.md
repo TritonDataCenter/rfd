@@ -13,7 +13,7 @@ state: draft
     Copyright 2016 <contributor>
 -->
 
-# RFD 73 Moray client support for SRV-based service-discovery
+# RFD 73 Moray client support for SRV-based service discovery
 
 ## Background
 
