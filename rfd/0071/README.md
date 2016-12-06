@@ -55,8 +55,7 @@ In order for an object store client SDK to provide encryption and decryption as 
  * HTTP range requests of ciphertext can be decrypted.
  * Objects uploaded through the multipart upload interface can be encrypted and decrypted.
  * The schemes for client-side encryption should be compatible between all supported client SDKs. Objects encrypted using one SDK can be seamlessly decrypted with other SDKs that support client-side encryption.
- * The encryption key file formats are compatible between all supported SDKs.
- * The encryption key default file paths and environment variables are compatible between all supported SDKs.
+ * The encryption key formats are compatible between all supported SDKs.
  * Users of the SDK can select cipher and strength of encryption algorithm used.
  * Functionality to allow for encrypted metadata is provided.
  * Standardized headers are set that inform Manta that a given object is encrypted.
