@@ -178,6 +178,14 @@ Encrypted metadata will be supported by serializing to a JSON data structure tha
 
 Ideally, our client-side encryption implementation will be designed such that when we build server-side encryption support customers can seamlessly migrate between schemes. This can be possible if we have consistent headers/metadata for identifying ciphers, MAC, IV and key ids. 
 
+### Limitations
+
+***Your data on Manta with client-side encryption is only as strong as the security of your instances that host the encryption keys.***
+
+Encryption is only as secure as your keys. Since client-side encryption does not handle do any form of key management, a large part of security is left up to the implementer of the SDK. For example, if you are running an application that uses the SDK in the same datacenter as Manta and storing your keys in one of your instances, you effectively have the same level of security as not having any encryption if you do not trust the operators of the data center. The only benefit encryption would provide would be an assurance that the data stored was unavailable when the Manta hard disks were disposed. 
+
+In contrast to the scenario above, if your keys were protected by an [HSM](https://en.wikipedia.org/wiki/Hardware_security_module) in a secure datacenter (that you trust) that is separate from Manta (which you don't trust), the benefits of client-side encryption would be realized because your keys could have a different threat profile than Manta itself. 
+
 ## 2. Java Manta SDK Client-side Encryption Design and Implementation
 
 Client-side encryption within the Java Manta SDK will be implemented as an optional operation that wraps streams going to and from Manta. Client-side encryption will be enabled using configuration and from an API consumer's perspective there will not be a change in the API. When operations are not supported by the encryption settings, then appropriate exceptions will be thrown indicating the conflict between the setting and the operation. An example of this would be an attempt to use a HTTP range operation when `MandatoryObjectAuthentication` is enabled. Furthermore, care will need to be taken to allow for operations that are retryable to continue to be retryable - such as sending [File](https://docs.oracle.com/javase/8/docs/api/java/io/File.html) objects.   
