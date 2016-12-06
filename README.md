@@ -116,6 +116,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 71 Manta Client-side Encryption](./rfd/0071/README.md) |
 | predraft | [RFD 72 Chroot-independent Device Access](./rfd/0072/README.md) |
 | draft    | [RFD 73 Moray client support for SRV-based service discovery](./rfd/0073/README.md) |
+| draft    | [RFD 74 Manta fault tolerance test plan](./rfd/0074/README.md) |
 
 ## Contents of an RFD
 

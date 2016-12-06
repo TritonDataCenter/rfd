@@ -10,7 +10,7 @@ state: draft
 -->
 
 <!--
-    Copyright 2016 <contributor>
+    Copyright 2016 Joyent, Inc.
 -->
 
 # RFD 73 Moray client support for SRV-based service discovery
