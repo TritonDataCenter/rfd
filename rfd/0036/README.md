@@ -34,13 +34,18 @@ Contents:
 - Manifest files
 	- [Project manifest](project-manifest.md)
 	- [Service manifest](service-manifest.md)
+- User stories
+	- [jupiter.example.com: what it is and development workflow](./user-stories/jupiter-example-com.md)
+	- [Running jupiter.example.com in multiple data centers](./user-stories/jupiter-example-com-multi-dc.md)
+	- [Health-checking, monitoring, and scaling jupiter.example.com](./user-stories/jupiter-example-com-monitoring-and-health.md)
+	- [Creating, copying, and moving projects like microsite.jupiter.example.com](./user-stories/microsite-jupiter-example-com.md) (also includes secret management)
+
 
 ## Concepts
 
-
 ### Project
 
-A project is a collection of related compute instances and other related resources ([see "projects" in RFD13](https://github.com/joyent/rfd/blob/master/rfd/0013/README.md#projects) for more detail). A service and all its instances _must_ be a member of a single project. Permissions about who can view or modify a service are set according to RFD13 rules for the project.
+A project is a collection of related compute instances and other related resources ([see "projects" in RFD13](../0013/README.md#proposal) for more detail). A service and all its instances _must_ be a member of a single project. Permissions about who can view or modify a service are set according to RFD13 rules for the project.
 
 ### Service
 
@@ -74,3 +79,9 @@ Only `docker`,`infrastructure`, and `kvm` are required for the MVP.
 Scaling, upgrading, even stopping all the instances of an app can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
 
 This document defines tasks specific to deploying services, but the task queue is not limited to services.
+
+### Project meta (including secrets)
+
+Many applications require configuration values which are undesirable or unsafe to set in the application image. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
+
+This document proposes a simple method of storing those details and injecting them into containers. It is not intended to provide the rich features of solutions like Hashicorp's Vault, instead it is intended to provide a basic solution that is easy to use in a broad variety of applications.
