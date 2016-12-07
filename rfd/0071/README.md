@@ -294,6 +294,10 @@ Failures due to problems decoding the ciphertext will be pushed up the stack fro
 - The `chattr` Manta SDK function will not auto-encrypt metadata headers set on the `m-encrypt-metadata` header location
 - The `info` Manta SDK function will not auto-decrypt metadata headers
 
+### Prototype
+
+A working prototype that is built on top of the existing Manta SDK for Node.js is available at https://github.com/geek/manta-encryption/
+
 
 ### API
 
