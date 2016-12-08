@@ -50,8 +50,14 @@ Four cases of headnode setup:
    instances are purged from working sets. This requires full HA for all
    services, which a matter bigger than just this RFD.
 
+
 This RFD will propose a plan primarily for #3. Cases #2 and #4 will likely also
 be discussed, but are a lower priority. Case #5 is out of scope.
+
+TODO: Re-number these things, add a #2 for headnode replacement. I.e. controlled
+EOL'ing of a headnode server by moving headnode to another. The test there
+is nightly-1 being able to swap headnode back and forth between servers. Call
+this M1.
 
 
 # Prior art
