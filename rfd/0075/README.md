@@ -3,7 +3,7 @@ author: Jerry Jelinek <jerry@joyent.com>
 state: predraft
 ---
 
-# RFD 75 Limiting CPU Visibility
+# RFD 75 Virtualizing the number of CPUs
 
 ## Problem Statement
 
