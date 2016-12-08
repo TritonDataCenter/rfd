@@ -86,3 +86,8 @@ This section summarizes the locations that would need to be virtualized.
    * /proc/interrupts        ints/cpu
    * /proc/stat              cpu time
 
+2. /sysfs
+
+   The lx /sys filesystem also exposes some CPU information.
+
+   *  /sys/devices/system/cpu
