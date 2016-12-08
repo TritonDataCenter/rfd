@@ -48,16 +48,17 @@ Four cases of headnode setup:
    headnode1, headnode2) such that loosing one of them to thermite doesn't
    result in any issues other than a temporary blip in services while failing
    instances are purged from working sets. This requires full HA for all
-   services, which a matter bigger than just this RFD (read: out of scope).
+   services, which a matter bigger than just this RFD.
 
-This RFD will propose a plan for #2, #3, and #4.
+This RFD will propose a plan primarily for #3. Cases #2 and #4 will likely also
+be discussed, but are a lower priority. Case #5 is out of scope.
 
 
 # Prior art
 
 There are ancient `sdc-backup` and `sdc-recover` tools (and related "backup"
 and "recover" scripts in "$repo/boot/" for some of the core service Triton
-repositories. Those are broken, incomplete, and -- I hope -- not supported.
+repositories). Those are broken, incomplete, and -- I hope -- not supported.
 
     [root@headnode (coal) ~]# sdc-backup
     logs at /tmp/backuplog.34881
@@ -98,6 +99,61 @@ on more instances, the recovery process may go like this:
 - Call `sdcadm recover` similar to above.
 
 
+# imgapi
+
+How should IMGAPI change so that losing the headnode doesn't mean potential
+data loss of image files that are stored locally? One potential is to make
+IMGAPI HA so that there are, say, 3 instances and local image files are
+written to all or a subset of them before "commiting". Bryan described that as
+IMGAPI trying to solve the Manta problem (without using Manta)... which feels
+like sadness.
+
+The alternative proposal is this:
+
+- Get a periodic backup of the imgapi local file storage to the other two
+  "core" CNs (those with the HA instances). For non-blessed setups, perhaps
+  offer a config var to specify the servers to use for this backup, or even
+  using a remote Manta for this backup.
+- During recovery the new imgapi instance would use this backup to seed itself.
+- This leaves the potential that you lose up to one $period of image file data
+  (e.g. one hour). A post-recovery check (I think `imgapiadm check-files`
+  already implements this) would give a report on file data that is missing.
+- Fix IMGAPI-487 so that Docker image files are backed by Manta (if the IMGAPI
+  is configured to use a Manta).
+
+The "story" to Triton operators then is this: Try to configure your IMGAPI to be
+backed by Manta, then all images except core images themselves are in Manta
+and hence durable. Otherwise, there is a $period window for image file loss.
+
+# sdcadm status
+
+I'm consider implementing a `sdcadm status` as part of this work that will
+give a report on current faults with the Triton setup:
+
+- Is it in a blessed state with HA manatee, moray, etc.?
+- Perhaps listing 'sdcadm check-health' faults.
+- Listing `zonememstat -a` potential issues.
+
+# dhcpd
+
+Q: Do we make the dhcdp service HA? Without this, CNs would not be able to boot
+while the headnode is dead.
+
+
+# usbkey and assets
+
+The usbkey holds the platforms that CNs use for netboot. Those are served
+via the 'assets' zone. We will need to change the processing that add data
+to the usbkey to update the keys on the "core" CNs (or some concept of
+a backup target if don't have other "core" CNs). We will also need tooling
+to check and sync. Some examples:
+
+- adding a platform (via 'sdcadm platform install ...')
+- changing usbkey/config (and the various split brain issues with this)
+- other assets-zone-served files in the usbkey/extra dir: agentsshar, cn-tools
+- usbkey copy (i.e. /usbkey)
+
+
 # M1: "blessed" recovery
 
 Dev Note: A target is to get nightly-1 to running in the "blessed" configuration
@@ -127,6 +183,7 @@ TODO
   and not restarting with a fresh zpool)?
 - What about an easier case that just snapshots all the core zones and zfs sends
   those to external storage?
+- Any "Q:" notes above.
 
 
 ## TODOs
@@ -153,6 +210,9 @@ Quick TODOs to not forget about:
 - Wildcard: how does being a UFDS master or slave affect things here?
 
 - Grok https://github.com/joyent/rfd/tree/master/rfd/0058 relevance, if any.
+
+- Need a ticket to handle the SAPI circular dep on itself because it uses
+  config-agent.
 
 ## data to save
 
