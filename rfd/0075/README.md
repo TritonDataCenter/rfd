@@ -57,10 +57,22 @@ This section describes the known problems with virtualizing the number of CPUs.
    observability tools which might see more CPU time than is logically
    available.
 
+## Proposed Solution
+
+Because of the flexibility provided by the lx brand, the proposal is to only
+fix this for lx.
+
+1. CPU ID
+
+   Report CPU ID modulo the number of "virtual" CPUs.
+
+2. CPU Time
+
+   Cap the reported time at the amount available for the "virtual" CPUs.
+
 ## Interposition Points
 
-This section focuses on the lx-brand and summarizes the locations that would
-need to be virtualized.
+This section summarizes the locations that would need to be virtualized.
 
 1. /proc
 
