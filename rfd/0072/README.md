@@ -38,18 +38,19 @@ by the chroot context in the same way as their illumos libc counterparts.
 
 In order to facilitate the opening of certain devices in a chroot-constrained
 context, a new syscall, tentatively named `devopen` should be added.  This
-syscall will accept the formal devfs path of the desired device (such as
-`/devices/pseudo/poll@0:poll`), yielding a valid file descriptor upon success.
-Only drivers which opt-in at the time of their registration will be accessible
-via `devopen`.  This will prevent `devopen` from being used as a vector for
-access control bypass or unwanted access from inside a chroot.
+syscall will accept two arguments, a string identifier under which the desired
+device has register (such as "epoll") and an integer of `open(2)`-compatible
+flags.  Upon success, it will yield a valid file descriptor.  Only drivers
+which opt-in via registration at the time of their attachement will be
+accessible via `devopen`.  This will prevent `devopen` from being used as a
+vector for access control bypass or unwanted access from inside a chroot.  It
+is expected that only pseudo devices will make use of `devopen`.
 
 Several steps will be required to achieve this goal:
 
 
-* Define flag for `ddi_create_minor_node` to opt into `devopen` access.  The
-  flag will persist in the `dev_info` handle and will register the minor node
-  in a list of `devopen`-able devices.
+* Expose `devopen_register()` and `devopen_deregister()` kernel functions for
+  manipulating driver registration within the `devopen(2)` framework.
 
 * Add `devopen()` syscall which will open a fresh file descriptor for requests
   matching the device list.
