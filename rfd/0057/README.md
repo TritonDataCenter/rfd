@@ -1,4 +1,4 @@
-# Docker images upgrade (v2)
+# Docker images upgrade for content addressable images
 
 # Why?
 
@@ -7,15 +7,12 @@ means they are using a hash (sha256) of the image layer as the image layer id,
 before they were using a separate random id. Example image id now looks like:
 'sha256:b3549bff6e9847a0170e769bac608be4a6c73a95e628a33a4040dbcd05139fa8'.
 
-It would be advantageous for Triton to also use 'content addressable' images, as
-then we don't need a separate IMGAPI.uuid to Docker.id for images, we can just
-use the same id (albeit a shortened one for IMGAPI - 32 bytes instead of 64
-bytes), and sdc-docker can drop the limitation that an image can only be
-referenced in one registry (e.g. currently you cannot re-tag busybox to
-quay.io/busybox). Sharing of images should increase, as currently we require
-redownloading of the same image when it's from a separate registry, whereas with
-a hash of the image layer(s) you can trust it's the same content regardless of
-where it came from.
+It would be advantageous for Triton to also use 'content addressable' images,
+sdc-docker can drop the limitation that an image can only be referenced in one
+registry (e.g. currently you cannot re-tag busybox to quay.io/busybox). Sharing
+of images could also increase, as currently we require redownloading of the same
+image when it's from a separate registry, whereas with a hash of the image
+layer(s) you can trust it's the same content regardless of where it came from.
 
 # Docker Terminology
 
@@ -48,59 +45,66 @@ updating:
 
 Require docker images to be pulled in the docker v2 image schema format (either
 schema v2.1 or schema v2.2 format). Triton won't support pulling of older v1
-images anymore (or we'll have an upgrade schema step to convert these to v2?).
+images anymore, and we'll up-convert v2.1 manifests to v2.2 during the pull
+step.
 
-The image `config` (json) is stored in docker_images bucket in Moray, a special
-`version` marker will be used to distinguish between different docker image
-config formats (in case we need to convert up|down between different schema
-versions, or have specific code paths for specific image versions).
+## Existing Docker Images
 
-## Upgrading Existing Images
+Currently, the image `config` (json) is stored in `docker_images` and
+`docker_image_tags` bucket in Moray, we'll keep these (v1) images as they are,
+but also create a new `docker_images_v2` and `docker_image_tags_v2` Moray bucket
+to handle all new image pulls.
 
-Existing images will be left as they are (they will be marked as v1 images),
-they will still be valid/used but Triton will need to handle these v1 images
-differently, likely in one of these ways:
+The code for docker commands (history, images, inspect, rmi, run) will be
+updated to support both Moray buckets, which will allow users to keep using their
+current v1 images, but also allow us to keep moving towards v2 image support.
+These docker commands (build, commit, pull, push and tag) will be made to only
+support v2 images.
 
- * upconvert these old image configs to the v2.1 format (this also requires a
-   sha256 generation for existing images)
- * have different code paths for different versions, i.e. for `docker inspect`,
-   `history`, etc...)
- * or just report that these v1 images are unsupported - and users need to
-   re-download in order to move to the new v2 image schema format
+## Docker_images_v2 Moray Bucket
+
+Similar to docker-images, the bucket key will be '${DIGEST}-${ACCOUNT_UUID}', so
+that each individual account holder will get their own copy of the docker image
+metadata, containing these key fields::
+
+    {
+        digest
+        created
+        head
+        image
+        image_uuid
+        manifest_str
+        manifest_digest
+        parent
+        owner_uuid
+        size
+    }
+
+The underlying image file layers (blobs) will be stored in IMGAPI and will be
+shared across the whole DC.
 
 # IMGAPI
 
-For docker images, the IMGAPI image uuid will be the first 32 bytes of the
-sha256 of the compressed image (i.e. the raw blob we download from the
-registry).
+For docker images, the IMGAPI image uuid will be a digest of *all* of the file
+layer digests (i.e. the raw blobs we download from the registry) for that image.
 
-An `uncompressedSha256` will be generated during download (docker pull) and once
-fully downloaded will be saved onto the manifest.files[0] object - the
-'uncompressedSha256` will be used when pushing images (in the image manifest).
+For v2.1 images, an `uncompressedSha256` will be generated during download
+(docker pull) and once fully downloaded will be saved onto the manifest.files[0]
+object - the 'uncompressedSha256` will be used when pushing images (in the image
+manifest).
+
+There should be no conflict with imgapi uuid's, as both the v1 and v2 image
+methods use differeing image uuid obfuscation techniques.
 
 # Docker build/commit
 
 Docker build will need to generate/store the uncompressedSha256 - currently
-docker build streams the image data (so it doesn't know the final sha256), so
-perhaps an IMGAPI renameUuid step is required so that the image uuid uses the
-final compressed sha256 uuid, this rename would occur after upload, but before
+docker build streams the image data (so it doesn't know the final sha256), so an
+IMGAPI renameUuid step is required so that the image uuid can uses the final
+compressed sha256 layer digest, this rename would occur after upload, but before
 the image is activated.
 
 
-
-
-
-
-
-
-# Outstanding Questions
-
-1. Do we allow pulling older v1 images (how many images/registries only support
-   v1 images, note that docker moved to v2)
-
-2. What to do with existing v1 images in sdc-docker (not-supported, upconvert or
-   have both)? What happens with billing lookups (i.e. you were running image X)
-   if the image is converted (as it will use a different uuid)?
 
 
 
