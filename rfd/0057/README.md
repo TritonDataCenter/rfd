@@ -1,4 +1,4 @@
-# Docker images upgrade for content addressable images
+# Docker images upgrade for content addressable images - registry 2.0
 
 # Why?
 
@@ -87,11 +87,19 @@ shared across the whole DC.
 
 For docker images, the IMGAPI image uuid will be a digest of *all* of the file
 layer digests (i.e. the raw blobs we download from the registry) for that image.
+For example, given the manifest with layers containing these digests::
 
-For v2.1 images, an `uncompressedSha256` will be generated during download
-(docker pull) and once fully downloaded will be saved onto the manifest.files[0]
-object - the 'uncompressedSha256` will be used when pushing images (in the image
-manifest).
+    var digests = [
+      'sha256:84ff92691f909a05b224e1c56abb4864f01b4f8e3c854e4bb4c7baf1d3f6d652',
+      'sha256:847f49d214bac745aad71de7e5c4ca2fa729c096ca749151bf9566b7e2e565d9',
+      'sha256:84ff92691f909a05b224e1c56abb4864f01b4f8e3c854e4bb4c7baf1d3f6d652'
+    ];
+    var uuid = createHash('sha256').update(digests.join(' ')).digest('hex'));
+
+For v2.1 manifests (which don't contain all of the v2.2 manifest information),
+an `uncompressedSha256` will be generated during download (docker pull) and once
+fully downloaded this uncompressed digest will be saved onto the manifest.files
+object. This uncompressedSha256 will be used in the up-converted image manifest.
 
 There should be no conflict with imgapi uuid's, as both the v1 and v2 image
 methods use differeing image uuid obfuscation techniques.
