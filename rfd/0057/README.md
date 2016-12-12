@@ -104,6 +104,19 @@ object. This uncompressedSha256 will be used in the up-converted image manifest.
 There should be no conflict with imgapi uuid's, as both the v1 and v2 image
 methods use differeing image uuid obfuscation techniques.
 
+## IMGAPI uuid reasoning
+
+The reason why we use a digest of the image layers is because the docker file
+layers (blobs) do not have a parent/child relationship - instead the
+parent/child relationship is defined by the docker manifest. It is quite
+possible to have a docker image which references the same file layer multiple
+times (e.g. ADD file.txt /file.txt; RM /file.txt; ADD file.txt), as such we
+couldn't take a direct layer digest to UUID mapping, as we cannot express this
+image layer in IMGAPI with two different parents (origin). Using a digest of all
+of the layers allows us to maintain the parent/child relationship, but also to
+share the common base file layers (e.g. FROM busybox) between different docker
+images.
+
 # Docker build/commit
 
 Docker build will need to generate/store the uncompressedSha256 - currently
