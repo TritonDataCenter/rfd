@@ -129,7 +129,7 @@ Example:
 
 Variable replacement:
 
-- `meta`: project metadata ([defined above](#metadata-management))
+- `meta`: project metadata ([see project metadata details](./meta.md))
 - `package`: Package details, including RAM, disk, "CPU", package name, package family
   - `ram`
   - `disk`
