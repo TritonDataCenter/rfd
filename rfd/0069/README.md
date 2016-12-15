@@ -16,6 +16,12 @@ state: publish
 
 # RFD 69 Metadata socket improvements
 
+## Status Note
+
+The changes as described here have been merged into master for SmartOS and thus
+discussion about these changes is now considered complete. Information herein
+will remain useful for historical purposes.
+
 ## Related reading
 
  * [OS-5783](https://smartos.org/bugview/OS-5783)
@@ -296,8 +302,16 @@ benefit that the directory would be empty when the system is rebooted.
 
 ### Code Review
 
-The changes described above are now available for code review. Once review and
-testing is complete, they'll be merged to master.
+Code review has been completed.
 
  * [CR for smartos-live](https://cr.joyent.us/1028)
  * [CR for illumos-joyent](https://cr.joyent.us/1027)
+
+During code review the suggestion was made to add the additional mount options:
+`nodevices,nosetuid,noexec` along with the `ro` described here. This change was
+made as suggested.
+
+### Master
+
+The code was pushed to master for both illumos-joyent and smartos-live December
+6, 2016.
