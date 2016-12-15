@@ -1052,3 +1052,59 @@ flag. This may be mitigated somewhat by the fact that the code without the
 feature is a subset of the code with the feature and there's no *different* code
 run with the feature disabled, just less total code. But it is still something
 worth mentioning here.
+
+## Status
+
+### Prototype Status
+
+Several prototypes have been made and some discarded or in various stages of
+completion. The currently actively worked-on prototype is in the rfd-35-cls
+branch. The goal of this prototype is to prove that the CLS feature described
+above can work for our tracing. This only supports APIs that have moved to node
+v4 so some APIs cannot yet use this.
+
+Experience has shown that these tracing features are easier to make work with
+when work starts at the top and works down. This is because we can get quick
+feedback on whether tracing is working at the top level with large chunks of
+work and break those larger chunks into smaller and smaller spans as we go down
+the system. A request to sdc-docker for example for containerlist will show at
+the top level how much time it spent talking to vmapi and other APIs, and then
+when we add support to vmapi we can see what *that* was doing and so on.
+
+Currently status of prototype:
+
+ * cloudapi
+     * status: mostly complete and working
+
+ * cn-agent
+     * status: not started
+
+ * cnapi
+     * status: partially implemented, but working
+
+ * docker
+     * status: mostly complete
+
+ * fwapi
+     * status: not started, needs update to v4
+
+ * imgapi
+     * status: mostly complete
+
+ * napi
+     * status: not started, needs update to v4
+
+ * papi
+     * status: mostly complete
+
+ * vmapi
+     status: mostly complete
+
+ * workflow
+     status: initial work started based on WORKFLOW-213 branch which updates workflow to v4.
+
+
+The above lists all of the components that are expected to be complete for the
+MVP of this feature, though it's possible that if fwapi and napi are not updated
+to node v4 they can be left out until later.
+
