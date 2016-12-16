@@ -51,7 +51,7 @@ This section describes the known problems with virtualizing the number of CPUs.
 
 2. CPU Time
 
-   The cpu-cap accounting works on the quanta of the scheduler, so it is 
+   The cpu-cap accounting works on the quanta of the scheduler, so it is
    possible for a CPU-bound application that is hitting the cap to sometimes
    get slightly more CPU time than the cap itself. This could confuse
    observability tools which might see more CPU time than is logically
@@ -70,7 +70,22 @@ fix this for lx.
 
    Cap the reported time at the amount available for the "virtual" CPUs.
 
-## Interposition Points
+### Complications of the comm page
+
+As a result of the work done in [OS-5192](https://smartos.org/bugview/OS-5192),
+the `getcpu(2)` syscall is often accessed via its vDSO implementation.  This
+means that augmentation to the in-kernel syscall implementation would be
+inadequate to constrain the observed CPU IDs.
+
+One way to address this issue would be to push the modulo figure needed for
+virtual CPU ID calculation into the comm page.  This is somewhat strange, given
+that it is effectively per-process information, unlike everything else in the
+page which is global to the system.  Despite that, it does not seem
+unreasonable to pull a 'virtual CPU ID limit' from the `kthread_t` or `proc_t`
+structure and place it in the approrpiate CPU slot in the comm page when
+performing a `swtch()`.
+
+### Interposition Points
 
 This section summarizes the locations that would need to be virtualized.
 
@@ -82,7 +97,7 @@ This section summarizes the locations that would need to be virtualized.
    * /proc/cpuinfo
    * /proc/[pid]/cpuset
    * /proc/[pid]/stat        processor field (39)
-   * /proc/[pid]/status      Cpus_allowed
+   * /proc/[pid]/status      Cpus\_allowed
    * /proc/interrupts        ints/cpu
    * /proc/stat              cpu time
 
