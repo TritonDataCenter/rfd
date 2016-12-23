@@ -222,15 +222,63 @@ EncryptionPrivateKeyPath or EncryptionPrivateKeyBytes (one or the other need to 
 
 ### Headers
 
-The additional headers specifying in [HTTP Headers Used with Client-side Encryption](HTTP-Headers-Used-with-Client-side-Encryption) would be added as properties of the [`com.joyent.manta.client.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaHttpHeaders.java) class. These properites would be set without intervention from the implementer of the SDK in the relevant section of [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) by the uploading logic. For `Manta-Encrypt-Original-Content-Length` when streaming we will need to wrap the plaintext stream in a [`org.apache.commons.io.CountingInputStream`](https://commons.apache.org/proper/commons-io/javadocs/api-2.5/org/apache/commons/io/input/CountingInputStream.html) in order to calculate the content length.  
+The additional headers specifying in [HTTP Headers Used with Client-side Encryption](HTTP-Headers-Used-with-Client-side-Encryption) would be added as properties of the [`com.joyent.manta.client.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaHttpHeaders.java) class. These properites would be set without intervention from the implementer of the SDK in the relevant section of [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) by the uploading logic. For `Manta-Encrypt-Original-Content-Length` when streaming we will need to wrap the plaintext stream in a [`org.apache.commons.io.CountingInputStream`](https://commons.apache.org/proper/commons-io/javadocs/api-2.5/org/apache/commons/io/input/CountingInputStream.html) in order to calculate the content length.
 
 ### Thread-safety
 
 All operations within the Java Manta SDK *should* be currently thread-safe. Any client-encryption implementation will need to also be thread-safe because consumers of the SDK are assuming thread safety. 
 
-### Streamable Checksums
+### Streamable Operations
 
-There has been an [open feature request](https://github.com/joyent/java-manta/issues/95) for some time to calculate MD5s when putting objects to Manta. This feature would need to be implemented to allow for authentication of ciphertext. The S3 SDK does it with their own class `com.amazonaws.services.s3.internal.MD5DigestCalculatingInputStream`. However, the JVM runtime provides a class ([`java.security.DigestInputStream`](https://docs.oracle.com/javase/8/docs/api/java/security/DigestInputStream.html)) that does equivalent functionality and it should be investigated as a first option.
+We are able operate in a stream-base API from our client when adding or overwriting objects
+in Manta. The following diagram shows how what steps are needed to do perform end-to-end
+streaming of client-side encrypted data into Manta.
+  
+
+```
+         1                   2
+┏━━━━━━━━━━━━━━━━┓    ┏━━━━━━━━━━━━━━┓             3
+┃ Plaintext Body ┠────┨ MD5 & SHA256 ┃    ┏━━━━━━━━━━━━━━━━━━┓          4
+┗━━━━━━━━━━━━━━━━┛    ┃ of Plaintext ┠────┨ Encrypted Header ┃    ┏━━━━━━━━━━━━┓
+                      ┗━━━━━━━━━━━━━━┛    ┃ Generation       ┠────┨ Encryption ┃ 
+                                          ┗━━━━━━━━━━━━━━━━━━┛    ┗━━━━━┯━━━━━━┛
+           ╭────────────────────────────────────────────────────────────╯
+         5 │                    6
+┏━━━━━━━━━━┷━━━━━━━━┓    ┏━━━━━━━━━━━━━━┓           7
+┃ MD5 of Ciphertext ┠────┨ PutObject to ┃    ┏━━━━━━━━━━━━━━━━━━━┓            8
+┗━━━━━━━━━━━━━━━━━━━┛    ┃ Temp File    ┠────┨ PutMetadata +     ┃    ┏━━━━━━━━━━━━━━━━┓
+                         ┗━━━━━━━━━━━━━━┛    ┃ Encrypted Headers ┠────┨ PutSnapLink    ┃
+                                             ┗━━━━━━━━━━━━━━━━━━━┛    ┃ to Actual Path ┃
+                                                                      ┗━━━━━━━┯━━━━━━━━┛
+         9 ╭──────────────────────────────────────────────────────────────────╯
+┏━━━━━━━━━━┷━━━┓
+┃ DeleteObject ┃
+┃ of Temp File ┃
+┗━━━━━━━━━━━━━━┛
+
+```
+                                                                                    
+1. The plaintext data is passed to the API as a byte array, string or stream.
+2. A MD5 and SHA256 digest of the plaintext data is done while streaming to 
+   the encrypted header generation processor.
+3. The encrypted header generation processor is responsible for storing the
+   MD5 and SHA256 values of the plaintext and storing additional metadata 
+   supplied by the user of the SDK. The encrypted header generation processor
+   steams to the encryption processor.
+4. The encryption processor consume a stream of plaintext and produces a stream
+   of cipher text. This stream is passed to the MD5 digest processor.
+5. The MD5 digest processor streams to the PutObject API.
+6. The PutObject API streams its data into Manta and Manta writes the data as an
+   object on a temporary and unique file path. Once the stream has ended, there 
+   is no more stream processing because the object has been successfully 
+   written.
+7. A PutMetadata request is sent to Manta. This request updates the encrypted
+   headers, so that they container user-supplied encrypted metadata and the
+   cryptographic (MD5/SHA256) digests of the plaintext.
+8. A PutSnapLink request is sent to Manta. This creates a link to the originally
+   intended file path.
+9. A DeleteOjbect request is sent to Manta. This deletes the temporary file.
+   
 
 ### Stream Support
 
@@ -238,7 +286,7 @@ In order to encrypt Java streams, it is desirable to create a wrapping stream th
 
 ### File Support
 
-Currently, when we send a file to Manta via the SDK, we create an instance of `com.google.api.client.http.FileContent` that has a reference to the `java.io.File` instance passed to its constructor. This allows the put operation to Manta to be retriable. When we add client-side encryption support, we will need to encrypt the file on the filesystem and write it to a temporary file and then reference that (the temporary file) when creating a new `FileContent` instance. This will preserve the retryability settings so that it behaves in the same manner as the unencrypted API call. 
+Currently, when we send a file to Manta via the SDK, we create an instance of `org.apache.http.entity.FileEntity` that has a reference to the `java.io.File` instance passed to its constructor. This allows the put operation to Manta to be retriable. When we add client-side encryption support, we will need to encrypt the file on the filesystem and write it to a temporary file and then reference that (the temporary file) when creating a new `FileContent` instance. This will preserve the retryability settings so that it behaves in the same manner as the unencrypted API call. 
 
 ### HTTP Range / Random Read Support
 
