@@ -3,6 +3,16 @@ authors: Cody Mello <cody.mello@joyent.com>
 state: draft
 ---
 
+<!--
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+-->
+
+<!--
+    Copyright 2016 Joyent, Inc.
+-->
+
 # RFD 11 IPv6 and multiple IP addresses support in Triton
 
 # Introduction
@@ -109,16 +119,20 @@ get set correctly.
 ## Networking API (napi)
 
 The Networking API is responsible for managing data about networks within Triton.
-It also takes care of contacting VMAPI and CNAPI for adding, removing and
-updating NICs.
+VMAPI and CNAPI make requests to it when adding, removing and updating NICs.
 
 NAPI will need to be modified to support the following:
 
-- Accept and validate new IPv6 networks (see [NAPI-308](https://devhub.joyent.com/jira/browse/NAPI-308)); a new field type, **address\_family** will need to be stored in Moray so people will be able to search for specific network types
+- Accept and validate new IPv6 networks (see [NAPI-308]); a new field,
+  **subnet\_type**, will need to be stored in Moray so people will be able to
+  search for specific network types
 - Manage and search IPv6 addresses
-- Ensure that a NIC only has networks placed on it with the same VLAN tag
+- Ensure that a NIC only has networks placed on it with the same NIC tag and
+  VLAN ID
 - Manage IPv6 network pools, and ensure that they are validated (a network pool
   is either IPv4 or IPv6)
+
+Further details on some of this work can be found in [RFD 32].
 
 ## Firewall API (fwapi)
 
@@ -151,13 +165,19 @@ Networking Agent (net-agent), it looks like neither one should need to be
 updated, since they don't manipulate IP addresses themselves, but instead pass
 them off to other services like NAPI.
 
+# Container Naming Service (CNS)
+
+CNS, described in [RFD 1], was built with IPv6 in mind and already supports AAAA
+records. It shouldn't require any further development to support IPv6 once the
+rest of Triton is ready.
+
 # Overlay Networks
 
 ## Fabrics
 
 Work on adding IPv6 support to fabrics will occur during a second phase once
 standard zones and networks are working. Once support is added, we will assign
-users /64 subnets located within the fd00::/8 private network. RFC4193
+users /64 subnets located within the fd00::/8 private network. [RFC 4193]
 recommends randomizing allocations within this space. We should probably provide
 the option of picking or randomizing the prefix to the customer.
 
@@ -266,7 +286,12 @@ how to properly boot.
 [OS-4802]: https://smartos.org/bugview/OS-4802
 [FWAPI-212]: https://smartos.org/bugview/FWAPI-212
 [FWAPI-225]: https://smartos.org/bugview/FWAPI-225
+[NAPI-308]: https://devhub.joyent.com/jira/browse/NAPI-308
 [ZAPI-598]: https://smartos.org/bugview/ZAPI-598
 
+<!-- RFCs -->
+[RFC 4193]: https://tools.ietf.org/html/rfc4193
+
 <!-- Other RFDs -->
-[RFD 32]: ../rfd/0032
+[RFD 1]: ../0001
+[RFD 32]: ../0032
