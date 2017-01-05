@@ -103,10 +103,10 @@ m-encrypt-mac: XXXXXXXXX
 ```
 
 #### `m-encrypt-cipher`
-In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to encrypt the object. This header is in the form of `cipher/width/mode`.
+In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to encrypt the object. This header is in the form of `cipher/mode/padding state`.
 
 ```
-m-encrypt-cipher: aes/256/cbc
+m-encrypt-cipher: AES/GCM/NoPadding
 ```
 
 #### `m-encrypt-original-content-length`
