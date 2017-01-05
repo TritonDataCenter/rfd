@@ -73,11 +73,13 @@ Due to the inherent limitations of client-side encryption, some operations will 
 
 The following headers will be added to Manta as natively supported headers like `Durability-Level` and not treated from an API perspective as "metadata" (`m-*` parameter). The rationale behind this is that it is enforcing the contract for consistent behavior between client-side encryption implementations across SDKs.
 
-#### `m-encrypt-support`
+#### `m-encrypt-type`
 To give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext does not compress well and we would be able to selectively disable compression for encrypted files. Another example is that it could be used as a basis for identifying files that would be candidates for a future migration to server-side encryption.
 
+The format of the header value is `$type/$major.version.$minor.version`
+
 ```
-m-encrypt-support: client
+m-encrypt-type: client/3.0
 ```
 
 #### `m-encrypt-key-id`
@@ -357,10 +359,10 @@ Update the existing `get` function with support for retrieving encrypted objects
 
 Below are possible scenarios/failures to consider
 
-1. `m-encrypt-support` doesn't exist or doesn't have the value `'client'`, in which case the object is assumed not to be encrypted, and the usual processing of the file occurs, without decryption
+1. `m-encrypt-type` doesn't exist or doesn't have the value `'client'`, in which case the object is assumed not to be encrypted, and the usual processing of the file occurs, without decryption
 1. `m-encrypt-cipher` is set to an algorithm that isn't supported by Node.js, in which case an error should be returned in the callback
 1. `m-encrypt-key-id` isn't found by the `getKey` function or an error is returned on the callback. In this scenario, the error will be forwarded to the callback function.
-1. `getKey` doesn't exist and `m-encrypt-support` is set to `'client'`, this will result in an error being passed to the callback.
+1. `getKey` doesn't exist and `m-encrypt-type` is set to `'client'`, this will result in an error being passed to the callback.
 1. Required header information is missing from the object stored in Manta. This results in an error passed to the callback.
 1. `m-encrypt-mac` doesn't match the calculated HMAC of the encrypted object. This results in an error passed to the callback.
 
@@ -368,7 +370,7 @@ Below are possible scenarios/failures to consider
 
 Below are the steps that will take place inside of `get` when encountering an encrypted object
 
-1. Detect if an object is encrypted by checking if the `m-encrypt-support` header is set to `'client'`
+1. Detect if an object is encrypted by checking if the `m-encrypt-type` header is set to `'client'`
 1. Validate the required encryption headers are stored with the object
 1. Retrieve the secret key using the `m-encrypt-key-id` value and `getKey` function passed to the option object
 1. Calculate the HMAC using 'sha256' with the key from getKey() and the encrypted object
@@ -435,7 +437,7 @@ Below are the steps that should take place when encrypting an object.
 1. Generate an Initialization Vector (IV)
 1. Calculate the cipher from the input stream and IV
 1. Calculate the HMAC using the calculated cipher and `key`, this should use 'sha256' or we should save the configured HMAC algorithm in a separate header
-1. Set the `m-encrypt-support` header to `'client'`
+1. Set the `m-encrypt-type` header to `'client'`
 1. Set the `m-encrypt-key-id` header sent to Manta using the `options.keyId`
 1. Set the `m-encrypt-iv` header to the IV value encoded as base64
 1. Set the `m-encrypt-cipher` header to the `options.cipher`
