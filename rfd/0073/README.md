@@ -10,7 +10,7 @@ state: draft
 -->
 
 <!--
-    Copyright 2016 Joyent, Inc.
+    Copyright 2017 Joyent, Inc.
 -->
 
 # RFD 73 Moray client support for SRV-based service discovery
@@ -24,6 +24,8 @@ through 2024.  Moray's registrar causes DNS A records to be published with the
 IP of the zone.  Clients find Moray instances by looking up A records for the
 Moray hostname, finding a bunch of IPs, and establishing connections to port
 2020 on those IPs.
+
+### SRV-based discovery
 
 The use of haproxy on port 2020 is suboptimal for a number of reasons, including
 
@@ -45,11 +47,40 @@ The intention is to enable support for SRV everywhere, eliminate use of haproxy,
 and eventually eliminate the haproxy instance inside each Moray zone altogether.
 This will address the three problems above.
 
+### Bootstrap resolvers
+
+There's an additional problem not strictly related to SRV-based discovery, but
+which is introduced by cueball's more sophisticated use of nameservers.  To
+better survive nameserver failure without introducing significant latency,
+cueball may give up on a query when a majority of its configured nameservers
+report no results.  This introduces a problem in environments with multiple,
+non-equivalent nameservers configured (also called split DNS).  Namely, if the
+admin network has a Triton resolver, and is also configured with external
+resolvers (as is the case in some deployments), cueball might give up attempting
+to resolve an internal name like "moray.emy-10.joyent.us" if both of the
+external resolvers respond before the internal one does.  This problem can also
+happens in Manta deployments, where there are both Manta and Triton nameservers
+present, and in development environments with all three kinds of resolvers
+present.
+
+To address this, cueball supports a [Dynamic Resolver
+mode](https://github.com/joyent/node-cueball#dynamic-resolver-mode) (also called
+bootstrap resolver mode).  In this mode, cueball is configured with a DNS domain
+for the nameservers themselves (e.g., "binder.emy-10.joyent.us" for the Triton
+nameservers).  It queries _all_ configured resolvers for this domain and then
+restricts future queries only to those nameservers.  In this case, this ensures
+that we'd only use the Triton nameservers for resolving future domains.
+
+Clients can make use of this already using Moray v2 by specifying the
+"resolvers" cueball option, but this RFD describes new command-line options and
+environment variables to configure this.
+
 
 ## Goals
 
 It should be as easy as possible for Moray-using components to start using
-SRV-based service discovery, and they should use that by default.
+SRV-based service discovery with bootstrap resolvers, and they should use that
+by default.
 
 It should also be possible for operators to configure components (both servers
 and CLI tools) to talk individual zones or processes for debugging and testing.
@@ -72,6 +103,9 @@ following combinations of properties:
 
 It's a programmer error to specify a combination of these (e.g., `srvDomain`
 with any of `url`, `host`, or `port`).
+
+Bootstrap resolvers are configured by passing "resolvers" through in
+"cueballOptions", the same as today.
 
 Here are some examples:
 
@@ -154,8 +188,8 @@ change.
 
 In terms of the implementation: for the immediate future, if "srvDomain" is
 specified, the client will specify cueball options with "domain" = the value of
-the "srvDomain" property and "service" = "_moray._tcp".  Otherwise, "domain" is
-the value of "host" (or the host in the URL) and "service" is set to a bogus
+the "srvDomain" property and "service" = "\_moray.\_tcp".  Otherwise, "domain"
+is the value of "host" (or the host in the URL) and "service" is set to a bogus
 value to ensure that SRV records will not be located.  Longer-term, we may
 replace this mechanism with an explicit cueball configuration to ensure that we
 only find the records we want.
@@ -164,8 +198,9 @@ only find the records we want.
 ## Proposal for server configuration
 
 As a reminder: we want Moray-using components like manta-muskie or sdc-docker to
-use SRV-based discovery in the common case.  But it should also be possible to
-override these to point these components at specific instances.
+use SRV-based discovery with bootstrap resolvers in the common case.  But it
+should also be possible to override these to point these components at specific
+instances.
 
 ### Triton example
 
@@ -174,7 +209,7 @@ that looks like this:
 
     "moray": {
         "srvDomain": "{{{MORAY_SERVICE}}}"
-        "dns": {
+        "cueballOptions": {
             "resolvers": [ "{{{BINDER_SERVICE}}}" ]
         }
     }
@@ -200,7 +235,7 @@ config-agent:
 ```json
     "moray": {
         "srvDomain": "moray.emy-10.joyent.us",
-        "dns": {
+        "cueballOptions": {
             "resolvers": [ "binder.emy-10.joyent.us" ]
         }
     }
@@ -232,7 +267,7 @@ Here's an example that talks to the Marlin shard:
     "marlin": {
         "moray": {
             "srvDomain": "{{MARLIN_MORAY_SHARD}}",
-            "dns": {
+            "cueballOptions": {
                 "resolvers": [ "nameservice.{{DOMAIN_NAME}}" ]
             }
         }
@@ -244,7 +279,7 @@ This would get turned into:
     "marlin": {
         "moray": {
             "srvDomain": "1.moray.emy-10.joyent.us",
-            "dns": {
+            "cueballOptions": {
                 "resolvers": [ "nameservice.emy-10.joyent.us" ]
             }
         }
@@ -276,16 +311,20 @@ port `2020`.
 
 The proposal is to keep this behavior the same: the `-h` and `-p` options would
 be used to specify a hostname (or IP address) and port for use with
-non-SRV-based discovery.  A new option `-s srvDomain` would be used to specify a
-service name for SRV-based discovery with A-based fallback.
-
-As with the Node client, it would be illegal to specify `-s` with either `-h` or
-`-p`.
+non-SRV-based discovery.  A new option `-S srvDomain` would be used to specify a
+service name for SRV-based discovery with A-based fallback.  The `MORAY_SERVICE`
+environment variable can be used to specify a default value.  As with the Node
+client, it would be illegal to specify `-S` with either `-h` or `-p`.  It's not
+illegal to specify `MORAY_SERVICE` with `MORAY_URL`.  The former takes
+precedence (as long as `-h` and `-p` are not also specified).
 
 Examples:
 
     # Common case: use SRV if available and fall back to A if not.
-    listbuckets -s 1.moray.emy-10.joyent.us
+    listbuckets -S 1.moray.emy-10.joyent.us
+
+    # The same, configured from the environment.
+    MORAY_SERVICE=1.moray.emy-10.joyent.us listbuckets
 
     # Point client at a specific Moray process (no DNS)
     listbuckets -h 10.1.2.3 -p 2021
@@ -308,21 +347,26 @@ Examples:
     MORAY_URL=tcp://1.moray.emy-10.joyent.us listbuckets
 
     # Illegal: cannot specify "srvDomain" and "port"
-    listbuckets -s 1.moray.emy-10.joyent.us -p 2020
+    listbuckets -S 1.moray.emy-10.joyent.us -p 2020
 
 The algorithm here is:
 
-- If -s is specified, make sure that -h and -p are not specified, and construct
+- If -S is specified, make sure that -h and -p are not specified, and construct
   a Moray client argument with a `srvDomain` property.
+- If -h or -p are specified, construct a Moray client argument with "host" and
+  "port", using fallback values from MORAY\_URL and defaults (host 127.0.0.1
+  port 2020) if needed.
 - If `MORAY_SERVICE` is specified in the environment, construct a Moray client
   argument with a corresponding `srvDomain` property.
-- Otherwise, we'll create a Moray client argument with `host` and `port`
-  properties.  We'll start with host = 127.0.0.1 and port = 2020.
-  - If `MORAY_URL` is specified, parse it.  Replace the host with the host from
-    the URL.  If the port was specified, replace the port with the port from the
-    URL.
-  - If -h HOST is specified, replace the host with HOST.
-  - If -p PORT is specified, replace the port with PORT.
+- Otherwise, we'll create a Moray client with host and port derived from
+  MORAY\_URL and default values.
+
+To support bootstrap resolvers, we also introduce the `-b DOMAIN` option and
+`MORAY_BOOTSTRAP_DOMAIN` environment variable, which would be set to
+`binder.mydatacenter.joyent.us` for Triton and
+`nameservice.mydatacenter.joyent.us` for Manta.  Existing places that configure
+MORAY\_URL with a hostname will likely want to set MORAY\_SERVICE and
+MORAY\_BOOTSTRAP\_DOMAIN instead.
 
 
 ## Limitations of this approach
@@ -399,3 +443,93 @@ following the instructions provided by this work.
 
 * [RFD 33 Moray client v2](https://github.com/joyent/rfd/blob/master/rfd/0033/README.md)
 * [MORAY-380 translateLegacyOptions not setting "service"](https://devhub.joyent.com/jira/browse/MORAY-380)
+
+
+## Appendix: Moray client constructor arguments
+
+The Moray client has historically accepted a variety of complex arguments, and
+the list of options accepted and the constraints around which options are
+allowed with which other options has changed over time.  This section
+summarizes the state up to and including this change.
+
+### Backend discovery
+
+In Moray v1, consumers always specified either `host` and `port` _or_ `url`.
+`url` would only be used if `host` was not also specified.  (Making the
+implementation even more confusing, the MorayClient constructor only processed
+`host` and `port`, but the `createClient` wrapper converted the `url` form into
+the `host` and `port` form.  That's all the wrapper did.)  
+
+In Moray v2, the first-class way to specify this information was to specify
+`cueballOptions`, and especially `cueballOptions.domain` and
+`cueballOptions.defaultPort`.  `host`, `port`, and `url` were supported
+in a backwards-compatible way, but they could not be used with any
+`cueballOptions`.  As described in this RFD, this approach does not allow
+consumers to distinguish between SRV-based discovery with a hostname vs.
+A-record-based discovery with a hostname.
+
+With Moray v3 as specified by this RFD, the first-class way to specify this
+information is to specify `srvDomain`, `url`, _or_ `host` and `port` (now
+first-class options again).  `url`, `host`, and `port` are still interpreted in
+the backwards-compatible way, and they specify IP-based or A-record-based
+service discovery.
+
+In summary:
+
+Name                   | Meaning                             | before v2 | v2            | v3 
+---------------------- | ----------------------------------- | --------- | ------------- | ---
+srvDomain              | hostname for SRV lookup             | N/A       | N/A           | okay
+host                   | IP address or hostname for A lookup | okay      | discouraged   | okay
+port                   | TCP port (defaults to 2020)         | okay      | discouraged   | okay
+url                    | combination of `host` and `port`    | okay      | discouraged   | okay
+cueballOptions.domain  | hostname for SRV/A lookup           | N/A       | okay (A only) | disallowed
+cueballOptions.service | service prefix for SRV lookup       | N/A       | okay          | okay
+
+### Timeouts and limits
+
+Moray v1 supported the following options:
+
+Name              | Meaning                            
+----------------- | -----------------------------------
+connectTimeout    | connection establishment timeout
+dns.checkInterval | how often to re-resolve supplied hostname
+dns.resolvers     | DNS nameservers to use
+dns.timeout       | timeout on DNS operations
+maxConnections    | number of connections to maintain to each backend found in DNS
+retry             | node-backoff policy (used confusingly in different contexts)
+
+In Moray v2 and Moray v3, these options are all supported as "legacy" options.
+
+If necessary, consumers should instead use a combination of `failFast` and
+options supported by cueball.  **The expectation with Moray v2 and later is
+that other than `failFast`, these tunables would very rarely need to be
+configured, if ever, because the defaults should be appropriate for all servers
+(and clients if `failFast` is specified).**  Supported tunables include:
+
+Name                             | Meaning
+-------------------------------- | ----------
+failFast                         | for CLI tools: emit `error` upon failure to establish a connection
+cueballOptions.target            | the target number of connections to maintain across all backends
+cueballOptions.maximum           | the maximum number of connections to maintain across all backends
+cueballOptions.maxDNSConcurrency | number of nameservers to query concurrently
+cueballOptions.recovery.default  | timeouts, delays, and limits for TCP connection establishment
+cueballOptions.recovery.dns      | timeouts, delays, and limits for DNS requests
+cueballOptions.recovery.dns\_srv | timeouts, delays, and limits for DNS SRV requests
+cueballOptions.resolvers         | DNS nameservers to use or bootstrap resolvers
+
+Legacy options cannot be combined with `cueballOptions`.  The cueball options
+are generally much more flexible than the legacy options.  They include backoff
+of both timeouts and delays.  There's no analog to `dns.checkInterval`, but
+that's not expected to be a tunable consumers will want to configure.
+
+
+### Other arguments
+
+Required | Name             | As of  | Meaning
+-------- | ---------------- | ------ | -------
+yes      | log              | always | object: bunyan-style logger
+no       | unwrapErrors     | v2     | boolean: report raw server errors instead of wrapping them with useful metadata (for compatibility; see RFD 33)
+no       | maxIdleTime      | never  | This option was documented, but appears never to have been used.
+no       | pingTimeout      | never  | This option was documented, but appears never to have been used.
+no       | noCache          | ?      | If this option was ever used, it was removed before v2.
+no       | reconnect        | ?      | If this option was ever used, it was removed before v2.
