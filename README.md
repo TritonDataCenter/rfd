@@ -119,6 +119,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 74 Manta fault tolerance test plan](./rfd/0074/README.md) |
 | predraft | [RFD 75 Virtualizing the number of CPUs](./rfd/0075/README.md) |
 | draft    | [RFD 76 Improving Manta Networking Setup](./rfd/0076/README.md) |
+| predraft | [RFD 77 Hardware-backed per-zone crypto tokens](./rfd/0077/README.md) |
 
 ## Contents of an RFD
 
