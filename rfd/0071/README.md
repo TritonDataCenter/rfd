@@ -95,11 +95,13 @@ In order to make sure that the same ciphertext is not generated each time the sa
 m-encrypt-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 ```
 
-#### m-encrypt-hmac
-A cryptographic checksum of the ciphertext is stored in this header so that ciphertext can be authenticated. This prevents classes of attacks that involve tricky changes to the ciphertext binary file. This header will not be used for AEAD ciphers.
-The [hash-based message authentication (HMAC)](https://en.wikipedia.org/wiki/Hash-based_message_authentication_code) value will be a SHA256 HMAC value keyed with the encryption key in base64 encoding.
+#### m-encrypt-hmac-type
+A cryptographic checksum of the ciphertext is stored as the last N bytes of the data blob.
+This header contains the HMAC type as a string. If the HMAC type is known the total size of the HMAC can be determined. 
+Thus, the client will know how many bytes from the end of the file are the actual ciphertext. If a AEAD cipher is being
+used this header is not stored and the m-encrypt-aead-tag-length header is used instead. 
 ```
-m-encrypt-hmac: (SHA256)XXXXXXXXX
+m-encrypt-hmac-length: 32
 
 ```
 
@@ -139,9 +141,9 @@ m-encrypt-metadata-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 ```
 
 #### `m-encrypt-metadata-hmac`
-Like `m-encrypt-mac` we store the SHA256 HMAC in base64 for the ciphertext for the HTTP header `m-encrypt-metadata` so that we can verify the authenticity of the header ciphertext. Note: This header is not used for AEAD ciphers. 
+A cryptographic checksum of the ciphertext for the encrypted headers is stored in this header so that ciphertext can be authenticated. This prevents classes of attacks that involve tricky changes to the ciphertext binary file. This header will not be used for AEAD ciphers. The [hash-based message authentication (HMAC)](https://en.wikipedia.org/wiki/Hash-based_message_authentication_code) value will be a SHA256 HMAC value keyed with the encryption key in base64 encoding. 
 ```
-m-encrypt-metadata-hmac: (SHA256)XXXXXXXXX
+m-encrypt-metadata-hmac: YTk0ODkwNGYyZjBmNDc5YjhmODE5NzY5NGIzMDE4NGIwZDJlZDFjMWNkMmExZWMwZmI4NWQyOTlhMTkyYTQ0NyAgLQo=
 
 ```
 
@@ -155,7 +157,7 @@ m-encrypt-metadata-aead-tag-length: 128
 #### `m-encrypt-metadata-cipher`
 Like `m-encrypt-cipher` we store the cipher for the ciphertext for the HTTP header `m-encrypt-metadata` so that our client can easily choose the right algorithm for decryption.
 ```
-m-encrypt-metadata-cipher: aes/256/cbc
+m-encrypt-metadata-cipher: AES/GCM/NoPadding
 ```
 
 ```
@@ -173,6 +175,11 @@ Depending on the threat model determined by the consumer of the client SDK, diff
  * `OptionalObjectAuthentication`
  
 We only provide two modes unlike S3 which provides three modes (`EncryptionOnly`, `AuthenticatedEncryption`, and `StrictAuthenticatedEncryption`). `EncryptionOnly` mode in S3 does not authenticate ciphertext at all, `AuthenticatedEncryption` authenticates ciphertext when it is possible with the operation being performed and `StrictAuthenticatedEncryption` always authenticates and will cause an exception to be thrown if the operation can't be performed with authentication.   
+
+### Authentication with Non-AEAD Ciphers
+
+If a non-AEAD cipher is used, we calculate a HMAC value and append it to the end of the binary blob uploaded to Manta. We send 
+it this way in order to avoid having to add it has a HTTP header as part of a separate operation.  
 
 ### Key Management
 
@@ -245,12 +252,12 @@ The additional headers specifying in [HTTP Headers Used with Client-side Encrypt
 
 All operations within the Java Manta SDK *should* be currently thread-safe. Any client-encryption implementation will need to also be thread-safe because consumers of the SDK are assuming thread safety. 
 
-### Streamable Operations
+### Streamable Operations for Streams of an Unknown Size 
 
 We are able operate in a stream-base API from our client when adding or overwriting objects
 in Manta. The following diagram shows how what steps are needed to do perform end-to-end
-streaming of client-side encrypted data into Manta.
-  
+streaming of client-side encrypted data into Manta if we need to set headers that require
+a full read of the stream being uploaded like `m-encrypt-original-content-length`. 
 
 ```           
          1                      2
@@ -291,7 +298,7 @@ streaming of client-side encrypted data into Manta.
    cryptographic (MD5/SHA256) digests of the plaintext.
 7. A PutSnapLink request is sent to Manta. This creates a link to the originally
    intended file path.
-8. A DeleteOjbect request is sent to Manta. This deletes the temporary file.
+8. A DeleteObject request is sent to Manta. This deletes the temporary file.
    
 
 ### Stream Support
@@ -308,11 +315,11 @@ Authenticating ciphertext and decrypting random sections of ciphertext can't be 
    
 When reading randomly from a remote object in ciphertext, the byte range of the plaintext object does not match the byte range of the cipher text object. Any implementation would need to provide a cipher-aware translation of byte-ranges. Moreover, some ciphers do not support random reads at all. In those cases, we want to throw an exception to inform the implementer that the operation is not possible.
 
-In the S3 SDK, range requests are supported by finding the cipher's lower and upper block bounds and adjusting the range accordingly. An example of this operation can be found in `com.amazonaws.services.s3.internal.crypto.S3CryptoModuleBase`. We will likewise need to do a similar operation. Furthermore, we will need to rewrite the range header when it is specified in [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) and client-side encryption is enabled.  
+In the S3 SDK, range requests are supported by finding the cipher's lower and upper block bounds and adjusting the range accordingly. An example of this operation can be found in `com.amazonaws.services.s3.internal.crypto.S3CryptoModuleBase`. We will likewise need to do a similar operation. Furthermore, we will need to rewrite the range header when it is specified in [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) and client-side encryption is enabled.  
 
 #### Random Operation Support with [`MantaSeekableByteChannel`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java)
 
-We will need to refactor [`MantaSeekableByteChannel`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java) so that it uses the methods provided in [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) to do ranged `GET` operations so that we do not have to duplicate our ciphertext range translation code.  
+We will need to refactor [`MantaSeekableByteChannel`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java) so that it uses the methods provided in [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) to do ranged `GET` operations so that we do not have to duplicate our ciphertext range translation code.  
 
 ### Multipart Support
 
@@ -324,7 +331,7 @@ TODO: Figure out how to encrypt each MPU part in isolation so that they can be a
 
 A new class will be created called `EncryptedMantaMetadata`. This class will support the `Map<K, V>` interface because the backing format for metadata will be JSON. This should allow the implementers of the SDK define their own structure for free form Metadata.  
 
-A new property called `encryptedMetadata` of the type `com.joyent.manta.client.EncryptedMantaMetadata` would be added to the [`com.joyent.manta.client.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaHttpHeaders.java) class. Inside the [`com.joyent.manta.http.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) class we would serialize the `EncryptedMantaMetadata` instance to JSON, encrypt it, base64 it and write it (metadata ciphertext), the MAC and the IV as HTTP headers. Likewise for reading headers, we would reverse the operations and write the value back to the a method that would allow the consumer to define their own generic types upon read. 
+A new property called `encryptedMetadata` of the type `com.joyent.manta.client.EncryptedMantaMetadata` would be added to the [`com.joyent.manta.client.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/MantaHttpHeaders.java) class. Inside the [`com.joyent.manta.http.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) class we would serialize the `EncryptedMantaMetadata` instance to JSON, encrypt it, base64 it and write it (metadata ciphertext), the MAC and the IV as HTTP headers. Likewise for reading headers, we would reverse the operations and write the value back to the a method that would allow the consumer to define their own generic types upon read. 
 
 ### Failure Handling
 
