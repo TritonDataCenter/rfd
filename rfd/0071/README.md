@@ -252,22 +252,21 @@ in Manta. The following diagram shows how what steps are needed to do perform en
 streaming of client-side encrypted data into Manta.
   
 
-```
-         1                   2
-┏━━━━━━━━━━━━━━━━┓    ┏━━━━━━━━━━━━━━┓             3
-┃ Plaintext Body ┠────┨ MD5 & SHA256 ┃    ┏━━━━━━━━━━━━━━━━━━┓          4
-┗━━━━━━━━━━━━━━━━┛    ┃ of Plaintext ┠────┨ Encrypted Header ┃    ┏━━━━━━━━━━━━┓
-                      ┗━━━━━━━━━━━━━━┛    ┃ Generation       ┠────┨ Encryption ┃ 
-                                          ┗━━━━━━━━━━━━━━━━━━┛    ┗━━━━━┯━━━━━━┛
-           ╭────────────────────────────────────────────────────────────╯
-         5 │                    6
-┏━━━━━━━━━━┷━━━━━━━━┓    ┏━━━━━━━━━━━━━━┓           7
-┃ MD5 of Ciphertext ┠────┨ PutObject to ┃    ┏━━━━━━━━━━━━━━━━━━━┓            8
+```           
+         1                      2
+┏━━━━━━━━━━━━━━━━┓    ┏━━━━━━━━━━━━━━━━━━┓          3
+┃ Plaintext Body ┠────┨ Encrypted Header ┃    ┏━━━━━━━━━━━━┓
+┗━━━━━━━━━━━━━━━━┛    ┃ Generation       ┠────┨ Encryption ┃ 
+                      ┗━━━━━━━━━━━━━━━━━━┛    ┗━━━━━┯━━━━━━┛
+           ╭────────────────────────────────────────╯
+         4 │                    5
+┏━━━━━━━━━━┷━━━━━━━━┓    ┏━━━━━━━━━━━━━━┓           6
+┃ MD5 of Ciphertext ┠────┨ PutObject to ┃    ┏━━━━━━━━━━━━━━━━━━━┓            7
 ┗━━━━━━━━━━━━━━━━━━━┛    ┃ Temp File    ┠────┨ PutMetadata +     ┃    ┏━━━━━━━━━━━━━━━━┓
                          ┗━━━━━━━━━━━━━━┛    ┃ Encrypted Headers ┠────┨ PutSnapLink    ┃
                                              ┗━━━━━━━━━━━━━━━━━━━┛    ┃ to Actual Path ┃
                                                                       ┗━━━━━━━┯━━━━━━━━┛
-         9 ╭──────────────────────────────────────────────────────────────────╯
+         8 ╭──────────────────────────────────────────────────────────────────╯
 ┏━━━━━━━━━━┷━━━┓
 ┃ DeleteObject ┃
 ┃ of Temp File ┃
@@ -276,25 +275,23 @@ streaming of client-side encrypted data into Manta.
 ```
                                                                                     
 1. The plaintext data is passed to the API as a byte array, string or stream.
-2. A MD5 and SHA256 digest of the plaintext data is done while streaming to 
-   the encrypted header generation processor.
-3. The encrypted header generation processor is responsible for storing the
+2. The encrypted header generation processor is responsible for storing the
    MD5 and SHA256 values of the plaintext and storing additional metadata 
    supplied by the user of the SDK. The encrypted header generation processor
    steams to the encryption processor.
-4. The encryption processor consume a stream of plaintext and produces a stream
+3. The encryption processor consume a stream of plaintext and produces a stream
    of cipher text. This stream is passed to the MD5 digest processor.
-5. The MD5 digest processor streams to the PutObject API.
-6. The PutObject API streams its data into Manta and Manta writes the data as an
+4. The MD5 digest processor streams to the PutObject API.
+5. The PutObject API streams its data into Manta and Manta writes the data as an
    object on a temporary and unique file path. Once the stream has ended, there 
    is no more stream processing because the object has been successfully 
    written.
-7. A PutMetadata request is sent to Manta. This request updates the encrypted
+6. A PutMetadata request is sent to Manta. This request updates the encrypted
    headers, so that they container user-supplied encrypted metadata and the
    cryptographic (MD5/SHA256) digests of the plaintext.
-8. A PutSnapLink request is sent to Manta. This creates a link to the originally
+7. A PutSnapLink request is sent to Manta. This creates a link to the originally
    intended file path.
-9. A DeleteOjbect request is sent to Manta. This deletes the temporary file.
+8. A DeleteOjbect request is sent to Manta. This deletes the temporary file.
    
 
 ### Stream Support
