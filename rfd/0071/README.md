@@ -95,11 +95,11 @@ In order to make sure that the same ciphertext is not generated each time the sa
 m-encrypt-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 ```
 
-#### m-encrypt-mac
+#### m-encrypt-hmac
 A cryptographic checksum of the ciphertext is stored in this header so that ciphertext can be authenticated. This prevents classes of attacks that involve tricky changes to the ciphertext binary file. This header will not be used for AEAD ciphers.
-The [hash-based message authentication (HMAC)](https://en.wikipedia.org/wiki/Hash-based_message_authentication_code) value will be stored in base64 encoding.
+The [hash-based message authentication (HMAC)](https://en.wikipedia.org/wiki/Hash-based_message_authentication_code) value will be a SHA256 HMAC value keyed with the encryption key in base64 encoding.
 ```
-m-encrypt-mac: SHA256:XXXXXXXXX
+m-encrypt-hmac: (SHA256)XXXXXXXXX
 
 ```
 
@@ -138,10 +138,10 @@ m-encrypt-metadata-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 
 ```
 
-#### `m-encrypt-metadata-mac`
-Like `m-encrypt-mac` we store the MAC in base64 for the ciphertext for the HTTP header `m-encrypt-metadata` so that we can verify the authenticity of the header ciphertext. Note: This header is not used for AEAD ciphers. 
+#### `m-encrypt-metadata-hmac`
+Like `m-encrypt-mac` we store the SHA256 HMAC in base64 for the ciphertext for the HTTP header `m-encrypt-metadata` so that we can verify the authenticity of the header ciphertext. Note: This header is not used for AEAD ciphers. 
 ```
-m-encrypt-metadata-mac: SHA256:XXXXXXXXX
+m-encrypt-metadata-hmac: (SHA256)XXXXXXXXX
 
 ```
 
