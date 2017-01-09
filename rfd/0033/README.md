@@ -10,7 +10,7 @@ state: publish
 -->
 
 <!--
-    Copyright 2016 Joyent, Inc.
+    Copyright 2017 Joyent, Inc.
 -->
 
 # RFD 33 Moray client v2
@@ -411,34 +411,9 @@ uniform wrappers that turn method calls into RPC calls.
 ### Moray constructor options
 
 To ensure compatibility, it became necessary to enumerate the many options
-accepted by the _old_ node-moray constructor.  These options are documented here
-for reference.
-
-Required? | Name              | Notes
---------- | ----------------  | -----
-yes       | log               | unchanged
-yes       | host              | legacy only (supplanted by cueball)
-yes       | port              | legacy only (supplanted by cueball)
-no        | connectTimeout    | legacy only (supplanted by cueball)
-no        | dns               | legacy only (supplanted by cueball)
-no        | dns.checkInterval | legacy only (supplanted by cueball)
-no        | dns.resolvers     | legacy only (supplanted by cueball)
-no        | dns.timeout       | legacy only (supplanted by cueball)
-no        | maxConnections    | legacy only (supplanted by cueball)
-no        | retry             | legacy only (supplanted by cueball)
-no        | maxIdleTime       | completely unused
-no        | pingTimeout       | completely unused
-no        | noCache           | completely unused
-
-The new options are documented with the constructor, and consist of `log`
-(required), `cueballOptions` (optional), and `unwrapErrors` (optional).
-Essentially, callers must specify _either_ `cueballOptions` or any of the other
-properties listed as "legacy only (supplanted by cueball)".  They must also
-specify the `log` property.
-
-To maintain compatibility, clients using legacy options may specify `url`
-instead of `host` and `port`.
-
+accepted by the _old_ node-moray constructor.  These options used to be
+documented here, but a more complete discussion is now part of [RFD
+73](../0073/README.md#appendix-moray-client-constructor-arguments).
 
 ### Related issues
 
@@ -517,3 +492,7 @@ Additionally, the new Fast implementation will be checked for:
 Before integration, we'll test incorporating the new node-moray into Marlin,
 node-libmanta, minnow, and other Manta components, and make sure that Manta
 sets up correctly and passes basic smoke tests.
+
+## See also
+
+* [RFD 73 Moray client support for SRV-based service discovery](../0073/README.md)
