@@ -101,7 +101,7 @@ This header contains the HMAC type as a string. If the HMAC type is known the to
 Thus, the client will know how many bytes from the end of the file are the actual ciphertext. If a AEAD cipher is being
 used this header is not stored and the m-encrypt-aead-tag-length header is used instead. 
 ```
-m-encrypt-hmac-length: 32
+m-encrypt-hmac-type: sha256
 
 ```
 
