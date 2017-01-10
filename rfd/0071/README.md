@@ -71,7 +71,7 @@ Due to the inherent limitations of client-side encryption, some operations will 
 
 ### HTTP Headers Used with Client-side Encryption
 
-The following headers will be added to Manta as natively supported headers like `Durability-Level` and not treated from an API perspective as "metadata" (`m-*` parameter). The rationale behind this is that it is enforcing the contract for consistent behavior between client-side encryption implementations across SDKs.
+The following headers will be treated from an API perspective as "metadata" (`m-*` parameters) and thus will be supported without changes to Manta server-side code. 
 
 #### `m-encrypt-type`
 To give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext does not compress well and we would be able to selectively disable compression for encrypted files. Another example is that it could be used as a basis for identifying files that would be candidates for a future migration to server-side encryption.
