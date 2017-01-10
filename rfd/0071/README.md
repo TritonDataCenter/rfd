@@ -83,10 +83,10 @@ m-encrypt-type: client/3.0
 ```
 
 #### `m-encrypt-key-id`
-To provide an audit trail to the consumers of client-side encryption, we set a header indicating the ID of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future.
+To provide an audit trail to the consumers of client-side encryption, we set a header indicating the ID of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future. This value is in stored in US-ASCII with no whitespace.
 
 ```
-m-encrypt-key-id: XXXXXXXXX
+m-encrypt-key-id: tps-key
 ```
 
 #### `m-encrypt-iv`
