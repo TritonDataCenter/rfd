@@ -75,11 +75,12 @@ The following headers will be treated from an API perspective as "metadata" (`m-
 
 #### `m-encrypt-type`
 To give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext does not compress well and we would be able to selectively disable compression for encrypted files. Another example is that it could be used as a basis for identifying files that would be candidates for a future migration to server-side encryption.
+Clients will read this header and if present identify the file as encrypted client side. The client will check its support for the encryption type. If the type is unrecognized, the client will error inforing the implementor of the problem. Then, the client will check its support for client-side encryption at the version specified. If the version is unsupported, the client will error informing the implementor of the problem.
 
-The format of the header value is `$type/$major.version.$minor.version`
+The format of the header value must be `$type/$version`
 
 ```
-m-encrypt-type: client/3.0
+m-encrypt-type: client/1
 ```
 
 #### `m-encrypt-key-id`
