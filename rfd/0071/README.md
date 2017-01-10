@@ -84,7 +84,7 @@ m-encrypt-type: client/1
 ```
 
 #### `m-encrypt-key-id`
-To provide an audit trail to the consumers of client-side encryption, we set a header indicating the ID of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future. This value is in stored in US-ASCII with no whitespace.
+To provide an audit trail to the consumers of client-side encryption, we set a header indicating the ID of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future. This value must contain only US-ASCII printable characters with no whitespace (ASCII characters 33-126). If the key specified in the client configuration does not comply with the acceptable characters, an error will be thrown notifying the implementor. If the header returned by the server contains invalid characters, the client attempts to handle it gracefully in whatever way makes the most sense within the client's language or framework.
 
 ```
 m-encrypt-key-id: tps-key
