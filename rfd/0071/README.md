@@ -172,8 +172,8 @@ TODO: Find out if we need to store AEAD tag length.
 
 Depending on the threat model determined by the consumer of the client SDK, different modes of authentication of the ciphertext would be desirable. If the consumer trusts the object store provider, then enabling a mode that skips authentication when it prevents an operation from operating efficiently makes sense. One example of an operation that would not work in an authenticated mode would be random reads (e.g. HTTP range requests). With security in mind, the client SDK will operate by default in a fully authenticated mode unless explicitly disabled. Thus, consumers of SDKs supporting client-side encryption would be able to choose between one of two modes:
 
- * `MandatoryObjectAuthentication` (default)
- * `OptionalObjectAuthentication`
+ * `MandatoryAuthentication` (default)
+ * `OptionalAuthentication`
  
 We only provide two modes unlike S3 which provides three modes (`EncryptionOnly`, `AuthenticatedEncryption`, and `StrictAuthenticatedEncryption`). `EncryptionOnly` mode in S3 does not authenticate ciphertext at all, `AuthenticatedEncryption` authenticates ciphertext when it is possible with the operation being performed and `StrictAuthenticatedEncryption` always authenticates and will cause an exception to be thrown if the operation can't be performed with authentication.   
 
@@ -212,7 +212,7 @@ In contrast to the scenario above, if your keys were protected by an [HSM](https
 
 ## 2. Java Manta SDK Client-side Encryption Design and Implementation
 
-Client-side encryption within the Java Manta SDK will be implemented as an optional operation that wraps streams going to and from Manta. Client-side encryption will be enabled using configuration, and from an API consumer's perspective, there will not be a change in the API. When operations are not supported by the encryption settings, then appropriate exceptions will be thrown indicating the conflict between the setting and the operation. An example of this would be an attempt to use a HTTP range operation when `MandatoryObjectAuthentication` is enabled. Furthermore, care will need to be taken to allow for operations that are retriable to continue to be retriable - such as sending [File](https://docs.oracle.com/javase/8/docs/api/java/io/File.html) objects.   
+Client-side encryption within the Java Manta SDK will be implemented as an optional operation that wraps streams going to and from Manta. Client-side encryption will be enabled using configuration, and from an API consumer's perspective, there will not be a change in the API. When operations are not supported by the encryption settings, then appropriate exceptions will be thrown indicating the conflict between the setting and the operation. An example of this would be an attempt to use a HTTP range operation when `MandatoryAuthentication` is enabled. Furthermore, care will need to be taken to allow for operations that are retriable to continue to be retriable - such as sending [File](https://docs.oracle.com/javase/8/docs/api/java/io/File.html) objects.   
 
 ### Cipher Selection and Library Support
 
