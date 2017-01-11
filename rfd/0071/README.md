@@ -114,7 +114,13 @@ m-encrypt-aead-tag-length: 128
 ```
 
 #### `m-encrypt-cipher`
-In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to encrypt the object. This header is in the form of `cipher/mode/padding state`.
+In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to 
+encrypt the object. The value of this header must be in the form of `cipher/mode/padding state`. Clients must support reading this value
+in a case-insensitive manner, but clients must make every effort to write the value in the original case. Clients will read this value and
+look up the implementation details for the cipher based on the header's value. In the section called [Supported Ciphers](), the details
+of how each one of these ciphers is implemented is specified. Each client will need to implement the ciphers as per the specification
+section. If the client doesn't support the cipher returned from this header, it must explicitly error and inform the implementor of the
+problem.
 
 ```
 m-encrypt-cipher: AES/GCM/NoPadding
@@ -163,11 +169,40 @@ Like `m-encrypt-cipher` we store the cipher for the ciphertext for the HTTP head
 m-encrypt-metadata-cipher: AES/GCM/NoPadding
 ```
 
-```
+### Supported Ciphers
 
-TODO: Find out if we need to store cipher and/or key padding settings.
-TODO: Find out if we need to store AEAD tag length.
-```
+#### `AES/GCM/NoPadding`
+
+This is an AEAD cipher that does authentication of the ciphertext as a build in feature of its implementation. This is the default cipher that we select
+for use with client-side encryption.
+
+Each client must implement this cipher with the following settings:
+
+|------------------|-----------------|------------------|--------------------------|
+| Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes |
+|------------------|-----------------|------------------|--------------------------|
+| 16               | 16              | 16               | 68719476704              |
+|------------------|-----------------|------------------|--------------------------|
+
+#### `AES/CTR/NoPadding`
+
+Each client must implement this cipher with the following settings:
+
+|------------------|-----------------|--------------------------|
+| Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
+|------------------|-----------------|--------------------------|
+| 16               | 16              | unlimited                | 
+|------------------|-----------------|--------------------------|
+
+#### `AES/CBC/PKCS5Padding`
+
+Each client must implement this cipher with the following settings:
+
+|------------------|-----------------|--------------------------|
+| Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
+|------------------|-----------------|--------------------------|
+| 16               | 16              | unlimited                |
+|------------------|-----------------|--------------------------|  
 
 ### Cryptographic Authentication Modes
 
