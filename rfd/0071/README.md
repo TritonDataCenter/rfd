@@ -137,7 +137,7 @@ m-encrypt-metadata: XXXXXXXXX
 #### `m-encrypt-metadata-iv`
 Like `m-encrypt-iv` we store the IV for the ciphertext for the HTTP header `m-encrypt-metadata`. 
 ```
-m-encrypt-metadata-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
+m-encrypt-metadata-iv: MDEyMzQ1Njc4OTAxMjQ1Cg
 
 ```
 
