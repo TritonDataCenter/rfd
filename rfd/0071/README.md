@@ -120,10 +120,12 @@ In order to allow differing clients to easily select the correct encryption algo
 m-encrypt-cipher: AES/GCM/NoPadding
 ```
 
-#### `m-encrypt-original-content-length`
-For a plethora of use cases it is valuable for the client to be able to be aware of the unencrypted file's size. We store that in bytes.
+#### `m-encrypt-plaintext-content-length`
+For a plethora of use cases it is valuable for the client to be able to be aware of the unencrypted file's size. This is an optional header that can
+be omitted when streaming in chunked mode when the plaintext content length is not known until the file has finished sending. The value of this header
+is the total amount of bytes of the plaintext content represented as an integer.
 ```
-m-encrypt-original-content-length: 1048576
+m-encrypt-plaintext-content-length: 1048576
 
 ```
 
