@@ -379,7 +379,7 @@ Update the existing `get` function with support for retrieving encrypted objects
 
 Below are possible scenarios/failures to consider
 
-1. `m-encrypt-type` doesn't exist or doesn't have the value `'client'`, in which case the object is assumed not to be encrypted, and the usual processing of the file occurs, without decryption
+1. `m-encrypt-support` doesn't exist or doesn't have the value `'client/VERSION'`, in which case the object is assumed not to be encrypted, and the usual processing of the file occurs, without decryption. In the event that the version isn't supported by the client, it should not try to decrypt the file and should return the encrypted form of the file.
 1. `m-encrypt-cipher` is set to an algorithm that isn't supported by Node.js, in which case an error should be returned in the callback
 1. `m-encrypt-key-id` isn't found by the `getKey` function or an error is returned on the callback. In this scenario, the error will be forwarded to the callback function.
 1. `getKey` doesn't exist and `m-encrypt-type` is set to `'client'`, this will result in an error being passed to the callback.
@@ -390,7 +390,7 @@ Below are possible scenarios/failures to consider
 
 Below are the steps that will take place inside of `get` when encountering an encrypted object
 
-1. Detect if an object is encrypted by checking if the `m-encrypt-type` header is set to `'client'`
+1. Detect if an object is encrypted by checking if the `m-encrypt-support` header is set to `'client/VERSION'` Initially, this will be `client/1.0`
 1. Validate the required encryption headers are stored with the object
 1. Retrieve the secret key using the `m-encrypt-key-id` value and `getKey` function passed to the option object
 1. Calculate the HMAC using 'sha256' with the key from getKey() and the encrypted object
@@ -431,7 +431,7 @@ const getKey = function (keyId, callback) {
 };
 
 
-client.get('~~/stor/encrypted', { getKey }, (err, stream) => {
+client.get('~~/stor/encrypted', { cse_getKey: getKey }, (err, stream) => {
   if (err) {
     console.error(err);
     process.exit(1);
@@ -457,7 +457,7 @@ Below are the steps that should take place when encrypting an object.
 1. Generate an Initialization Vector (IV)
 1. Calculate the cipher from the input stream and IV
 1. Calculate the HMAC using the calculated cipher and `key`, this should use 'sha256' or we should save the configured HMAC algorithm in a separate header
-1. Set the `m-encrypt-type` header to `'client'`
+1. Set the `m-encrypt-support` header to `'client/MAJOR.MINOR'` 
 1. Set the `m-encrypt-key-id` header sent to Manta using the `options.keyId`
 1. Set the `m-encrypt-iv` header to the IV value encoded as base64
 1. Set the `m-encrypt-cipher` header to the `options.cipher`
@@ -487,7 +487,7 @@ const keyId = 'dev/test';
 const key = 'FFFFFFFBD96783C6C91E2222';
 const cipher = 'aes/192/cbc';
 
-client.put('~~/stor/encrypted', file, { key, keyId, cipher }, (err, res) => {
+client.put('~~/stor/encrypted', file, { cse_key: key, cse_keyId: keyId, cse_cipher: cipher }, (err, res) => {
   if (err) {
     console.error(err);
     process.exit(1);
