@@ -289,55 +289,6 @@ The additional headers specifying in [HTTP Headers Used with Client-side Encrypt
 
 All operations within the Java Manta SDK *should* be currently thread-safe. Any client-encryption implementation will need to also be thread-safe because consumers of the SDK are assuming thread safety. 
 
-### Streamable Operations for Streams of an Unknown Size 
-
-We are able operate in a stream-base API from our client when adding or overwriting objects
-in Manta. The following diagram shows how what steps are needed to do perform end-to-end
-streaming of client-side encrypted data into Manta if we need to set headers that require
-a full read of the stream being uploaded like `m-encrypt-original-content-length`. 
-
-```
-         1                      2
-┏━━━━━━━━━━━━━━━━┓    ┏━━━━━━━━━━━━━━━━━━┓          3
-┃ Plaintext Body ┠────┨ Encrypted Header ┃    ┏━━━━━━━━━━━━┓
-┗━━━━━━━━━━━━━━━━┛    ┃ Generation       ┠────┨ Encryption ┃
-                      ┗━━━━━━━━━━━━━━━━━━┛    ┗━━━━━┯━━━━━━┛
-           ╭────────────────────────────────────────╯
-         4 │                    5
-┏━━━━━━━━━━┷━━━━━━━━┓    ┏━━━━━━━━━━━━━━┓           6
-┃ MD5 of Ciphertext ┠────┨ PutObject to ┃    ┏━━━━━━━━━━━━━━━━━━━┓            7
-┗━━━━━━━━━━━━━━━━━━━┛    ┃ Temp File    ┠────┨ PutMetadata +     ┃    ┏━━━━━━━━━━━━━━━━┓
-                         ┗━━━━━━━━━━━━━━┛    ┃ Encrypted Headers ┠────┨ PutSnapLink    ┃
-                                             ┗━━━━━━━━━━━━━━━━━━━┛    ┃ to Actual Path ┃
-                                                                      ┗━━━━━━━┯━━━━━━━━┛
-         8 ╭──────────────────────────────────────────────────────────────────╯
-┏━━━━━━━━━━┷━━━┓
-┃ DeleteObject ┃
-┃ of Temp File ┃
-┗━━━━━━━━━━━━━━┛
-
-```
-                                                                                    
-1. The plaintext data is passed to the API as a byte array, string or stream.
-2. The encrypted header generation processor is responsible for storing the
-   MD5 and SHA256 values of the plaintext and storing additional metadata 
-   supplied by the user of the SDK. The encrypted header generation processor
-   steams to the encryption processor.
-3. The encryption processor consume a stream of plaintext and produces a stream
-   of cipher text. This stream is passed to the MD5 digest processor.
-4. The MD5 digest processor streams to the PutObject API.
-5. The PutObject API streams its data into Manta and Manta writes the data as an
-   object on a temporary and unique file path. Once the stream has ended, there 
-   is no more stream processing because the object has been successfully 
-   written.
-6. A PutMetadata request is sent to Manta. This request updates the encrypted
-   headers, so that they container user-supplied encrypted metadata and the
-   cryptographic (MD5/SHA256) digests of the plaintext.
-7. A PutSnapLink request is sent to Manta. This creates a link to the originally
-   intended file path.
-8. A DeleteObject request is sent to Manta. This deletes the temporary file.
-   
-
 ### Stream Support
 
 In order to encrypt Java streams, it is desirable to create a wrapping stream that allows for setting an encryption algorithm and multipart settings. This approach is similar to how the S3 SDK handles encrypting streams in the `com.amazonaws.services.s3.internal.crypto.CipherLiteInputStream` class. Using a wrapping stream allows the implementer of the SDK to provide their own streams in the same way for encrypted operations as unencrypted operations. Moreover, it allows us to easily control specific multipart behaviors and the opening and closing of potentially thread-unsafe resources used for encryption.   
