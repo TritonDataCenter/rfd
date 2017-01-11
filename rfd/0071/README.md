@@ -96,7 +96,7 @@ In order to make sure that the same ciphertext is not generated each time the sa
 m-encrypt-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 ```
 
-#### m-encrypt-hmac-type
+#### `m-encrypt-hmac-type`
 A cryptographic checksum of the ciphertext is stored as the last N bytes of the data blob.
 This header contains the HMAC type as a string. If the HMAC type is known the total size of the HMAC can be determined. 
 Thus, the client will know how many bytes from the end of the file are the actual ciphertext. If a AEAD cipher is being
@@ -106,7 +106,7 @@ m-encrypt-hmac-type: sha256
 
 ```
 
-#### m-encrypt-aead-tag-length
+#### `m-encrypt-aead-tag-length`
 AEAD ciphers append a tag at the end of the cipher text that allows validation that the ciphertext is unaltered. This header is only used when storing ciphertext written via a AEAD cipher. The value of the header will be the size of the AEAD tag in bits.
 ```
 m-encrypt-aead-tag-length: 128
@@ -148,7 +148,7 @@ m-encrypt-metadata-hmac: YTk0ODkwNGYyZjBmNDc5YjhmODE5NzY5NGIzMDE4NGIwZDJlZDFjMWN
 
 ```
 
-#### m-encrypt-metadata-aead-tag-length
+#### `m-encrypt-metadata-aead-tag-length`
 Like `m-encrypt-aead-tag-length` we store the AEAD tag length in bits for the HTTP header `m-encrypt-metadata` so that we can verify the authenticity of the header ciphertext. Note: This header is not used for non-AEAD ciphers.
 ```
 m-encrypt-metadata-aead-tag-length: 128
@@ -162,7 +162,6 @@ m-encrypt-metadata-cipher: AES/GCM/NoPadding
 ```
 
 ```
-The following headers are stored by S3, but aren't addressed above:
 
 TODO: Find out if we need to store cipher and/or key padding settings.
 TODO: Find out if we need to store AEAD tag length.
