@@ -178,31 +178,26 @@ for use with client-side encryption.
 
 Each client must implement this cipher with the following settings:
 
-|------------------|-----------------|------------------|--------------------------|
 | Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes |
 |------------------|-----------------|------------------|--------------------------|
 | 16               | 16              | 16               | 68719476704              |
-|------------------|-----------------|------------------|--------------------------|
 
 #### `AES/CTR/NoPadding`
 
 Each client must implement this cipher with the following settings:
 
-|------------------|-----------------|--------------------------|
 | Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
 |------------------|-----------------|--------------------------|
 | 16               | 16              | unlimited                | 
-|------------------|-----------------|--------------------------|
 
 #### `AES/CBC/PKCS5Padding`
 
 Each client must implement this cipher with the following settings:
 
-|------------------|-----------------|--------------------------|
+
 | Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
 |------------------|-----------------|--------------------------|
 | 16               | 16              | unlimited                |
-|------------------|-----------------|--------------------------|  
 
 ### Cryptographic Authentication Modes
 
