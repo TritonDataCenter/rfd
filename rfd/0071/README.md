@@ -260,11 +260,11 @@ in Manta. The following diagram shows how what steps are needed to do perform en
 streaming of client-side encrypted data into Manta if we need to set headers that require
 a full read of the stream being uploaded like `m-encrypt-original-content-length`. 
 
-```           
+```
          1                      2
 ┏━━━━━━━━━━━━━━━━┓    ┏━━━━━━━━━━━━━━━━━━┓          3
 ┃ Plaintext Body ┠────┨ Encrypted Header ┃    ┏━━━━━━━━━━━━┓
-┗━━━━━━━━━━━━━━━━┛    ┃ Generation       ┠────┨ Encryption ┃ 
+┗━━━━━━━━━━━━━━━━┛    ┃ Generation       ┠────┨ Encryption ┃
                       ┗━━━━━━━━━━━━━━━━━━┛    ┗━━━━━┯━━━━━━┛
            ╭────────────────────────────────────────╯
          4 │                    5
