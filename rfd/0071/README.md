@@ -169,36 +169,6 @@ Like `m-encrypt-cipher` we store the cipher for the ciphertext for the HTTP head
 m-encrypt-metadata-cipher: AES/GCM/NoPadding
 ```
 
-### Supported Ciphers
-
-#### `AES/GCM/NoPadding`
-
-This is an AEAD cipher that does authentication of the ciphertext as a build in feature of its implementation. This is the default cipher that we select
-for use with client-side encryption.
-
-Each client must implement this cipher with the following settings:
-
-| Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes |
-|------------------|-----------------|------------------|--------------------------|
-| 16               | 16              | 16               | 68719476704              |
-
-#### `AES/CTR/NoPadding`
-
-Each client must implement this cipher with the following settings:
-
-| Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
-|------------------|-----------------|--------------------------|
-| 16               | 16              | unlimited                | 
-
-#### `AES/CBC/PKCS5Padding`
-
-Each client must implement this cipher with the following settings:
-
-
-| Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
-|------------------|-----------------|--------------------------|
-| 16               | 16              | unlimited                |
-
 ### Cryptographic Authentication Modes
 
 Depending on the threat model determined by the consumer of the client SDK, different modes of authentication of the ciphertext would be desirable. If the consumer trusts the object store provider, then enabling a mode that skips authentication when it prevents an operation from operating efficiently makes sense. One example of an operation that would not work in an authenticated mode would be random reads (e.g. HTTP range requests). With security in mind, the client SDK will operate by default in a fully authenticated mode unless explicitly disabled. Thus, consumers of SDKs supporting client-side encryption would be able to choose between one of two modes:
@@ -255,10 +225,33 @@ We will also support algorithms supplied by Bouncy Castle and the Java runtime v
 
 We've identified the following ciphers as the best candidates for streamable encryption:
 
-```
-TODO: Alex Wilson - please add recommendations from JCE and BouncyCastle. Please note if they are compatible with OpenSSL.
+#### `AES/GCM/NoPadding`
 
-```
+This is an AEAD cipher that does authentication of the ciphertext as a build in feature of its implementation. This is the default cipher that we select
+for use with client-side encryption.
+
+Each client must implement this cipher with the following settings:
+
+| Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes |
+|------------------|-----------------|------------------|--------------------------|
+| 16               | 16              | 16               | 68719476704              |
+
+#### `AES/CTR/NoPadding`
+
+Each client must implement this cipher with the following settings:
+
+| Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
+|------------------|-----------------|--------------------------|
+| 16               | 16              | unlimited                | 
+
+#### `AES/CBC/PKCS5Padding`
+
+Each client must implement this cipher with the following settings:
+
+
+| Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
+|------------------|-----------------|--------------------------|
+| 16               | 16              | unlimited                |
 
 ### Configuration
 
