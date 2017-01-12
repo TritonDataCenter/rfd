@@ -121,6 +121,9 @@ formal writing that it has come to represent.)
 | draft    | [RFD 76 Improving Manta Networking Setup](./rfd/0076/README.md) |
 | predraft | [RFD 77 Hardware-backed per-zone crypto tokens](./rfd/0077/README.md) |
 | draft | [RFD 78 Making Moray's findobjects requests robust with regards to unindexed fields](./rfd/0078/README.md) |
+| (WIP) | [RFD 79 Projects, Projects-Services, and Projects-Meta implementation](./rfd/0079/README.md) |
+| (WIP) | [RFD 80 Projects-Convergence implementation](./rfd/0080/README.md) |
+| (WIP) | [RFD 81 Services-Health implementation](./rfd/0081/README.md) |
 
 ## Contents of an RFD
 
