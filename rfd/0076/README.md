@@ -113,12 +113,6 @@ The primary goal of this proposed solution is to allow operators to describe the
 AZ using existing Triton tooling, as opposed to keeping up-to-date a hand-edited
 JSON file. The following sections describe how this might be possible.
 
-**`manta-adm` should handle this process**
-
-`manta-adm` should have a new sub-command that will handle Manta network
-validation and setup, as opposed to this being handled by a script in the global
-zone of the head node ("manta-net.sh").
-
 **We should no longer perform any NIC tagging; this should be a task for the
 operator**
 
@@ -152,7 +146,8 @@ doing NIC tags, which means SAPI is not required.
 This will act as a filter to determine what servers require the manta VNIC, but
 also as verification that all servers have the correct nic tags (e.g. metadata
 need "external" if they are to host loadbalancers, storage need "mantanat" for
-marlin zones).
+marlin zones). The operator is responsible for adding traits to the servers that
+are intended for Manta usage.
 
 **Make use of Triton's capabilities of creating global zone VNICs and routes**
 
@@ -196,6 +191,39 @@ unwieldy when adding any number of new servers to the deployment. It will also
 provide a mechanism of summarising all failures of a certain type so they can be
 rectified in one batch.
 
+**`manta-adm` should handle this process**
+
+`manta-adm` should have a new sub-command that will handle Manta network
+validation and setup, as opposed to this being handled by a script in the global
+zone of the head node ("manta-net.sh"). The layout of this sub-command will be
+as follows.
+
+- `manta-adm networking`
+    - Provides a help summary of all available sub-commands related to
+    Manta networking
+- `manta-adm networking show`
+    - Lists all Manta nodes in the AZ, making use of the servers' traits to
+    determine if they are intended for Manta usage
+    - This list will be useful for cross-checking against a server's intended
+    usage and its current nic tags. For example:
+        - A node is traited as "storage" that doesn't yet have a VNIC on the
+        Manta network
+        - A node is traited as "metadata", which could possibly house a
+        loadbalancer zone, but doesn't have an "external" nic tag
+- `manta-adm networking gz-nics`
+    - Direct replacement for the global zone VNIC creation parts of
+    "manta-net.sh", minus shipping the SMF services
+    - Gathers list of all Manta nodes in the AZ (using the same mechanism as
+    `manta-adm networking show`), cross checking these nodes against a list of
+    VNICs on the Manta network that are owned by servers, then provides a
+    summary to the operator of what actions it intends to perform
+    - After a positive response from a prompt to the operator, the VNICs are
+    created, unless:
+        - There are no Manta nodes without VNICs to the Manta network. In this
+        case there is nothing to do and the operator is informed as such
+        - A server has had its Manta trait removed but has a VNIC on the Manta
+        network. In this case the sub-command will remove the VNIC
+
 ## Additional questions
 
 **Should we also handle the master SAPI changes
@@ -221,7 +249,7 @@ here in order to allow flexibility to other parts of Manta that may end up using
 a server's traits.
 
 **Should this tool handle the full lifecycle of a VNIC?** For example, a
-metadata node is for some reason no longer going to be part of Manta, but is to
+storage node is for some reason no longer going to be part of Manta, but is to
 be used in the general pool of available servers in Triton. Should this tool
 provide a mechanism for deleting this node's VNIC from NAPI? It may be able to
 offer some form of validation and sanity checking here, such as whether all
