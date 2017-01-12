@@ -103,7 +103,9 @@ Thus, the client will know how many bytes from the end of the file are the actua
 signed by the same secret key as the ciphertext is signed by and the HMAC will not have a salt added.
 *If a AEAD cipher is being used this header is not stored and the m-encrypt-aead-tag-length header is used instead.*
 
-The HMACs below must be supported and are identified with the following strings:
+The HMACs below must be supported and are identified with the following strings. The identifiers should be able to
+be read in a case-insensitive manner, but the implementor must make every effort to write the strings with the
+case as presented below:
  
 | Identifier | Algorithm |
 |------------|-----------|
