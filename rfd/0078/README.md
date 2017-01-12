@@ -1,6 +1,6 @@
 ---
 authors: Julien Gilli <julien.gilli@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
