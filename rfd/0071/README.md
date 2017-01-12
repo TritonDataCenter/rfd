@@ -99,15 +99,27 @@ m-encrypt-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 #### `m-encrypt-hmac-type`
 A cryptographic checksum of the ciphertext is stored as the last N bytes of the data blob.
 This header contains the HMAC type as a string. If the HMAC type is known the total size of the HMAC can be determined. 
-Thus, the client will know how many bytes from the end of the file are the actual ciphertext. If a AEAD cipher is being
-used this header is not stored and the m-encrypt-aead-tag-length header is used instead. 
+Thus, the client will know how many bytes from the end of the file are the actual ciphertext. The HMAC must be
+signed by the same secret key as the ciphertext is signed by and the HMAC will not have a salt added.
+*If a AEAD cipher is being used this header is not stored and the m-encrypt-aead-tag-length header is used instead.*
+
+The HMACs below must be supported and are identified with the following strings:
+ 
+| Identifier | Algorithm |
+|------------|-----------|
+| HmacMD5    | MD5       |
+| HmacSHA1   | SHA1      |
+| HmacSHA256 | SHA256    |
+| HmacSHA512 | SHA512    |
+ 
 ```
-m-encrypt-hmac-type: sha256
+m-encrypt-hmac-type: HmacSHA256
 
 ```
 
 #### `m-encrypt-aead-tag-length`
-AEAD ciphers append a tag at the end of the cipher text that allows validation that the ciphertext is unaltered. This header is only used when storing ciphertext written via a AEAD cipher. The value of the header will be the size of the AEAD tag in bits.
+AEAD ciphers append a tag at the end of the cipher text that allows validation that the ciphertext is unaltered. The value of the header will be the size of the AEAD tag in bits.
+*This header is only used when storing ciphertext written via a AEAD cipher.*
 ```
 m-encrypt-aead-tag-length: 128
 
