@@ -131,7 +131,7 @@ m-encrypt-aead-tag-length: 128
 In order to allow differing clients to easily select the correct encryption algorithm, we set a header indicating the type of cipher used to 
 encrypt the object. The value of this header must be in the form of `cipher/mode/padding state`. Clients must support reading this value
 in a case-insensitive manner, but clients must make every effort to write the value in the original case. Clients will read this value and
-look up the implementation details for the cipher based on the header's value. In the section called [Supported Ciphers](#Supported Ciphers), 
+look up the implementation details for the cipher based on the header's value. In the section called [Supported Ciphers](#supported-ciphers), 
 the details of how each one of these ciphers is implemented is specified. Each client will need to implement the ciphers as per the 
 specification section. If the client doesn't support the cipher returned from this header, it must explicitly error and inform the 
 implementor of the problem.
