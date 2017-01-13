@@ -137,7 +137,7 @@ section. If the client doesn't support the cipher returned from this header, it 
 problem.
 
 ```
-m-encrypt-cipher: AES/GCM/NoPadding
+m-encrypt-cipher: AES128/GCM/NoPadding
 ```
 
 #### `m-encrypt-plaintext-content-length`
@@ -180,8 +180,24 @@ m-encrypt-metadata-aead-tag-length: 128
 #### `m-encrypt-metadata-cipher`
 Like `m-encrypt-cipher` we store the cipher for the ciphertext for the HTTP header `m-encrypt-metadata` so that our client can easily choose the right algorithm for decryption.
 ```
-m-encrypt-metadata-cipher: AES/GCM/NoPadding
+m-encrypt-metadata-cipher: AES128/GCM/NoPadding
 ```
+
+### Supported Ciphers
+
+We've identified the following ciphers as the best candidates for streamable encryption:
+
+| Name / Identifier       | Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes | AEAD  | Default |
+|-------------------------|------------------|-----------------|------------------|--------------------------|-------|---------|
+| AES128/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  | true    |
+| AES192/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  | false   |
+| AES256/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  | false   |
+| AES128/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false | false   |
+| AES192/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false | false   |
+| AES256/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false | false   |
+| AES128/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false | false   |
+| AES192/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false | false   |
+| AES256/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false | false   |
 
 ### Cryptographic Authentication Modes
 
@@ -246,36 +262,6 @@ The JVM implementation of client-side encryption relies on the encryption algori
 In the Oracle JDK, there is limited default support for strong encryption algorithms. To enable stronger encryption, you must download and install the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html). This isn't an issue with the OpenJDK. Also, strong encryption algorithms are supported using the [JCE API](https://en.wikipedia.org/wiki/Java_Cryptography_Extension) by [The Legion of the Bouncy Castle](http://www.bouncycastle.org/java.html) project.
 
 We will also support algorithms supplied by Bouncy Castle and the Java runtime via the [JCE API](http://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html). The Java Manta SDK currently bundles Bouncy Castle dependencies because they are used when doing [authentication via HTTP signed requests](https://github.com/joyent/java-http-signature).
-
-We've identified the following ciphers as the best candidates for streamable encryption:
-
-#### `AES/GCM/NoPadding`
-
-This is an AEAD cipher that does authentication of the ciphertext as a build in feature of its implementation. This is the default cipher that we select
-for use with client-side encryption.
-
-Each client must implement this cipher with the following settings:
-
-| Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes |
-|------------------|-----------------|------------------|--------------------------|
-| 16               | 16              | 16               | 68719476704              |
-
-#### `AES/CTR/NoPadding`
-
-Each client must implement this cipher with the following settings:
-
-| Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
-|------------------|-----------------|--------------------------|
-| 16               | 16              | unlimited                | 
-
-#### `AES/CBC/PKCS5Padding`
-
-Each client must implement this cipher with the following settings:
-
-
-| Block Size Bytes | IV Length Bytes | Max Plaintext Size Bytes |
-|------------------|-----------------|--------------------------|
-| 16               | 16              | unlimited                |
 
 ### Configuration
 
