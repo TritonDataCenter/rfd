@@ -1,5 +1,5 @@
 ---
-authors: Trent Mick <trent.mick@joyent.com>, Pedro Palazón Candel <pedro@joyent.com>
+authors: Trent Mick <trent.mick@joyent.com>, Pedro Palaz√≥n Candel <pedro@joyent.com>
 state: predraft
 ---
 
