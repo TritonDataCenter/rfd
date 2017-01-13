@@ -418,7 +418,7 @@ const getKey = function (keyId, callback) {
 };
 
 
-client.get('~~/stor/encrypted', { cse_getKey: getKey }, (err, stream) => {
+client.get('~~/stor/encrypted', { encrypt: { getKey } }, (err, stream) => {
   if (err) {
     console.error(err);
     process.exit(1);
@@ -470,11 +470,16 @@ const client = Manta.createClient({
 });
 
 const file = Fs.createReadStream(__dirname + '/README.md');
-const keyId = 'dev/test';
-const key = 'FFFFFFFBD96783C6C91E2222';
-const cipher = 'aes/192/cbc';
+const options = {
+  encrypt: {
+    key: 'FFFFFFFBD96783C6C91E2222',
+    keyId: 'dev/test',
+    cipher: 'aes/192/cbc',
+    hmac: 'HmacSHA256'
+  }
+};
 
-client.put('~~/stor/encrypted', file, { cse_key: key, cse_keyId: keyId, cse_cipher: cipher }, (err, res) => {
+client.put('~~/stor/encrypted', file, options, (err, res) => {
   if (err) {
     console.error(err);
     process.exit(1);
