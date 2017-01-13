@@ -107,12 +107,12 @@ The HMACs below must be supported and are identified with the following strings.
 be read in a case-insensitive manner, but the implementor must make every effort to write the strings with the
 case as presented below:
  
-| Identifier | Algorithm |
-|------------|-----------|
-| HmacMD5    | MD5       |
-| HmacSHA1   | SHA1      |
-| HmacSHA256 | SHA256    |
-| HmacSHA512 | SHA512    |
+| Identifier | Algorithm | HMAC Size in Bytes |
+|------------|-----------|--------------------|
+| HmacMD5    | MD5       | 16                 |
+| HmacSHA1   | SHA1      | 20                 | 
+| HmacSHA256 | SHA256    | 32                 |
+| HmacSHA512 | SHA512    | 64                 |
  
 ```
 m-encrypt-hmac-type: HmacSHA256
@@ -194,8 +194,18 @@ We only provide two modes unlike S3 which provides three modes (`EncryptionOnly`
 
 ### Authentication with Non-AEAD Ciphers
 
-If a non-AEAD cipher is used, we calculate a HMAC value and append it to the end of the binary blob uploaded to Manta. We send 
-it this way in order to avoid having to add it has a HTTP header as part of a separate operation.  
+If a non-AEAD cipher is used, we calculate a HMAC value of the IV and ciphertext and append it to the end of the binary blob
+(file) uploaded to Manta. We append to the end of the blob in order to avoid having to add it has a HTTP header as part of a
+separate operation. This allows us to do a PUT as a single operation.
+All HMACs are signed with the same secret key being used for encryption and are not salted.
+
+Essentially, generation of the HMAC is done in the following steps:
+
+1. Choose the HMAC algorithm and associated secret key.
+2. Update HMAC value with IV associated with ciphertext.
+3. Update HMAC value with ciphertext.
+4. Retrieve final HMAC value in binary and write it to the end of the binary blob after the ciphertext.
+
 
 ### Key Management
 
