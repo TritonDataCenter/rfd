@@ -46,16 +46,4 @@ All below endpoints may be prefixed with `/users/$userId` to access data for a u
 
 Endpoint operations:
 
-* GET - Get summarized state information at the project level for all user projects including project summary, service names, running count, goal count, how many are being stopped/started, etc.
-
-### /state/project/$projectId
-
-Endpoint operations:
-
-* GET - Get detailed data for the state of a project, including individual service IDs and their respective state
-
-### /state/service/$serviceId
-
-Endpoint operations:
-
-* GET - Get detailed data for the state of an individual service
+* GET - Get state information for all user projects including project summary, service names/IDs, running count, goal count, how many are being stopped/started, etc. This list can be filtered by passing `project` or `service` GET params with ID values.
