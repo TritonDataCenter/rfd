@@ -21,7 +21,7 @@ project. We want someting workable sooner.
 
 # Overview
 
-Four cases of headnode setup:
+There are fives cases of headnode setup:
 
 1. Vanilla first headnode setup for a new server. This is the thing we already
    have.
