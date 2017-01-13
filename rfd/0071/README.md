@@ -212,9 +212,9 @@ We only provide two modes unlike S3 which provides three modes (`EncryptionOnly`
 
 ### Authentication with Non-AEAD Ciphers
 
-If a non-AEAD cipher is used, we calculate a HMAC value of the IV and ciphertext and append it to the end of the binary blob
-(file) uploaded to Manta. We append to the end of the blob in order to avoid having to add it has a HTTP header as part of a
-separate operation. This allows us to do a PUT as a single operation.
+If a non-AEAD cipher is used, we calculate a HMAC value of the IV and ciphertext and append the HMAC in binary form to the 
+end of the binary blob (file) uploaded to Manta. We append to the end of the blob in order to avoid having to add it has a 
+HTTP header as part of a separate operation. This allows us to do a PUT as a single operation.
 All HMACs are signed with the same secret key being used for encryption and are not salted.
 
 Essentially, generation of the HMAC is done in the following steps:
