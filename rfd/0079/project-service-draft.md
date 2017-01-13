@@ -37,7 +37,7 @@ All below endpoints may be prefixed with `/users/$userId` to access data for a u
 Endpoint operations:
 
 * GET - A list of projects associated with requesting user
-* POST - Create a new project via manifest transmitted in POST payload
+* POST - Create a new project via YAML manifest transmitted in POST payload
 
 ### /projects/$projectId
 
