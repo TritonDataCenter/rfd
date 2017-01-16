@@ -51,12 +51,12 @@ There are a number of problems here that we want to improve:
 
 ## Current Status
 
-`sdcadm experimental update ...` supports updating all and individual agents
-using their individual images from updates.joyent.com and Pedro has been using
-this for a long while for daily us-east-3b updates. (Pedro will remind me the
-ticket for this work.) This handles case 3 above, and it isn't "blessed" as
-the suggested way for operators to updates agents yet. To handle cases 1 and 2,
-and to get to where we can bless 3, we need to do some more work.
+As of [TOOLS-563](https://smartos.org/bugview/TOOLS-563) `sdcadm experimental
+update ...` supports updating all and individual agents using their individual
+images from updates.joyent.com and Pedro has been using this for a long while
+for daily us-east-3b updates. This handles case 3 above, and it isn't "blessed"
+as the suggested way for operators to updates agents yet. To handle cases 1 and
+2, and to get to where we can bless 3, we need to do some more work.
 
 Defining that work is ongoing. Read on.
 
@@ -134,28 +134,34 @@ core instances, like `sdcadm insts`, can go to one place: SAPI. Currently
 `sdcadm insts` hits SAPI for VM instances and CNAPI for agent instances.
 
 
-## Trent's quick scatch notes on work to be done
+## M1: Short term more convenient agents updating
 
-This should be cleaned up, discussed, agreed upon, and ticketed.
+- TOOLS-1648: 'sdcadm post-setup cmon' should create cmon-agent instances
+  This will enable TOOLS-1631 for 'cmon-agent'.
+- TODO: TOOLS ticket for 'sdcadm create' support for agents
+  Link this to TOOLS-1631.
+- TODO: for multiple-server support for 'sdcadm create'
+- TODO: consider ticket for 'sdcadm ex update-agents' to be able to skip the
+  'latest' linking
+- TODO: consider ticket to update the latest link with an agentsshar without
+  updating the agents.
 
-TODOs related to getting agents updating more convenient in the short term:
 
-- TOOLS ticket for 'sdcadm post-setup cmon' to create cmon-agent instances
-  Link that to TOOLS-1631.
-- TOOLS ticket for 'sdcadm create' support for agents
-    - also possibly separate ticket for multiple-server support for 'sdcadm create'
-  Link these to TOOLS-1631.
-- consider ticket for 'sdcadm ex update-agents' to be able to skip the 'latest' linking
-- consider ticket to update the latest link with an agentsshar without updating
-  the agents.
+## M2: Dropping the agentsshar
 
-Remaining work to drop agentsshar:
+The following quick notes should be cleaned up, discussed, agreed upon, and
+ticketed:
 
 - headnode setup to use individual agents
 - CN setup (agentsetup.sh) to use individual agents
 - COAL/usb builds to ship with individual agents instead of the shar
 - sdcadm process to get from agentsshar on the usbkey to individual agents
   on the key (for existing deployments).
+- cn-agent agent_install needs to support installation of a new agent.
+   Current task blindly assumes that there'll be a directory for the given agent
+   argument that must be backed up and could be used to restore the old agent in
+   case of failure of the setup process (how this whole process of restore on
+   failure, or cleanup backup on success could be improved too).
 - cn-agent agent_install should refresh sysinfo for that server
   TODO: verify that it is indeed NOT updating server.sysinfo after an
   individual agent install
