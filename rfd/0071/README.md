@@ -210,6 +210,15 @@ Depending on the threat model determined by the consumer of the client SDK, diff
  
 We only provide two modes unlike S3 which provides three modes (`EncryptionOnly`, `AuthenticatedEncryption`, and `StrictAuthenticatedEncryption`). `EncryptionOnly` mode in S3 does not authenticate ciphertext at all, `AuthenticatedEncryption` authenticates ciphertext when it is possible with the operation being performed and `StrictAuthenticatedEncryption` always authenticates and will cause an exception to be thrown if the operation can't be performed with authentication.   
 
+### Authentication with AEAD Ciphers
+
+If a AEAD cipher is used, we allow the AEAD algorithm's implementation to perform authentication of the ciphertext. Sometimes, this will take extra
+care to do in client implementations because it involves reading the entire stream before it is authenticated. Thus, random reads will not be 
+authenticated and must only be done in `OptionalAuthentication` mode.
+   
+Additionally, AEAD ciphers allow for *associated data* / *additional data* to be stored. However, in this implementation associated data must not
+be stored. The only data stored outside of the actual cipher text will be the [authentication tag](https://tools.ietf.org/html/rfc5116#section-5.1).
+
 ### Authentication with Non-AEAD Ciphers
 
 If a non-AEAD cipher is used, we calculate a HMAC value of the IV and ciphertext and append the HMAC in binary form to the 
@@ -231,9 +240,15 @@ Initially, there will be no support server-side for key management. All key mana
 
 S3 provides a Key Management Service (KMS), and the design of any similar service is beyond the scope of this RFD. 
 
+
+### Key Format
+ 
+Secret keys must be stored and read in the ASN.1 encoding of a public key, encoded according to the ASN.1 type `SubjectPublicKeyInfo`. 
+The `SubjectPublicKeyInfo` syntax is defined in the [X509 standard as follows](https://tools.ietf.org/html/rfc5280#section-4.1):
 ```
-TODO: Define the default location for encryption keys.
-TODO: Define the default portable format for encryption keys.
+ SubjectPublicKeyInfo ::= SEQUENCE {
+   algorithm AlgorithmIdentifier,
+   subjectPublicKey BIT STRING }
 
 ```
 
@@ -267,23 +282,60 @@ We will also support algorithms supplied by Bouncy Castle and the Java runtime v
 
 ### Configuration
 
-All settings related to client-side encryption will be defined as part of the Java Manta SDK's [ConfigContext](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/config/ConfigContext.java) interface. This allows for the Java Manta SDK to be easily integrated into other libraries' configuration systems.
-  
-```
-TODO: Explicitly define the configuration parameters needed for client-side encryption.
-TODO: Do we want to support multiple keys?
+All settings related to client-side encryption will be defined as part of the Java Manta SDK's
+[ConfigContext](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/config/ConfigContext.java)
+interface. This allows for the Java Manta SDK to be easily integrated into other libraries'
+configuration systems. The following configuration settings will be added to the Java Manta SDK:
 
-We will need:
-ClientSideEncryptionEnabled: true | false (default)
-PermitUnencryptedDownloads: true | false (true)
-EncryptionAuthenticationMode: Optional | Mandatory (default)
-EncryptionPrivateKeyPath or EncryptionPrivateKeyBytes (one or the other need to be selected)
+```java
+    /**
+     * @return true when client-side encryption is enabled.
+     */
+    Boolean isClientEncryptionEnabled();
 
+    /**
+     * @return true when downloading unencrypted files is allowed in encryption mode
+     */
+    Boolean permitUnencryptedDownloads();
+
+    /**
+     * @return specifies if we are in strict ciphertext authentication mode or not
+     */
+    EncryptionAuthenticationMode getEncryptionAuthenticationMode();
+
+    /**
+     * A plain-text identifier for the encryption key used. It doesn't contain
+     * whitespace and is encoded in US-ASCII. The value of this setting has
+     * no current functional impact.
+     *
+     * @return the unique identifier of the key used for encryption
+     */
+    String getEncryptionKeyId();
+
+    /**
+     * Gets the algorithm name in the format of <code>cipher/mode/padding state</code>.
+     *
+     * @return the name of the algorithm used to encrypt and decrypt
+     */
+    String getEncryptionAlgorithm();
+
+    /**
+     * @return path to the private encryption key on the filesystem (can't be used if private key bytes is not null)
+     */
+    String getEncryptionPrivateKeyPath();
+
+    /**
+     * @return private encryption key data (can't be used if private key path is not null)
+     */
+    byte[] getEncryptionPrivateKeyBytes();
 ```
 
 ### Headers
 
-The additional headers specifying in [HTTP Headers Used with Client-side Encryption](HTTP-Headers-Used-with-Client-side-Encryption) would be added as properties of the [`com.joyent.manta.client.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaHttpHeaders.java) class. These properites would be set without intervention from the implementer of the SDK in the relevant section of [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/HttpHelper.java) by the uploading logic. For `Manta-Encrypt-Original-Content-Length` when streaming we will need to wrap the plaintext stream in a [`org.apache.commons.io.CountingInputStream`](https://commons.apache.org/proper/commons-io/javadocs/api-2.5/org/apache/commons/io/input/CountingInputStream.html) in order to calculate the content length.
+The additional headers specifying in [HTTP Headers Used with Client-side Encryption](HTTP-Headers-Used-with-Client-side-Encryption) would be added as properties of the 
+[`com.joyent.manta.http.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/MantaHttpHeaders.java) class. 
+These properties would be set without intervention from the implementer of the SDK in 
+the specific implementation of [`com.joyent.manta.http.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) by the uploading logic.
 
 ### Thread-safety
 
@@ -325,7 +377,14 @@ A new property called `encryptedMetadata` of the type `com.joyent.manta.client.E
 
 A number of new `RuntimeException` classes will need to be created that map to the different encryption failure modes. These classes will represent states such as invalid keys, invalid ciphertext and ciphertext authentication failures.
   
-Furthermore, the SDK should be smart enough to handle unencrypted downloads when an object is unencrypted and the `PermitUnencryptedDownloads` flag is set to `true`.  
+Furthermore, the SDK should be smart enough to handle unencrypted downloads when an object is unencrypted and the `PermitUnencryptedDownloads` flag is set to `true`.
+  
+The following new classes will be added to support client-side encryption:
+```java
+class MantaClientEncryptionException extends MantaException
+class MantaClientEncryptionCiphertextAuthenticationException extends MantaClientEncryptionException
+
+```
 
 #### Key Failures
 
