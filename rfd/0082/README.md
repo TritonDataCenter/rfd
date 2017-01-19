@@ -34,7 +34,7 @@ There are a number of problems here that we want to improve:
   doesn't want to install. *That* is not a process that belongs in a good
   upgrade system.
 
-- Sometimes upgrading all agents is fine, *expect* the "marlin-agent", which is
+- Sometimes upgrading all agents is fine, *except* the "marlin-agent", which is
   a part of Manta. HUP'ing the marlin-agent can have adverse effects on Manta.
   That leads to a common procedure being to manually edit the shar to exclude
   the marlin-agent (see the previous point).
