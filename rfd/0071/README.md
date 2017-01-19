@@ -189,17 +189,17 @@ We've identified the ciphers in the table below as the best candidates for strea
 encryption will make their best effort to support all of these ciphers. However, they only are required to support the default
 cipher.
 
-| Name / Identifier       | Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes | AEAD  | Default |
-|-------------------------|------------------|-----------------|------------------|--------------------------|-------|---------|
-| AES128/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  | true    |
-| AES192/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  | false   |
-| AES256/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  | false   |
-| AES128/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false | false   |
-| AES192/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false | false   |
-| AES256/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false | false   |
-| AES128/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false | false   |
-| AES192/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false | false   |
-| AES256/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false | false   |
+| Name / Identifier       | Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes | AEAD  | 
+|-------------------------|------------------|-----------------|------------------|--------------------------|-------|
+| AES128/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  |
+| AES192/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  |
+| AES256/GCM/NoPadding    | 16               | 16              | 16               | 68719476704              | true  |
+| AES128/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false |
+| AES192/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false |
+| AES256/CTR/NoPadding    | 16               | 16              | N/A              | unlimited                | false |
+| AES128/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false |
+| AES192/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false |
+| AES256/CBC/PKCS5Padding | 16               | 16              | N/A              | unlimited                | false |
 
 ### Cryptographic Authentication Modes
 
