@@ -120,10 +120,10 @@ m-encrypt-hmac-type: HmacSHA256
 ```
 
 #### `m-encrypt-aead-tag-length`
-AEAD ciphers append a tag at the end of the cipher text that allows validation that the ciphertext is unaltered. The value of the header will be the size of the AEAD tag in bits.
+AEAD ciphers append a tag at the end of the cipher text that allows validation that the ciphertext is unaltered. The value of the header will be the size of the AEAD tag in bytes.
 *This header is only used when storing ciphertext written via a AEAD cipher.*
 ```
-m-encrypt-aead-tag-length: 128
+m-encrypt-aead-tag-length: 16
 
 ```
 
@@ -171,9 +171,9 @@ m-encrypt-metadata-hmac: YTk0ODkwNGYyZjBmNDc5YjhmODE5NzY5NGIzMDE4NGIwZDJlZDFjMWN
 ```
 
 #### `m-encrypt-metadata-aead-tag-length`
-Like `m-encrypt-aead-tag-length` we store the AEAD tag length in bits for the HTTP header `m-encrypt-metadata` so that we can verify the authenticity of the header ciphertext. Note: This header is not used for non-AEAD ciphers.
+Like `m-encrypt-aead-tag-length` we store the AEAD tag length in bytes for the HTTP header `m-encrypt-metadata` so that we can verify the authenticity of the header ciphertext. Note: This header is not used for non-AEAD ciphers.
 ```
-m-encrypt-metadata-aead-tag-length: 128
+m-encrypt-metadata-aead-tag-length: 16
 
 ```
 
