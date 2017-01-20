@@ -151,10 +151,10 @@ m-encrypt-plaintext-content-length: 1048576
 
 #### `m-encrypt-metadata`
 Like the free form `m-*` metadata headers, we support free form encrypted metadata. The value of this header is ciphertext encoded in base64. 
-Metadata stored in plaintext is written in the form of HTTP headers delimited by new lines. The value of this header will be limited to a 
-maximum of 4k bytes as base64 ciphertext. 
+Metadata stored in plaintext is written in the form of HTTP headers delimited by new lines. The value of this header must be limited to a 
+maximum of 4k bytes as base64 ciphertext. The cipher used to encrypt metadata must be the same as specified in the `m-encrypt-cipher` header.
 ```
-m-encrypt-metadata: XXXXXXXXX
+m-encrypt-metadata: 2q2GrKPPcil6iaXXSImSn38cp+AVSZeQGaEp0+Wz+IWsYcC3B312cg7L5JI0HRK7Dvcurtsy7ccu
 
 ```
 
@@ -166,7 +166,10 @@ m-encrypt-metadata-iv: MDEyMzQ1Njc4OTAxMjQ1Cg
 ```
 
 #### `m-encrypt-metadata-hmac`
-A cryptographic checksum of the ciphertext for the encrypted headers is stored in this header so that ciphertext can be authenticated. This prevents classes of attacks that involve tricky changes to the ciphertext binary file. This header will not be used for AEAD ciphers. The [hash-based message authentication (HMAC)](https://en.wikipedia.org/wiki/Hash-based_message_authentication_code) value will be a SHA256 HMAC value keyed with the encryption key in base64 encoding. 
+A cryptographic checksum of the ciphertext for the encrypted headers is stored in this header so that ciphertext can be authenticated. 
+This prevents classes of attacks that involve tricky changes to the ciphertext binary file. This header must not be used for AEAD ciphers. 
+The [hash-based message authentication (HMAC)](https://en.wikipedia.org/wiki/Hash-based_message_authentication_code) value must use the 
+same algorithm as specified in the `m-encrypt-hmac-type` header. The value of the HMAC must be stored in base64 encoding. 
 ```
 m-encrypt-metadata-hmac: YTk0ODkwNGYyZjBmNDc5YjhmODE5NzY5NGIzMDE4NGIwZDJlZDFjMWNkMmExZWMwZmI4NWQyOTlhMTkyYTQ0NyAgLQo=
 
@@ -177,12 +180,6 @@ Like `m-encrypt-aead-tag-length` we store the AEAD tag length in bytes for the H
 ```
 m-encrypt-metadata-aead-tag-length: 16
 
-```
-
-#### `m-encrypt-metadata-cipher`
-Like `m-encrypt-cipher` we store the cipher for the ciphertext for the HTTP header `m-encrypt-metadata` so that our client can easily choose the right algorithm for decryption.
-```
-m-encrypt-metadata-cipher: AES128/GCM/NoPadding
 ```
 
 ### Supported Ciphers
