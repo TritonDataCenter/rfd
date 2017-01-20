@@ -38,15 +38,27 @@ In section 3, we provide a comprehensive overview of the design of the Node.js i
 
 ### Client-side Encryption Description
 
-Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the client. Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on behalf of the client. This RFD will be focused solely on client-side encryption.
+Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: 
+client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with 
+no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the 
+client. Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on 
+behalf of the client. This RFD will be focused solely on client-side encryption.
 
-Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is guaranteed because the client has full control over encryption algorithms, keys, and authentication. Additionally, when server-side encryption is not available in an object store, client-side encryption can be used to provide similar functionality to server-side encryption provided that the user is willing to relax requirements such as authentication. This can make sense when the provider of the object-store is not viewed as a potential adversary and is a trusted party.
+Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is guaranteed 
+because the client has full control over encryption algorithms, keys, and authentication. Additionally, when server-side encryption is not 
+available in an object store, client-side encryption can be used to provide similar functionality to server-side encryption provided that 
+the user is willing to relax requirements such as authentication. This can make sense when the provider of the object-store is not viewed 
+as a potential adversary and is a trusted party.
   
-From a design perspective, the implementation of client-side encryption in Manta loosely resembles the Java S3 SDK implementation. Like the S3 implementation, we use the JVM's support for encryption facilities to do encryption, we support fully client-managed private keys, we support loosening strict checking of ciphertext authentication so we can do more operations (such as HTTP range requests), we support multi-part uploads and encrypting streams.
+From a design perspective, the implementation of client-side encryption in Manta loosely resembles the Java S3 SDK implementation. Like the 
+S3 implementation, we use the JVM's support for encryption facilities to do encryption, we support fully client-managed private keys, we 
+support loosening strict checking of ciphertext authentication so we can do more operations (such as HTTP range requests), we support 
+multi-part uploads and encrypting streams.
 
 ### Desired Client-side Encryption Functionality
 
-In order for an object store client SDK to provide encryption and decryption as a seamless part of its API, there needs to be support for the following operations and constraints:
+In order for an object store client SDK to provide encryption and decryption as a seamless part of its API, there needs to be support for 
+the following operations and constraints:
 
  * Client-side encryption can be selectively enabled or disabled.
  * Streamable operations can be encrypted or decrypted without changing the API from non-encrypted operations.
@@ -62,7 +74,8 @@ In order for an object store client SDK to provide encryption and decryption as 
 
 ### Unsupported Operations
 
-Due to the inherent limitations of client-side encryption, some operations will not be supported. The list of operations not supported is as follows:
+Due to the inherent limitations of client-side encryption, some operations will not be supported. The list of operations not supported is as 
+follows:
 
  * Manta jobs cannot be supported with client-side encrypted objects. Clients can, of course, upload the keys to Manta themselves and import them into jobs as assets if they need to, but there will be no first class support for such operations.
  * Decryption via signed links will not natively be supported by Manta server-side operations. A client could still download a signed link and decrypt it themselves.
@@ -71,11 +84,18 @@ Due to the inherent limitations of client-side encryption, some operations will 
 
 ### HTTP Headers Used with Client-side Encryption
 
-The following headers will be treated from an API perspective as "metadata" (`m-*` parameters) and thus will be supported without changes to Manta server-side code. 
+The following headers must be treated from an API perspective as "metadata" (`m-*` parameters) and thus will be supported without changes to Manta server-side code. 
 
 #### `m-encrypt-type`
-To give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, ciphertext does not compress well and we would be able to selectively disable compression for encrypted files. Another example is that it could be used as a basis for identifying files that would be candidates for a future migration to server-side encryption.
-Clients will read this header and if present identify the file as encrypted client side. The client will check its support for the encryption type. If the type is unrecognized, the client will error inforing the implementor of the problem. Then, the client will check its support for client-side encryption at the version specified. If the version is unsupported, the client will error informing the implementor of the problem.
+To give the maintainers of Manta and client SDKs more options when implementing future functionality, we should create a new HTTP metadata 
+header that is supported in Manta outside of user-supplied metadata. This header would be used to mark a given objects as being encrypted 
+using client-side encryption. One example of how this header could be useful is if we wanted to implement gzip compression in the future, 
+ciphertext does not compress well and we would be able to selectively disable compression for encrypted files. Another example is that it 
+could be used as a basis for identifying files that would be candidates for a future migration to server-side encryption.
+Clients must read this header and if present identify the file as encrypted client side. The client must check its support for the 
+encryption type. If the type is unrecognized, the client must error informing the implementor of the problem. Then, the client must 
+check its support for client-side encryption at the version specified. If the version is unsupported, the client must error informing 
+the implementor of the problem.
 
 The format of the header value must be `$type/$version`
 
@@ -84,14 +104,21 @@ m-encrypt-type: client/1
 ```
 
 #### `m-encrypt-key-id`
-To provide an audit trail to the consumers of client-side encryption, we set a header indicating the ID of the key used to encrypt the object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to support multiple encryption keys in the future. This value must contain only US-ASCII printable characters with no whitespace (ASCII characters 33-126). If the key specified in the client configuration does not comply with the acceptable characters, an error will be thrown notifying the implementor. If the header returned by the server contains invalid characters, the client attempts to handle it gracefully in whatever way makes the most sense within the client's language or framework.
+To provide an audit trail to the consumers of client-side encryption, we set a header indicating the ID of the key used to encrypt the
+object. This would assist users in debugging cases where files have been encrypted using multiple keys and could allow the client to 
+support multiple encryption keys in the future. This value must contain only US-ASCII printable characters with no whitespace 
+(ASCII characters 33-126). If the key specified in the client configuration does not comply with the acceptable characters, an 
+error must be thrown notifying the implementor. If the header returned by the server contains invalid characters, the client 
+attempts to handle it gracefully in whatever way makes the most sense within the client's language or framework.
 
 ```
 m-encrypt-key-id: tps-key
 ```
 
 #### `m-encrypt-iv`
-In order to make sure that the same ciphertext is not generated each time the same file is encrypted, we use an [initialization vector (IV)](https://en.wikipedia.org/wiki/Initialization_vector). This IV is stored in Manta as header metadata in base64 encoding.   
+In order to make sure that the same ciphertext is not generated each time the same file is encrypted, we use an 
+[initialization vector (IV)](https://en.wikipedia.org/wiki/Initialization_vector). This IV is stored in Manta as header metadata 
+in base64 encoding.   
 ```
 m-encrypt-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 ```
@@ -100,10 +127,10 @@ m-encrypt-iv: TWFrZSBEVHJhY2UgZ3JlYXQgYWdhaW4K
 A cryptographic checksum of the ciphertext is stored as the last N bytes of the data blob.
 This header contains the HMAC type as a string. If the HMAC type is known the total size of the HMAC can be determined. 
 Thus, the client will know how many bytes from the end of the file are the actual ciphertext. The HMAC must be
-signed by the same secret key as the ciphertext is signed by and the HMAC will not have a salt added.
+signed by the same secret key as the ciphertext is signed by and the HMAC must not have a salt added.
 *If a AEAD cipher is being used this header is not stored and the m-encrypt-aead-tag-length header is used instead.*
 
-The HMACs below must be supported and are identified with the following strings. The identifiers should be able to
+The HMACs below must be supported and are identified with the following strings. The identifiers must be able to
 be read in a case-insensitive manner, but the implementor must make every effort to write the strings with the
 case as presented below:
  
@@ -120,7 +147,8 @@ m-encrypt-hmac-type: HmacSHA256
 ```
 
 #### `m-encrypt-aead-tag-length`
-AEAD ciphers append a tag at the end of the cipher text that allows validation that the ciphertext is unaltered. The value of the header will be the size of the AEAD tag in bytes.
+AEAD ciphers append a tag at the end of the cipher text that allows validation that the ciphertext is unaltered. The value of the header 
+will be the size of the AEAD tag in bytes.
 *This header is only used when storing ciphertext written via a AEAD cipher.*
 ```
 m-encrypt-aead-tag-length: 16
@@ -141,9 +169,9 @@ m-encrypt-cipher: AES128/GCM/NoPadding
 ```
 
 #### `m-encrypt-plaintext-content-length`
-For a plethora of use cases it is valuable for the client to be able to be aware of the unencrypted file's size. This is an optional header that can
-be omitted when streaming in chunked mode when the plaintext content length is not known until the file has finished sending. The value of this header
-is the total amount of bytes of the plaintext content represented as an integer.
+For a plethora of use cases it is valuable for the client to be able to be aware of the unencrypted file's size. This is an optional 
+header that can be omitted when streaming in chunked mode when the plaintext content length is not known until the file has finished 
+sending. The value of this header is the total amount of bytes of the plaintext content represented as an integer.
 ```
 m-encrypt-plaintext-content-length: 1048576
 
@@ -176,7 +204,8 @@ m-encrypt-metadata-hmac: YTk0ODkwNGYyZjBmNDc5YjhmODE5NzY5NGIzMDE4NGIwZDJlZDFjMWN
 ```
 
 #### `m-encrypt-metadata-aead-tag-length`
-Like `m-encrypt-aead-tag-length` we store the AEAD tag length in bytes for the HTTP header `m-encrypt-metadata` so that we can verify the authenticity of the header ciphertext. Note: This header is not used for non-AEAD ciphers.
+Like `m-encrypt-aead-tag-length` we store the AEAD tag length in bytes for the HTTP header `m-encrypt-metadata` so that we can verify the 
+authenticity of the header ciphertext. Note: This header is not used for non-AEAD ciphers.
 ```
 m-encrypt-metadata-aead-tag-length: 16
 
@@ -185,7 +214,7 @@ m-encrypt-metadata-aead-tag-length: 16
 ### Supported Ciphers
 
 We've identified the ciphers in the table below as the best candidates for streamable encryption. SDKs implementing client-side
-encryption will make their best effort to support all of these ciphers. However, they only are required to support the default
+encryption must make their best effort to support all of these ciphers. However, they only are required to support the default
 cipher.
 
 | Name / Identifier       | Block Size Bytes | IV Length Bytes | Tag Length Bytes | Max Plaintext Size Bytes | AEAD  | 
@@ -202,7 +231,11 @@ cipher.
 
 ### Cryptographic Authentication Modes
 
-Depending on the threat model determined by the consumer of the client SDK, different modes of authentication of the ciphertext would be desirable. If the consumer trusts the object store provider, then enabling a mode that skips authentication when it prevents an operation from operating efficiently makes sense. One example of an operation that would not work in an authenticated mode would be random reads (e.g. HTTP range requests). With security in mind, the client SDK will operate by default in a fully authenticated mode unless explicitly disabled. Thus, consumers of SDKs supporting client-side encryption would be able to choose between one of two modes:
+Depending on the threat model determined by the consumer of the client SDK, different modes of authentication of the ciphertext would be 
+desirable. If the consumer trusts the object store provider, then enabling a mode that skips authentication when it prevents an operation 
+from operating efficiently makes sense. One example of an operation that would not work in an authenticated mode would be random reads 
+(e.g. HTTP range requests). With security in mind, the client SDK must operate by default in a fully authenticated mode unless explicitly 
+disabled. Thus, consumers of SDKs supporting client-side encryption would be able to choose between one of two modes:
 
  * `MandatoryAuthentication` (default)
  * `OptionalAuthentication`
@@ -211,12 +244,12 @@ We only provide two modes unlike S3 which provides three modes (`EncryptionOnly`
 
 ### Authentication with AEAD Ciphers
 
-If a AEAD cipher is used, we allow the AEAD algorithm's implementation to perform authentication of the ciphertext. Sometimes, this will take extra
-care to do in client implementations because it involves reading the entire stream before it is authenticated. Thus, random reads will not be 
-authenticated and must only be done in `OptionalAuthentication` mode.
+If a AEAD cipher is used, we allow the AEAD algorithm's implementation to perform authentication of the ciphertext. Sometimes, this will 
+take extra care to do in client implementations because it involves reading the entire stream before it is authenticated. Thus, random 
+reads will not be  authenticated and must only be done in `OptionalAuthentication` mode.
    
-Additionally, AEAD ciphers allow for *associated data* / *additional data* to be stored. However, in this implementation associated data must not
-be stored. The only data stored outside of the actual cipher text will be the [authentication tag](https://tools.ietf.org/html/rfc5116#section-5.1).
+Additionally, AEAD ciphers allow for *associated data* / *additional data* to be stored. However, in this implementation associated data 
+must not be stored. The only data stored outside of the actual cipher text must be the [authentication tag](https://tools.ietf.org/html/rfc5116#section-5.1).
 
 ### Authentication with Non-AEAD Ciphers
 
@@ -235,7 +268,8 @@ Essentially, generation of the HMAC is done in the following steps:
 
 ### Key Management
 
-Initially, there will be no support server-side for key management. All key management will need to be done by the implementer of the SDK. The default key format and location will be standardized across all implementations of Manta client-side encryption in their respective SDKs.
+Initially, there will be no support server-side for key management. All key management will need to be done by the implementer of the SDK. 
+The default key format and location will be standardized across all implementations of Manta client-side encryption in their respective SDKs.
 
 S3 provides a Key Management Service (KMS), and the design of any similar service is beyond the scope of this RFD. 
 
@@ -284,7 +318,8 @@ SDKs may overwrite the value of `Content-Length` returned from the client API wi
 
 ### Future considerations
 
-Ideally, our client-side encryption implementation will be designed such that when we build server-side encryption support customers can seamlessly migrate between schemes. This can be possible if we have consistent headers/metadata for identifying ciphers, MAC, IV and key ids. 
+Ideally, our client-side encryption implementation must be designed such that when we build server-side encryption support customers can 
+seamlessly migrate between schemes. This can be possible if we have consistent headers/metadata for identifying ciphers, MAC, IV and key ids. 
 
 ### Limitations
 
@@ -296,7 +331,10 @@ In contrast to the scenario above, if your keys were protected by an [HSM](https
 
 ## 2. Java Manta SDK Client-side Encryption Design and Implementation
 
-Client-side encryption within the Java Manta SDK will be implemented as an optional operation that wraps streams going to and from Manta. Client-side encryption will be enabled using configuration, and from an API consumer's perspective, there will not be a change in the API. When operations are not supported by the encryption settings, then appropriate exceptions will be thrown indicating the conflict between the setting and the operation. An example of this would be an attempt to use a HTTP range operation when `MandatoryAuthentication` is enabled. Furthermore, care will need to be taken to allow for operations that are retriable to continue to be retriable - such as sending [File](https://docs.oracle.com/javase/8/docs/api/java/io/File.html) objects.   
+Client-side encryption within the Java Manta SDK must be implemented as an optional operation that wraps streams going to and from Manta. 
+Client-side encryption will be enabled using configuration, and from an API consumer's perspective, there will not be a change in the API. 
+When operations are not supported by the encryption settings, then appropriate exceptions must be thrown indicating the conflict between 
+the setting and the operation. An example of this would be an attempt to use a HTTP range operation when `MandatoryAuthentication` is enabled. Furthermore, care will need to be taken to allow for operations that are retriable to continue to be retriable - such as sending [File](https://docs.oracle.com/javase/8/docs/api/java/io/File.html) objects.   
 
 ### Cipher Selection and Library Support
 
@@ -399,9 +437,11 @@ Encrypted metadata will be settable via the `MantaMetadata` class by setting met
 
 ### Failure Handling
 
-A number of new `RuntimeException` classes will need to be created that map to the different encryption failure modes. These classes will represent states such as invalid keys, invalid ciphertext and ciphertext authentication failures.
+A number of new `RuntimeException` classes will need to be created that map to the different encryption failure modes. These classes will 
+represent states such as invalid keys, invalid ciphertext and ciphertext authentication failures.
   
-Furthermore, the SDK should be smart enough to handle unencrypted downloads when an object is unencrypted and the `PermitUnencryptedDownloads` flag is set to `true`.
+Furthermore, the SDK should be smart enough to handle unencrypted downloads when an object is unencrypted and the `PermitUnencryptedDownloads` 
+flag is set to `true`.
   
 The following new classes will be added to support client-side encryption:
 ```java
@@ -412,11 +452,14 @@ class MantaClientEncryptionCiphertextAuthenticationException extends MantaClient
 
 #### Key Failures
 
-Private key format failures should be detected upon startup of the SDK and cause an exception to be thrown. This allows for the early alerting to implementers of the SDK of any problems in their key configuration.
+Private key format failures should be detected upon startup of the SDK and cause an exception to be thrown. This allows for the early 
+alerting to implementers of the SDK of any problems in their key configuration.
 
 #### Decryption Failures
 
-Failures due to problems decoding the ciphertext will be pushed up the stack from the underlying JCE implementation. We need to be careful to preserve such exceptions and to wrap them with our own exception types that provide additional context that allows for ease in debugging.
+Failures due to problems decoding the ciphertext will be pushed up the stack from the underlying JCE implementation. We need to be 
+careful to preserve such exceptions and to wrap them with our own exception types that provide additional context that allows for 
+ease in debugging.
 
 ## 3. Node.js SDK Design and Implementation
 
