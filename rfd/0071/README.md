@@ -150,7 +150,9 @@ m-encrypt-plaintext-content-length: 1048576
 ```
 
 #### `m-encrypt-metadata`
-Like the free form `m-*` metadata headers, we support free form encrypted metadata. The value of this header is ciphertext encoded in base64. Metadata stored in plaintext is written as JSON. The value of this header will be limited to a maximum of 4k bytes as base64 ciphertext. 
+Like the free form `m-*` metadata headers, we support free form encrypted metadata. The value of this header is ciphertext encoded in base64. 
+Metadata stored in plaintext is written in the form of HTTP headers delimited by new lines. The value of this header will be limited to a 
+maximum of 4k bytes as base64 ciphertext. 
 ```
 m-encrypt-metadata: XXXXXXXXX
 
@@ -254,7 +256,34 @@ The `SubjectPublicKeyInfo` syntax is defined in the [X509 standard as follows](h
 
 ### Metadata Support
 
-Encrypted metadata will be supported by serializing to a JSON data structure that will be encrypted and converted to base64 encoding. This will be stored as metadata on the object via the HTTP header `m-encrypt-headers`. 
+Encrypted metadata will be supported by serializing to a key value data structure that is compatible with [RFC 2616](https://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html).
+This data structure is as follows:
+```
+e-key_1: value_1
+e-key_2: value_2
+e-key_3: value_3
+``` 
+
+All text must be encoded in US-ASCII using only printable characters (between codepoints 32 and 126 inclusive). Keys must be prefixed with the 
+string "e-" and must not contain spaces. Values may contain a semi-colon and spaces. Unlike RFC 2616 HTTP headers, keys cannot be duplicated. 
+Furthermore, values are handled as-is and there will be no value sub-field parsing required in the implementation.
+
+Encrypted metadata not beginning with the prefix "e-" must result in an error.
+
+The plaintext data structure described above will be encrypted and converted to base64 encoding. This will be stored as metadata on the 
+object via the HTTP header `m-encrypt-headers`.
+
+SDK implementations must store `Content-Type` headers in the encrypted metadata coded with the key `e-content-type`. If possible, the
+`e-content-type` value can be read and passed on to the consumer of the SDK as the original `Content-Type` header in order to preserve
+the same abstraction between encrypted usage and unencrypted usage.
+
+### Content-Type
+
+Encrypted files must be stored with a `Content-Type` header value of `application/octet-stream`.
+
+### Content-Length
+
+SDKs may overwrite the value of `Content-Length` returned from the client API with the value of `m-encrypt-plaintext-content-length`. 
 
 ### Future considerations
 
@@ -369,9 +398,7 @@ TODO: Figure out how to encrypt each MPU part in isolation so that they can be a
 
 ### Metadata Support
 
-A new class will be created called `EncryptedMantaMetadata`. This class will support the `Map<K, V>` interface because the backing format for metadata will be JSON. This should allow the implementers of the SDK define their own structure for free form Metadata.  
-
-A new property called `encryptedMetadata` of the type `com.joyent.manta.client.EncryptedMantaMetadata` would be added to the [`com.joyent.manta.client.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/MantaHttpHeaders.java) class. Inside the [`com.joyent.manta.http.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) class we would serialize the `EncryptedMantaMetadata` instance to JSON, encrypt it, base64 it and write it (metadata ciphertext), the MAC and the IV as HTTP headers. Likewise for reading headers, we would reverse the operations and write the value back to the a method that would allow the consumer to define their own generic types upon read. 
+Encrypted metadata will be settable via the `MantaMetadata` class by setting metadata keys that are prefixed with `e-`.
 
 ### Failure Handling
 
