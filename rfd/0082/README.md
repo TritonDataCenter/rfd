@@ -172,3 +172,8 @@ ticketed:
 - See the "deprecate CNAPI server.agents and use SAPI" discussion.
 - Does SAPI ListInstances support paging? It'll need to.
 - SAPI CreateInstance and DeleteInstance should work for agent instances.
+
+Some current tickets:
+
+- AGENT-1053: "Note that my plan is to provide support for new agent setup by
+  cn-agent and use it for cmon-agent update this week" --pedro
