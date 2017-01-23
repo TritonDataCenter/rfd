@@ -19,45 +19,34 @@ backup/recovery and resilience. The holy grail is support for fully redundant
 headnodes, so that no single node is "special" -- but that is a large
 project. We want someting workable sooner.
 
-# Overview
 
-There are fives cases of headnode setup:
+# Scope
 
-1. Vanilla first headnode setup for a new server. This is the thing we already
-   have.
-2. Essential services are HA, recovery on an unused server.
-   In this case the DC has been setup in the full recommended config where there
-   is an HA cluster of all the "essential" services: binder, manatee, moray,
-   assets (new), dhcpd (new), and imgapi (new). And recovery is on an unused
-   server (either a repaired and wiped original headnode, or a new unused
-   server) which will become the headnode.
-3. Essential services are HA, convert existing CN to a HN and recover on it.
-   In this case the DC has been setup in the full recommended config
-   where there is an HA cluster of all the "essential" services (as in #2).
-   However, there isn't a spare unused server that can be used for headnode
-   recovery, so the desire is to use an existing CN, potentially one of the
-   CNs hosting some of the HA cluster components (e.g. binder1, manatee1,
-   moray1). Obviously a third server will eventually be required to get back
-   to an "HA essentials" blessed state, but that might be acceptable to quickly
-   get back to an HA state.
-4. Recovery of a headnode from a *backup* of one or more of the essentials
-   and not necessarily any binder/manatee/moray/assets/dhcpd/imgapi running
-   instances to work with.
-5. Setup of a redundant headnode (or conversion of a CN to being another
-   headnode). I.e. fully redundant headnodes (e.g. headnode0,
-   headnode1, headnode2) such that loosing one of them to thermite doesn't
+Here are the theoretically possible headnode recovery cases:
+
+1. Recover on a secondary headnode.
+   Here the assumption is that the TritonDC is fully setup with three headnodes:
+   a primary and two secondaries. The secondaries hold the HA instances of
+   binder, manatee, and moray. The primary headnode is lost for some reason.
+   There is a documented procedure for recovering full DC operation on one
+   of those secondary headnodes.
+2. Recover from data backups.
+   The primary headnode is lost and the DC does not have functioning secondary
+   headnodes. Recovery is performed on an existing or new server that will
+   be setup as the primary headnode using backups of DC data.
+3. Fully redundant headnodes.
+   All Triton DataCenter core services are improved to support and are setup to
+   be fully redundant in the DC, such that losing one of three headnodes doesn't
    result in any issues other than a temporary blip in services while failing
-   instances are purged from working sets. This requires full HA for all
-   services, which a matter bigger than just this RFD.
+   instances are purged from working sets.
 
+This RFD will propose a plan for #1 (secondary headnode recovery). #2 and #3
+are currently out of scope.
 
-This RFD will propose a plan primarily for #3. Cases #2 and #4 will likely also
-be discussed, but are a lower priority. Case #5 is out of scope.
-
-TODO: Re-number these things, add a #2 for headnode replacement. I.e. controlled
-EOL'ing of a headnode server by moving headnode to another. The test there
-is nightly-1 being able to swap headnode back and forth between servers. Call
-this M1.
+The first part of #1 is defining and adding support for secondary headnodes,
+including automatic processes for data backup or replication to those
+secondary headnodes that is needed for recovery. The second part is the work
+(support, tooling, docs, testing) for headnode recovery on a secondary headnode.
 
 
 # Prior art
@@ -71,41 +60,128 @@ repositories). Those are broken, incomplete, and -- I hope -- not supported.
     Backing up Manatee
     /opt/smartdc/bin/sdc-backup: line 77: sdc-manatee-stat: command not found
 
-
-# Recovery process
-
-For cases #2 and #4 where a new unused server is used, the recovery process may
-go like this:
-
-- You boot your new headnode and select a new "Headnode recovery" mode.
-  This passes recovery=true bootparams to headnode.sh (or whatever).
-- "headnode.sh" will then use available information ('config' on the usbkey?
-  or perhaps another recovery file we start writing to the usbkey?) to attempt
-  to find running and healthy clusters of binder, manatee, moray, imgapi, etc.
-  If all "blessed" conditions are met, then it automatically runs
-  'sdcadm recover ...' with this data to have it recover the headnode.
-- If all the blessed conditions are *not* met, then:
-    - It sets PS1 to indicate that the headnode isn't setup and needs recovery
-      (see [HEAD-2165](https://devhub.joyent.com/jira/browse/HEAD-2165) for
-      a throw back).
-    - It sets motd with details that recovery needs to be run manually and
-      how to run 'sdcadm recover'.
-    - It stops setting up.
-  At this point it is up to the operators to run 'sdcadm recover' with options
-  pointing to the necessary backups.
+If feasible, this RFD will attempt to clean out these obsolete tools.
 
 
-For case #3 where a existing server (hosting some core instances) will take
-on more instances, the recovery process may go like this:
+# Operator processes
 
-- If this isn't already a secondary headnode, then convert it to being a
-  headnode. There will need to be a new tool added to "cn-tools" that supports
-  converting to a headnode (ensure a USB key, install headnode-specific GZ
-  tools, sdcadm, etc.).
-- Call `sdcadm recover` similar to above.
+## Secondary headnode setup process
+
+A prerequisite for the proposed headnode recovery support is that a DC is
+setup with two secondary headnodes. Current TritonDC operator documentation
+suggests that two CNs are used for HA instances of the core binder, manatee, and
+moray instances. This RFD suggests the following process to convert those
+CNs over to being "secondary headnodes":
+
+    sdcadm post-setup headnode headnode # convert current HN to 'headnode0'
+    sdcadm post-setup headnode $CN1     # convert CN1 to 'headnode1'
+    sdcadm post-setup headnode $CN2     # convert CN2 to 'headnode2'
+
+The first step will convert the current 'headnode' to (a) hostname "headnode0"
+and (b) mark it as the "primary" headnode.
+
+The latter two steps will convert the given compute nodes (CNs) over to being
+secondary headnodes. This process will involve: rebooting the CN and renaming
+its hostname to 'headnode<number>'. The reboot could mean temporary service
+disruptions on the order of what a manatee or binder instance upgrade can
+entail.
+
+Note that this same command can be used to setup a new unsetup compute node
+as a secondary headnode:
+
+    sdcadm post-setup headnode $UNSETUP_CN
 
 
-# imgapi
+TODO: Discuss with joshw whether makes sense to have 'headnode_primary' in
+sysinfo somehow (also in usbkey/config) and in CNAPI server record.
+
+
+## Recovery process
+
+The recovery process on a secondary HN will be as follows. The operator should
+login to the secondary HN and run:
+
+    sdcadm headnode recover             # run on a secondary HN to recover a failed primary HN
+
+This will mark the server as the primary headnode and walk through recovering
+all required Triton DataCenter core instances on this server. On success,
+the DC should be fully operational. However, assuming the original primary
+does not return, the final state will be HA clusters of binder, manatee, and
+moray that only have *two* instances -- less than the required three. It is
+expected that the operator follow up relatively soon with an additional
+headnode:
+
+    sdcadm post-setup headnode $SERVER
+
+and re-establishing three HA instances of those services:
+
+    sdcadm post-setup ha-binder -s $SERVER
+    sdcadm post-setup ha-manatee -s $SERVER
+    sdcadm create moray -s $SERVER
+
+
+TODO: What happens if 'recover' is run, and then the original primary headnode
+comes back up? Can we explicitly ensure at least that services on all other
+servers don't start talking to the "deposed" primary again? Should a booting
+primary headnode go "deposed" if it sees another primary? Should cn-agent do
+that? What is the mechanism for seeing other primaries? Presumably from
+CNAPI talking to manatee (because manatee is the authority).
+
+
+## Controlled headnode takeover process
+
+Similar to headnode recovery, is the occassional need for an operator to
+decommission a headnode server. To do this, it is desirable to move the primary
+headnode from that server to a replacement in a controlled manner. This is
+called *headnode takeover* and is performed as followers
+
+    sdcadm headnode takeover $OTHERHN
+
+For example:
+
+    ssh heanode1
+    sdcadm headnode takeover headnode0
+
+On success, "headnode1" will be running replacements for all core VM instances
+that were running on "headnode0", and the instances on headnode0 will be
+removed. If "headnode0" was the primary headnode, then "headnode1" will
+now be the new primary. "headnode0" can now be decommissioned.
+
+Note that headnode takeover will avoid having multiple instances of the same
+service on the same HN. For example, if there is already a manatee on this HN,
+then another will not be created here. Therefore, as with the recovery process
+in the previous section, it is expect that the operator may have to re-establish
+three HA instances of binary, manatee, and moray via the following on some
+new server.
+
+    sdcadm post-setup headnode $SERVER
+    sdcadm post-setup ha-binder -s $SERVER
+    sdcadm post-setup ha-manatee -s $SERVER
+    sdcadm create moray -s $SERVER
+
+An alternative is to use a *new server* as the replacement headnode, leaving
+the existing secondary headnodes alone:
+
+    sdcadm post-setup headnode $NEW_SERVER
+    ssh $NEW_SERVER
+    sdcadm headnode takeover headnode0
+    # decommision headnode0
+
+
+# Core service changes
+
+This section details changes needed for various core services to support
+secondary headnode recovery.
+
+Minimum versions of components that support multi-headnode TritonDC:
+
+| Component | Version | Notes |
+| --------- | ------- | ----- |
+| cnapi     | ???     | CNAPI-686 |
+| gz-tools  | ???     | Note that 'gz-tools' includes "[/mnt]/usbkey/scripts" updates. |
+
+
+## imgapi
 
 How should IMGAPI change so that losing the headnode doesn't mean potential
 data loss of image files that are stored locally? One potential is to make
@@ -131,7 +207,7 @@ The "story" to Triton operators then is this: Try to configure your IMGAPI to be
 backed by Manta, then all images except core images themselves are in Manta
 and hence durable. Otherwise, there is a $period window for image file loss.
 
-# sdcadm status
+## sdcadm status
 
 I'm consider implementing a `sdcadm status` as part of this work that will
 give a report on current faults with the Triton setup:
@@ -140,13 +216,13 @@ give a report on current faults with the Triton setup:
 - Perhaps listing 'sdcadm check-health' faults.
 - Listing `zonememstat -a` potential issues.
 
-# dhcpd
+## dhcpd
 
 Q: Do we make the dhcdp service HA? Without this, CNs would not be able to boot
 while the headnode is dead.
 
 
-# usbkey and assets
+## usbkey and assets
 
 The usbkey holds the platforms that CNs use for netboot. Those are served
 via the 'assets' zone. We will need to change the processing that add data
@@ -160,7 +236,51 @@ to check and sync. Some examples:
 - usbkey copy (i.e. /usbkey)
 
 
-# M1: "blessed" recovery
+# Milestones
+
+The milestones on the way to completing the work for this RFD.
+Issues: ["rfd67 labelled issues"](https://devhub.joyent.com/jira/issues/?jql=labels%20%3D%20rfd67)
+
+
+# M0: seconary headnodes
+
+This milestone is about providing the tooling and support for having multiple
+headnodes in a DC. Secondary headnodes will be where we backup data for services
+that isn't otherwise HA. The natural choice of servers for secondary headnodes
+are the CNs already used to hold the HA instances of manatee, binder, and moray.
+The eventual suggested/blessed DC setup will then be:
+
+    Server "headnode0" (the "primary" headnode)
+        Instance "binder0"
+        Instance "manatee0"
+        Instance "moray0"
+        Instance "sapi0"
+        Instance "imgapi0"
+        ...
+    Server "headnode1" (a secondary headnode)
+        Instance "binder1"
+        Instance "manatee1"
+        Instance "moray1"
+        (possibly instances of other HA-capable core services)
+    Server "headnode2" (a secondary headnode)
+        Instance "binder2"
+        Instance "manatee2"
+        Instance "moray2"
+        (possibly instances of other HA-capable core services)
+
+- Ensure the system can handle multiple headnodes.
+- Ensure the system isn't dependent on the headnode hostname being exactly
+  "headnode".
+- Tooling and docs to update the "headnode" hostname to "headnode0".
+- Tooling and docs to convert a CN to a headnode (assigning hostname "headnode1"
+  and "headnode2").
+- Change default headnode setup to use "headnode0" as the hostname.
+  Note: Using this "headnodeN" host naming shouldn't be a requirement, but will
+  be the default used by provided tooling.
+- CNAPI ServerUpdate support to change a headnode's hostname. CNAPI-686
+
+
+# M1: secondary headnode recovery
 
 Dev Note: A target is to get nightly-1 to running in the "blessed" configuration
 then `sdc-factoryreset` the headnode into recovery mode, recover, and verify
@@ -171,47 +291,19 @@ with a fourth, and otherwise unused, server.
 TODO
 
 
-# M2: "backup" recovery
-
-Dev Note: A test for this is to `sdc-factoryreset` a COAL, select recovery mode
-in the boot menu and see if one can fully recover the headnode.
-
-TODO
-
-
 
 # Appendices
 
 ## Open Questions
 
-- Do we need to support case #3?
-- Do we need to support case #4 on an existing CN (converting it to an HN
-  and not restarting with a fresh zpool)?
 - What about an easier case that just snapshots all the core zones and zfs sends
   those to external storage?
-- Any "Q:" notes above.
+- Any "Q:" and "TODO:" notes above.
 
 
 ## TODOs
 
 Quick TODOs to not forget about:
-
-- When an operator boots a new headnode, what happens if they don't catch the
-  grub menu in time? That headnode could start a vanilla headnode setup (or any
-  state in that process: prompt-config, partial setup that is interrupted). How
-  can that cause damage to the existing setup? If the same IPs end up getting
-  used then bits from the rest of the DC will talk to it... so there could be
-  surprises.
-
-  The main thing we want to avoid here is the vanilla headnode setup polluting
-  the clusters to which we want to attach with a proper recovery. We know from
-  nightly-1 experience that agents and the manatee cluster from the pre-existing
-  CNs will interfere with the vanilla headnode setup: see RELENG-532 and
-  RELENG-602
-
-- As part of moving to a future "no headnode is special" world, we
-  may attempt to start using "headnode<num>" for the hostname for headnodes
-  (e.g. headnode0, headnode1).
 
 - Wildcard: how does being a UFDS master or slave affect things here?
 
