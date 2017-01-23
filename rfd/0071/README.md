@@ -427,9 +427,21 @@ We will need to refactor [`MantaSeekableByteChannel`](https://github.com/joyent/
 
 ### Multipart Support
 
-```
-TODO: Figure out how to encrypt each MPU part in isolation so that they can be assembled by the server into a single decryptable unit. S3 is able to do multipart uploads in strict mode, so it is entirely possible using the encryption algorithms provided in the JCE.
-```
+See [RFD 65](https://github.com/joyent/rfd/blob/master/rfd/0065/README.md) for general information on multipart upload (MPU).
+
+The manta MPU allows parts to be uploaded concurrently and in any order.  To avoid significant cryptographic complexity 
+(requiring a block cipher mode of operation that can safely be used in parallel), the SDK constraints multipart uploads 
+with client side encryption to be done in serial and in order. (The S3 SDK imposes the same constraint.)
+
+In general the SDK will:
+ * Calculate the relevant metadata (ie `m-encrypt-key-id`), including any encrypted metadata
+ * Create a new MPU with the metadata
+ * Upload parts (including final padding and HMAC if needed) until complete
+ * Commit
+
+If the content length is known ahead of time (the upload is a local file and not an unbound stream), 
+then `m-encrypt-plaintext-content-length` is among the metadata set when the MPU is created. 
+Otherwise this optional header is omitted.
 
 ### Metadata Support
 
