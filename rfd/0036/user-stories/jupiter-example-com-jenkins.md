@@ -1,4 +1,4 @@
-# jupiter.example.com, Jenkins, and Mariposa
+# Building and testing jupiter.example.com with Jenkins
 
 The trivial jupiter.example.com application consists of a number of stateless containers (or containers whose state can be easily reconstructed) running as a tiered application of Nginx fronting a PHP/Apache web content templating system.
 
@@ -6,12 +6,12 @@ The trivial jupiter.example.com application consists of a number of stateless co
 
 The operators use Jenkins to automate the process of building new containers for each pull request and branch in the origin repo. This requires that Jenkins jobs need to be able to interact with Mariposa via the CLI (or API).
 
-- Jenkins must be provisioned with a ssh key for Mariposa
-- Jenkins must be provisioned with a ssh key for GitHub deploy keys
+- Jenkins must be provisioned with an SSH key for Mariposa
+- Jenkins must be provisioned with an SSH key for GitHub deploy keys
 - Jenkins will effectively own the entire account until we have RBAC v2.
 - There needs to be a way to get the key onto Jenkins in the first place.
 
-Because Jenkins is going to build containers locally (via Docker on KVM), operators provision the ssh keys with traditional configuration management (ex Ansible) and bind-mount this into the Jenkins container running on KVM. Optionally, the operators can treat the KVM as a traditional VM and deploy Jenkins to it via configuration management.
+Because Jenkins is going to build containers locally (via Docker on KVM), operators provision the SSH keys with traditional configuration management (ex. Ansible) and bind-mount this into the Jenkins container running on KVM. Optionally, the operators can treat the KVM as a traditional VM and deploy Jenkins to it via configuration management.
 
 ### GitHub
 
@@ -28,6 +28,7 @@ This Jenkins job is configured to receive GitHub webhook pushes. The Jenkins job
 Each GitHub branch has an associated Mariposa project. The Jenkins job clones a template manifest (from the repo) for each new branch. Each changeset received on a given branch will be deployed as a new version of that manifest.
 
 The job task might look like the following:
+
 - Run `docker-compose build` locally
 - Tags containers with the `GIT_BRANCH` and `GIT_COMMIT`
 - Containers to a registry (optionally a private registry)
@@ -37,7 +38,7 @@ The job task might look like the following:
 
 Mariposa will then see a new version of the manifest and deploy those containers for testing.
 
-> Open question: when do you shut down containers associated with a branch? We can receive `delete` events from GitHub web hooks, but it’s not clear Jenkins jobs can do anything with them.
+> Open question: when do you shut down containers or delete a project associated with a branch? We can receive `delete` events from GitHub web hooks, but it’s not clear Jenkins jobs can do anything with them.
 
 
 ### Jenkins production job
@@ -62,7 +63,7 @@ There are a small number of sensitive details that need to be carefully handled,
 
 Secrets can be injected by Mariposa into containers via instance metadata. These can be accessed via ContainerPilot preStart or the application.
 
-> In hardened environments the instance metadata could be a one-time token for something like Vault. The scheduler would need to coordinate with w/ the external secrets management server though (maybe for a post-MVP).
+In hardened environments the instance metadata could be a one-time token for something like Vault. The scheduler would need to coordinate with w/ the external secrets management server though (maybe for a post-MVP).
 
 Jenkins would generate secrets as part of the job for the dev environment, add those to the manifest’s metadata (this isn’t in the manifest file itself!). This allows the dev credentials be ephemeral for each deployment.
 
