@@ -39,6 +39,8 @@ Contents:
 	- [Running jupiter.example.com in multiple data centers](./user-stories/jupiter-example-com-multi-dc.md)
 	- [Health-checking, monitoring, and scaling jupiter.example.com](./user-stories/jupiter-example-com-monitoring-and-health.md)
 	- [Creating, copying, and moving projects like microsite.jupiter.example.com](./user-stories/microsite-jupiter-example-com.md) (also includes secret management)
+	- [Deploying jupiter.example.com via Jenkins CI](./user-stories/jenkins-mariposa.md)
+
 
 
 ## Concepts
