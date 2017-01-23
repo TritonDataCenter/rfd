@@ -457,7 +457,8 @@ flag is set to `true`.
   
 The following new classes will be added to support client-side encryption:
 ```java
-class MantaClientEncryptionException extends MantaException
+class MantaEncryptionException extends MantaException
+class MantaClientEncryptionException extends MantaEncryptionException
 class MantaClientEncryptionCiphertextAuthenticationException extends MantaClientEncryptionException
 
 ```
