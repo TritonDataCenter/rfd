@@ -13,7 +13,7 @@ state: publish
     Copyright 2016 Joyent
 -->
 
-# RFD 0027 Triton Container Monitor
+# RFD 0027 CMON: Triton Container Monitor
 ## Introduction
 Presently, Triton does not offer a always-on mechanism for engineers and
 operators to collect metrics about their containers and have them ingested by
