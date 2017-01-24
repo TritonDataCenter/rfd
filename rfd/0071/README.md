@@ -302,7 +302,7 @@ Furthermore, values are handled as-is and there will be no value sub-field parsi
 Encrypted metadata not beginning with the prefix "e-" must result in an error.
 
 The plaintext data structure described above will be encrypted and converted to base64 encoding. This will be stored as metadata on the 
-object via the HTTP header `m-encrypt-headers`.
+object via the HTTP header `m-encrypt-metadata`.
 
 SDK implementations must store `Content-Type` headers in the encrypted metadata coded with the key `e-content-type`. If possible, the
 `e-content-type` value can be read and passed on to the consumer of the SDK as the original `Content-Type` header in order to preserve
