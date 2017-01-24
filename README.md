@@ -126,6 +126,7 @@ formal writing that it has come to represent.)
 | (WIP) | [RFD 81 Services-Health implementation](./rfd/0081/README.md) |
 | predraft | [RFD 82 Triton agents install and update](./rfd/0082/README.md) |
 | publish | [RFD 83 Triton `http_proxy` support](./rfd/0083/README.md) |
+| predraft | [RFD 84 Providing Manta access on multiple networks](./rfd/0084/README.md) |
 
 ## Contents of an RFD
 
