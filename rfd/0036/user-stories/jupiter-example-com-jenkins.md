@@ -8,8 +8,19 @@ The operators use Jenkins to automate the process of building new containers for
 
 - Jenkins must be provisioned with an SSH key for Mariposa
 - Jenkins must be provisioned with an SSH key for GitHub deploy keys
-- Jenkins will effectively own the entire account until we have RBAC v2.
 - There needs to be a way to get the key onto Jenkins in the first place.
+
+Note that Jenkins will effectively own the entire account until we have RBAC v2. Once RBAC v2 is live, the Jenkin user will need the following permissions:
+- create projects
+- copy projects/manifests
+- update project manifests
+- trigger deploys of projects
+
+The Jenkins user will not need the following permissions:
+- launch containers
+- destroy containers
+- change account information
+- create new users or roles
 
 Because Jenkins is going to build containers locally (via Docker on KVM), operators provision the SSH keys with traditional configuration management (ex. Ansible) and bind-mount this into the Jenkins container running on KVM. Optionally, the operators can treat the KVM as a traditional VM and deploy Jenkins to it via configuration management.
 
@@ -25,7 +36,7 @@ Jenkins should be configured with two jobs, one for development and one for prod
 
 This Jenkins job is configured to receive GitHub webhook pushes. The Jenkins job should run build and deployment tasks defined in the code repository so that the process for deployment is owned by the team that owns the code.
 
-Each GitHub branch has an associated Mariposa project. The Jenkins job clones a template manifest (from the repo) for each new branch. Each changeset received on a given branch will be deployed as a new version of that manifest.
+The Jenkins job creates a Mariposa project for each GitHub branch. The Jenkins job clones a template manifest (from the repo) for each new branch. Each changeset received on a given branch will be deployed as a new version of that manifest.
 
 The job task might look like the following:
 
