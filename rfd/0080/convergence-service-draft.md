@@ -1,4 +1,9 @@
-# Mariposa Convergence Service
+---
+authors: Casey Bisson <casey.bisson@joyent.com>, Jason Pincin <jason.pincin@joyent.com>
+state: predraft
+---
+
+# RFD 80 projectsConvergence implementation
 
 The Mariposa (RFD36) convergence service will be responsible for insuring service goal state is met. It accomplishes this by polling the service and project APIs, the VM API, and by monitoring Changefeed. When a divergence between goal state and actual state is detected, the convergence service will interact with VM API to resolve the discrepancy. 
 
