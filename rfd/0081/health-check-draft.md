@@ -1,10 +1,14 @@
-# Mariposa Health Check Service
+# Mariposa Health Check Agent
 
-The Mariposa (RFD36) health check service will be responsible for monitoring the health of user services. It establishes a set of supported health checks and provides an API for defining health checks that should be ran against project services. These health check definitions will be persisted in a proper data store (Postgres/Manatee?).
+The Mariposa (RFD36) health check agent will be responsible for monitoring the health of user services. The Health Check agent process(es) will read user defined health check definitions from the Project service, and coordinate which health check process will be responsible for running any given definition. The Project service is read at agent start time, then polled on an interval. There's an endpoint exposed by the agent that will trigger a poll as well.
 
-The Health Check service process(es) will read user health check definitions, and coordinate which health check process will be responsible for running any given definition. 
+Upon a failed health check, a message will be pushed directly to the Convergence service. 
 
-Failed health checks will be broadcast to interested services, such as the Convergence service.
+ The Health Check agents will run in an [sdc-nat zone](https://github.com/joyent/sdc-nat) associated with the project. This enables the Health Check agent to make requests via the user's private fabric. Some cases to discuss:
+ 
+* What if the NAT zone fails?
+* What if the user has multiple fabric networks within a project?
+* What if the user has instances in a project that are not connected to any NAT?
 
 ## Health check types
 
@@ -25,34 +29,32 @@ All health check definitions will include:
 * Healthy poll interval - How often the service is checked while deemed healthy
 * Unhealthy poll interval - Defaults to healthy poll interval, but may be desirable to have a smaller value here for two reasons: faster recovery detection, and faster detection of initial healthiness, there could be a back-off associated with this
 * Timeout - How long to wait for the health check before aborting and considering the service unhealthy
-* Recheck - A number of times to re-check a failed health check before transitioning the service to an unhealthy state, default to zero.
+* Retries - A number of times to re-check a failed health check before transitioning the service to an unhealthy state, default to zero.
 
 ## Endpoints
 
-Unless otherwise noted, the output for all endpoints is JSON.
-
-All below endpoints may be prefixed with `/users/$userId` to access data for a user other than the one you're authenticated as, assuming authorization is granted. For example:
-
-`GET /users/abc123/healthchecks` will return the same data as a request to `/healthchecks` would if you were authenticated as `abc123`.
+Unless otherwise noted, the output for all endpoints is JSON. All data backing these endpoints is in-memory only (no persistence). 
 
 ### /healthchecks
 
 Endpoint operations:
 
-* GET - A list of all health checks defined by the user, along with project and service they're associated with. This list can be filtered by passing `project` or `service` GET params with ID values.
-* POST - Create a new health check via YAML definition transmitted in POST payload
+* GET - A summary list of all health checks active in the agent
+
+### /healthchecks/update
+
+Endpoint operations:
+
+* POST - Trigger a refresh of health check configuration (by pulling from the Project service)
 
 ### /healthchecks/$healthcheckId
 
 Endpoint operations:
 
-* GET - Get health check configuration and state
-* PUT - Update health check configuration and state via JSON document transmitted in PUT payload
-* DELETE - Remove health check
+* GET - Detailed health check info/manifest in JSON format
 
 ### /healthchecks/$healthcheckId/definition
 
 Endpoint operations:
 
 * GET - Get the healthcheck definition in YAML format as it was provided
-* PUT - Update the health check definition by sending YAML payload
