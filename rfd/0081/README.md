@@ -23,11 +23,7 @@ The available health checks include:
 * TCP - Test that a service/port is accepting TCP connections.
 * ContainerPilot - Interface with ContainerPilot running within a service container and accept the health state returned by it.
 
-In addition to the health checks specified, the health check service will interface with VMAPI and ChangeFeed to understand when a container state transitions between stopped/paused/running. Stopped/paused will be considered unhealthy and the above health checks will not be attempted against containers in these states.
-
 ## Health check configuration
-
-Health check definitions files will be YAML, to be consistent with project manifests and metadata files. 
 
 All health check definitions will include:
 
