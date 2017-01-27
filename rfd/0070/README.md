@@ -90,6 +90,7 @@ Background Links:
  * [Android Manifest](https://android.googlesource.com/platform/manifest/+/master/default.xml)
  * [ChromeOS Manifeset](https://chromium.googlesource.com/chromiumos/manifest.git/+/master/full.xml)
  * [3rd party blog](https://harrow.io/blog/using-repo-to-manage-complex-software-projects/)
+ * [tips and tricks](http://xda-university.com/as-a-developer/repo-tips-tricks)
 
 Note that this is *not* a proposal to make the use of `repo` mandatory, to bless a particular hierarchical structure of Joyent repositories as the One True Way that you Must Use on your workstation, or adopt other parts of the Android workflow.
 

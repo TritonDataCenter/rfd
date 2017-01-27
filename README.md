@@ -113,9 +113,9 @@ formal writing that it has come to represent.)
 | draft    | [RFD 68 Triton versioning](./rfd/0068/README.md) |
 | publish | [RFD 69 Metadata socket improvements](./rfd/0069/README.md) |
 | draft | [RFD 70 Joyent Repository Metadata](./rfd/0070/README.md) |
-| predraft | [RFD 71 Manta Client-side Encryption](./rfd/0071/README.md) |
+| draft | [RFD 71 Manta Client-side Encryption](./rfd/0071/README.md) |
 | predraft | [RFD 72 Chroot-independent Device Access](./rfd/0072/README.md) |
-| draft    | [RFD 73 Moray client support for SRV-based service discovery](./rfd/0073/README.md) |
+| publish  | [RFD 73 Moray client support for SRV-based service discovery](./rfd/0073/README.md) |
 | draft    | [RFD 74 Manta fault tolerance test plan](./rfd/0074/README.md) |
 | predraft | [RFD 75 Virtualizing the number of CPUs](./rfd/0075/README.md) |
 | draft    | [RFD 76 Improving Manta Networking Setup](./rfd/0076/README.md) |
@@ -124,6 +124,11 @@ formal writing that it has come to represent.)
 | (WIP) | [RFD 79 Projects, Projects-Services, and Projects-Meta implementation](./rfd/0079/README.md) |
 | (WIP) | [RFD 80 Projects-Convergence implementation](./rfd/0080/README.md) |
 | (WIP) | [RFD 81 Services-Health implementation](./rfd/0081/README.md) |
+| predraft | [RFD 82 Triton agents install and update](./rfd/0082/README.md) |
+| publish | [RFD 83 Triton `http_proxy` support](./rfd/0083/README.md) |
+| predraft | [RFD 84 Providing Manta access on multiple networks](./rfd/0084/README.md) |
+| draft    | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |
+| (WIP) | [RFD86 ContainerPilot 3](./rfd/0086/README.md)
 
 ## Contents of an RFD
 

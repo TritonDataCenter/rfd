@@ -21,6 +21,7 @@ Template-driven provisioning tools like Terraform and many others, as well as ta
 
 This RFD proposes features that would allow users to organize their infrastructure in ways that better represent their application components. The first of these organizing concepts is the *service*.
 
+
 ## Concepts
 
 ### Service

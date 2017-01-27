@@ -13,7 +13,7 @@ state: publish
     Copyright 2016 Joyent
 -->
 
-# RFD 0027 Triton Container Monitor
+# RFD 0027 CMON: Triton Container Monitor
 ## Introduction
 Presently, Triton does not offer a always-on mechanism for engineers and
 operators to collect metrics about their containers and have them ingested by
@@ -186,15 +186,23 @@ get up to speed quickly.
   * Must be operational even when operator and customer zones are not
 
 Runs in the global zone on the head node and compute nodes. It provides a
-Prometheus compatible HTTP endpoint for the Metric Proxy to make requests of.
+Prometheus compatible HTTP endpoint for the proxy to make requests of.
 
 ```
-GET <cn_admin_ip>/vms/<vm_uuid>/metrics
+GET <cn_admin_ip>/v1/<vm_uuid>/metrics
 ---
     # HELP cpucaps_usage_percent current CPU utilization
     # TYPE cpucaps_usage_percent gauge
     cpucaps_usage 0
     ...
+```
+
+The agent also exposes an endpoint for forcing an update of its mapping of
+vm_uuid to zone_id. This mapping is necessary because kstats work on zone_id
+not vm_uuid for the most part.
+
+```
+POST <cn_admin_ip>/v1/refresh
 ```
 
 The Agent caches values and allows for a configurable expiration/TTL.
@@ -235,9 +243,9 @@ The Proxy lives between a customers Prometheus server and the
 Agents that live on each compute node. It is also a highly available
 cluster per data center.
 
-Every container will have a DNS CNAME record which points at the Proxy cluster. 
-In this way, the Metric Agent Proxy can respond as if it was the monitored 
-instance itself by multiplexing on the request hostname.
+Every container will have a DNS CNAME record which points at the proxy cluster.
+In this way, the proxy can respond as if it was the monitored instance itself by
+multiplexing on the request hostname.
 
 This is an operator controlled zone, deployed with sdcadm. The zone will need to
 have a leg on the admin network in order to talk with the Metric Agent, and a
@@ -253,7 +261,7 @@ Customers existing SSH key(s) (the same key(s) used for accessing instances and
 sdc-docker) will be used.
 
 Authentication and authorization will also be leveraged to decide how many
-polling requests an end user is allowed to make within a configurable amount 
+polling requests an end user is allowed to make within a configurable amount
 of time.
 
 User request quota will default to an operator set value, and an optional per
@@ -271,29 +279,27 @@ receive a [HTTP 429](https://tools.ietf.org/html/rfc6585#page-3) response.
 
 ### Discovery
 
-When Proxies are provisioned or destroyed CNS will detect the change and 
-create or remove a Proxy A record automatically.
+When proxies are provisioned or destroyed CNS will detect the change and
+create or remove a proxy A record automatically.
 
 ```
-    <region>.cmon<instance number>.triton.zone A 10.99.99.7
+    <region>.cmon.triton.zone A 10.99.99.7
 ```
 
-When existing containers are backfilled and when new containers are created, CNS
-will detect the change and create the following DNS records
+When new containers are created, CNS will detect the change and create a DNS
+record
 
 ```
-    <vm_uuid>.cm.triton.zone CNAME <region>.map01.triton.zone
-    <vm_uuid>.cm.triton.zone CNAME <region>.map02.triton.zone
-    <vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
+    <vm_uuid>.cm.triton.zone CNAME <region>.cmon.triton.zone
 ```
 
 for each container. Going forward all new containers will get a Container
-Monitor CNAME record automatically. Similarly, Proxy records will be added 
+Monitor CNAME record automatically. Similarly, proxy records will be added
 and removed when proxies come and go, along with corresponding CNAME records.
 
-Each CNAME record represents a virtual Prometheus endpoint backed by a Proxy.
+Each CNAME record represents a virtual Prometheus endpoint backed by a proxy.
 
-A CloudAPI based Prometheus service discovery module will be built and hopefully
+A proxy based Prometheus service discovery module will be built and hopefully
 accepted for inclusion in the main Prometheus repository. This will function and
 be configured similarly to the existing
 [ec2 service discovery module](https://prometheus.io/docs/operating/configuration/#ec2_sd_config).
@@ -310,26 +316,26 @@ their Prometheus installation.
 ## Happy Path Walk Through
 
 ### Proxy Creation
-* Operator deploys new Metric Agent Proxies using sdcadm
+* Operator deploys new proxies using sdcadm
 * VMAPI pushes a changefeed event to CNS
 * CNS creates A records of the form
 ```
-    <region>.map<instance number>.triton.zone A 10.99.99.7
+    <region>.cmon.triton.zone A 10.99.99.7
 ```
-for each Metric Agent Proxy deployed with sdcadm
+for each proxy deployed with sdcadm
 
 ### Container Creation
 * User creates a new container
-* VMAPI pushes a changefeed event to CNS
+* VMAPI pushes a changefeed event to CNS and the proxy
 * CNS creates CNAME records of the form
 
 ```
-<vm_uuid>.cm.triton.zone CNAME <region>.map01.triton.zone
-<vm_uuid>.cm.triton.zone CNAME <region>.map02.triton.zone
-<vm_uuid>.cm.triton.zone CNAME <region>.map03.triton.zone
+<vm_uuid>.cm.triton.zone CNAME <region>.cmon.triton.zone
 ```
-
-  for each Proxy IP.
+* Proxy caches details about about the new container
+* Proxy instructs the agent on the CN where the new container resides to refresh
+  it's vm_uuid to zoneid mapping to include the new container. This is achieved
+  by calling the `/v1/refresh` route.
 
 ### End User Configuration
 * Install and run a Prometheus server
@@ -339,27 +345,21 @@ for each Metric Agent Proxy deployed with sdcadm
         * Add a job for the availability zones that your containers run in,
           using Triton discovery.
           ```
-          - job_name: triton_east1
-
-            tls_config:
-                cert_file: /path/to/valid_cert_file
-                key_file: /path/to/valid_key_file
-
-                bearer_token: avalidtoken
-                scrape_interval: 30s
-                scrape_timeout:  10s
-
-            triton_sd_configs:
-              - region: us-east-1
-                access_key: access
-                secret_key: secret
-                user_name: name
-                # refresh_interval defaults to 30s.
-
-            labels:
-                triton_cloud: triton_cloud
-
+          - job_name: <account_name>_<region>
             scheme: https
+            tls_config:
+              cert_file: /path/to/valid_cert_file
+              key_file: /path/to/valid_key_file
+              insecure_skip_verify: true
+            triton_sd_configs:
+              - account: '<account_name>'
+                dns_suffix: 'cmon.<region>.triton.zone'
+                endpoint: 'cmon.<region>.triton.zone'
+                version: 1
+                tls_config:
+                  cert_file: /path/to/valid_cert_file
+                  key_file: /path/to/valid_key_file
+                  insecure_skip_verify: true
           ```
     * User deploys a Triton Linux Container
       ```
@@ -376,23 +376,79 @@ for each Metric Agent Proxy deployed with sdcadm
       ```
     * Download the official Prometheus server binaries
       ```
-      $ wget https://github.com/prometheus/prometheus/releases/download/0.18.0/prometheus-0.18.0.linux-amd64.tar.gz
+      $ wget https://github.com/prometheus/prometheus/releases/download/v1.5.0/prometheus-1.5.0.linux-amd64.tar.gz
       ```
     * User runs the Prometheus server
       ```
       $ ./prometheus -config.file=prometheus.yml
       ```
-    * Prometheus server polls CloudAPI to discover end points to collect from
-    * Prometheus server polls discovered endpoints every thirty seconds, such as
+    * Prometheus server polls the proxy `/v1/discover` endpoint to discover
+      scrape targets
+
+      ```
+      GET 10.99.99.99:9163/v1/discover
+      ---
+      {  
+          "containers":[  
+              {  
+                  "server_uuid":"44454c4c-5000-104d-8037-b7c04f5a5131",
+                  "source":"Bootstrapper",
+                  "vm_alias":"something01",
+                  "vm_image_uuid":"7b27a514-89d7-11e6-bee6-3f96f367bee7",
+                  "vm_owner_uuid":"466a7507-1e4f-4792-a5ed-af2e2101c553",
+                  "vm_uuid":"a5894692-bd32-4ca1-908a-e2dda3c3a5e6",
+                  "cached_date":1484956672672
+              },
+              {  
+                  "server_uuid":"44454c4c-5000-104d-8037-b7c04f5a5131",
+                  "source":"Bootstrapper",
+                  "vm_alias":"something02",
+                  "vm_image_uuid":"088b97b0-e1a1-11e5-b895-9baa2086eb33",
+                  "vm_owner_uuid":"466a7507-1e4f-4792-a5ed-af2e2101c553",
+                  "vm_uuid":"8706da00-dd46-4757-82f4-2367b0f2809e",
+                  "cached_date":1484956672758
+              },
+              {  
+                  "server_uuid":"44454c4c-5000-104d-8037-b7c04f5a5131",
+                  "source":"Bootstrapper",
+                  "vm_alias":"something03",
+                  "vm_image_uuid":"7b27a514-89d7-11e6-bee6-3f96f367bee7",
+                  "vm_owner_uuid":"466a7507-1e4f-4792-a5ed-af2e2101c553",
+                  "vm_uuid":"52fcc9eb-5bc9-42d5-9ab8-c7d1138ddd3e",
+                  "cached_date":1484956673056
+              },
+              {  
+                  "server_uuid":"44454c4c-5000-104d-8037-b7c04f5a5131",
+                  "source":"Bootstrapper",
+                  "vm_alias":"something04",
+                  "vm_image_uuid":"088b97b0-e1a1-11e5-b895-9baa2086eb33",
+                  "vm_owner_uuid":"466a7507-1e4f-4792-a5ed-af2e2101c553",
+                  "vm_uuid":"52beba8d-3c88-4931-9a2a-ccfb18f273cb",
+                  "cached_date":1484956673103
+              },
+              {  
+                  "server_uuid":"44454c4c-5000-104d-8037-b7c04f5a5131",
+                  "source":"Bootstrapper",
+                  "vm_alias":"something05",
+                  "vm_image_uuid":"e331b22a-89d8-11e6-b891-936e4e1caa46",
+                  "vm_owner_uuid":"466a7507-1e4f-4792-a5ed-af2e2101c553",
+                  "vm_uuid":"4b5d6ef8-69d8-4273-9c3d-483dd8a53ab0",
+                  "cached_date":1484956673182
+              }
+          ]
+      }
+      ```
+    * Prometheus server polls discovered targets every thirty seconds, such as
      ```
-     https://fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cm.triton.zone/metrics
+     https://fbb8e583-9c87-4724-ac35-7cefb46c0f7b.cmon.triton.zone/metrics
      ```
     * Proxy validates the end users key and cert file
+    * Proxy validates that the end user is allowed to see the target in question
     * Proxy determines which compute node the container is on and
       makes an HTTP call to its Agent
 
       ```
-        GET 10.99.99.7/vms/fbb8e583-9c87-4724-ac35-7cefb46c0f7b/metrics
+        GET 10.99.99.7:9163/vms/fbb8e583-9c87-4724-ac35-7cefb46c0f7b/metrics
         ---
         # HELP cpucaps_usage_percent current CPU utilization
         # TYPE cpucaps_usage_percent gauge
@@ -417,16 +473,17 @@ for each Metric Agent Proxy deployed with sdcadm
         memcaps_allocfail 0
         ...
       ```
-    * The proxy marshals the agent response back to the calling Prometheus 
-      server.
+    * The proxy marshals the agent response back to the calling server
     * Container Monitor data is now available in the users Prometheus endpoint
 
 ### Container Destroyed
 * User destroys a container
-* VMAPI pushes a changefeed event to CNS
+* VMAPI pushes a changefeed event to CNS and the proxy
 * CNS removes the CNAME records associated with the container
+* Proxy removes the container from its local cache and make a call to
+  `/v1/refresh` on agent where the container was removed.
 
-### Metric Agent Proxy destroyed
+### Proxy destroyed
 * Operator destroys a proxy
 * VMAPI pushes a changefeed event to CNS
 * CNS removes the A record associated with the proxy and all CNAME records that
@@ -448,12 +505,12 @@ on different compute nodes which are ideally in different racks.
 
 When multiple proxies are in use, CNS and round robin DNS
 (e.g. multiple A records per <vm_uuid>.cm.triton.zone) will be leveraged.
-To ensure minimum disruption in the case of a proxy failure, a low TTL should 
+To ensure minimum disruption in the case of a proxy failure, a low TTL should
 be used.
 
 ## Scaling
 ### Agent
-Because the Agent is a single agent running on a compute or head node, there 
+Because the Agent is a single agent running on a compute or head node, there
 is no good way of scaling it. That said, it does need to be sensitive to
 overloading the global zone.
 
@@ -461,8 +518,8 @@ In order to protect the global zone, the Agent will have a runtime configurable
 throttle.
 
 ### Proxy
-Multiple Proxy zones can be added as load requires and without penalty. When 
-new Proxies are added, CNS will detect this and add new A records as well as 
+Multiple Proxy zones can be added as load requires and without penalty. When
+new Proxies are added, CNS will detect this and add new A records as well as
 the necessary CNAME records.
 
 ## Dynamic metrics (e.g. on-demand DTrace integration)
