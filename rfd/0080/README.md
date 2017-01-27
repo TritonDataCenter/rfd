@@ -41,6 +41,14 @@ The Convergence service will interact with VM API to reap the failed container(s
 
 The Convergence service will remove all running service containers.
 
+## Task queue
+
+The Convergence service will maintain a queue of all active/pending tasks (starting a service, stopping a service, etc), and will expose this information via it's API. It will be possible to cancel these tasks. Mariposa will need to properly clean up after a cancelled task. 
+
+## Availability
+
+The Convergence service will need to be horizontally scalable and fault tolerant. Thought needs to be invested into the best approach to presenting a distributed task queue as a single queue, and how to coordinate which convergence process is handling each task. 
+
 ## Optics / Endpoints
 
 The Convergence service will expose it's status and other pertinent information via a restful API, traversable by service/project/customer ID.
@@ -54,3 +62,14 @@ All below endpoints may be prefixed with `/users/$userId` to access data for a u
 Endpoint operations:
 
 * GET - Get state information for all user projects including project summary, service names/IDs, running count, goal count, how many are being stopped/started, etc. This list can be filtered by passing `project` or `service` GET params with ID values.
+
+### /queue
+
+Endpoint operations:
+
+* GET - List of queued tasks (`start`, `stop`, `scale`, `reprovision`) containing service/project, state, component, and ID for each task. 
+
+### /queue/$taskId
+
+* GET - Detailed information for the given task ID, containing data in list, and potentially additional data.
+* DELETE - Terminate the task and clean up the potential mess left behind by doing this.
