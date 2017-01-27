@@ -19,7 +19,7 @@ services:
     compute_type: docker
     image: autopilotpattern/nginx:latest
     package: g4-highcpu-512M
-    ports: 
+    ports:
       - 80
       - 443
   redis:
