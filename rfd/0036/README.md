@@ -1,6 +1,6 @@
 ---
 authors: Casey Bisson <casey.bisson@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
@@ -15,45 +15,22 @@ state: predraft
 
 # RFD 36 Mariposa
 
-Mariposa is a scheduler service running in Triton that supports a variety of service and instance types and is tightly integrated with other Triton components.
+Cloud infrastructure (IaaS) providers offer compute, network, and storage resources on which applications can be built and operated. However, those solutions leave it to the customer to assemble those infrastructure components to meet their needs. A given application might require several compute instances for a given component, but the customer is typically responsible for maintaining a mental model of their application, provisioning each instance, and then recognizing the compute instances that support a given software component within a larger list of instances.
 
-We are pursuing Mariposa and introducing a new scheduler in the market, rather than integrating an existing scheduler, because of the requirement that it be a tightly integrated core service of Triton. This integration includes:
+Template-driven provisioning tools like Terraform and many others, as well as tagging solutions provide some help to infrastructure customers, but those too leave a significant gap between raw infrastructure and the applications those customers wish to build and run.
 
-- Users, orgs, and projects as described in [RFD13](https://github.com/joyent/rfd/blob/master/rfd/0013/README.md).
-- Support for Triton and Manta compute types, including [Docker Containers](https://docs.joyent.com/public-cloud/instances/docker), [infrastructure containers](https://docs.joyent.com/public-cloud/instances/infrastructure), and [hardware virtual machines](https://docs.joyent.com/public-cloud/instances/virtual-machines), in addition to [Manta functions](https://apidocs.joyent.com/manta/jobs-reference.html).
-- A single instance scheduling/provisioning layer. Because Triton runs containers on bare metal, an entire management layer -- customer cluster management and scheduling/provisioning of containers in that cluster -- can be eliminated. In its place, containers can be provisioned using cloud provisioning tools, and customers can scale containers without needing to scale VMs or place containers in them.
-
-Contents:
-
-- [Concepts](#concepts)
-- `triton` commands
-  - [`triton project...`](project.md)
-  - [`triton service...`](service.md)
-  - [`triton meta...`](meta.md)
-  - [`triton queue...`](queue.md)
-- Manifest files
-	- [Project manifest](project-manifest.md)
-	- [Service manifest](service-manifest.md)
-- User stories
-	- [jupiter.example.com: what it is and development workflow](./user-stories/jupiter-example-com.md)
-	- [Automatically building and testing jupiter.example.com with Jenkins](./user-stories/jupiter-example-com-jenkins.md)
-	- [Running jupiter.example.com in multiple data centers](./user-stories/jupiter-example-com-multi-dc.md)
-	- [Health-checking, monitoring, and scaling jupiter.example.com](./user-stories/jupiter-example-com-monitoring-and-health.md)
-	- [Creating, copying, and moving projects like microsite.jupiter.example.com](./user-stories/microsite-jupiter-example-com.md) (also includes secret management)
-
-
+This RFD proposes features that would allow users to organize their infrastructure in ways that better represent their application components. The first of these organizing concepts is the *service*.
 
 ## Concepts
 
-### Project
-
-A project is a collection of related compute instances and other related resources ([see "projects" in RFD13](../0013/README.md#proposal) for more detail). A service and all its instances _must_ be a member of a single project. Permissions about who can view or modify a service are set according to RFD13 rules for the project.
-
 ### Service
 
-Services are at the core of Mariposa. A service is defined by a service manifest that specifies a single image (any image supported by IMGAPI) or Manta job command. A service may be run in a single compute instance, or can be scaled scaled to any number of instances as needed.
+Services are at the core of Mariposa. Services are any number of compute instances running the same software image and configuration. A service may be run in a single compute instance, or can be scaled scaled to any number of instances as needed.
 
-A service may represent a complete application, if that application runs in a single container, but most applications will be comprised of multiple services in a single project.
+A service may represent a complete application, if that application runs in a single container, but it's expected that most applications will be comprised of multiple services running together as a [project](#project).
+
+[Read more about what services mean in the Mariposa context](services), including Triton CLI commands and the manifest file.
+
 
 ### Service and compute types
 
@@ -76,17 +53,46 @@ The types of compute providing these services may include:
 
 Only `docker`,`infrastructure`, and `kvm` are required for the MVP.
 
-### Task queue
+Service and compute types, are discussed further in the [services manifest](services/manifest.md).
 
-Scaling, upgrading, even stopping all the instances of an app can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
 
-This document defines tasks specific to deploying services, but the task queue is not limited to services.
+### Project
+
+While [services](#service) abstract any number of compute instances running the same software with the same configuration, a project allows users to group services and other resources together so that they can be managed as a whole without the distraction or complication or unrelated components.
+
+The concept of projects was first introduced with [RBACv2 in RFD13](../0013/README.md#proposal), this RFD intends to replace the definition of services from RFD13. Though projects and other features described in this RFD may be built independently of RBACv2 work, many assumptions about RBACv2 are made throughout this text.
+
+Once projects are implemented, all customer-defined infrastructure resources in Triton, including [compute](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), and other resources that may be defined in the future _must_ be a member of a project. Some resources (networks, for example) may be shared among different projects, while others (example: services and compute instances) must only be part of a single project.
+
+[Read more about what projects mean in the Mariposa context](projects), including Triton CLI commands and the manifest file.
+
 
 ### Project meta (including secrets)
 
 Many applications require configuration values which are undesirable or unsafe to set in the application image. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
 
 This document proposes a simple method of storing those details and injecting them into containers. It is not intended to provide the rich features of solutions like Hashicorp's Vault, instead it is intended to provide a basic solution that is easy to use in a broad variety of applications.
+
+[Read more about meta in the Mariposa context](meta), including Triton CLI commands and the manifest file.
+
+
+### Task queue
+
+Scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
+
+[Read more about the the Mariposa task queue](queue), including Triton CLI commands.
+
+
+## User stories
+
+The following user stories are intended to provide a narrative understanding of how these features are intended to be used:
+
+- [jupiter.example.com: what it is and development workflow](./user-stories/jupiter-example-com.md)
+- [Automatically building and testing jupiter.example.com with Jenkins](./user-stories/jupiter-example-com-jenkins.md)
+- [Running jupiter.example.com in multiple data centers](./user-stories/jupiter-example-com-multi-dc.md)
+- [Health-checking, monitoring, and scaling jupiter.example.com](./user-stories/jupiter-example-com-monitoring-and-health.md)
+- [Creating, copying, and moving projects like microsite.jupiter.example.com](./user-stories/microsite-jupiter-example-com.md) (also includes secret management)
+
 
 ## Implementation and architecture
 
