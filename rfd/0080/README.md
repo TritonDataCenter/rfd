@@ -7,6 +7,8 @@ state: predraft
 
 The Mariposa (RFD36) convergence service will be responsible for insuring service goal state is met. It accomplishes this by polling the service and project APIs, the VM API, and by monitoring Changefeed. When a divergence between goal state and actual state is detected, the convergence service will interact with VM API to resolve the discrepancy. 
 
+The tasks invoked to meet goal state will be managed via an internal task queue which is exposed via the service API. 
+
 Note: Direct interaction here means that limits and other controls set for CloudAPI will not be applied to this service. Potential inconsistencies with this approach should be given consideration.
 
 ## Goal state
