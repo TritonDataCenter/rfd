@@ -128,6 +128,7 @@ formal writing that it has come to represent.)
 | publish | [RFD 83 Triton `http_proxy` support](./rfd/0083/README.md) |
 | predraft | [RFD 84 Providing Manta access on multiple networks](./rfd/0084/README.md) |
 | draft    | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |
+| (WIP) | [RFD86 ContainerPilot 3](./rfd/0086/README.md)
 
 ## Contents of an RFD
 
