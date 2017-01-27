@@ -193,37 +193,7 @@ dns_search:
 
 Optional
 
-Environment vars that will be passed to the instance. These are passed to Docker containers as expected, for infrastructure containers and KVM, they're passed to the user script. Environment variables are subject to project variable interpolation.
-
-Variable replacement:
-
-- `meta`: project metadata ([see project metadata details](./meta.md))
-- `package`: Package details, including RAM, disk, "CPU", package name, package family
-  - `ram`
-  - `disk`
-  - `cpu`: a value that can be used to approximate the number of CPUs that should be scheduled
-  - `name`
-  - `family`
-- `cns`: The Triton CNS names
-  - `svc`
-    - `public`: The FQDN of this service pointing to the public interface
-    - `private`: The FQDN of this service pointing to the "private" interface
-    - `<user fabric network name>`: The FQDN of this service pointing to the interface on the named network
-    - `<network uuid>`: The FQDN of this service pointing to the interface on the named network
-  - `inst`
-    - `public`
-    - `private`
-    - `<user fabric network name>`
-    - `<network uuid>`
-  - `prefix`
-    - `public`
-    - `private`
-    - `<user fabric network name>`
-    - `<network uuid>`
-- `service`: information about the current service
-  - `name`
-  - `uuid`
-  - `version`: the uuid of the service version at the time the instance is provisioned
+Environment vars that will be passed to the instance. These are passed to Docker containers as expected, for infrastructure containers and KVM, they're passed to the user script. Environment variables are subject to project variable and metadata interpolation.
 
 Example:
 
@@ -237,6 +207,23 @@ environment:
   - CONTAINERPILOT=file:///etc/containerpilot.json
 ```
 
+## `mdata`
+
+Optional
+
+[Mdata](https://eng.joyent.com/mdata/datadict.html) values can be checked (and in some cases set) via the [mdata CLI tools](https://github.com/joyent/mdata-client). Mdata   variables are similar to environment variables, but there are some differences:
+
+- Unlike environment variables, mdata can be updated while an instance is running. 
+- In cases where an mdata values reference project variables or metadata, **the returned value is the current state of the project variables or metadata**, not the value at the time the instance was provisioned.
+
+Example:
+
+```yaml
+mdata:
+  - com.example.es-node-master=true
+  - com.example.cluster-name={{ .cns.svc.public }}
+```
+
 ## `entrypoint`
 
 Optional
@@ -245,7 +232,9 @@ Only supported for Docker containers. All other compute types will ignore or err
 
 Example:
 
-- `/some/executable.sh`
+```yaml
+command: /some/executable.sh
+```
 
 ## `command`
 
@@ -271,21 +260,29 @@ command:
 
 Optional
 
-This tells Mariposa how to connect to ContainerPilot's [telemetry interface](https://www.joyent.com/blog/containerpilot-telemetry). Telemetry will eventually expose all ContainerPilot state, including healthchecks and upstreams, in addition to the user-defined performance metrics. The state of instances can be aggregated by the scheduler and used to manage the overall application.
+This tells Mariposa how to connect to ContainerPilot's [telemetry interface](https://www.joyent.com/blog/containerpilot-telemetry). Telemetry will eventually expose all ContainerPilot state, including health checks and upstreams, in addition to the user-defined performance metrics. The state of instances can be aggregated by the scheduler and used to manage the overall application.
 
+Examples:
+
+```yaml
+containerpilot:
+    - network: <network name|uuid> # defaults to the project's default fabric
+    - port: 9090 # defaults to 9090
 ```
-- containerpilot
-    - network: <network name|uuid>
-    - port
+
+To use the default network and port, it is enough to simply declare a truthy value:
+
+```yaml
+containerpilot: true
 ```
 
 ## `healthchecks`
 
 Optional
 
-Healthchecks are run on the specified poll frequency on each instance of the service. If a service fails after the specified retries, the instance will be declared unhealthy, stopped, and a new instance provisioned for the service.
+Health checks are run on the specified poll frequency on each instance of the service. If the health check is unsuccessful after the specified retries, the instance will be declared unhealthy, stopped, and a new instance provisioned for the service.
 
-If the ContainerPilot details are configured, the scheduler should automatically detect and use the ContainerPilot health checks, in addition to any user-specified health checks here. **Implemention note:** the ContainerPilot health-checks, upstreams, etc. can change after initial launch of the container. Mariposa must be able to accomodate these changes.
+If the ContainerPilot details are configured, the scheduler should automatically detect and use the ContainerPilot health checks, in addition to any user-specified health checks here. **Implemention note:** the ContainerPilot health-checks, upstreams, etc. can change after initial launch of the container. Mariposa must be able to accommodate these changes.
 
 Supported types:
 
@@ -297,6 +294,7 @@ Additional details are required for each type. Appropriate limits need to be ide
 Example:
 
 ```yaml
+healthchecks:
   - type: https # the request is made from the user's nat zone
     network: network name/uuid # optional, default is "public"; the network (including user fabric netwokrs) on which the service is listening
     port: 443 # optional, defaults to 80 or 443 based on healthcheck type
@@ -321,7 +319,7 @@ This has a complex relationship with health checks and service type (`continuous
 
 Scenario:
 
-The CN on which a `service_type=continuous` instance is provisioned goes offline. This should cause Mariposa to attempt to provision a replacement instance on another CN (because the services healthchecks failed and Mariposa is aware that the CN is offline). If the CN then restarts, and the instance is set to restart, this will result in overcapacity for that service's scale. The user expects Mariposa to scale down the number of instances using the policy described in `triton service scale`.
+The CN on which a `service_type=continuous` instance is provisioned goes offline. This should cause Mariposa to attempt to provision a replacement instance on another CN (because the services health checks failed and Mariposa is aware that the CN is offline). If the CN then restarts, and the instance is set to restart, this will result in overcapacity for that service's scale. The user expects Mariposa to scale down the number of instances using the policy described in `triton service scale`.
 
 Values:
 
@@ -332,19 +330,30 @@ Values:
 
 Adopts the [Docker's options and logic](https://docs.docker.com/engine/reference/run/#restart-policies-restart).
 
-## `autoscale`
+Example:
+
+```yaml
+restart: no
+```
+
+
+## `stop`
 
 Optional
 
-Not required for MVP
+Controls the instance behavior when it stops. Sub-options include:
 
-A group of sub-options that configure how the scheduler handles scaling triggers (defined elsewhere in the manifest).
+- `timeout`: the stop timeout expressed as an integer number of seconds; negative numbers will wait indefinitely
+- `preservestopped`: `on-failure` (default); will not automatically delete stopped instances if they exit with a non-zero status; also supports `no` and `always`
 
-- `enable`: Default is `notify|notify-only`; can also be `true|1` or `false|0`
-- `min`: The minimum number of instances of the service; default is `1`
-- `max`: The maximum number of instances, but how
-- `retrigger_delay`: The amount of time to wait after a scaling event before aknowledging new events; default is `60s`
-- `notify_email`: one or more email addresses to notify when scaling events are triggered
+Example:
+
+```yaml
+stop:
+  - timeout: -1
+  - preservestopped: always
+```
+
 
 ## `triggers`
 
@@ -352,8 +361,8 @@ Triggers, called "alerts" by some providers, define the threshold performance va
 
 Example:
 
-```
-- triggers
+```yaml
+triggers:
     - highram # the user-specified trigger name
         metric: containermonitor.ram_used
         operator: >
@@ -377,21 +386,25 @@ Example:
         instances: 1
 ```
 
-## `stop`
+
+## `autoscale`
 
 Optional
 
-Controls the instance behavior when it stops. Sub-options include:
+Not required for MVP
 
-- `timeout`: the stop timeout expressed as an integer number of seconds; negative numbers will wait indefinitely
-- `preservestopped`: `on-failure` (default); will not automatically delete stopped instances if they exit with a non-zero status; also supports `no` and `always`
+A group of sub-options that configure how the scheduler handles scaling triggers (defined elsewhere in the manifest).
 
-Example:
+- `enable`: Default is `notify|notify-only`; can also be `true|1` or `false|0`
+- `min`: The minimum number of instances of the service; default is `1`
+- `max`: The maximum number of instances, but how
+- `retrigger_delay`: The amount of time to wait after a scaling event before aknowledging new events; default is `60s`
+- `notify_email`: one or more email addresses to notify when scaling events are triggered
 
 ```yaml
-  - timeout: -1
-  - preservestopped: always
+autoscale: XXX # Needs more detail
 ```
+
 
 ## `webhooks`
 
@@ -405,7 +418,14 @@ Events to consider:
 
 - `start`: sent when an instance of the service is started. This should use similar rules to CNS.
 - `stop`: sent when an instance of the service is stopped. This should use similar rules to CNS.
-- `health`: sent whenever a container fails all retries of its healthchecks.
+- `health`: sent whenever a container fails all retries of its health checks.
+
+Example:
+
+```yaml
+webhooks: XXX # Needs more detail
+```
+
 
 ## `triggers`
 
@@ -421,6 +441,13 @@ Supported actions:
 - `stop`
 - `scale`
 
+Example:
+
+```yaml
+triggers: XXX # Needs more detail
+```
+
+
 ## `schedule`
 
 Not required for MVP, needs additional definition
@@ -431,6 +458,8 @@ Only used for `service_type=scheduled`
 
 Needs definition. [Singularity](https://github.com/HubSpot/Singularity) uses [ISO 8601](https://en.wikipedia.org/wiki/ISO_8601#Time_intervals), which appear easier to express in JSON/YAML than most `crontab` formats, but....
 
-## Manifest input formats
+Example:
 
-Ideally, we will support importing both YAML and JSON formatted manifests. YAML's key advantage over JSON is support for inline comments. The forgoing does not imply a requirement to store manifests in anything other than JSON format, or preserve comments that may be present in imported YAML files.
+```yaml
+schedule: XXX # Needs more detail
+```

@@ -32,3 +32,10 @@ services:
 [Please see the service manifest details elsewhere](https://github.com/joyent/rfd/blob/master/rfd/0036/service-manifest.md).
 
 Additional object types that might be expected in future iterations of the project manifest include [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD36 volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md), and Manta storage "buckets".
+
+
+## Manifest format
+
+Though JSON is the preferred data interchange format throughout Triton, the inability to support inline comments has proven challenging in ContainerPilot. Those comments are more than a convenience, they're critically needed for inline documentation. This is especially true in operations where small changes can make the difference between smooth running and miserable disaster.
+
+Given that, the default format for the project and service manifest is YAML, and efforts should be made to preserve in their entirety the valid, YAML-formatted manifest file submitted by the user.
