@@ -1,3 +1,13 @@
+<!--
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+-->
+
+<!--
+    Copyright 2016 Casey Bisson, Joyent
+-->
+
 # Metadata management
 
 Users can register metadata as key/value pairs that can be used in projects and services. The metadata must be within an project (RBACv2 terms), and each key must by unique within that project.
