@@ -36,9 +36,11 @@ Contents:
 	- [Service manifest](service-manifest.md)
 - User stories
 	- [jupiter.example.com: what it is and development workflow](./user-stories/jupiter-example-com.md)
+	- [Automatically building and testing jupiter.example.com with Jenkins](./user-stories/jupiter-example-com-jenkins.md)
 	- [Running jupiter.example.com in multiple data centers](./user-stories/jupiter-example-com-multi-dc.md)
 	- [Health-checking, monitoring, and scaling jupiter.example.com](./user-stories/jupiter-example-com-monitoring-and-health.md)
 	- [Creating, copying, and moving projects like microsite.jupiter.example.com](./user-stories/microsite-jupiter-example-com.md) (also includes secret management)
+
 
 
 ## Concepts
