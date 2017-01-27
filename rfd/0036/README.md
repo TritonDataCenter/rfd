@@ -87,3 +87,11 @@ This document defines tasks specific to deploying services, but the task queue i
 Many applications require configuration values which are undesirable or unsafe to set in the application image. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
 
 This document proposes a simple method of storing those details and injecting them into containers. It is not intended to provide the rich features of solutions like Hashicorp's Vault, instead it is intended to provide a basic solution that is easy to use in a broad variety of applications.
+
+## Implementation and architecture
+
+This RFD is mostly concerned with what users can do with Mariposa, not how those features are implemented. Work to define an implementation has begun in additional RFDs, which propose the following components:
+
+- [Projects service](https://github.com/joyent/rfd/blob/master/rfd/0079/README.md), which is where [projects](https://github.com/joyent/rfd/blob/master/rfd/0036/project.md) and their attached [services](https://github.com/joyent/rfd/blob/master/rfd/0036/service.md) and [meta](https://github.com/joyent/rfd/blob/master/rfd/0036/meta.md) are managed
+- [Convergence service](https://github.com/joyent/rfd/blob/master/rfd/0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a queue of reconciliation plans currently being executed.
+- [Healthcheck agent](https://github.com/joyent/rfd/blob/master/rfd/0081/README.md), which is responsible for executing health checks defined for each service in the project and reporting any failures to the Convergence service.
