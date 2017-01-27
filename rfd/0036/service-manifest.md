@@ -1,5 +1,21 @@
 # Service manifest
 
+The service manifest is a component of the project manifest. Each service has a single active manifest that defines the expected state of the service.
+
+Each of the following options is in the context of the larger project manifest:
+
+```yaml
+services:
+  <service name>:
+    <option>: <value>
+    <option>: <value>
+  <service name>:
+    <option>: <value>
+    <option>: <value>
+```
+
+Options avalailable for services include:
+
 ## `service_type`
 
 Required
@@ -10,6 +26,12 @@ Required
 
 MVP: Only `continuous`
 
+Example:
+
+```yaml
+service_type: continuous
+```
+
 ## `compute_type`
 
 Required
@@ -18,6 +40,10 @@ Required
 - `infrastructure|lx|smartmachine`
 - `kvm|vm|hvm`
 - `manta`
+
+```yaml
+compute_type: docker
+```
 
 ## `image`
 
@@ -29,7 +55,11 @@ This could be:
 - the name of an image in imgapi
 - the uuid of an image in imgapi
 
-Example: `0x74696d/triton-elasticsearch:0.1.1`
+Example:
+
+```yaml
+image: 0x74696d/triton-elasticsearch:0.1.1
+```
 
 ## `package`
 
@@ -41,12 +71,24 @@ Can specify:
 - a package uuid
 - a package family, by name
 
+Example:
+
+```yaml
+package: g4-highcpu-512M
+```
+
 ## `memory`
 
 Optional
 
 - If `compute_type==manta`, this is the requested DRAM cap for the Manta job.
 - If `package` is omitted, or if `package` specifies a family, the smallest package that satisfies this DRAM value will be chosen.
+
+Example:
+
+```yaml
+memory: 512m
+```
 
 ## `labels`
 
@@ -58,7 +100,11 @@ Optional
 
 Example:
 
-- `triton.cns.services=elasticsearch-master`
+```yaml
+tags: 
+  - com.example.tag: "A tag that will be appled to all instances of the service"
+  - triton.cns.services=elasticsearch-master
+```
 
 ## `affinity`
 
@@ -78,17 +124,21 @@ From DOCKER-630. Affinity filters are one of the following
 
 `<value>` is an exact string, simple `*`-glob, or regular expression to match against container names or IDs, or against the given label name.
 
-Examples:
+Some rules and operators in context:
 
-```
-- affinity
-  container==silent_bob # Run on the same node as silent_bob
-  role!=database # Run on a different node as all containers labelled with 'role=database'
-  container!=foo* # Run on a different node to all containers with names starting with "foo":
-  container!=/^foo/ # Same as above, with regular expression
-```
+- `container==silent_bob` Run on the same node as silent_bob
+- `role!=database` Run on a different node as all containers labelled with 'role=database'
+- `container!=foo*` Run on a different node to all containers with names starting with "foo":
+- `container!=/^foo/` Same as above, with regular expression
 
 Multiple filters are allowed for a single service, though mixing of "soft" and "hard" filters is not supported. All "hard" filter rules must be fully satisfied for the instance provisioning to succeed.
+
+Example:
+
+```yaml
+affinity: 
+  - container!=foo*
+```
 
 ## `ports`
 
@@ -98,7 +148,10 @@ As with sdc-docker, this infers that the instance will have an interface on the 
 
 Example:
 
-- 8500
+```
+ports:
+  - 8500
+```
 
 ## `dns`
 
@@ -106,26 +159,31 @@ Optional
 
 If the user desires to set custom resolvers
 
-## `dns-search`
+Example:
+
+```
+dns:
+  - 127.0.0.1
+```
+
+## `dns_search`
 
 Optional
 
-The default should include `<account uuid>.<datacenter name>.cns.joyent.com`, or whatever CNS is set to
+The default must include `<account uuid>.<datacenter name>.cns.joyent.com`, or whatever CNS is set to
+
+Example:
+
+```
+dns_search:
+  - my.example.com
+```
 
 ## `environment`
 
 Optional
 
-Environment vars that will be passed to the instance. These are passed to Docker containers as expected, for infrastructure containers and KVM, they're passed to the user script.
-
-Example:
-
-- ES_SERVICE_NAME=elasticsearch-{{ .meta.metakey }}
-- CLUSTER_NAME=elasticsearch
-- ES_HEAP_SIZE={{ .package.ram }}
-- ES_NODE_MASTER=true
-- ES_NODE_DATA=true
-- CONTAINERPILOT=file:///etc/containerpilot.json
+Environment vars that will be passed to the instance. These are passed to Docker containers as expected, for infrastructure containers and KVM, they're passed to the user script. Environment variables are subject to project variable interpolation.
 
 Variable replacement:
 
@@ -133,7 +191,7 @@ Variable replacement:
 - `package`: Package details, including RAM, disk, "CPU", package name, package family
   - `ram`
   - `disk`
-  - `cpu`: some sort of value that can be used to approximate the number of CPUs that should be scheduled
+  - `cpu`: a value that can be used to approximate the number of CPUs that should be scheduled
   - `name`
   - `family`
 - `cns`: The Triton CNS names
@@ -156,6 +214,18 @@ Variable replacement:
   - `name`
   - `uuid`
   - `version`: the uuid of the service version at the time the instance is provisioned
+
+Example:
+
+```yaml
+environment:
+  - ES_SERVICE_NAME=elasticsearch-{{ .meta.metakey }}
+  - CLUSTER_NAME=elasticsearch
+  - ES_HEAP_SIZE={{ .package.ram }}
+  - ES_NODE_MASTER=true
+  - ES_NODE_DATA=true
+  - CONTAINERPILOT=file:///etc/containerpilot.json
+```
 
 ## `entrypoint`
 
@@ -180,10 +250,11 @@ For `compute_type`:
 
 Example:
 
-``` bash
-/bin/containerpilot \
-/usr/share/elasticsearch/bin/elasticsearch \
---default.path.conf=/etc/elasticsearch
+```yaml
+command:
+  /bin/containerpilot \
+  /usr/share/elasticsearch/bin/elasticsearch \
+  --default.path.conf=/etc/elasticsearch
 ```
 
 ## `containerpilot`
