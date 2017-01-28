@@ -20,7 +20,7 @@ List all services within a project
 
 ## `triton service (add|create|new) <service name> <service manifest>`
 
-Add a service to the project. The [service manifest is defined elsewhere](manifest.md).
+Add a service to the project. The [service manifest is defined elsewhere](./manifest.md).
 
 Triton will immediately start provisioning a `service_type=continuous` service (with a scale of 1) when defined. Triton will not automatically start other service types.
 

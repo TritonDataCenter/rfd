@@ -25,10 +25,10 @@ Lists all queued tasks, including service deploy tasks.
 
 A service deploy task can include:
 
-- `start` the deploy task for [`triton service start...`](#triton-service-start-service-uuid-or-name) or on [`triton service add...`](#triton-service-addcreatenew-service-name-service-manifest) for a continous service.
-- `stop` the deploy task for [`triton service stop...`](#triton-service-stop-service-uuid-or-name) and [`triton service delete...`](#triton-service-delete-service-uuid-or-name)
-- `scale` the deploy task for [`triton service scale...`](#triton-service-scale-service-uuid-or-name-integer-or-relative-integer)
-- `reprovision` the deploy task for [`triton service reprovision...`](#triton-service-reprovisionrestart-service-uuid-or-name) (`update` and `rollback` commands trigger `reprovision` tasks)
+- `start` the deploy task for `triton service start...` or on `triton service add...` for a continuous service.
+- `stop` the deploy task for `triton service stop...` and `triton service delete...`
+- `scale` the deploy task for `triton service scale...`
+- `reprovision` the deploy task for `triton service reprovision...` (`update` and `rollback` commands trigger `reprovision` tasks)
 
 Service deploy tasks can have the following states:
 

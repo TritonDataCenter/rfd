@@ -29,9 +29,9 @@ services:
     package: g4-general-4G
 ```
 
-[Please see the service manifest details elsewhere](https://github.com/joyent/rfd/blob/master/rfd/0036/service-manifest.md).
+[Reference the service manifest documentation](../service/manifest.md) for services details.
 
-Additional object types that might be expected in future iterations of the project manifest include [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD36 volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md), and Manta storage "buckets".
+Additional object types that might be expected in future iterations of the project manifest include [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), CNS domains, [RFD26 volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md), and Manta storage "buckets".
 
 
 ## Manifest format

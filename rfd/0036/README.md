@@ -30,7 +30,7 @@ Services are at the core of Mariposa. Services are any number of compute instanc
 
 A service may represent a complete application, if that application runs in a single container, but it's expected that most applications will be comprised of multiple services running together as a [project](#project).
 
-[Read more about what services mean in the Mariposa context](services), including Triton CLI commands and the manifest file.
+[Read more about what services mean in the Mariposa context](./services), including Triton CLI commands and the manifest file.
 
 
 ### Service and compute types
@@ -54,7 +54,7 @@ The types of compute providing these services may include:
 
 Only `docker`,`infrastructure`, and `kvm` are required for the MVP.
 
-Service and compute types, are discussed further in the [services manifest](services/manifest.md).
+Service and compute types, are discussed further in the [services manifest](./services/manifest.md).
 
 
 ### Project
@@ -65,7 +65,7 @@ The concept of projects was first introduced with [RBACv2 in RFD13](../0013/READ
 
 Once projects are implemented, all customer-defined infrastructure resources in Triton, including [compute](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), and other resources that may be defined in the future _must_ be a member of a project. Some resources (networks, for example) may be shared among different projects, while others (example: services and compute instances) must only be part of a single project.
 
-[Read more about what projects mean in the Mariposa context](projects), including Triton CLI commands and the manifest file.
+[Read more about what projects mean in the Mariposa context](./projects), including Triton CLI commands and the manifest file.
 
 
 ### Project meta (including secrets)
@@ -74,14 +74,14 @@ Many applications require configuration values which are undesirable or unsafe t
 
 This document proposes a simple method of storing those details and injecting them into containers. It is not intended to provide the rich features of solutions like Hashicorp's Vault, instead it is intended to provide a basic solution that is easy to use in a broad variety of applications.
 
-[Read more about meta in the Mariposa context](meta), including Triton CLI commands and the manifest file.
+[Read more about meta in the Mariposa context](./meta), including Triton CLI commands and the manifest file.
 
 
 ### Task queue
 
 Scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
 
-[Read more about the the Mariposa task queue](queue), including Triton CLI commands.
+[Read more about the the Mariposa task queue](./queue), including Triton CLI commands.
 
 
 ## User stories

@@ -49,7 +49,7 @@ Decrements the value of the metadata key. The key value is treater as an integer
 
 ## `triton meta import <metadata manifest> [--force|-f]`
 
-Imports a yaml-formatted manifest of metadata.
+Imports a YAML-formatted manifest of metadata.
 
 A warning must be issued for any keys in the manifest that are already set in the project metadata, but other data must be imported.
 
