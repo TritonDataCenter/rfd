@@ -953,9 +953,11 @@ for more information.
 
 ###### Output
 
-A volume is always deleted asynchronously. The output is the volume object being
-deleted. In order to determine when the volume is actually deleted, users need
-to poll the volume object's `state` property.
+The output is empty and the status code is 204 if the deletion was scheduled
+successfuly.
+
+A volume is always deleted asynchronously. In order to determine when the volume
+is actually deleted, users need to poll the volume's `state` property.
 
 If resources are using the volume to be deleted, the request results in an error
 and the error contains a list of resources that are using the volume.
@@ -1415,13 +1417,11 @@ for more information.
 
 ##### Output
 
-An object with the following properties:
+The output is empty and the status code is 204 if the deletion was scheduled
+successfuly.
 
-* `volume_uuid`: the UUID of the deleted volume.
-* `job_uuid`: the UUID of the job that is deleting the volume.
-
-Polling the job using the `job_uuid` can be used to determine when the volume is
-deleted.
+A volume is always deleted asynchronously. In order to determine when the volume
+is actually deleted, users need to poll the volume's `state` property.
 
 If resources are using the volume to be deleted, the request results in an error
 and the error contains a list of resources that are using the volume.
