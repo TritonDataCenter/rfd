@@ -8,7 +8,7 @@
     Copyright 2016 Casey Bisson, Joyent
 -->
 
-# Queue management
+# Managing the queue with the Triton CLI
 
 The task queue is especially significant to provisioning/deprovisioning services in projects, but will likely also be the place to watch other long-running tasks unrelated to services.
 

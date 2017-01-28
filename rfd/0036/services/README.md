@@ -7,3 +7,11 @@
 <!--
     Copyright 2016 Casey Bisson, Joyent
 -->
+
+# Services
+
+Services are any number of compute instances running the same software with the same configuration. Serviced must be part of a project.
+
+- [Manifest](manifest.md)
+- [CLI commands](triton-cli.md)
+

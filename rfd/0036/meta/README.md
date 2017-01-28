@@ -14,6 +14,9 @@ Many applications require configuration values which are undesirable or unsafe t
 
 The importance of project meta grows as we consider the likelihood of importing project and service manifests from a library of components, where it will be especially undesirable to embed configuration details.
 
+- [Manifest](manifest.md)
+- [CLI commands](triton-cli.md)
+
 ### Variable replacement/interpolation
 
 A number of sections of the project manifest (including the service manifests) support variable interpolation using both project metadata and other details about the project.

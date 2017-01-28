@@ -8,27 +8,27 @@
     Copyright 2016 Casey Bisson, Joyent
 -->
 
-# Service management
+# Managing services with the Triton CLI
 
-The following commands are all within the scope of a given project. What syntax is used to specify the project needs to be defined.
+The following commands are all within the scope of a given project.
 
 All `triton service` commands must support a `-j <project name>` optional argument to specify the project name/uuid. This is similar to specifying the Triton profile with `triton -p <profile name>`. Example: `triton [-j <project name>] service list`
 
-## `triton service|services|svc|svcs list`
+## `triton (services|svcs|service list|svc list)`
 
 List all services within a project
 
-## `triton service add|create|new <service name> <service manifest>`
+## `triton service (add|create|new) <service name> <service manifest>`
 
-Add a service to the project. The [service manifest is defined elsewhere](service-manifest.md).
+Add a service to the project. The [service manifest is defined elsewhere](manifest.md).
 
 Triton will immediately start provisioning a `service_type=continuous` service (with a scale of 1) when defined. Triton will not automatically start other service types.
 
-## `triton service get|show <service uuid or name>`
+## `triton service (get|show) <service uuid or name>`
 
 Show the service manifest and details for the specified service
 
-## `triton service update <service uuid or name> <service manifest> (rolling=<positive int>) (canary|count=<positive int>)`
+## `triton service update <service uuid or name> <service manifest> [rolling=<positive int>] [canary|count=<positive int>]`
 
 Add a new service version with the given manifest, set that service version as the default, and trigger a `reprovision` of all instances to the new version.
 
@@ -71,7 +71,7 @@ List all versions of the specified service, most recent on top
 
 Show the details for the specified version uuid
 
-## `triton service revert|rollback|set|set-current <service uuid or name> <service version uuid> (rolling=<positive int>) (canary|count=<positive int>)`
+## `triton service (revert|rollback|set|set-current) <service uuid or name> <service version uuid> [rolling=<positive int>] [canary|count=<positive int>]`
 
 Sets the default version for any new instance provisioning, including positive `scale`, `reprovision`, and automatic reprovisioning of failed instances. Automatically triggers a `reprovision` when used.
 
@@ -112,7 +112,7 @@ Only supported for `service_type=continuous` services; will error for others. Re
 
 When scaling down, the policy used to select which instances to stop will match the policy defined for `reprovision`.
 
-## `triton service stop <service uuid or name> (version=<version uuid>)`
+## `triton service stop <service uuid or name> [version=<version uuid>]`
 
 Stop all instances of a service using the `removestopped` behavior rules defined elsewhere.
 
@@ -120,7 +120,7 @@ Optional arguments:
 
 - `version` the version UUID to stop; only instances matching that version will be stopped
 
-## `triton service start <service uuid or name> (version=<version uuid>)`
+## `triton service start <service uuid or name> [version=<version uuid>]`
 
 Starts an instance of the specified service. Behavior varies based on `service_type`:
 
@@ -131,13 +131,13 @@ Optional arguments:
 
 - `version` the version UUID to start
 
-## `triton service reprovision|restart <service uuid or name> (version=<version uuid>) (image=<imagespec:tag>) (instance=<name|uuid>) (compute_node=<uuid>) (count|canary=<positive integer> (rolling=<positive integer>)`
+## `triton service (reprovision|restart) <service uuid or name> [version=<version uuid>] [image=<imagespec:tag>] [instance=<name|uuid>] [compute_node=<uuid>] [count|canary=<positive integer>] [rolling=<positive integer>]`
 
 Will replace all existing instances of the service with new instances. Replacement instances will be provisioned using the current default version uuid, not version uuid of the replaced instance.
 
 This is intentionally not the same as `triton instance restart <instance uuid>` for all instances in the service. This command will provision new instances of the service, and those new instances will be redistributed throughout the DC following standard DAPI rules and service affinity settings. This can be used to move services around in advance of a planned downtime (hopefully the CNs to be offlined have been made un-provisionable).
 
-The command will match all instances by defauly, but filters can be used to specify what instances are selected for reprovisioning:
+The command will match all instances by default, but filters can be used to specify what instances are selected for reprovisioning:
 
 - `version`: all instances matching the specified service version uuid
 - `image`: all instances with the specified image (and tag, if Docker)
