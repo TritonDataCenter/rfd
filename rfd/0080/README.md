@@ -57,21 +57,21 @@ The Convergence service will expose it's status and other pertinent information 
 
 All below endpoints may be prefixed with `/users/$userId` to access data for a user other than the one you're authenticated as, assuming authorization is granted. For example:
 
-`GET /users/abc123/state` will return the same data as a request to `/state` would if you were authenticated as `abc123`. 
+`GET /v1/users/abc123/state` will return the same data as a request to `/v1/state` would if you were authenticated as `abc123`. 
 
-### /state
+### /v1/state
 
 Endpoint operations:
 
 * GET - Get state information for all user projects including project summary, service names/IDs, running count, goal count, how many are being stopped/started, etc. This list can be filtered by passing `project` or `service` GET params with ID values.
 
-### /queue
+### /v1/queue
 
 Endpoint operations:
 
 * GET - List of queued tasks (`start`, `stop`, `scale`, `reprovision`) containing service/project, state, component, and ID for each task. 
 
-### /queue/$taskId
+### /v1/queue/$taskId
 
 * GET - Detailed information for the given task ID, containing data in list, and potentially additional data.
 * DELETE - Terminate the task and clean up the potential mess left behind by doing this.

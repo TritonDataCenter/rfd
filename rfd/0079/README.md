@@ -35,16 +35,16 @@ Unless otherwise noted, the output for all endpoints is JSON. The exception to t
 
 All below endpoints may be prefixed with `/users/$userId` to access data for a user other than the one you're authenticated as, assuming authorization is granted. For example:
 
-`GET /users/abc123/projects` will return the same data as a request to `/projects` would if you were authenticated as `abc123`. 
+`GET /v1/users/abc123/projects` will return the same data as a request to `/v1/projects` would if you were authenticated as `abc123`. 
 
-### /projects
+### /v1/projects
 
 Endpoint operations:
 
 * GET - A list of projects associated with requesting user
 * POST - Create a new project via YAML manifest transmitted in POST payload
 
-### /projects/$projectId
+### /v1/projects/$projectId
 
 Endpoint operations:
 
@@ -52,27 +52,27 @@ Endpoint operations:
 * PUT - Update project data and/or metadata via JSON document transmitted in PUT payload
 * DELETE - Mark project as removed, and remove any running services associated with the project
 
-### /projects/$projectId/manifest
+### /v1/projects/$projectId/manifest
 
 Endpoint operations:
 
 * GET - Get project manifest in YAML format as it was provided
 * PUT - Update project manifest by sending YAML payload
 
-### /projects/$projectId/healthchecks
+### /v1/projects/$projectId/healthchecks
 
 Endpoint operations:
 
 * GET - All health checks associated with the project
 
-### /projects/$projectId/metadata
+### /v1/projects/$projectId/metadata
 
 Endpoint operations:
 
 * GET - Get project metadata in YAML format as it was provided
 * PUT - Update project metadata by sending YAML payload
 
-### /projects/$projectId/metadata/$key
+### /v1/projects/$projectId/metadata/$key
 
 Endpoint operations:
 
@@ -80,36 +80,36 @@ Endpoint operations:
 * PUT - Update value for metadata key
 * DELETE - Remove metadata key
 
-### /projects/$projectId/tags
+### /v1/projects/$projectId/tags
 
 Endpoint operations:
 
 * GET - list of tags associated with project, automatic and custom
 * POST - Create a user-defined tag, associated with a specified sha1sum tag
 
-### /projects/$projectId/tags/$tagId
+### /v1/projects/$projectId/tags/$tagId
 
 Endpoint operations
 
 * GET - Detailed project information and manifest for the version associated with the given tag ID
 * DELETE - Remove a user-specified tag, this will return an error if user attempts to delete a sha1 sum tag
 
-### /projects/$projectId/state
+### /v1/projects/$projectId/state
 
 Endpoint operations:
 
 * GET - Goal/Actual state information via a proxied request to the Convergence service
 
-### /projects/$projctId/services
+### /v1/projects/$projctId/services
 
 Endpoint operations:
 
 * GET - Summarized service information for specified project
 * POST - Create a new service for the specified project via service manifest transmitted in POST payload
 
-### /projects/$projctId/services/$serviceId
+### /v1/projects/$projctId/services/$serviceId
 
-Alias: `/services/$serviceId`
+Alias: `/v1/services/$serviceId`
 
 Endpoint operations:
 
@@ -117,41 +117,41 @@ Endpoint operations:
 * PUT - Updated service manifest via new manifest transmitted in PUT payload
 * DELETE - Mark service as removed
 
-### /projects/$projectId/services/$serviceId/manifest
+### /v1/projects/$projectId/services/$serviceId/manifest
 
-Alias: `/services/$serviceId/manifest`
+Alias: `/v1/services/$serviceId/manifest`
 
 Endpoint operations:
 
 * GET - Get service manifest in YAML format as it was provided
 * PUT - Update service manifest by sending YAML payload
 
-### /projects/$projctId/services/$serviceId/state
+### /v1/projects/$projctId/services/$serviceId/state
 
-Alias: `/services/$serviceId/state`
+Alias: `/v1/services/$serviceId/state`
 
 Endpoint operations:
 
 * GET - Goal/Actual state information via a proxied request to the Convergence service
 * PUT - Update goal state information (stop, start, pause, resume, scale)
 
-### /projects/$projctId/services/$serviceId/healthchecks
+### /v1/projects/$projctId/services/$serviceId/healthchecks
 
-Alias: `/services/$serviceId/healthchecks`
+Alias: `/v1/services/$serviceId/healthchecks`
 
 Endpoint operations:
 
 * GET - All health checks associated with the service
 
-### /services
+### /v1/services
 
 Endpoint operations:
 
 * GET - A list of all user services across all projects
 
-### /services/$serviceId
+### /v1/services/$serviceId
 
-Alias of: `/projects/$projectId/services/$serviceId`
+Alias of: `/v1/projects/$projectId/services/$serviceId`
 
 Endpoint operations:
 
@@ -159,9 +159,9 @@ Endpoint operations:
 * PUT - Updated service manifest via new manifest transmitted in PUT payload
 * DELETE - Mark service as removed
 
-### /services/$serviceId/manifest
+### /v1/services/$serviceId/manifest
 
-Alias of: `/projects/$projectId/services/$serviceId/manifest`
+Alias of: `/v1/projects/$projectId/services/$serviceId/manifest`
 
 Endpoint operations:
 
@@ -169,18 +169,18 @@ Endpoint operations:
 * PUT - Update service manifest by sending YAML payload
 
 
-### /services/$serviceId/state
+### /v1/services/$serviceId/state
 
-Alias of: `/projects/$projctId/services/$serviceId/state`
+Alias of: `/v1/projects/$projctId/services/$serviceId/state`
 
 Endpoint operations:
 
 * GET - Goal/Actual state information via a proxied request to the Convergence service
 * PUT - Update goal state information (stop, start, pause, resume, scale)
 
-### /services/$serviceId/healthchecks
+### /v1/services/$serviceId/healthchecks
 
-Alias of: `/projects/$projctId/services/$serviceId/healthchecks`
+Alias of: `/v1/projects/$projctId/services/$serviceId/healthchecks`
 
 Endpoint operations:
 

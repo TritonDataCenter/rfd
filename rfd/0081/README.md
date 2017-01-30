@@ -36,25 +36,25 @@ All health check definitions will include:
 
 Unless otherwise noted, the output for all endpoints is JSON. All data backing these endpoints is in-memory only (no persistence). 
 
-### /healthchecks
+### /v1/healthchecks
 
 Endpoint operations:
 
 * GET - A summary list of all health checks active in the agent
 
-### /healthchecks/update
+### /v1/healthchecks/update
 
 Endpoint operations:
 
 * POST - Trigger a refresh of health check configuration (by pulling from the Project service)
 
-### /healthchecks/$healthcheckId
+### /v1/healthchecks/$healthcheckId
 
 Endpoint operations:
 
 * GET - Detailed health check info/manifest in JSON format
 
-### /healthchecks/$healthcheckId/definition
+### /v1/healthchecks/$healthcheckId/definition
 
 Endpoint operations:
 
