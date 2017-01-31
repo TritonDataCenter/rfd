@@ -104,19 +104,17 @@ We also need to protect against multiple clients attempting a commit for the sam
 
 To verify the final object is correct, `mako-finalize` will at the least need the number of bytes the final object will be as input, to differentiate between a partially written object or a completed one. To provide additional protection against data corruption, the client can also optionally provide an md5sum of the object and/or the individual parts. If any of these sums don't match, the operation returns an error.
 
-The function signature for this operation will look something like the following:
+The API for `mako-finalize` will consist of an HTTP POST to the path `/mpu/v<version number>/commit`, with a JSON blob in the body of the request that has the following structure:
 
 ```
-mako-finalize(uploadId, account, objectId, nbytes, parts[], objectMD5) -> md5sum
+{
+	"version": <version number of MPU API (currently version 1)>,
+	"nbytes": <integer size in bytes>,
+	"account": <string uuid of account>,
+	"objectId": <string uuid of output file>,
+	"parts": <JSON array of string part uuids>
+}
 ```
-
-where the inputs are:
-* `uploadId`: unique upload ID corresponding to the upload
-* `account`: account doing the upload
-* `objectId`: unique identifier for the object at `$OBJECT_PATH`
-* `nbytes`: number of bytes the file should be
-* `parts`: an array of object IDs corresponding to the parts of the upload
-* `objectMD5`: optional, md5sum of the final object
 
 In pseudocode, `mako-finalize` does the following steps:
 
@@ -126,7 +124,6 @@ mako-finalize:
 		Create tempFile
 		For part in parts[]:
 			If part file exists:
-				Validate part md5sum (optional)
 				Append part to tempFile
 			Else:
 				If objectId does not exist:
@@ -138,12 +135,12 @@ mako-finalize:
 					Unlink tempFile
 					Goto FINISH
 
-		Validate size of tempFile (and optionally, md5sum)
+		Validate size of tempFile
 		Fsync tempFile
 		Atomic rename tempFile to objectId
 
 	Else:
-		Validate size of objectId (and optionally, md5sum)
+		Validate size of objectId
 
 FINISH:
 	Fsync parent dir of objectId
@@ -152,6 +149,8 @@ FINISH:
 
 	Return: md5sum(objectId file)
 ```
+
+In an earlier draft of this RFD, this pseudocode validated the md5sum of the parts and the final object. The validation of the md5sum for the object is now completed in muskie. We may decide to extend this to parts later.
 
 #### Handling Concurrent Requests
 
@@ -242,6 +241,8 @@ We need a mechanism to ensure all unnecessary data associated with multipart upl
 All of this data can be removed some period of time after a commit or abort has completed — the status of a commit/abort should still be able to be queried shortly after the commit/abort completes. To do so, we can modify the existing Manta garbage collection process to also clean up these items.
 
 Thus the garbage collection process will be modified to iterate over commit/abort records. Commits must have their upload directory records and part records removed. Aborted uploads need to have upload directory records, part records and part data removed. Once this cleanup is completed, the commit/abort records must also be removed.
+
+The current implementation plan for garbage collection can be found here: https://gist.github.com/jordanhendricks/d505ec432e82485397f3cfe8860b319a.
 
 
 ## 2. Final Design
