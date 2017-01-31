@@ -84,7 +84,7 @@ To circumvent this limitation while still limiting the number of shards upload m
 
 More concretely, the path to a given upload directory is thus: `/$ACCOUNT/uploads/[0-f]+/<upload uuid>`.
 
-Parts are then stored as: `/$ACCOUNT/uploads/[0-f]+/<upload uuid>/partN`, where `N` is the part number of the part.
+Parts are then stored as: `/$ACCOUNT/uploads/[0-f]+/<upload uuid>/N`, where `N` is the part number of the part.
 
 This approach ensures that a maximum of 16 shards need to be contacted to list all ongoing uploads for an account. It also gives us flexibility to distribute uploads across more directories in the future if we find that this doesn't provide enough capacity for ongoing uploads for an account -- we can extend the subdirectory structure to include more uuid characters (e.g., the first two chars).
 
@@ -266,7 +266,7 @@ Uploads data to a given part number of an upload.
 * Outputs: etag of part
 * Steps:
   * 1. Read the upload state in the object record for `/$ACCOUNT/uploads/[0-f]+/uuidd`.
-       * If the state is `CREATED`, insert object record for `/$ACCOUNT/uploads/[0-f]+/uuid/partN`, where `N` is the part number.
+       * If the state is `CREATED`, insert object record for `/$ACCOUNT/uploads/[0-f]+/uuid/N`, where `N` is the part number.
        * If the state is `FINALIZING`, return an error.
 
 Note: This API call has a race between reading the upload record's state and inserting the part record, which could be on a different shard. It is possible that another client starts a commit or abort for the same upload id after the read of the upload record has occurred, so the client uploading a part will not learn that the upload is being finalized (likely with a different set of parts). This case shouldn't be common, as it indicates a strange (and possibly buggy) use of the API. As long as we document this possible case clearly, I think this is acceptable.
@@ -334,11 +334,71 @@ The following table demonstrates how to access these API calls over HTTP. The DE
 | __/$ACCOUNT/uploads__ | `list-mpu` | - | X | `create-mpu` |
 | __/$ACCOUNT/uploads/[0-f]+/uuid__ | `list-parts` | - | X | X |
 | __/$ACCOUNT/uploads/[0-f]+/uuid/state__ | `get-mpu` | X | X | X |
-| __/$ACCOUNT/uploads/[0-f]+/uuid/partN__ | X | - | `upload-part` | X
+| __/$ACCOUNT/uploads/[0-f]+/uuid/:partNum__ | X | - | `upload-part` | X
 | __/$ACCOUNT/uploads/[0-f]+/uuid/commit__ | X | X | X | `commit-mpu` |
 | __/$ACCOUNT/uploads/[0-f]+/uuid/abort__ | X | X | X | `abort-mpu`
 
 Note that GETs of parts are disallowed. This is important because allowing GETs for part data would allow abuse of the API to store objects on the same storage node, circumventing our mechanism of selecting storage nodes.
+
+### JSON Inputs
+
+Some API methods require a JSON object in the body of the request that is used as input for the request.
+
+#### `create-mpu`
+For creating an upload, you must provide a JSON object with the key `objectPath` and a string value representing the Manta path to store the object in on commit.
+For example:
+```
+POST /jhendricks/uploads
+
+Request body:
+{
+	objectPath: "/jhendricks/stor/mpu-object.txt"
+}
+```
+
+You may also optionally provide a `headers` object in the input JSON object. *All headers for the committed object must be supplied when you create the upload.*
+
+The following headers are supported for multipart uploads:
+* `x-durability-level`: This header determines the number of copies of your object will be created (defaults to 2)
+* `content-length`: This header indicates the size of your object, if known on create. This value is validated when the object is committed, and if the size of the object does not match the header specified here, the commit will fail.
+* `content-md5`: This header indicates the MD5 sum of your object, if known on create. This value is validated when the object is committed, and if the md5 sum of the object does not match the header specified here, the commit will fail.
+
+All other headers provided in this object are not validated by the multipart upload API, but they will be stored as headers on the object.
+
+For example, to create a multipart upload of a 13-byte object with 3 copies, you would send:
+
+```
+POST /jhendricks/uploads
+
+Request body:
+{
+	objectPath: "/jhendricks/stor/mpu-object.txt",
+	headers: {
+		"x-durability-level": 3,
+		"content-length": 13,
+		"x-my-custom-header": "my custom header value"
+	}
+}
+```
+
+
+#### `commit`
+
+Committing an upload requires a specification of the etags of a consecutive set of parts, beginning with part 0. To indicate the etags of each part, you must supply a JSON object with the field "parts", which is an array of strings representing the etags of each part, such that the index in the array for a given etag indicates the part number. (The multipart uploads API supports a range of: [0-9999], for a maximum of 10000 parts per upload.)
+
+For example, to commit an upload that has upload ID `3db78672-4ac8-4277-865d-c75fed2f690a` and 2 parts, in which part 0 has etag `c504b2fb-929b-4179-a81b-2568352e7bb5`, and part 1 has etag `bbdbacd4-cd3d-47ec-9b0c-0f932d8c44e6`, you would send:
+```
+POST /jhendricks/uploads/3/3db78672-4ac8-4277-865d-c75fed2f690a
+
+Request body:
+{
+	parts: [
+		"c504b2fb-929b-4179-a81b-2568352e7bb5",
+		"bbdbacd4-cd3d-47ec-9b0c-0f932d8c44e6"
+	]
+}
+```
+
 
 ## Metadata Summary
 
