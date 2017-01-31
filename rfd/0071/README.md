@@ -19,11 +19,11 @@ state: draft
 
 This document describes the proposed design and implementation of a client-side encryption mechanism for Manta, similar to the functionality provided by Amazon S3's Java, .NET, and Ruby SDKs.
 
-In section 1, we discuss the proposed design for this feature in detail: first outlining the changes needed to implement client-side encryption in a general sense, then reviewing design constraints and requirements for implementing such a feature in Manta, and finally, reasoning through each piece of the proposal. If you are interested in the motivation behind client-side encryption in Manta, you should read this section.
+In [section 1](#1-design-discussion), we discuss the proposed design for this feature in detail: first outlining the changes needed to implement client-side encryption in a general sense, then reviewing design constraints and requirements for implementing such a feature in Manta, and finally, reasoning through each piece of the proposal. If you are interested in the motivation behind client-side encryption in Manta, you should read this section.
 
-In section 2, we provide a detailed summary of the design of the JDK implementation.
+In [section 2](#2-java-manta-sdk-client-side-encryption-design-and-implementation), we provide a detailed summary of the design of the JDK implementation.
 
-In section 3, we provide a comprehensive overview of the design of the Node.js implementation.
+In [section 3](#3-nodejs-sdk-design-and-implementation), we provide a comprehensive overview of the design of the Node.js implementation.
 
 ## Terms
 
@@ -39,10 +39,7 @@ In section 3, we provide a comprehensive overview of the design of the Node.js i
 ### Client-side Encryption Description
 
 Encryption used in object stores with an HTTP API such as Swift, S3, and Manta typically fall under one of two types of implementations: 
-client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with 
-no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the 
-client. Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on 
-behalf of the client. This RFD will be focused solely on client-side encryption.
+client-side and server-side. Client-side encryption performs all of the encryption and decryption operations entirely in the client SDK with no encryption-specific operations being executed on the object store server. This implies that key management is entirely handled by the client. Server-side encryption typically handles key management, encryption and decryption entirely using the object store's server logic on behalf of the client. This RFD will be focused solely on client-side encryption.
 
 Conceptually, client-side encryption's primary use case is when you do not trust the provider of your object-store. Security is guaranteed 
 because the client has full control over encryption algorithms, keys, and authentication. Additionally, when server-side encryption is not 
@@ -80,7 +77,7 @@ follows:
  * Manta jobs cannot be supported with client-side encrypted objects. Clients can, of course, upload the keys to Manta themselves and import them into jobs as assets if they need to, but there will be no first class support for such operations.
  * Decryption via signed links will not natively be supported by Manta server-side operations. A client could still download a signed link and decrypt it themselves.
  * Decryption of objects contained in the public directory will not be natively supported by Manta server-side operations. 
- * If using a [Authenticated Encryption with Associated Data (AEAD) cipher](https://en.wikipedia.org/wiki/Authenticated_encryption), authentication will not be possible when making HTTP range requests.
+ * If using a [Authenticated Encryption with Associated Data (AEAD) cipher](https://en.wikipedia.org/wiki/Authenticated_encryption), authentication will not be possible when making HTTP range requests. 
 
 ### HTTP Headers Used with Client-side Encryption
 
