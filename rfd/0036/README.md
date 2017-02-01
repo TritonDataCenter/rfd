@@ -30,15 +30,15 @@ Significant aspects of this RFD assume the existence of RBACv2 ([proposed in RFD
 
 The following understanding of those objects is used throughout:
 
-- An organization is a collection of users and projects.
-- Any number of organizations can be defined.
-- A user must be a member of one or more organizations.
-- A user is always a member of their personal organization.
-- An organization may have any number of users and projects.
-- A project must be a member of one organization.
-- A project may have any number of users.
+- An organization is a collection of users and projects
+- Any number of organizations can be defined
+- A user must be a member of one or more organizations
+- A user is always a member of their personal organization
+- An organization may have any number of users and projects
+- A project must be a member of one organization
+- A project may have any number of users
 
-The model for this is GitHub's organizations, users, and repositories. Projects (similar to GitHub's repositories) are further defined below and throughout this document.
+The model for this is GitHub's [organizations, users, and repositories](https://help.github.com/categories/setting-up-and-managing-organizations-and-teams/). Projects (similar to GitHub's repositories) are further defined below and throughout this document.
 
 We will expand the following diagram with additional components as we introduce them:
 
@@ -189,9 +189,9 @@ The following user stories are intended to provide a narrative understanding of 
 
 This RFD is mostly concerned with what users can do with Mariposa, not how those features are implemented. Work to define an implementation has begun in additional RFDs, which propose the following components:
 
-- [Projects service](https://github.com/joyent/rfd/blob/master/rfd/0079/README.md), which is where [projects](https://github.com/joyent/rfd/blob/master/rfd/0036/project.md) and their attached [services](https://github.com/joyent/rfd/blob/master/rfd/0036/service.md) and [metadata](https://github.com/joyent/rfd/blob/master/rfd/0036/meta.md) are managed
-- [Convergence service](https://github.com/joyent/rfd/blob/master/rfd/0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a queue of reconciliation plans currently being executed.
-- [Healthcheck agent](https://github.com/joyent/rfd/blob/master/rfd/0081/README.md), which is responsible for executing health checks defined for each service in the project and reporting any failures to the Convergence service.
+- [Projects API](https://github.com/joyent/rfd/blob/master/rfd/0079/README.md), which is where [projects](https://github.com/joyent/rfd/blob/master/rfd/0036/project.md) and their attached [services](https://github.com/joyent/rfd/blob/master/rfd/0036/service.md) and [metadata](https://github.com/joyent/rfd/blob/master/rfd/0036/meta.md) are managed
+- [ProjectsConvergence API](https://github.com/joyent/rfd/blob/master/rfd/0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a queue of reconciliation plans currently being executed.
+- [ServicesHealth agent](https://github.com/joyent/rfd/blob/master/rfd/0081/README.md), which is responsible for executing health checks defined for each service in the project and reporting any failures to the Convergence service.
 
 Those components are intended to be private services and agents within Triton, exposed via CloudAPI:
 
