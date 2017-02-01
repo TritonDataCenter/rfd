@@ -192,3 +192,63 @@ This RFD is mostly concerned with what users can do with Mariposa, not how those
 - [Projects service](https://github.com/joyent/rfd/blob/master/rfd/0079/README.md), which is where [projects](https://github.com/joyent/rfd/blob/master/rfd/0036/project.md) and their attached [services](https://github.com/joyent/rfd/blob/master/rfd/0036/service.md) and [metadata](https://github.com/joyent/rfd/blob/master/rfd/0036/meta.md) are managed
 - [Convergence service](https://github.com/joyent/rfd/blob/master/rfd/0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a queue of reconciliation plans currently being executed.
 - [Healthcheck agent](https://github.com/joyent/rfd/blob/master/rfd/0081/README.md), which is responsible for executing health checks defined for each service in the project and reporting any failures to the Convergence service.
+
+Those components are intended to be private services and agents within Triton, exposed via CloudAPI:
+
+```
+                                 +-------------+
+                                 |             |
+                                 | Triton user |
+                                 |             |
+                                 +------+------+
+Public                                  |
+                                        |
++--------------------------------------------------------------+
+                                        |
+Private global services                 |
+                                  +-----v----+
+                                  |          |
+                                  | CloudAPI |
+                                  |          |
+                                  +-----+----+
+                                        |
+                                        |
++-------------------------+     +-------v------+    +-------+
+|                         |     |              |    |       |
+| ProjectsConvergence API <-----> Projects API +----> Moray |
+|                         |     |              |    |       |
++-----^--------------^-^--+     +--------------+    +-------+
+      |              | |
+      |              | |
+      |  Changefeed  | +-------------+
+      |              |               |
+      |              |               |
+  +---+---+      +---+---+           |
+  |       |      |       |           |
+  | vmapi |      | cnapi |           |
+  |       |      |       |           |
+  +-------+      +-------+           |
+                                     |
+                                     |
++--------------------------------------------------------------+
+                                     |
+Per-project agents                   |
+                                     |
+                         +-----------+----------+
+                         |                      |
+                         | ServicesHealth agent |
+                         |                      |
+                         +-----------+----------+
+                                     |
++--------------------------------------------------------------+
+                                     |
+ Customer instances in the project   |
+                                     |
+                          +----------|---------+
+                        +------------v-------- |
+                        |                    | |
+                        | Containers and VMs | |
+                        |                    |-+
+                        +--------------------+
+
+```
