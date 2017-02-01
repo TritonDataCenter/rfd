@@ -24,16 +24,89 @@ This RFD proposes features that would allow users to organize their infrastructu
 
 ## Concepts
 
+### Organizations, projects, users
+
+Significant aspects of this RFD assume the existence of RBACv2 ([proposed in RFD13](../0013/README.md#proposal), with implementation discussion in [RFD48](../0048) and [49](../0049)) and the concepts it introduces, including "organizations" and "projects," and new definition for "users."
+
+The following understanding of those objects is used throughout:
+
+- An organization is a collection of users and projects.
+- Any number of organizations can be defined.
+- A user must be a member of one or more organizations.
+- A user is always a member of their personal organization.
+- An organization may have any number of users and projects.
+- A project must be a member of one organization.
+- A project may have any number of users.
+
+The model for this is GitHub's organizations, users, and repositories. Projects (similar to GitHub's repositories) are further defined below and throughout this document.
+
+We will expand the following diagram with additional components as we introduce them:
+
+```
+              +-------------+
+          +---+Organizations| --+
+          |   +-------------+   |
+          |                     |
+      +---v----+             +--v--+
+      |Projects|<----------->|Users|
+      +--------+             +-----+
+```
+
 ### Service
 
 Services are at the core of Mariposa. Services are any number of compute instances running the same software image and configuration. A service may be run in a single compute instance, or can be scaled scaled to any number of instances as needed.
 
 A service may represent a complete application, if that application runs in a single container, but it's expected that most applications will be comprised of multiple services running together as a [project](#project).
 
+```
+          +-------------+
+      +---+Organizations| --+
+      |   +-------------+   |
+      |                     |
+  +---v----+             +--v--+
+  |Projects|<----------->|Users|
+  +---+----+             +-----+
+      |
+  +---v----+
+  |Services|
+  +--------+
+```
+
 [Read more about what services mean in the Mariposa context](./services), including Triton CLI commands and the manifest file.
 
 
 ### Service and compute types
+
+Mariposa is responsible for provisioning and deprovisioning compute instances for the user based on the service definition. This effectively abstracts away what used to be the core definition of the cloud—virtualized compute—from what the user directly manages.
+
+```
+          +-------------+
+      +---+Organizations| --+
+      |   +-------------+   |
+      |                     |
+  +---v----+             +--v--+
+  |Projects|<----------->|Users|
+  +---+----+             +-----+
+      |
+  +---v----+
+  |Services|
+  +--------+
+      |
+  +---v---+
+  |Compute|
+  +-------+
+```
+
+However, the user still needs to control what type of compute resources are provisioned, and how they'll run.
+
+The types of compute providing a service may include:
+
+- `docker` (default)
+- `infrastructure|lx|smartmachine`
+- `kvm|vm|hvm`
+- `manta`
+
+Only `docker`,`infrastructure`, and `kvm` are required for the MVP.
 
 Not all services run continuously. The growing interest in "function as a service" offerings (as demonstrated in Manta Jobs, and later in AWS' Lambda), as well as the common reality of scheduled batch jobs, indicates that Mariposa should include support for non-continuous services.
 
@@ -45,15 +118,6 @@ These types may include:
 
 Only `continuous` is required for the MVP.
 
-The types of compute providing these services may include:
-
-- `docker` (default)
-- `infrastructure|lx|smartmachine`
-- `kvm|vm|hvm`
-- `manta`
-
-Only `docker`,`infrastructure`, and `kvm` are required for the MVP.
-
 Service and compute types, are discussed further in the [services manifest](./services/manifest.md).
 
 
@@ -64,6 +128,32 @@ While [services](#service) abstract any number of compute instances running the 
 The concept of projects was first introduced with [RBACv2 in RFD13](../0013/README.md#proposal), this RFD intends to replace the definition of services from RFD13. Though projects and other features described in this RFD may be built independently of RBACv2 work, many assumptions about RBACv2 are made throughout this text.
 
 Once projects are implemented, all customer-defined infrastructure resources in Triton, including [compute](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), and other resources that may be defined in the future _must_ be a member of a project. Some resources (networks, for example) may be shared among different projects, while others (example: services and compute instances) must only be part of a single project.
+
+```
+                          +-------------+
+                      +---+Organizations| --+
+                      |   +-------------+   |
+                      |                     |
+                      |                     |
+                  +---v----+             +--v--+
+                  |Projects|<----------->|Users|
+                  +---+----+             +-----+
+                      |
+    +-----------+-----+-----+-----------+
+    |           |           |           |
++---v----+  +---v----+  +---v---+  +----v----+
+|Services|  |Networks|  |Storage|  |Unmanaged|
++--------+  +--------+  +-------+  | Compute |
+    |                              +---------+
+    |
++---v---+
+|Compute|
++-------+
+```
+
+In the above diagram "unmanaged compute" describes both existing instances that were defined before the introduction of services, as well as new instances that a user may define without first defining a service. Support for existing unmanaged compute and their ongoing use, as well as the ability to provision new unmanaged instances is required, despite the introduction of services. However, there is no requirement nor intention of providing a migration plan to convert a collection of existing unmanaged instances into a service.
+
+Projects are described by a [project manifest](./projects/manifest.md), a YAML-formatted file that can be easily copied from elsewhere and in which changes are easily discernible in a text diff. They also have attached metadata as described below.
 
 [Read more about what projects mean in the Mariposa context](./projects), including Triton CLI commands and the manifest file.
 
