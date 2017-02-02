@@ -10,9 +10,11 @@
 
 # Managing the queue with the Triton CLI
 
-The task queue is especially significant to provisioning/deprovisioning services in projects, but will likely also be the place to watch other long-running tasks unrelated to services.
+The following commands are all within the scope of a given project.
 
-All `triton queues` commands must support optional arguments to specify the organization and project:
+The `triton` CLI must allow users to specify an organization and project to work within in a manner similar to how the user can now specify a profile. Once the default organization and project are set, all interactions with the resources defined here are within the scope of that organization and project.
+
+All `triton queues` commands must also support to specify the organization and project:
 
 - `-j <project name|uuid>`
 - `-o <organization name|uuid>`

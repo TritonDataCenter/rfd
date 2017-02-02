@@ -10,11 +10,11 @@
 
 # Managing metadata with the Triton CLI
 
-Users can register metadata as key/value pairs that can be used in projects and services. The metadata must be a member of a project (RBACv2 terms), and each key must by unique within that project.
+The following commands are all within the scope of a given project.
 
-Needs definition: RBACv2 permissions.
+The `triton` CLI must allow users to specify an organization and project to work within in a manner similar to how the user can now specify a profile. Once the default organization and project are set, all interactions with the resources defined here are within the scope of that organization and project.
 
-All `triton meta` commands must support a `[-j <project name>]` optional argument to specify the project name/uuid. This is similar to specifying the Triton profile with `triton -p <profile name>`. Example: `triton [-j <project name>] meta list`
+Additionally, `triton meta` commands must support a `-j <project name>` optional argument to specify the project name/uuid. This is similar to specifying the Triton profile with `triton -p <profile name>`. Example: `triton [-j <project name>] meta list`. Support for `-o <organization name>` is similarly expected.
 
 ## `triton meta list|ls`
 
