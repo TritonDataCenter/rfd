@@ -1,6 +1,6 @@
 ---
 authors: Casey Bisson <casey.bisson@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
@@ -15,47 +15,98 @@ state: predraft
 
 # RFD 36 Mariposa
 
-Mariposa is a scheduler service running in Triton that supports a variety of service and instance types and is tightly integrated with other Triton components.
+Cloud infrastructure (IaaS) providers offer compute, network, and storage resources on which applications can be built and operated. However, those solutions leave it to the customer to assemble those infrastructure components to meet their needs. A given application might require several compute instances for a given component, but the customer is typically responsible for maintaining a mental model of their application, provisioning each instance, and then recognizing the compute instances that support a given software component within a larger list of instances.
 
-We are pursuing Mariposa and introducing a new scheduler in the market, rather than integrating an existing scheduler, because of the requirement that it be a tightly integrated core service of Triton. This integration includes:
+Template-driven provisioning tools like Terraform and many others, along with judicious tagging of instances provide some help to infrastructure customers, but even then there remains a significant gap between raw infrastructure and the applications IaaS customers wish to build and run.
 
-- Users, orgs, and projects as described in [RFD13](https://github.com/joyent/rfd/blob/master/rfd/0013/README.md).
-- Support for Triton and Manta compute types, including [Docker Containers](https://docs.joyent.com/public-cloud/instances/docker), [infrastructure containers](https://docs.joyent.com/public-cloud/instances/infrastructure), and [hardware virtual machines](https://docs.joyent.com/public-cloud/instances/virtual-machines), in addition to [Manta functions](https://apidocs.joyent.com/manta/jobs-reference.html).
-- A single instance scheduling/provisioning layer. Because Triton runs containers on bare metal, an entire management layer -- customer cluster management and scheduling/provisioning of containers in that cluster -- can be eliminated. In its place, containers can be provisioned using cloud provisioning tools, and customers can scale containers without needing to scale VMs or place containers in them.
-
-Contents:
-
-- [Concepts](#concepts)
-- `triton` commands
-  - [`triton project...`](project.md)
-  - [`triton service...`](service.md)
-  - [`triton meta...`](meta.md)
-  - [`triton queue...`](queue.md)
-- Manifest files
-	- [Project manifest](project-manifest.md)
-	- [Service manifest](service-manifest.md)
-- User stories
-	- [jupiter.example.com: what it is and development workflow](./user-stories/jupiter-example-com.md)
-	- [Automatically building and testing jupiter.example.com with Jenkins](./user-stories/jupiter-example-com-jenkins.md)
-	- [Running jupiter.example.com in multiple data centers](./user-stories/jupiter-example-com-multi-dc.md)
-	- [Health-checking, monitoring, and scaling jupiter.example.com](./user-stories/jupiter-example-com-monitoring-and-health.md)
-	- [Creating, copying, and moving projects like microsite.jupiter.example.com](./user-stories/microsite-jupiter-example-com.md) (also includes secret management)
-
+This RFD proposes features that would allow users to organize their infrastructure in ways that better represent their application components. The first of these organizing concepts is the *service*. A service is a collection of compute instances running the same software image with the same configuration, and a collection of services is called a *project*.
 
 
 ## Concepts
 
-### Project
+### Organizations, projects, users
 
-A project is a collection of related compute instances and other related resources ([see "projects" in RFD13](../0013/README.md#proposal) for more detail). A service and all its instances _must_ be a member of a single project. Permissions about who can view or modify a service are set according to RFD13 rules for the project.
+Significant aspects of this RFD assume the existence of RBACv2 ([proposed in RFD13](../0013/README.md#proposal), with implementation discussion in [RFD48](../0048) and [49](../0049)) and the concepts it introduces, including "organizations" and "projects," and new definition for "users."
+
+The following understanding of those objects is used throughout:
+
+- An organization is a collection of users and projects
+- Any number of organizations can be defined
+- A user must be a member of one or more organizations
+- A user is always a member of their personal organization
+- An organization may have any number of users and projects
+- A project must be a member of one organization
+- A project may have any number of users
+
+The model for this is GitHub's [organizations, users, and repositories](https://help.github.com/categories/setting-up-and-managing-organizations-and-teams/). Projects (similar to GitHub's repositories) are further defined below and throughout this document.
+
+We will expand the following diagram with additional components as we introduce them:
+
+```
+              +-------------+
+          +---+Organizations| --+
+          |   +-------------+   |
+          |                     |
+      +---v----+             +--v--+
+      |Projects|<----------->|Users|
+      +--------+             +-----+
+```
 
 ### Service
 
-Services are at the core of Mariposa. A service is defined by a service manifest that specifies a single image (any image supported by IMGAPI) or Manta job command. A service may be run in a single compute instance, or can be scaled scaled to any number of instances as needed.
+Services are at the core of Mariposa. Services are any number of compute instances running the same software image and configuration. A service may be run in a single compute instance, or can be scaled scaled to any number of instances as needed.
 
-A service may represent a complete application, if that application runs in a single container, but most applications will be comprised of multiple services in a single project.
+A service may represent a complete application, if that application runs in a single container, but it's expected that most applications will be comprised of multiple services running together as a [project](#project).
+
+```
+          +-------------+
+      +---+Organizations| --+
+      |   +-------------+   |
+      |                     |
+  +---v----+             +--v--+
+  |Projects|<----------->|Users|
+  +---+----+             +-----+
+      |
+  +---v----+
+  |Services|
+  +--------+
+```
+
+[Read more about what services mean in the Mariposa context](./services), including Triton CLI commands and the manifest file.
+
 
 ### Service and compute types
+
+Mariposa is responsible for provisioning and deprovisioning compute instances for the user based on the service definition. This effectively abstracts away what used to be the core definition of the cloud—virtualized compute—from what the user directly manages.
+
+```
+          +-------------+
+      +---+Organizations| --+
+      |   +-------------+   |
+      |                     |
+  +---v----+             +--v--+
+  |Projects|<----------->|Users|
+  +---+----+             +-----+
+      |
+  +---v----+
+  |Services|
+  +--------+
+      |
+  +---v---+
+  |Compute|
+  +-------+
+```
+
+However, the user still needs to control what type of compute resources are provisioned, and how they'll run.
+
+The types of compute providing a service may include:
+
+- `docker` (default)
+- `infrastructure|lx|smartmachine`
+- `kvm|vm|hvm`
+- `manta`
+
+Only `docker`,`infrastructure`, and `kvm` are required for the MVP.
 
 Not all services run continuously. The growing interest in "function as a service" offerings (as demonstrated in Manta Jobs, and later in AWS' Lambda), as well as the common reality of scheduled batch jobs, indicates that Mariposa should include support for non-continuous services.
 
@@ -67,23 +118,141 @@ These types may include:
 
 Only `continuous` is required for the MVP.
 
-The types of compute providing these services may include:
+Service and compute types, are discussed further in the [services manifest](./services/manifest.md).
 
-- `docker` (default)
-- `infrastructure|lx|smartmachine`
-- `kvm|vm|hvm`
-- `manta`
 
-Only `docker`,`infrastructure`, and `kvm` are required for the MVP.
+### Project
 
-### Task queue
+While [services](#service) abstract any number of compute instances running the same software with the same configuration, a project allows users to group services and other resources together so that they can be managed as a whole without the distraction or complication or unrelated components.
 
-Scaling, upgrading, even stopping all the instances of an app can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
+The concept of projects was first introduced with [RBACv2 in RFD13](../0013/README.md#proposal), this RFD intends to replace the definition of services from RFD13. Though projects and other features described in this RFD may be built independently of RBACv2 work, many assumptions about RBACv2 are made throughout this text.
 
-This document defines tasks specific to deploying services, but the task queue is not limited to services.
+Once projects are implemented, all customer-defined infrastructure resources in Triton, including [compute](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), and other resources that may be defined in the future _must_ be a member of a project. Some resources (networks, for example) may be shared among different projects, while others (example: services and compute instances) must only be part of a single project.
+
+```
+                          +-------------+
+                      +---+Organizations| --+
+                      |   +-------------+   |
+                      |                     |
+                      |                     |
+                  +---v----+             +--v--+
+                  |Projects|<----------->|Users|
+                  +---+----+             +-----+
+                      |
+    +-----------+-----+-----+-----------+
+    |           |           |           |
++---v----+  +---v----+  +---v---+  +----v----+
+|Services|  |Networks|  |Storage|  |Unmanaged|
++--------+  +--------+  +-------+  | Compute |
+    |                              +---------+
+    |
++---v---+
+|Compute|
++-------+
+```
+
+In the above diagram "unmanaged compute" describes both existing instances that were defined before the introduction of services, as well as new instances that a user may define without first defining a service. Support for existing unmanaged compute and their ongoing use, as well as the ability to provision new unmanaged instances is required, despite the introduction of services. However, there is no requirement nor intention of providing a migration plan to convert a collection of existing unmanaged instances into a service.
+
+Projects are described by a [project manifest](./projects/manifest.md), a YAML-formatted file that can be easily copied from elsewhere and in which changes are easily discernible in a text diff. They also have attached metadata as described below.
+
+[Read more about what projects mean in the Mariposa context](./projects), including Triton CLI commands and the manifest file.
+
 
 ### Project meta (including secrets)
 
 Many applications require configuration values which are undesirable or unsafe to set in the application image. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
 
 This document proposes a simple method of storing those details and injecting them into containers. It is not intended to provide the rich features of solutions like Hashicorp's Vault, instead it is intended to provide a basic solution that is easy to use in a broad variety of applications.
+
+[Read more about meta in the Mariposa context](./meta), including Triton CLI commands and the manifest file.
+
+
+### Task queue
+
+Scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
+
+[Read more about the the Mariposa task queue](./queue), including Triton CLI commands.
+
+
+## User stories
+
+The following user stories are intended to provide a narrative understanding of how these features are intended to be used:
+
+- [jupiter.example.com: what it is and development workflow](./user-stories/jupiter-example-com.md)
+- [Automatically building and testing jupiter.example.com with Jenkins](./user-stories/jupiter-example-com-jenkins.md)
+- [Running jupiter.example.com in multiple data centers](./user-stories/jupiter-example-com-multi-dc.md)
+- [Health-checking, monitoring, and scaling jupiter.example.com](./user-stories/jupiter-example-com-monitoring-and-health.md)
+- [Creating, copying, and moving projects like microsite.jupiter.example.com](./user-stories/microsite-jupiter-example-com.md) (also includes secret management)
+
+
+## Implementation and architecture
+
+This RFD is mostly concerned with what users can do with Mariposa, not how those features are implemented. Work to define an implementation has begun in additional RFDs, which propose the following components:
+
+- [Projects API](https://github.com/joyent/rfd/blob/master/rfd/0079/README.md), which is where [projects](https://github.com/joyent/rfd/blob/master/rfd/0036/project.md) and their attached [services](https://github.com/joyent/rfd/blob/master/rfd/0036/service.md) and [metadata](https://github.com/joyent/rfd/blob/master/rfd/0036/meta.md) are managed
+- [ProjectsConvergence API](https://github.com/joyent/rfd/blob/master/rfd/0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a queue of reconciliation plans currently being executed.
+- [ServicesHealth agent](https://github.com/joyent/rfd/blob/master/rfd/0081/README.md), which is responsible for executing health checks defined for each service in the project and reporting any failures to the Convergence service.
+
+Those components are intended to be private services and agents within Triton, exposed via CloudAPI:
+
+```
+                                                ┌─────────────┐
+                                                │             │
+                                                │ Triton user │
+                                                │             │
+                                                └─────────────┘
+                                                       │
+  Public                                               │
+  ─────────────────────────────────────────────────────┼────────────────────
+  Private                                              │
+  Global services                                      ▼
+                                                 ┌──────────┐
+                                                 │          │
+                                                 │ CloudAPI │
+                                                 │          │
+                                                 └──────────┘
+                                                       │
+                                                       ▼
+                 ┌─────────────────────────┐   ┌──────────────┐    ┌───────┐
+                 │                         │   │              │    │       │
+              ┌──│ ProjectsConvergence API │◀─▶│ Projects API │───▶│ Moray │
+              │  │                         │   │              │    │       │
+              │  └─────────────────────────┘   └──────────────┘    └───────┘
+              │               ▲         ▲
+              │               │         │
+              │          Changefeed     │
+              │               ▲         └─────────────────┐
+              │         ┌─────┴───┐                       │
+              │         │         │                       │
+              │     ┌───────┐ ┌───────┐                   │
+              │     │       │ │       │            Health events,
+              └────▶│ vmapi │ │ cnapi │             agent config
+                    │       │ │       │                   ▲
+                    └───────┘ └───────┘                   │
+                        │                                 │
+                        ▼                                 │
+                  Provisioning                            │
+                        │                                 │
+                        │                                 │
+  ──────────────────────┼─────────────────────────────────┼─────────────────
+  Per-project agents    │                                 │
+                        │                     ┌──────────────────────┐
+                        │                     │                      │
+                        │                     │ ServicesHealth agent │
+                        │                     │                      │
+                        │                     └──────────────────────┘
+                        │                                 │
+  ──────────────────────┼─────────────────────────────────┼─────────────────
+  Customer instances    │                                 │
+                        │                                 ▼
+                        │                          TCP and HTTP(S)
+                        │                         health checks via
+                        │                          customer fabric
+                        │                                 │
+                        │      ┌────────────────────┐     │
+                        │      │                    │     │
+                        └─────▶│ Containers and VMs │◀────┘
+                               │                    │
+                               └────────────────────┘
+
+```
