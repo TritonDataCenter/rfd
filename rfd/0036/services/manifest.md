@@ -305,9 +305,8 @@ healthchecks:
     timeout: 10
     retries: 3
 
-  - type: command # the command is run in the container (only supported for non-KVM)
-    command: /usr/sbin/some_executable # any non-zero output is a failure
-    user: root
+  - type: tcp # the command is run in the container (only supported for non-KVM)
+    port: 23
     poll: 30
     timeout: 10
     retries: 3
