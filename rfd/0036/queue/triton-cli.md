@@ -49,3 +49,9 @@ uuid          component    task         state    target
 ## `triton queue stop <task uuid>`
 
 Terminates a task.
+
+However, because the task resulted from a difference between the  desired state of the project and the actual state of the infrastructure, the task (or a similar one) may be respawned if the difference continues.
+
+Questions:
+
+1. Should stopping a task in a project suppress the spawning of new tasks for the same project until the user changes the project's desired state? If so, how should that be represented to the user?
