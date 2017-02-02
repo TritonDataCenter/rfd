@@ -44,49 +44,44 @@ We will expand the following diagram with additional components as we introduce 
 
 ```
 
-           ┌───────────────┐
-           │               │
-           │ Organizations │
-           │               │
-           └───────────────┘
-                   │
-         ┌─────────┴─────────┐
-         │                   │
-   ┌──────────┐          ┌───────┐
-   │          │          │       │
-   │ Projects │──────────│ Users │
-   │          │          │       │
-   └──────────┘          └───────┘
+                 ┌───────────────┐
+                 │               │
+          ┌──────│ Organizations │──────┐
+          │      │               │      │
+          │      └───────────────┘      │
+    ┌──────────┐                    ┌───────┐
+    │          │                    │       │
+    │ Projects │────────────────────│ Users │
+    │          │                    │       │
+    └──────────┘                    └───────┘
 
 ```
 
 ### Service
 
-Services are at the core of Mariposa. Services are any number of compute instances running the same software image and configuration. A service may be run in a single compute instance, or can be scaled scaled to any number of instances as needed.
+Services are at the core of Mariposa. Services are any number of compute instances running the same software image and configuration. A service may be run in a single compute instance, or can be scaled to any number of instances as needed.
 
 A service may represent a complete application, if that application runs in a single container, but it's expected that most applications will be comprised of multiple services running together as a [project](#project).
 
 ```
 
-           ┌───────────────┐
-           │               │
-           │ Organizations │
-           │               │
-           └───────────────┘
-                   │
-         ┌─────────┴─────────┐
-         │                   │
-   ┌──────────┐          ┌───────┐
-   │          │          │       │
-   │ Projects │──────────│ Users │
-   │          │          │       │
-   └──────────┘          └───────┘
-         │
-   ┌──────────┐
-   │          │
-   │ Services │
-   │          │
-   └──────────┘
+                 ┌───────────────┐
+                 │               │
+          ┌──────│ Organizations │──────┐
+          │      │               │      │
+          │      └───────────────┘      │
+    ┌──────────┐                    ┌───────┐
+    │          │                    │       │
+    │ Projects │────────────────────│ Users │
+    │          │                    │       │
+    └──────────┘                    └───────┘
+          │
+          │
+    ┌──────────┐
+    │          │
+    │ Services │
+    │          │
+    └──────────┘
 
 ```
 
@@ -99,32 +94,30 @@ Mariposa is responsible for provisioning and deprovisioning compute instances fo
 
 ```
 
-           ┌───────────────┐
-           │               │
-           │ Organizations │
-           │               │
-           └───────────────┘
-                   │
-         ┌─────────┴─────────┐
-         │                   │
-   ┌──────────┐          ┌───────┐
-   │          │          │       │
-   │ Projects │──────────│ Users │
-   │          │          │       │
-   └──────────┘          └───────┘
-         │
-   ┌──────────┐
-   │          │
-   │ Services │
-   │          │
-   └──────────┘
-         │
-    ┌─────────┐
-    │         │
-    │ Compute │
-    │         │
-    └─────────┘
-
+                 ┌───────────────┐
+                 │               │
+          ┌──────│ Organizations │──────┐
+          │      │               │      │
+          │      └───────────────┘      │
+    ┌──────────┐                    ┌───────┐
+    │          │                    │       │
+    │ Projects │────────────────────│ Users │
+    │          │                    │       │
+    └──────────┘                    └───────┘
+          │
+          │
+    ┌──────────┐
+    │          │
+    │ Services │
+    │          │
+    └──────────┘
+          │
+          │
+     ┌─────────┐
+     │         │
+     │ Compute │
+     │         │
+     └─────────┘
 ```
 
 However, the user still needs to control what type of compute resources are provisioned, and how they'll run.
@@ -161,21 +154,18 @@ Once projects are implemented, all customer-defined infrastructure resources in 
 
 ```
 
-                       ┌───────────────┐
-                       │               │
-                       │ Organizations │
-                       │               │
-                       └───────────────┘
-                               │
-                     ┌─────────┴─────────┐
-                     │                   │
-               ┌──────────┐          ┌───────┐
-               │          │          │       │
-               │ Projects │──────────│ Users │
-               │          │          │       │
-               └──────────┘          └───────┘
-                     │
-        ┌────────────┼───────────┬────────────┐
+                     ┌───────────────┐
+                     │               │
+              ┌──────│ Organizations │──────┐
+              │      │               │      │
+              │      └───────────────┘      │
+        ┌──────────┐                    ┌───────┐
+        │          │                    │       │
+        │ Projects │────────────────────│ Users │
+        │          │                    │       │
+        └──────────┘                    └───────┘
+              │
+        ┌─────┴──────┬───────────┬────────────┐
         │            │           │            │
   ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌───────────┐
   │          │ │          │ │         │ │           │
@@ -194,7 +184,7 @@ Once projects are implemented, all customer-defined infrastructure resources in 
 
 In the above diagram "unmanaged compute" describes both existing instances that were defined before the introduction of services, as well as new instances that a user may define without first defining a service. Support for existing unmanaged compute and their ongoing use, as well as the ability to provision new unmanaged instances is required, despite the introduction of services. However, there is no requirement nor intention of providing a migration plan to convert a collection of existing unmanaged instances into a service.
 
-Projects are described by a [project manifest](./projects/manifest.md), a YAML-formatted file that can be easily copied from elsewhere and in which changes are easily discernible in a text diff. They also have attached metadata as described below.
+Projects are described by a [project manifest](./projects/manifest.md), a text file that can be easily copied from elsewhere and in which changes are easily discernible in a text diff. They also have attached metadata as described below.
 
 [Read more about what projects mean in the Mariposa context](./projects), including Triton CLI commands and the manifest file.
 
@@ -203,7 +193,7 @@ Projects are described by a [project manifest](./projects/manifest.md), a YAML-f
 
 Many applications require configuration values which are undesirable or unsafe to set in the application image. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
 
-This document proposes a simple method of storing those details and injecting them into containers. It is not intended to provide the rich features of solutions like Hashicorp's Vault, instead it is intended to provide a basic solution that is easy to use in a broad variety of applications.
+This document proposes a simple method of storing those details and injecting them into containers that offers better security than embedding them in the images or provisioning scripts. It is intended to easily interoperate with existing applications, rather than propose new methods of secret sharing that would require changes in customer applications.
 
 [Read more about meta in the Mariposa context](./meta), including Triton CLI commands and the manifest file.
 
@@ -231,7 +221,7 @@ The following user stories are intended to provide a narrative understanding of 
 This RFD is mostly concerned with what users can do with Mariposa, not how those features are implemented. Work to define an implementation has begun in additional RFDs, which propose the following components:
 
 - [Projects API](../0079/README.md), which is where [projects](./projects) and their attached [services](./services) and [metadata](./meta) are managed
-- [ProjectsConvergence API](../0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a [queue](./queue) of reconciliation plans currently being executed.
+- [ProjectsConvergence API](../0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a [queue](./queue) of reconciliation plans currently being executed. The name "convergence" emphasizes this component's role in managing reconciliation between the goal state and actual state.
 - [ServicesHealth agent](../0081/README.md), which is responsible for executing [health checks](./services/manifest.md#healthchecks) defined for each service in the project and reporting any failures to the Convergence service.
 
 Those components are intended to be private services and agents within Triton, exposed via CloudAPI:
