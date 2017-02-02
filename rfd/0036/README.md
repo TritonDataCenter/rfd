@@ -222,7 +222,7 @@ This RFD is mostly concerned with what users can do with Mariposa, not how those
 
 - [Projects API](../0079/README.md), which is where [projects](./projects) and their attached [services](./services) and [metadata](./meta) are managed
 - [ProjectsConvergence API](../0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a [queue](./queue) of reconciliation plans currently being executed. The name "convergence" emphasizes this component's role in managing reconciliation between the goal state and actual state.
-- [ServicesHealth agent](../0081/README.md), which is responsible for executing [health checks](./services/manifest.md#healthchecks) defined for each service in the project and reporting any failures to the Convergence service.
+- [ServicesHealth agent](../0081/README.md), which is responsible for executing [health checks](./services/manifest.md#healthchecks) defined for each service in the project and reporting any failures to the Convergence service. The agents themselves will be spawned and monitored by the ProjectsConvergence service.
 
 Those components are intended to be private services and agents within Triton, exposed via CloudAPI:
 
