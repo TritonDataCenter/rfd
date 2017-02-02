@@ -178,20 +178,20 @@ Scaling, upgrading, even stopping all the instances of an service can take time.
 
 The following user stories are intended to provide a narrative understanding of how these features are intended to be used:
 
-- [jupiter.example.com: what it is and development workflow](./user-stories/jupiter-example-com.md)
-- [Automatically building and testing jupiter.example.com with Jenkins](./user-stories/jupiter-example-com-jenkins.md)
-- [Running jupiter.example.com in multiple data centers](./user-stories/jupiter-example-com-multi-dc.md)
-- [Health-checking, monitoring, and scaling jupiter.example.com](./user-stories/jupiter-example-com-monitoring-and-health.md)
-- [Creating, copying, and moving projects like microsite.jupiter.example.com](./user-stories/microsite-jupiter-example-com.md) (also includes secret management)
+- [jupiter.example.com: what it is and development workflow](./stories/jupiter-example-com.md)
+- [Automatically building and testing jupiter.example.com with Jenkins](./stories/jupiter-example-com-jenkins.md)
+- [Running jupiter.example.com in multiple data centers](./stories/jupiter-example-com-multi-dc.md)
+- [Health-checking, monitoring, and scaling jupiter.example.com](./stories/jupiter-example-com-monitoring-and-health.md)
+- [Creating, copying, and moving projects like microsite.jupiter.example.com](./stories/microsite-jupiter-example-com.md) (also includes secret management)
 
 
 ## Implementation and architecture
 
 This RFD is mostly concerned with what users can do with Mariposa, not how those features are implemented. Work to define an implementation has begun in additional RFDs, which propose the following components:
 
-- [Projects API](https://github.com/joyent/rfd/blob/master/rfd/0079/README.md), which is where [projects](https://github.com/joyent/rfd/blob/master/rfd/0036/project.md) and their attached [services](https://github.com/joyent/rfd/blob/master/rfd/0036/service.md) and [metadata](https://github.com/joyent/rfd/blob/master/rfd/0036/meta.md) are managed
-- [ProjectsConvergence API](https://github.com/joyent/rfd/blob/master/rfd/0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a queue of reconciliation plans currently being executed.
-- [ServicesHealth agent](https://github.com/joyent/rfd/blob/master/rfd/0081/README.md), which is responsible for executing health checks defined for each service in the project and reporting any failures to the Convergence service.
+- [Projects API](../0079/README.md), which is where [projects](./projects) and their attached [services](./services) and [metadata](./meta) are managed
+- [ProjectsConvergence API](../0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a [queue](./queue) of reconciliation plans currently being executed.
+- [ServicesHealth agent](../0081/README.md), which is responsible for executing [health checks](./services/manifest.md#healthchecks) defined for each service in the project and reporting any failures to the Convergence service.
 
 Those components are intended to be private services and agents within Triton, exposed via CloudAPI:
 

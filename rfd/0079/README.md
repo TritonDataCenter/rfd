@@ -3,7 +3,7 @@ authors: Casey Bisson <casey.bisson@joyent.com>, Jason Pincin <jason.pincin@joye
 state: predraft
 ---
 
-# RFD 79 Projects, projectsServices, and projectsMeta implementation
+# RFD 79 Projects API implementation
 
 The Mariposa (RFD36) Project service will be responsible for maintaining and exposing data about user projects, services, and metadata. The project service will expose multiple endpoints for interacting with this data, to be exposed to users via CloudAPI and consumed directly by services within Triton.
 
