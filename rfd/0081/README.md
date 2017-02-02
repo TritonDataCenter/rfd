@@ -3,7 +3,7 @@ authors: Casey Bisson <casey.bisson@joyent.com>, Jason Pincin <jason.pincin@joye
 state: predraft
 ---
 
-# RFD 81 servicesHealth implementation
+# RFD 81 ServicesHealth agent implementation
 
 The Mariposa (RFD36) health check agent will be responsible for monitoring the health of user services. The Health Check agent process(es) will read user defined health check definitions from the Project service, and coordinate which health check process will be responsible for running any given definition. The Project service is read at agent start time, then polled on an interval. There's an endpoint exposed by the agent that will trigger a poll as well.
 
