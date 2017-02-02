@@ -215,7 +215,7 @@ Those components are intended to be private services and agents within Triton, e
                                                        ▼
                  ┌─────────────────────────┐   ┌──────────────┐    ┌───────┐
                  │                         │   │              │    │       │
-              ┌──│ ProjectsConvergence API │◀──│ Projects API │───▶│ Moray │
+              ┌──│ ProjectsConvergence API │◀─▶│ Projects API │───▶│ Moray │
               │  │                         │   │              │    │       │
               │  └─────────────────────────┘   └──────────────┘    └───────┘
               │               ▲         ▲
