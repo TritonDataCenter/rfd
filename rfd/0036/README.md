@@ -43,13 +43,13 @@ The model for this is GitHub's [organizations, users, and repositories](https://
 We will expand the following diagram with additional components as we introduce them:
 
 ```
-              +-------------+
-          +---+Organizations| --+
-          |   +-------------+   |
-          |                     |
-      +---v----+             +--v--+
-      |Projects|<----------->|Users|
-      +--------+             +-----+
+              ┌───────────────┐
+        ┌─────│ Organizations │──────┐
+        │     └───────────────┘      │
+        ▼                            ▼
+┌──────────────┐             ┌──────────────┐
+│   Projects   │◀───────────▶│    Users     │
+└──────────────┘             └──────────────┘
 ```
 
 ### Service
@@ -59,17 +59,18 @@ Services are at the core of Mariposa. Services are any number of compute instanc
 A service may represent a complete application, if that application runs in a single container, but it's expected that most applications will be comprised of multiple services running together as a [project](#project).
 
 ```
-          +-------------+
-      +---+Organizations| --+
-      |   +-------------+   |
-      |                     |
-  +---v----+             +--v--+
-  |Projects|<----------->|Users|
-  +---+----+             +-----+
-      |
-  +---v----+
-  |Services|
-  +--------+
+              ┌───────────────┐
+        ┌─────│ Organizations │──────┐
+        │     └───────────────┘      │
+        ▼                            ▼
+┌──────────────┐             ┌──────────────┐
+│   Projects   │◀───────────▶│    Users     │
+└──────────────┘             └──────────────┘
+        │
+        ▼
+┌──────────────┐
+│   Services   │
+└──────────────┘
 ```
 
 [Read more about what services mean in the Mariposa context](./services), including Triton CLI commands and the manifest file.
@@ -80,21 +81,23 @@ A service may represent a complete application, if that application runs in a si
 Mariposa is responsible for provisioning and deprovisioning compute instances for the user based on the service definition. This effectively abstracts away what used to be the core definition of the cloud—virtualized compute—from what the user directly manages.
 
 ```
-          +-------------+
-      +---+Organizations| --+
-      |   +-------------+   |
-      |                     |
-  +---v----+             +--v--+
-  |Projects|<----------->|Users|
-  +---+----+             +-----+
-      |
-  +---v----+
-  |Services|
-  +--------+
-      |
-  +---v---+
-  |Compute|
-  +-------+
+              ┌───────────────┐
+        ┌─────│ Organizations │──────┐
+        │     └───────────────┘      │
+        ▼                            ▼
+┌──────────────┐             ┌──────────────┐
+│   Projects   │◀───────────▶│    Users     │
+└──────────────┘             └──────────────┘
+        │
+        ▼
+┌──────────────┐
+│   Services   │
+└──────────────┘
+        │
+        ▼
+┌──────────────┐
+│   Compute    │
+└──────────────┘
 ```
 
 However, the user still needs to control what type of compute resources are provisioned, and how they'll run.
@@ -130,25 +133,25 @@ The concept of projects was first introduced with [RBACv2 in RFD13](../0013/READ
 Once projects are implemented, all customer-defined infrastructure resources in Triton, including [compute](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), and other resources that may be defined in the future _must_ be a member of a project. Some resources (networks, for example) may be shared among different projects, while others (example: services and compute instances) must only be part of a single project.
 
 ```
-                          +-------------+
-                      +---+Organizations| --+
-                      |   +-------------+   |
-                      |                     |
-                      |                     |
-                  +---v----+             +--v--+
-                  |Projects|<----------->|Users|
-                  +---+----+             +-----+
-                      |
-    +-----------+-----+-----+-----------+
-    |           |           |           |
-+---v----+  +---v----+  +---v---+  +----v----+
-|Services|  |Networks|  |Storage|  |Unmanaged|
-+--------+  +--------+  +-------+  | Compute |
-    |                              +---------+
-    |
-+---v---+
-|Compute|
-+-------+
+                                         ┌───────────────┐
+                                   ┌─────│ Organizations │──────┐
+                                   │     └───────────────┘      │
+                                   ▼                            ▼
+                           ┌──────────────┐             ┌──────────────┐
+                           │   Projects   │◀───────────▶│    Users     │
+                           └──────────────┘             └──────────────┘
+                                   │
+        ┌─────────────────┬────────┴────────┬───────────────────┐
+        │                 │                 │                   │
+        ▼                 ▼                 ▼                   ▼
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌───────────────────┐
+│   Services   │  │   Networks   │  │   Storage    │  │ Unmanaged Compute │
+└──────────────┘  └──────────────┘  └──────────────┘  └───────────────────┘
+        │
+        ▼
+┌──────────────┐
+│   Compute    │
+└──────────────┘
 ```
 
 In the above diagram "unmanaged compute" describes both existing instances that were defined before the introduction of services, as well as new instances that a user may define without first defining a service. Support for existing unmanaged compute and their ongoing use, as well as the ability to provision new unmanaged instances is required, despite the introduction of services. However, there is no requirement nor intention of providing a migration plan to convert a collection of existing unmanaged instances into a service.
@@ -191,7 +194,7 @@ This RFD is mostly concerned with what users can do with Mariposa, not how those
 
 - [Projects API](../0079/README.md), which is where [projects](./projects) and their attached [services](./services) and [metadata](./meta) are managed
 - [ProjectsConvergence API](../0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a [queue](./queue) of reconciliation plans currently being executed.
-- [ServicesHealth agent](../0081/README.md), which is responsible for executing [health checks](./services/manifest.md#healthchecks) defined for each service in the project and reporting any failures to the Convergence service.
+- [ServicesHealth agent](../0081/README.md), which is responsible for executing [health checks](./services/manifest.md#healthchecks) defined for each service in the project and reporting any failures to the Convergence service. The agents themselves will be spawned and monitored by the ProjectsConvergence service.
 
 Those components are intended to be private services and agents within Triton, exposed via CloudAPI:
 
