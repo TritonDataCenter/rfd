@@ -12,4 +12,4 @@
 
 Scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs. Each project has its own queue.
 
-- [CLI commands](triton-cli.md)
+- [CLI commands](triton-queue-cli.md)

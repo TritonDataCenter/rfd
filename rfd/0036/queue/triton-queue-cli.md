@@ -10,16 +10,8 @@
 
 # Managing the queue with the Triton CLI
 
-The following commands are all within the scope of a given project.
+The following commands are all within the scope a specified project, within a specified organization. See more details about [specifying the organization and project](../projects/triton-cli.md#specifying-the-organization-and-project) for CLI commands.
 
-The `triton` CLI must allow users to specify an organization and project to work in a manner similar to how the user can now specify a profile. Once the default organization and project are set, all interactions with the resources defined here are within the scope of that organization and project.
-
-All `triton queues` commands must also support to specify the organization and project:
-
-- `-j <project name|uuid>`
-- `-o <organization name|uuid>`
-
-This is similar to specifying the Triton profile with `triton -p <profile name>`. Example: `triton [-j <project name>] queue list`.
 
 ## `triton queue list`
 

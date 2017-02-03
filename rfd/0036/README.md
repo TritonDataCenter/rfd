@@ -85,7 +85,7 @@ A service may represent a complete application, if that application runs in a si
 
 ```
 
-[Read more about what services mean in the Mariposa context](./services), including Triton CLI commands and the manifest file.
+[Read more about what services mean in the Mariposa context](./services).
 
 
 ### Service and compute types
