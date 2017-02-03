@@ -12,7 +12,7 @@
 
 The following commands are all within the scope of a given project.
 
-The `triton` CLI must allow users to specify an organization and project to work within in a manner similar to how the user can now specify a profile. Once the default organization and project are set, all interactions with the resources defined here are within the scope of that organization and project.
+The `triton` CLI must allow users to specify an organization and project to work in a manner similar to how the user can now specify a profile. Once the default organization and project are set, all interactions with the resources defined here are within the scope of that organization and project.
 
 Additionally, `triton meta` commands must support a `-j <project name>` optional argument to specify the project name/uuid. This is similar to specifying the Triton profile with `triton -p <profile name>`. Example: `triton [-j <project name>] meta list`. Support for `-o <organization name>` is similarly expected.
 
