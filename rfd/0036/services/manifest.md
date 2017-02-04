@@ -284,10 +284,12 @@ Health checks are run on the specified poll frequency on each instance of the se
 
 If the ContainerPilot details are configured, the scheduler should automatically detect and use the ContainerPilot health checks, in addition to any user-specified health checks here. **Implemention note:** the ContainerPilot health-checks, upstreams, etc. can change after initial launch of the container. Mariposa must be able to accommodate these changes.
 
+The `ServicesHealth` agent responsible for running health checks will run in a NAT zone associated with the project that is connected to the service's network.
+
 Supported types:
 
-- `http|https`: executed in the user's NAT zone connected to the service's network; will error if the user has no NAT zone on the specified network.
-- `command`: executed inside the instance.
+- `http|https`: makes a request to the given URL and validate response code, headers, or body as configured.
+- `tcp`: verifies that a service is accepting tcp connections on a given port.
 
 Additional details are required for each type. Appropriate limits need to be identified for the number of health checks on a single service and their maximum timeout.
 
@@ -303,9 +305,8 @@ healthchecks:
     timeout: 10
     retries: 3
 
-  - type: command # the command is run in the container (only supported for non-KVM)
-    command: /usr/sbin/some_executable # any non-zero output is a failure
-    user: root
+  - type: tcp # the command is run in the container (only supported for non-KVM)
+    port: 23
     poll: 30
     timeout: 10
     retries: 3

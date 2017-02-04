@@ -15,7 +15,15 @@ Many applications require configuration values which are undesirable or unsafe t
 The importance of project meta grows as we consider the likelihood of importing project and service manifests from a library of components, where it will be especially undesirable to embed configuration details.
 
 - [Manifest](manifest.md)
-- [CLI commands](triton-cli.md)
+- [CLI commands](triton-meta-cli.md)
+
+### Permissions
+
+Metadata may be used for a number of different purposes, including the storage of passwords that might otherwise be embedded in an image or deployment script.
+
+In many cases, the software that consumes these secrets needs them written to configuration files on disk, or even if the secrets are kept in memory, they're often easily accessible to anybody who can get a shell on the compute instance.
+
+For this reason, access to metadata is granted to any user with a role that allows them to get a shell in the instance. It is likely this includes users with something we may define as the "owner" or "operator" role, or similar.
 
 ### Variable replacement/interpolation
 
@@ -78,3 +86,7 @@ The syntax for referencing a variable in the manifest:
 ```
 
 The correctness of project variables and meta is only guaranteed at the moment of interpolation. That is, changes in project variables or meta will not be reflected in a running instance's environment variables, even if those environment variables were set from project variables or meta.
+
+### Potential future features
+
+This RFD narrowly defines metadata management for the purposes of an achievable MVP. However, it's possible that support may be added for more sophisticated features in the future. For example, we might define variable substitution that will generate [one-time secrets that are compatible with Hashicorp's Vault](https://www.joyent.com/blog/secrets-management-in-the-autopilotpattern).

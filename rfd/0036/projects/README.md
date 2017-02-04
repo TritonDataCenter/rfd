@@ -13,4 +13,5 @@
 A project is a collection of related services, metadata, and other resources. Users may be invited to participate in a project, and different users may have different roles within the project. A user's permission for each object must be defined by the user's role, and no more detailed permissions within a given project may be granted.
 
 - [Manifest](manifest.md)
-- [CLI commands](triton-cli.md)
+- [Changes to existing CLI commands and API methods](triton-cli.md)
+- [New CLI commands to manage projects](triton-projects-cli.md)
