@@ -15,37 +15,23 @@ The following commands are all within the scope a specified project, within a sp
 
 ## `triton queue list`
 
-Lists all queued tasks, including service deploy tasks. 
-
-A service deploy task can include:
-
-- `start` the deploy task for `triton service start...` or on `triton service add...` for a continuous service.
-- `stop` the deploy task for `triton service stop...` and `triton service delete...`
-- `scale` the deploy task for `triton service scale...`
-- `reprovision` the deploy task for `triton service reprovision...` (`update` and `rollback` commands trigger `reprovision` tasks)
-
-Service deploy tasks can have the following states:
-
-- `active`: an in-progress deploy
-- `completed`: a successful previous deploy
-- `failed`: an unsuccessful previous deploy
-- `terminated`: a previous deploy that was prematurely cancelled by the operator
+Lists all queued tasks.
 
 Example:
 
 ```bash
 $ triton queue list
-uuid          component    task         state    target
-<short uuid>  <component>  <task>       <state>  <target>
-85978f42289e  service      reprovision  active   <org>.<project>.<service>
+uuid          scope      task         state
+<short uuid>  <scope>    <task>       <state>
+a3954a48279b  project    start        active
+85978f42289e  my_mysql   reprovision  queued
 ```
 
-## `triton queue stop <task uuid>`
+## `triton queue (terminate|stop) <task uuid>`
 
-Terminates a task.
+Terminates a task and triggers a `freeze` task with the same scope as the terminated task.
 
-However, because the task resulted from a difference between the  desired state of the project and the actual state of the infrastructure, the task (or a similar one) may be respawned if the difference continues.
 
-Questions:
+## `triton queue freeze [--service=<service name or UUID, comma separated>]`
 
-1. Should stopping a task in a project suppress the spawning of new tasks for the same project until the user changes the project's desired state? If so, how should that be represented to the user?
+Terminates all existing tasks for the entire project. Or, if one or more services are specified, just for those services. Calling this also starts a `freeze` task for the same scope, preventing any new, automatically generated tasks from being added to the queue until the freeze is terminated.

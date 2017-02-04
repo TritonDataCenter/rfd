@@ -21,7 +21,7 @@ All `triton` commands must support flags to specify the organization and project
 - `-j <project name|uuid>`
 - `-o <organization name|uuid>`
 
-Additionally, the [`triton project set <project name or UUID>` command](/joyent/rfd/blob/master/rfd/0036/projects/triton-projects-cli.md#triton-project-setset-current-project-name-or-uuid) can set a default project. Once invoked, it will have the effect of injecting a `-j` for each subsequent command that requires a project.
+Additionally, the [`triton project set <project name or UUID>` command](./triton-projects-cli.md#triton-project-setset-current-project-name-or-uuid) can set a default project. Once invoked, it will have the effect of injecting a `-j` for each subsequent command that requires a project.
 
 A similar command is expected to set the default organization, perhaps `triton organization set <project name or UUID>`.
 

@@ -39,7 +39,7 @@ Show the project manifest and details for the specified project.
 
 ## `triton project update (-m <path to project manifest>| project manifest on STDIN) [--rolling=<positive int>] [--(canary|count)=<positive int>] [--previous=<version uuid>] [(-f|--force)]`
 
-if all validation checks pass, this will add a new project version with the given manifest, set that project version as the default, and trigger a `reprovision` of all service instances to the new version.
+If all validation checks pass, this will add a new project version with the given manifest, set that project version as the default, and trigger a `reprovision` of for services that have been changed by the new manifest.
 
 
 ### Validation checks
@@ -57,7 +57,7 @@ The `--previous=<version uuid>` is significant since it's imagined that multiple
 
 ### Deployment strategy
 
-The project manifest may include default deployment strategies for each service. Additionally, optional arguments passed through to `reprovision` may be used to control deployment strategy at the time the update is made:
+For all services changed by the new manifest, this command will trigger a reprovision. The strategy for that reprovision can be defined for each service in the manifest, or overridden for all changed services using options provided to this command:
 
 - `rolling`
 - `canary|count`
@@ -96,7 +96,7 @@ triton project reprovision --rolling=3
 ```
 
 
-## `triton project (versions | version list | version ls)`
+## `triton project (versions|version list|version ls)`
 
 List all versions of the specified project, most recent on top.
 
@@ -194,14 +194,16 @@ Additionally, the deployment behavior can be controlled with arguments in the ma
 - `rolling` is the number instances to attempt to start in parallel; default is `1`; valid range is `1` through the current count of instances. Old instances will not be removed until new instances are "healthy"
 - `count|canary` is the total number of instances to reprovision; valid range is `1` through the current count of instances; default is `null`: no canary behavior
 
+### Selection policy
+
 Instances will be selected and reprovisioned according to the following policy:
 
-- Select all running instances of the service (stopped instances are intentionally excluded, instances in transition are excluded to exclude flapping)
+- Select all running instances of the service (stopped instances are intentionally excluded, instances in transition are excluded to prevent flapping)
 - Apply user-specified filters
 - Order resulting instances:
   - Oldest service version first (excluding the current/default service version)
-  - The current/default service version is always last
   - Oldest instance first within each service revision
+  - The current/default service version is always last
 - Limit by any user-specified `count|canary`
 
 Only supported for `service_type=continuous` services; will error for others.
