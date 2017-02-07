@@ -5,7 +5,7 @@ state: predraft
 
 # RFD 80 ProjectsConvergence API implementation
 
-The Mariposa (RFD36) convergence service will be responsible for insuring service goal state is met. It accomplishes this by polling the service and project APIs, the VM API, and by monitoring Changefeed. When a divergence between goal state and actual state is detected, the convergence service will interact with VM API to resolve the discrepancy. 
+The Mariposa (RFD36) convergence service will be responsible for insuring service goal state is met. It accomplishes this by polling the service and project APIs, the VMAPI, CNAPI, and by monitoring Changefeed. When a divergence between goal state and actual state is detected, the convergence service will interact with VMAPI and CNAPI to resolve the discrepancy. 
 
 The tasks invoked to meet goal state will be managed via an internal task queue which is exposed via the service API. 
 
@@ -13,11 +13,11 @@ Note: Direct interaction here means that limits and other controls set for Cloud
 
 ## Goal state
 
-Goal state is obtained by reading the Mariposa Project service API. Changes to goal state will be detected by the Convergence service via Changefeed (assuming the service API can leverage Changefeed for publishing changes), and by polling the Mariposa service API. Although propagation of changes via Changefeed will be faster, polling remains important because by it's nature, Changefeed is not 100% reliable. 
+Goal state is obtained by reading the Mariposa Project service API. The Convergence service will be notified of goal state changes directly by the Project service, and the Convergence service will in turn update itself by re-reading the Project service.
 
 ## Actual state
 
-The Convergence service will maintain data structures that represent the actual state. VMAPI Changefeed events will be monitored for changed in the VMs that the Convergence API is responsible for. Just as with goal state, the VM API will also be polled to protect against missed Changefeed events. The Convergence service will ignore events for VMs it did not create. 
+The Convergence service will maintain data structures that represent the actual state. VMAPI Changefeed events will be monitored for changed in the VMs that the Convergence API is responsible for. Just as with goal state, the VMAPI and CNAPI will also be polled to protect against missed Changefeed events. The Convergence service will ignore events for VMs it did not create.
 
 ## State convergence
 
@@ -45,7 +45,7 @@ The Convergence service will remove all running service containers.
 
 ## Task queue
 
-The Convergence service will maintain a queue of all active/pending tasks (starting a service, stopping a service, etc), and will expose this information via it's API. It will be possible to cancel these tasks. Mariposa will need to properly clean up after a cancelled task. 
+The Convergence service will maintain a queue of all active/pending tasks (starting a service, stopping a service, etc), and will expose this information via it's API. It will be possible to cancel these tasks, indirectly, through freeze/unfreeze actions at the project level by a user, or at the service level internally. Mariposa will need to properly clean up after a cancelled task.
 
 ## Availability
 
@@ -63,7 +63,7 @@ All below endpoints may be prefixed with `/users/$userId` to access data for a u
 
 Endpoint operations:
 
-* GET - Get state information for all user projects including project summary, service names/IDs, running count, goal count, how many are being stopped/started, etc. This list can be filtered by passing `project` or `service` GET params with ID values.
+* GET - Get state information for all user projects including project summary, service names/IDs, running count, goal count, how many are being stopped/started, frozen status, etc. This list can be filtered by passing `project` or `service` GET params with ID values.
 
 ### /v1/queue
 
