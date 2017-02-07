@@ -27,11 +27,10 @@ a3954a48279b  project    start        active
 85978f42289e  my_mysql   reprovision  queued
 ```
 
-## `triton queue (terminate|stop) <task uuid>`
-
-Terminates a task and triggers a `freeze` task with the same scope as the terminated task.
-
-
 ## `triton queue freeze [--service=<service name or UUID, comma separated>]`
 
-Terminates all existing tasks for the entire project. Or, if one or more services are specified, just for those services. Calling this also starts a `freeze` task for the same scope, preventing any new, automatically generated tasks from being added to the queue until the freeze is terminated.
+Terminates all existing tasks for the entire project. Or, if one or more services are specified, just for those services. Calling this also sets the `frozen` bit for the same scope, causing the Convergence service to ignore it when looking for divergences, until the `frozen` bit is removed (directlt via `unfreeze` below or implicitly through a manifest update).
+
+## `triton queue unfreeze [--service=<service name or UUID, comma separated>]`
+
+Removes the `frozen` bit from the project, or just for one or more services if specified. This will allow the Convergence service to consider the affected project or tasks while looking for divergences.

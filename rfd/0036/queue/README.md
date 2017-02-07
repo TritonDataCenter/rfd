@@ -22,7 +22,6 @@ Tasks that may appear in the queue include:
 - `stop` the deploy task for `triton project stop...` and `triton project delete...`
 - `scale` the task for `triton project scale...`, and when Mariposa is replacing a failed instance (it's re-scaling to get back to the desired number of healthy instances)
 - `reprovision` the deploy task for `triton project reprovision...`; `triton project (update|rollback)` commands trigger `reprovision` tasks
-- `freeze` a task intended to block all other tasks
 
 
 ## States
@@ -53,13 +52,12 @@ The following table describes whether tasks can be executed concurrently, sequen
 
 Tasks reading down the chart are those already in the queue; tasks reading across the chart are those to be added.
 
-|                      | Add `start` | Add `stop` | Add `scale` | Add `reprovision` | Add `freeze` |
-|----------------------|-------------|------------|-------------|-------------------|--------------|
-| `start` active       | Reject      | Terminate  | FIFO        | FIFO              | Terminate    |
-| `stop` active        | Reject      | Reject     | Reject      | Reject            | Terminate    |
-| `scale` active       | FIFO        | Terminate  | Reject      | Concurrent        | Terminate    |
-| `reprovision` active | FIFO        | Terminate  | Concurrent  | Terminate         | Terminate    |
-| `freeze` active      | Terminate   | Terminate  | Terminate   | Terminate         | Reject       |
+|                      | Add `start` | Add `stop` | Add `scale` | Add `reprovision` |
+|----------------------|-------------|------------|-------------|-------------------|
+| `start` active       | Reject      | Terminate  | FIFO        | FIFO              |
+| `stop` active        | Reject      | Reject     | Reject      | Reject            |
+| `scale` active       | FIFO        | Terminate  | Reject      | Concurrent        |
+| `reprovision` active | FIFO        | Terminate  | Concurrent  | Terminate         |
 
 - `Reject`: an attempt to add the task must result in an error
 - `Terminate`: adding the task must terminate the existing task(s)
