@@ -63,7 +63,11 @@ repositories). Those are broken, incomplete, and -- I hope -- not supported.
 If feasible, this RFD will attempt to clean out these obsolete tools.
 
 
-# Operator processes
+# Operator Guide
+
+This section details how operators are expected to setup and work with
+secondary headnodes. It should be used at the basis for operator docs
+at <https://docs.joyent.com> for DC setup and headnode recovery and maintenance.
 
 ## Secondary headnode setup process
 
@@ -166,6 +170,14 @@ the existing secondary headnodes alone:
     ssh $NEW_SERVER
     sdcadm headnode takeover headnode0
     # decommision headnode0
+
+
+## How things work differently with secondary headnodes
+
+- "usbkey" writes are too all the headnodes (platform install, etc.)
+- non-manatee data is backed up periodically to secondary headnodes, e.g.
+  the imgapi delegate dataset, the dhcpd delegate dataset?
+- TODO: fill this out
 
 
 # Core service changes
@@ -296,6 +308,10 @@ TODO
 
 ## Open Questions
 
+- That 'sdcadm post-setup headnode headnode' requires a reboot of the primary
+  headnode, *just* to udpate the hostname to 'headnode0' is unfortunate.
+  Can we avoid or skip that? Perhaps offer option for that:
+        sdcadm post-setup headnode --skip-rename headnode
 - What about an easier case that just snapshots all the core zones and zfs sends
   those to external storage?
 - Any "Q:" and "TODO:" notes above.
@@ -304,6 +320,8 @@ TODO
 ## TODOs
 
 Quick TODOs to not forget about:
+
+- GZ PS1 update to differentiate primary vs secondary headnode
 
 - Wildcard: how does being a UFDS master or slave affect things here?
 
