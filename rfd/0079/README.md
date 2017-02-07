@@ -5,7 +5,7 @@ state: predraft
 
 # RFD 79 Projects API implementation
 
-The Mariposa (RFD36) Project service will be responsible for maintaining and exposing data about user projects, services, and metadata. The project service will expose multiple endpoints for interacting with this data, to be exposed to users via CloudAPI and consumed directly by services within Triton.
+The Mariposa (RFD36) Project service will be responsible for maintaining and exposing data about user projects, services, and metadata. The project service will provide multiple endpoints for interacting with this data, to be exposed to users via CloudAPI and consumed directly by services within Triton.
 
 Projects and their services will be wholly versioned such that a change to the project manifest, metadata, or any service associated with the project will result in a new (sha1 sum) tag being created. 
 
@@ -16,10 +16,7 @@ The Project service will persist data to an appropriate backend (Postgres/Manate
 * [Mariposa service manifest](https://github.com/joyent/rfd/blob/master/rfd/0036/service-manifest.md)
 * [Mariposa project manifest](https://github.com/joyent/rfd/blob/master/rfd/0036/project-manifest.md)
 
-In addition to manifest data, service goal state data will be managed by the Project service, including:
-
-* status - whether a service is stopped, started, or paused
-* scale - the number of containers that should be running for a particular service
+In addition to manifest data, the requested running state of each service will be managed by the Project service, which includes: stopped, started, frozen, and paused (paused needs further discussion).
 
 ## Project and service tagging
 
@@ -27,7 +24,7 @@ Upon creation or change to a project, it's metadata, or any associated service, 
 
 In addition to this, it's desirable that users should be able to associate custom tags with any given sha1 sum, though not strictly required. 
 
-It will be easily discernible which project tags a given service changed in. Services will support custom user tags that will be associated with the service's project sha1 sum. 
+It will be easily discernible which project tags a given service changed in. 
 
 ## Endpoints
 
@@ -41,7 +38,7 @@ All below endpoints may be prefixed with `/users/$userId` to access data for a u
 
 Endpoint operations:
 
-* GET - A list of projects associated with requesting user
+* GET - A list of projects associated with requesting user filterable by organization
 * POST - Create a new project via YAML manifest transmitted in POST payload
 
 ### /v1/projects/$projectId
@@ -98,7 +95,14 @@ Endpoint operations
 
 Endpoint operations:
 
-* GET - Goal/Actual state information via a proxied request to the Convergence service
+* GET - Goal/Actual state information via a proxied request to the Convergence servic
+* PUT - Update goal state information (freeze, thaw, reprovision, stop, start)
+
+### /v1/projects/$projctId/healthchecks
+
+Endpoint operations:
+
+* GET - All health checks associated with the project
 
 ### /v1/projects/$projctId/services
 
@@ -109,8 +113,6 @@ Endpoint operations:
 
 ### /v1/projects/$projctId/services/$serviceId
 
-Alias: `/v1/services/$serviceId`
-
 Endpoint operations:
 
 * GET - Detailed service information and manifest for specified service ID
@@ -119,8 +121,6 @@ Endpoint operations:
 
 ### /v1/projects/$projectId/services/$serviceId/manifest
 
-Alias: `/v1/services/$serviceId/manifest`
-
 Endpoint operations:
 
 * GET - Get service manifest in YAML format as it was provided
@@ -128,16 +128,12 @@ Endpoint operations:
 
 ### /v1/projects/$projctId/services/$serviceId/state
 
-Alias: `/v1/services/$serviceId/state`
-
 Endpoint operations:
 
 * GET - Goal/Actual state information via a proxied request to the Convergence service
-* PUT - Update goal state information (stop, start, pause, resume, scale)
+* PUT - Update goal state information (stop, start, freeze, thaw, reprovision, pause, resume, scale)
 
 ### /v1/projects/$projctId/services/$serviceId/healthchecks
-
-Alias: `/v1/services/$serviceId/healthchecks`
 
 Endpoint operations:
 
@@ -147,41 +143,4 @@ Endpoint operations:
 
 Endpoint operations:
 
-* GET - A list of all user services across all projects
-
-### /v1/services/$serviceId
-
-Alias of: `/v1/projects/$projectId/services/$serviceId`
-
-Endpoint operations:
-
-* GET - Detailed service information and manifest for specified service ID
-* PUT - Updated service manifest via new manifest transmitted in PUT payload
-* DELETE - Mark service as removed
-
-### /v1/services/$serviceId/manifest
-
-Alias of: `/v1/projects/$projectId/services/$serviceId/manifest`
-
-Endpoint operations:
-
-* GET - Get service manifest in YAML format as it was provided
-* PUT - Update service manifest by sending YAML payload
-
-
-### /v1/services/$serviceId/state
-
-Alias of: `/v1/projects/$projctId/services/$serviceId/state`
-
-Endpoint operations:
-
-* GET - Goal/Actual state information via a proxied request to the Convergence service
-* PUT - Update goal state information (stop, start, pause, resume, scale)
-
-### /v1/services/$serviceId/healthchecks
-
-Alias of: `/v1/projects/$projctId/services/$serviceId/healthchecks`
-
-Endpoint operations:
-
-* GET - All health checks associated with the service
+* GET - A list of all user services across all projects, filterable by organization and project
