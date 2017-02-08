@@ -29,7 +29,7 @@ a3954a48279b  project    start        active
 
 ## `triton queue freeze [--service=<service name or UUID, comma separated>]`
 
-Terminates all existing tasks for the entire project. Or, if one or more services are specified, just for those services. Calling this also sets the `frozen` bit for the same scope, causing the Convergence service to ignore it when looking for divergences, until the `frozen` bit is removed (directlt via `unfreeze` below or implicitly through a manifest update).
+Terminates all existing tasks for the entire project. Or, if one or more services are specified, just for those services. Calling this also sets the `frozen` bit for the same scope, causing the Convergence service to ignore it when looking for divergences, until the `frozen` bit is removed (directly via `unfreeze` below or implicitly through a manifest update).
 
 ## `triton queue unfreeze [--service=<service name or UUID, comma separated>]`
 
