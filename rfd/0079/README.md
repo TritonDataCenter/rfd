@@ -95,7 +95,7 @@ Endpoint operations
 
 Endpoint operations:
 
-* GET - Goal/Actual state information via a proxied request to the Convergence servic
+* GET - Goal/Actual state information via a proxied request to the Convergence service
 * PUT - Update goal state information (freeze, thaw, reprovision, stop, start)
 
 ### /v1/projects/$projctId/healthchecks
