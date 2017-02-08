@@ -11,7 +11,7 @@ Projects and their services will be wholly versioned such that a change to the p
 
 ## Data
 
-The Project service will persist data to an appropriate backend (Postgres/Manatee?). Persisted data will represent user projects and their associated services. See:
+The Project service will persist data to Moray. Persisted data will represent user projects and their associated services. See:
 
 * [Mariposa service manifest](https://github.com/joyent/rfd/blob/master/rfd/0036/service-manifest.md)
 * [Mariposa project manifest](https://github.com/joyent/rfd/blob/master/rfd/0036/project-manifest.md)
