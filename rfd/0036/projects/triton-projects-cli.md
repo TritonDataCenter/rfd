@@ -106,6 +106,48 @@ List all versions of the specified project, most recent on top.
 Show the details for the specified version uuid.
 
 
+## `triton project (tags|tag list|tag ls) [OPTIONS]`
+
+List all custom tags associated with the project, and the UUID they correspond to.
+
+```bash
+~$ triton project tags
+TAG     SHORTID     
+1.0.0   c538b66c
+1.1.0   05e17b64
+2.0.0   3861a218
+```
+
+
+## `triton project tag (add|create|new) <uuid> <tag name>`
+
+Create a new custom tag.
+
+```bash
+~$ triton project tag add 8c6981d7 3.0.0
+~$ triton project tags
+TAG     SHORTID     
+1.0.0   c538b66c
+1.1.0   05e17b64
+2.0.0   3861a218
+3.0.0   8c6981d7
+```
+
+
+## `triton project tag (delete|remove|rm) <tag name>`
+
+Remove a custom tag.
+
+```bash
+~$ triton project tag rm 3.0.0
+~$ triton project tags
+TAG     SHORTID     
+1.0.0   c538b66c
+1.1.0   05e17b64
+2.0.0   3861a218
+```
+
+
 ## `triton project (revert|rollback) <version uuid> [--rolling=<positive int>] [--(canary|count)=<positive int>]`
 
 Sets the default version for any new instance provisioning, including positive `scale`, `reprovision`, and automatic reprovisioning of failed instances. Automatically triggers a `reprovision` when used.
