@@ -8,7 +8,7 @@ The proposal is in two parts. A read-only endpoint exposing the state of all ser
 
 ### Telemetry endpoint
 
-**`GetStatus GET /status`**
+##### `GetStatus GET /status`
 
 This API will expose the state of all services associated with this ContainerPilot instance.
 
@@ -38,7 +38,7 @@ Content-Length: 328
 
 ### Control plane endpoint
 
-**`PutEnviron POST /v3/environ`**
+##### `PutEnviron POST /v3/environ`
 
 This API allows a hook to update the environment variables that ContainerPilot provides to lifecycle hooks. The body of the POST must be in JSON format. The keys will be used as the environment variable to set, and the values will be the values to set for those environment variables. The environment variables take effect for all future processes spawned and override any existing environment variables. Unsetting an variable is supporting by passing an empty string or `null` as the JSON value for that key. This API returns HTTP400 if the the key is not a valid environment variable name, otherwise HTTP200 with no body.
 
@@ -51,7 +51,7 @@ curl -XPOST \
     http:/v3/environ
 ```
 
-**`PutMetric POST /v3/metric`**
+##### `PutMetric POST /v3/metric`
 
 This API allows a sensor hook to update Prometheus metrics. (This allows sensor hooks to do so without having to suppress their own logging, which is required under 2.x.) The body of the POST must be in JSON format. The keys will be used as the metric names to update, and the values will be the values to set/add for those metrics. The API will return HTTP400 if the metric is not one that ContainerPilot is configuring, otherwise HTTP200 with no body.
 
@@ -64,7 +64,7 @@ curl -XPOST \
     http:/v3/environ
 ```
 
-**`Reload POST /v3/reload`**
+##### `Reload POST /v3/reload`
 
 This API allows a hook to force ContainerPilot to reload its configuration from file. This replaces the SIGHUP handler from 2.x and behaves identically: all pollables are stopped, the configuration file is reloaded, and the pollables are restarted without interfering with the services. This endpoint returns a HTTP200 with no body.
 
@@ -76,7 +76,7 @@ curl -XPOST \
     http:/v3/reload
 ```
 
-**`MaintenanceMode POST /v3/maintenance`**
+##### `MaintenanceMode POST /v3/maintenance`
 
 This API allows a hook to force ContainerPilot to go into maintenance mode. This replaces the SIGUSR1 handler from 2.x and behaves identically: all health checks are stopped and the discovery backend is sent a message to deregister the services. This endpoint returns a HTTP200 with no body.
 

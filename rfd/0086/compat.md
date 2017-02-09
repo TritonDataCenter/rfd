@@ -30,7 +30,7 @@ The changes in this RFD leave the general interface of forking behavior hooks un
 - `preStart`, `preStop`, and `postStop` hooks will be folded into the new [dependency management](multiprocess.md#dependency-management).
 - `coprocess` and `task` hooks will be folded into the new multi-process configuration with [no-advertise](multiprocess.md#no-advertise).
 
-In the case of `sensors` the existing interface is to read the stdout of the forked process and parse it as a value, but this has proven to be brittle and reduces debuggability. Instead `sensors` will use the proposed [`PutMetric`](mariposa.md#control-plane-endpoint) API to record metrics.
+In the case of `sensors` the existing interface is to read the stdout of the forked process and parse it as a value, but this has proven to be brittle and reduces debuggability. Instead `sensors` will use the proposed [`PutMetric`](mariposa.md#putmetric-post-v3metric) API to record metrics.
 
 ##### Internal ContainerPilot APIs
 
