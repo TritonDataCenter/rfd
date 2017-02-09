@@ -4,9 +4,11 @@ There are a number of cases where we've wanted for lifecycle hooks to be able to
 
 This control plane would be useful for event hooks as well. Telemetry sensor outputs will be consumed via a robust API instead of the existing brittle text scraping. Event hooks will also be able to set environment variables for other services and event hooks.
 
-This proposal is to create an HTTP server for ContainerPilot that exposes a simple HTTP REST protocol. *TODO: we need to have a discussion about security here: TLS, authn/authz*
+The proposal is in two parts. A read-only endpoint exposing the state of all services associated with this ContainerPilot instance will be exposed as a new endpoint in the Telemetry HTTP server. A second endpoint that accepts HTTP POST updates to the state will be implemented as a listener on a unix domain socket only (at least in the initial implementation).
 
-**`GetStatus GET /v3/status`**
+### Telemetry endpoint
+
+**`GetStatus GET /status`**
 
 This API will expose the state of all services associated with this ContainerPilot instance.
 
@@ -34,15 +36,18 @@ Content-Length: 328
 }
 ```
 
+### Control plane endpoint
+
 **`PutEnviron POST /v3/environ`**
 
-This API allows a hook to update the environment variables that ContainerPilot provides to lifecycle hooks. The body of the POST must be in JSON format. The keys will be used as the environment variable to set, and the values will be the values to set for those environment variables. The environment variables take effect for all future processes spawned. This API returns HTTP400 if the the key is not a valid environment variable name, otherwise HTTP200 with no body.
+This API allows a hook to update the environment variables that ContainerPilot provides to lifecycle hooks. The body of the POST must be in JSON format. The keys will be used as the environment variable to set, and the values will be the values to set for those environment variables. The environment variables take effect for all future processes spawned and override any existing environment variables. Unsetting an variable is supporting by passing an empty string or `null` as the JSON value for that key. This API returns HTTP400 if the the key is not a valid environment variable name, otherwise HTTP200 with no body.
 
 *Example Request*
 
 ```
 curl -XPOST \
-    -d '{"ENV1": "value1", "ENV2": "value2"}' \
+    -d '{"ENV1": "value1", "ENV2": "value2", "ENV_TO_CLEAR": ""}' \
+    --unix-socket /var/containerpilot.sock \
     http:/v3/environ
 ```
 
@@ -55,6 +60,7 @@ This API allows a sensor hook to update Prometheus metrics. (This allows sensor 
 ```
 curl -XPOST \
     -d '{"my_counter_metric": 2, "my_gauge_metric": 42.42}' \
+    --unix-socket /var/containerpilot.sock \
     http:/v3/environ
 ```
 
@@ -62,9 +68,26 @@ curl -XPOST \
 
 This API allows a hook to force ContainerPilot to reload its configuration from file. This replaces the SIGHUP handler from 2.x and behaves identically: all pollables are stopped, the configuration file is reloaded, and the pollables are restarted without interfering with the services. This endpoint returns a HTTP200 with no body.
 
+*Example Request*
+
+```
+curl -XPOST \
+    --unix-socket /var/containerpilot.sock \
+    http:/v3/reload
+```
+
 **`MaintenanceMode POST /v3/maintenance`**
 
 This API allows a hook to force ContainerPilot to go into maintenance mode. This replaces the SIGUSR1 handler from 2.x and behaves identically: all health checks are stopped and the discovery backend is sent a message to deregister the services. This endpoint returns a HTTP200 with no body.
+
+*Example Request*
+
+```
+curl -XPOST \
+    --unix-socket /var/containerpilot.sock \
+    http:/v3/maintenance
+```
+
 
 Related GitHub issues:
 - [Expose ContainerPilot state thru telemetry](https://github.com/joyent/containerpilot/issues/154)
