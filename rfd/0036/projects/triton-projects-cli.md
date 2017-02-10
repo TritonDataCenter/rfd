@@ -24,7 +24,7 @@ Options:
 - show service and scale
 
 ```bash
-~$ triton projects
+$ triton projects
 NAME           MANIFEST  VERSION  COUNT  STATUS 
 cache-layer-1  3861a218  2.0.0    6      1 nginx reprovisioning
 mongodb-rs0    edf2ab36  1.0.0    5      normal
@@ -35,7 +35,7 @@ mongodb-rs2    c441569f  1.0.1    5      normal
 In the above example, `COUNT` is just the total number of all service instances. Alternative view showing service and scale:
 
 ```bash
-~$ triton projects --services
+$ triton projects --services
 NAME           MANIFEST  VERSION  SERVICES         STATUS 
 cache-layer-1  3861a218  2.0.0    nginx:3,redis:3  1 nginx reprovisioning
 mongodb-rs0    edf2ab36  1.0.0    mongodb:5        normal
@@ -68,7 +68,7 @@ Options:
 - no headers (just print the manifest)
 
 ```bash
-~$ triton project show
+$ triton project show
 ---
 UUID: 3861a21803fcd9eb92a403027b0da2bb7add4de1
 CREATED: 2017-01-05 17:00
@@ -155,7 +155,7 @@ Options:
 - show changed services (short cut for field selection)
 
 ```bash
-~$ triton project versions
+$ triton project versions
 SHORTID      VERSION   TIME
 3861a218     2.0.0     2017-01-05 17:00
 05e17b64     1.1.0     2017-01-04 16:00
@@ -165,7 +165,7 @@ c538b66c     1.0.0     2017-01-03 15:00
 Or with option flag that indicates inclusion of changed services per version:
 
 ```bash
-~$ triton project versions
+$ triton project versions
 SHORTID      VERSION   TIME               CHANGED
 3861a218     2.0.0     2017-01-05 17:00   nginx
 05e17b64     1.1.0     2017-01-04 16:00   redis
@@ -181,7 +181,7 @@ Options:
 - no headers (just print the manifest)
 
 ```bash
-~$ triton project get 2.0.0
+$ triton project get 2.0.0
 ---
 UUID: 3861a21803fcd9eb92a403027b0da2bb7add4de1
 CREATED: 2017-01-05 17:00
@@ -202,7 +202,7 @@ services:
 Assign one more more deployment tags to the project.
 
 ```bash
-~$ triton project tag add staging qa-needed
+$ triton project tag add staging qa-needed
 ```
 
 ## `triton project (tags|tag ls|tag list) [OPTIONS]`
@@ -213,7 +213,7 @@ Options:
 - standard triton cli list controls (field selection, no headers, long, etc)
 
 ```bash
-~$ triton project tag ls
+$ triton project tag ls
 TYPE         TAG
 manifest     web
 manifest     cache
@@ -297,6 +297,68 @@ Starts one instance of each service specified in the project manifest. Behavior 
 Optional arguments:
 
 - `version` the version UUID to start
+
+
+## `triton project freeze [--service=<service name or UUID, comma separated>]`
+
+Terminates all existing tasks for the entire project, or just for one or more services if specified. Calling this also sets the `frozen` bit for the same scope, causing the Convergence service to ignore it when looking for divergences, until the `frozen` bit is removed (directly via `unfreeze` below or implicitly through another command).
+
+
+## `triton project unfreeze [--service=<service name or UUID, comma separated>]`
+
+Removes the `frozen` bit from the project, or just for one or more services if specified. This will allow the Convergence service to consider the affected project or tasks while looking for divergences.
+
+
+## `triton project (tasks|task list|task ls) [OPTIONS]`
+
+Lists all active and queued tasks. Inactive tasks will not be displayed by default but options can change this.
+
+Options:
+
+- standard triton cli list controls (no headers, field selection, etc)
+- flag to show inactive task queue entries (completed, failed, terminated)
+- filtering (date range, etc)
+- option to export commands or manifest to achieve current deployment state
+- ability to export json formatted transaction log
+
+```bash
+$ triton queue list
+uuid       scope      task         state     started
+<shortid>  <scope>    <task>       <state>   <time>
+a3954a48   project    start        active    2017-01-30 18:22
+85978f42   my_mysql   reprovision  queued    2017-01-30 18:23
+```
+
+Or an example showing inactive tasks:
+
+```bash
+$ triton queue ls -a
+uuid       scope      task         state       started
+<shortid>  <scope>    <task>       <state>     <time>
+23e18250   project    start        completed   2017-01-29 09:00
+34973274   project    stop         completed   2017-01-30 18:00
+f54ee8e7   project    start        terminated  2017-01-30 18:01
+a06b1ef9   project    freeze       completed   2017-01-30 18:01
+8031facf   project    unfreeze     completed   2017-01-30 18:22
+a3954a48   project    start        active      2017-01-30 18:22
+85978f42   my_mysql   reprovision  queued      2017-01-30 18:23
+```
+
+
+## `triton project task show <uuid>`
+
+Display details about a task queue entry.
+
+```bash
+$ triton queue show a06b1ef9
+PROJECT: cache-layer-1
+TASK: freeze
+SCOPE: project
+STARTED: 2017-01-17 12:38
+FINISHED: 2017-01-17 12:40 
+DURATION: 00:02:17.493
+STATE: Completed
+```
 
 
 ## `triton project (reprovision|restart) [--service=<service name or uuid>] [--version=<version uuid>] [--image=<imagespec:tag>] [--instance=<name|uuid>] [--compute_node=<uuid>] [--(count|canary)=<positive integer>] [rolling=<positive integer>]`
