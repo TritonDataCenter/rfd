@@ -12,7 +12,7 @@
 
 Scaling, upgrading, even stopping all the instances of a project and its services can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs. Each project has its own queue.
 
-- [CLI commands](triton-queue-cli.md)
+- [CLI commands](../projects/triton-projects-cli.md) - see `triton project task`
 
 ## Tasks
 
@@ -22,6 +22,8 @@ Tasks that may appear in the queue include:
 - `stop` the deploy task for `triton project stop...` and `triton project delete...`
 - `scale` the task for `triton project scale...`, and when Mariposa is replacing a failed instance (it's re-scaling to get back to the desired number of healthy instances)
 - `reprovision` the deploy task for `triton project reprovision...`; `triton project (update|rollback)` commands trigger `reprovision` tasks
+- `freeze` the task for `triton project freeze...` 
+- `unfreeze`: the task for `triton project unfreeze...`
 
 
 ## States
@@ -30,6 +32,7 @@ Tasks may have one of the following states:
 
 - `queued`: a task in the queue and waiting for execution
 - `active`: an in-progress task
+- `cancelling`: a task that is cancelling at operator request
 - `completed`: a successful task, no longer executing
 - `failed`: an unsuccessful task, no longer executing
 - `terminated`: a task that was prematurely cancelled by the operator and is no longer executing
@@ -52,17 +55,23 @@ The following table describes whether tasks can be executed concurrently, sequen
 
 Tasks reading down the chart are those already in the queue; tasks reading across the chart are those to be added.
 
-|                      | Add `start` | Add `stop` | Add `scale` | Add `reprovision` |
-|----------------------|-------------|------------|-------------|-------------------|
-| `start` active       | Reject      | Terminate  | FIFO        | FIFO              |
-| `stop` active        | Reject      | Reject     | Reject      | Reject            |
-| `scale` active       | FIFO        | Terminate  | Reject      | Concurrent        |
-| `reprovision` active | FIFO        | Terminate  | Concurrent  | Terminate         |
+|                      | Add `start` | Add `stop` | Add `scale` | Add `reprovision` | Add `freeze` | Add `unfreeze` |
+|----------------------|-------------|------------|-------------|-------------------|--------------|----------------|
+| `start` active       | Reject      | Terminate  | FIFO        | FIFO              | Terminate    | Reject         |
+| `stop` active        | Reject      | Reject     | Reject      | Reject            | Terminate    | Reject         |
+| `scale` active       | FIFO        | Terminate  | Reject      | Concurrent        | Terminate    | Reject         |
+| `reprovision` active | FIFO        | Terminate  | Concurrent  | Terminate         | Terminate    | Reject         |
+| `freeze` active      | Reject      | Reject     | Reject      | Reject            | Reject       | FIFO           |
+| `unfreeze` active    | FIFO        | FIFO       | FIFO        | FIFO              | FIFO         | Reject         |
 
 - `Reject`: an attempt to add the task must result in an error
 - `Terminate`: adding the task must terminate the existing task(s)
 - `FIFO`: the task can be added to the queue to execute after existing tasks have completed (successfully or not)
 - `Concurrent`: the task can be added to the queue and execute concurrently with the existing task(s); the only case for this is reprovision and scale
+
+### Concurrency edge cases to consider
+
+* When scaling down crosses retrovision border
 
 ## Execution
 
