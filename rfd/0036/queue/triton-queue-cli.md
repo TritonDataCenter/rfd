@@ -8,6 +8,10 @@
     Copyright 2016 Casey Bisson, Joyent
 -->
 
+# Deprecated
+
+I propose deprecating `triton queue` in favor of `triton project task`.
+
 # Managing the queue with the Triton CLI
 
 The following commands are all within the scope a specified project, within a specified organization. See more details about [specifying the organization and project](../projects/triton-cli.md#specifying-the-organization-and-project) for CLI commands.
