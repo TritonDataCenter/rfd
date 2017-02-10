@@ -13,9 +13,36 @@
 The following commands are all within the scope a specified project, within a specified organization. See more details about [specifying the organization and project](../projects/triton-cli.md#specifying-the-organization-and-project) for CLI commands.
 
 
-## `triton (projects|project list|project ls)`
+## `triton (projects|project list|project ls) [OPTIONS]`
 
 List all projects in an organization.
+
+Options:
+
+- standard triton cli list controls (field selection, no headers, long, etc)
+- filter (by name or tag for example)
+- show service and scale
+
+```bash
+~$ triton projects
+NAME           MANIFEST  VERSION  COUNT  STATUS 
+cache-layer-1  3861a218  2.0.0    6      1 nginx reprovisioning
+mongodb-rs0    edf2ab36  1.0.0    5      normal
+mongodb-rs1    edf2ab36  1.0.0    5      normal      
+mongodb-rs2    c441569f  1.0.1    5      normal
+```
+
+In the above example, `COUNT` is just the total number of all service instances. Alternative view showing service and scale:
+
+```bash
+~$ triton projects --services
+NAME           MANIFEST  VERSION  SERVICES         STATUS 
+cache-layer-1  3861a218  2.0.0    nginx:3,redis:3  1 nginx reprovisioning
+mongodb-rs0    edf2ab36  1.0.0    mongodb:5        normal
+mongodb-rs1    edf2ab36  1.0.0    mongodb:5        normal      
+mongodb-rs2    c441569f  1.0.1    mongodb:5        normal
+```
+
 
 
 ## `triton project (add|create|new) <project name> (-m <path to project manifest>| project manifest on STDIN)`
@@ -35,6 +62,28 @@ Sets a the specified project as the default for all interactions. This has the p
 ## `triton project (get|show)`
 
 Show the project manifest and details for the specified project.
+
+Options:
+
+- no headers (just print the manifest)
+
+```bash
+~$ triton project show
+---
+UUID: 3861a21803fcd9eb92a403027b0da2bb7add4de1
+CREATED: 2017-01-05 17:00
+STATUS
+  nginx: 2 running, 1 reprovisioning
+  redis: 3 running
+---
+
+version: 2.0.0
+tags: web, cache
+services:
+  nginx:
+   service_type: continuous
+   ...
+```
 
 
 ## `triton project update (-m <path to project manifest>| project manifest on STDIN) [--rolling=<positive int>] [--(canary|count)=<positive int>] [--previous=<version uuid>] [(-f|--force)]`
@@ -96,55 +145,88 @@ triton project reprovision --rolling=3
 ```
 
 
-## `triton project (versions|version list|version ls)`
+## `triton project (versions|version list|version ls) [OPTIONS]`
 
 List all versions of the specified project, most recent on top.
 
+Options:
 
-## `triton project version get <version uuid>`
-
-Show the details for the specified version uuid.
-
-
-## `triton project (tags|tag list|tag ls) [OPTIONS]`
-
-List all custom tags associated with the project, and the UUID they correspond to.
+- standard triton cli list controls (field selection, no headers, long, etc)
+- show changed services (short cut for field selection)
 
 ```bash
-~$ triton project tags
-TAG     SHORTID     
-1.0.0   c538b66c
-1.1.0   05e17b64
-2.0.0   3861a218
+~$ triton project versions
+SHORTID      VERSION   TIME
+3861a218     2.0.0     2017-01-05 17:00
+05e17b64     1.1.0     2017-01-04 16:00
+c538b66c     1.0.0     2017-01-03 15:00
+```
+
+Or with option flag that indicates inclusion of changed services per version:
+
+```bash
+~$ triton project versions
+SHORTID      VERSION   TIME               CHANGED
+3861a218     2.0.0     2017-01-05 17:00   nginx
+05e17b64     1.1.0     2017-01-04 16:00   redis
+c538b66c     1.0.0     2017-01-03 15:00   nginx, redis
+```
+
+## `triton project version get <version uuid|manifest version> [OPTIONS]`
+
+Show the details for the specified version uuid or manifest version. 
+
+Options:
+
+- no headers (just print the manifest)
+
+```bash
+~$ triton project get 2.0.0
+---
+UUID: 3861a21803fcd9eb92a403027b0da2bb7add4de1
+CREATED: 2017-01-05 17:00
+SERVICES CHANGED: nginx
+---
+
+version: 2.0.0
+tags: web, cache
+services:
+  nginx:
+   service_type: continuous
+   ...
 ```
 
 
-## `triton project tag (add|create|new) <uuid> <tag name>`
+## `triton project tag (add|create|new) <space separated list of tags>`
 
-Create a new custom tag.
+Assign one more more deployment tags to the project.
 
 ```bash
-~$ triton project tag add 8c6981d7 3.0.0
-~$ triton project tags
-TAG     SHORTID     
-1.0.0   c538b66c
-1.1.0   05e17b64
-2.0.0   3861a218
-3.0.0   8c6981d7
+~$ triton project tag add staging qa-needed
 ```
 
+## `triton project (tags|tag ls|tag list) [OPTIONS]`
 
-## `triton project tag (delete|remove|rm) <tag name>`
+List all manifest and deployment tags associated with the project.
 
-Remove a custom tag.
+Options:
+- standard triton cli list controls (field selection, no headers, long, etc)
 
 ```bash
-~$ triton project tag rm 3.0.0
-~$ triton project tags
-TAG     SHORTID     
-1.0.0   c538b66c
-1.1.0   05e17b64
-2.0.0   3861a218
+~$ triton project tag ls
+TYPE         TAG
+manifest     web
+manifest     cache
+deployment   staging
+deployment   qa-needed
+```
+
+## `triton project tag (delete|remove|rm) <space separated list of tags>
+
+Remove one or more tags from the project.
+
+```bash
+triton project tag rm qa-needed
 ```
 
 
