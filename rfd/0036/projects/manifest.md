@@ -12,7 +12,11 @@
 
 The project manifest defines all the services of a project, as well as other details that may be added in time. Each project has a single active manifest that defines the expected state of the entire project.
 
+The `version` and `tags` fields are optional, and are present to help give the user meaningful output from commands like `triton project versions` or `triton project ls`, providing human-readable information in addition to sha1sums, and the ability to filter. See []
+
 ```yaml
+version: 1
+tags: web, cache
 services:
   nginx:
     service_type: continuous
