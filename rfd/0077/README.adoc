@@ -1,0 +1,665 @@
+:author: Alex Wilson
+:email: alex.wilson@joyent.com
+:revremark: State: predraft
+
+:showtitle:
+:toc: left
+:numbered:
+
+////
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Copyright 2017 Alex Wilson
+////
+
+# RFD 77: Hardware-backed per-zone crypto tokens
+
+## Introduction
+
+While most existing access control for Triton and Manta focusses on
+authenticating *users* and authorizing their actions, there are quite a
+few contexts in which authenticating individual instances (zones) on the system
+is useful.
+
+This particularly applies in the context of headnode service zones in Triton,
+where it would be desirable for each service to be able to authenticate itself
+to any other service, giving a path forward to eliminate the special "trusted"
+status of all hosts on the admin VLAN.
+
+This kind of authentication is generally most easily done through cryptography,
+which is what this document will propose.
+
+To store cryptographic key material securely with a machine, in a way that is
+highly resistant to compromise, the state of the art is to make use of a
+segregated hardware device (a "token"). The token stores the key material
+internally and will not reveal it to the host (and is generally a physically
+tamper-resistant device, making it extremely difficult to recover the key
+material from it without destroying it). The host machine may request the token
+to take particular actions with the key material, such as signing a given
+stream of data, encrypting a block of data, or computing a hash function.
+
+This kind of secured credential storage would be useful not just for
+authentication, but also for the protection of data at rest. As a result,
+this proposal also includes provisions for supporting this use case (though
+implementing the on-disk data encryption is delegated to ZFS).
+
+## Threat models and goals
+
+### Authentication
+
+The core threat models (and containment goals) for the authentication scheme
+proposed here are as follows:
+
+Threat 1:: An intruder has escalated their network access into the admin VLAN, by
+compromise or poor configuration of network equipment or non-Triton
+resources.
+Goal 1:: The goal is to give this attacker no access to Triton resources. They
+may make a read-only request for a boot image for a new CN which will contain
+no special credentials, but no more. They may be able to carry out denial of
+service attacks on the admin VLAN, but these are out of scope for this design.
+
+Threat 2:: An intruder has escalated their network access into the admin VLAN, by
+compromise of a compute node (privilege escalation and zone escape).
+Goal 2:: The goal is to give this attacker only the minimum access required for
+the normal operation of the CN. They will be able to control other zones on that
+CN, as well as the information reported about them back to the rest of Triton.
+They will under no circumstances be able to gain control of a headnode from this
+position. Their access to the system can be terminated by revoking the
+credentials of the CN, they cannot extract any long-lived key material, and
+cannot take any actions that would escalate or allow sideways movement into
+other CNs.
+
+Threat 3:: An intruder has taken control of a public-facing headnode service (e.g.
+CloudAPI), by making use of a vulnerability in that service.
+Goal 3:: The goal is to give this attacker only the minimum access required by
+the normal operation of that service. This means, for example, that CloudAPI
+would not be able to run arbitrary commands on CNs or directly interface with
+CN agents, or connect directly to the PostgreSQL database (since such access
+is not needed for its normal operation).
+
+### Encryption at rest
+
+For the encryption of data at rest, the primary threat model is as follows:
+
+Threat 1:: An intruder gains physical possession of disks and/or hardware
+from a CN, either by post-disposal acquisition ("dumpster diving"), or outright
+physical theft.
+Goal 1:: The goal is to give the attacker no ability to read any customer data
+on the disks or (in the case of a disposed CN) any ability to use the
+credentials of the CN to gain access to Triton resources. If a stolen CN is
+powered up at the time of theft, it is possible that customer data can be read,
+but if powered down, no data access will be possible.
+
+### Customer-facing features
+
+This design also seeks to provide a key customer-facing feature: the ability to
+use a provisioned instance/zone/VM in a customer account as an authentication
+principal to Triton services.
+
+## Design
+
+The central component of the design is the credential storage device. Since
+many components of our threat model and goals are on a per-CN basis, we want a
+device that can be deployed with (or ideally, inside) every CN. This implies
+that:
+
+ * The device must be inexpensive (at least, relative to expected cost of CN
+   hardware);
+ * The device must be capable of storing credentials both for at-rest encryption
+   and for authentication; and
+ * The device must not require invasive modification to current-generation
+   x86 server hardware.
+
+Most commonly, cryptographic token devices obey an API similar to PKCS#11, which
+is primarily focussed on public/private asymmetric cryptography. Devices that
+only implement asymmetric cryptography are suitable for storing authentication
+credentials, but do not fit as well in a design that wants to store credentials
+for at-rest encryption.
+
+One device that is suited for both is the Yubikey (manufactured by Yubico). It
+implements a number of features aimed at the 2-factor Authentication market
+(based on hash chains and HMAC) which are also ideal for securely deriving
+encryption keys. Alongside these features, it features RSA and ECDSA asymmetric
+cryptography.
+
+The Yubikey is relatively inexpensive (at $40 US it is a very small line item in
+the typical cost of a new CN), and since it uses the ubiquitious USB interface
+it can easily be added to existing server hardware (in fact, many servers
+include USB connectors that are located inside the server casing which are
+ideal locations for this use).
+
+### Overview: at-rest encryption
+
+The concept for at-rest encryption is to generate a master key for ZFS crypto
+by combining 3 pieces of data:
+
+ * A secret key written to the Yubikey (which it will not reveal);
+ * A secret key stored on a headnode in the datacenter; and
+ * A randomly generated "challenge" value, kept on disk unencrypted with the
+   data.
+
+The primitive used to combine these pieces of data is the HMAC. First, the
+challenge value is read in from the disk and passed to the token. The token
+will compute the HMAC of the challenge data with its secret key (without
+revealing that secret key to the host).
+
+Then, a secret key stored on the headnode will be retrieved over a TLS-protected
+authenticated channel and used as the secret key for another HMAC operation on
+the output of the first one.
+
+The final output is the master key to unlock the ZFS crypto framework for the
+pool.
+
+We incorporate the 3 pieces of data into the key so that the only sufficient
+condition to successfully decrypt the data on the disks is to have all 3 of:
+
+ * The disks themselves,
+ * The key stored in the CN's Yubikey, and
+ * Access to the headnode service.
+
+If any one of these 3 is missing, the key cannot be recomputed, and the data
+cannot be decrypted.
+
+This approach has one major issue, however, which is the case of a headnode. A
+Triton headnode must be able to boot from its own media, without requiring
+the rest of the surrounding DC to be running (as it may be hosting the PXE DHCP
+server that allows other non-headnode CNs to boot).
+
+As a result, headnodes will not use a remotely stored part in their key. They
+will use a challenge value, and the secret key in their token, but make no
+remote request to get a third piece. This also means that headnodes do not
+meet the full goal discussed above -- the theft of an entire working headnode
+will allow that headnode's disks to be read.
+
+This is a difficult compromise between fault tolerance, ability to boot the
+whole DC up after power loss, and security. It may be worthwhile to examine
+the possibility of special physical security measures to protect headnodes
+beyond those used for ordinary non-headnode CNs. As there is normally a
+small number of headnodes, this is at least more feasible than such protections
+for the entire server population.
+
+### Overview: authentication
+
+Authentication of a CN to a headnode service (e.g. to join the cluster, and
+then to report data about running zones etc) is done by signing existing
+protocol units (e.g. HTTP requests) using the asymmetric keys stored in the CN's
+Yubikey. This is relatively straightforward.
+
+Authentication of one headnode service zone to another is also done by signing
+existing protocol units using asymmetric keys. Unfortunately, hardware tokens
+are generally only capable of storing a small number of asymmetric keys, and the
+number of zones on a CN or headnode may be quite large by comparison. So the
+keys used for zone-to-zone authentication cannot reside directly on the hardware
+tokens.
+
+Instead, a "soft token" design will be used. A second HMAC secret stored on the
+token is used as an HMAC key, along with an input randomly generated for each
+zone, to derive a key used to encrypt a keystore for that zone. This keystore
+encryption is always used, so that the same code path is taken on machines
+with and without ZFS level storage encryption available.
+
+The encrypted key store is managed by the global zone on behalf of the zones,
+and exposed to them via a socket that processes in the zone can connect to. The
+non-global zone cannot add or remove keys from the key store; it only holds keys
+that the global zone has generated and assigned to it.
+
+The socket is designed to make use of the OpenSSH agent protocol. This protocol
+is designed to be simple and straightforward to parse in a secure manner, and
+since the SSH agent is more or less a "soft token" itself, an almost perfect
+match for this use case.
+
+The SSH agent also features support for SSH certificates, which can be used to
+attest about an identity associated with a given key. The CN's global zone will
+generate one such certificate for each zone and sign it using the same key it
+uses for authentication. In this way, zones each have access to a signed
+statement from their host CN about their identity, which they can use as part of
+authentication.
+
+The signed statement and matching key is not enough on its own, however, to
+validate the identity of one zone to another arbitrary zone on the system -- the
+other zone needs to also be able to validate the key of the host CN. To achieve
+this requires a chain of trust.
+
+### Headnodes and chain of trust
+
+First, some terminology:
+
+CN:: A "CN" here is any physical node in the Triton system.
+Headnode:: A "headnode" is any CN that has been authorized to host internal
+Triton service zones (e.g. VMAPI, CloudAPI etc).
+
+As is typical with any chain of trust, we must begin with a set of keys known
+as "root keys", which are ultimately trusted. What we propose here is to use
+a single root key which is only ever stored offline, broken into pieces.
+
+This root key will sign an initial statement stating that certain nodes in the
+cluster are to be headnodes, detailing their public keys, as well as a
+timestamp and serial number. It will then (barring exceptional circumstances)
+never be used again.
+
+To this statement, the headnodes of the datacenter may append additional
+statements, with certain restrictions:
+
+ * Any appended statement must include a signature both over the new statement
+   and all previous statements in the chain; and
+ * The appended statement must be signed by the keys of all headnodes in the
+   datacenter at the time of appending, except one (N-1 out of N, unless there
+   is only one headnode at the time, in which case its signature is required).
+
+The statement may declare that a new node (with corresponding key etc) is now
+a headnode, or it may declare that an existing headnode is no longer such.
+
+All CNs in the system (both non-headnode CNs and headnodes) periodically gossip
+their current version of the headnode chain out over the network, to a multicast
+address on the admin VLAN.
+
+If a CN receives a new chain, it will accept it as the new canonical version
+of the chain if and only if:
+
+ * All signatures on the chain validate, including validation of the N-1/N
+   restriction; and
+ * The chain is a strict extension of the current canonical chain known to the
+   CN; OR
+ * The chain is an unrelated brand new chain, with a higher serial number and
+   newer timestamp on the very first statement.
+
+In this way, in an emergency situation, the chain can be restarted by using the
+offine master key to sign a new statement about the headnodes for the
+installation.
+
+This design allows headnodes to be added and removed from the installation at
+a later date without requiring that the root of the chain of trust be available
+in online storage for signing.
+
+Once the gossip process has stabilized, all CNs in the system are aware of the
+identities and keys of nodes that are authorized to act as headnodes (hosting
+core Triton services). This means that zone certificates presented by zones on
+these CNs can be validated, authenticating headnode services to each other.
+
+It is important to note that changes to the set of headnodes are expected to be
+infrequent, so it is not important to use a distributed system here that offers
+fast convergence. The simplicity of implementation of a gossip design is also
+an advantage.
+
+### Binder and service registration
+
+Having to make use of and validate certificates for all traffic is, however,
+somewhat difficult to work into some existing systems (e.g. authentication to
+Moray or PostgreSQL). A simpler proposition is to include only some form of key
+signature in these types of traffic (e.g. by embedding it in the username
+and password for PostgreSQL auth) rather than a full certificate.
+
+To this end, `binder` (the Triton service discovery mechanism) will be altered,
+such that clients can establish a trusted relationship with binder, and binder
+can then take over the role of validating certificates on clients' behalf.
+
+As the client half this relationship can be maintained from within a library
+such as `cueball`, this will ease integration for headnode services -- they will
+merely need to use the `cueball` library to manage their connections and will
+then get identity validation on their outgoing connections for free.
+
+On the registration side of binder, registrants will be required to supply their
+CN certificate and public key along with the information they supply to binder
+today (which will be signed with the key).
+
+Binder will validate the signature and certificate provided, and then serve
+DNS records about the registrant. These records will include public key records
+containing the registered public key they supplied.
+
+Traffic between binder and clients will be secured using DNS Transaction
+Signatures (TSIG), signed using the binder instance's zone key. The client must
+validate the binder instance's key against its certificate and the gossiped list
+of headnodes, but thereafter it can trust signed responses from that binder
+about other services in lieu of performing full validation itself.
+
+Binder will also have to transition away from using the raw ZooKeeper direct
+access for registration that it uses today, as the authentication schemes
+available there will not be sufficient to ensure separation of clients.
+
+### Provisioning and backups
+
+When crypto tokens like the Yubikey are manufactured, they generally do not ship
+with credentials pre-loaded on them (Yubikeys do in fact ship with some
+basic credentials for the Yubico official 2FA, but this is not very useful
+for our usecase). They have to be commanded to generate or write credentials
+by an administrator who configures them before use.
+
+While credentials like authentication keys are best generated on the token
+itself (so that they never leave it and thus cannot be compromised), encryption
+keys used to protect data at rest must be managed more carefully.
+
+The loss of at-rest encryption keys leads to the loss of any data protected by
+them (this means loss of customer data). As a result, they must be backed up in
+some form of secured offline storage -- one classic technique is to print on
+archival paper and store in a secured mechanical safe in an environmentally
+controlled area.
+
+Keys may be split up into "pieces" for backup purposes, using secret-sharing
+arrangements like Shamir's secret sharing. These enable schemes such as N out of
+M piece secret recovery (while revealing no information in the case of fewer
+pieces being held).
+
+The scheme we propose is as follows:
+
+ * Generation and preparation of the root key and token for the initial set of
+   headnodes will take place in an environment away from the data center, and
+   will be done in advance by administrators.
+
+ * At the same time, the administrators must initialize backup media that have
+   been chosen to store the backed up key pieces. Initializing the media writes
+   a private key to the start of the media (or in a file on it with a well-known
+   name, depending on the media type) and saves only the public half of this key
+   for later use.
+
+ * Token authentication keys will be generated on the token and not backed up.
+   The public half of the asymmetric keys will be prepared in a format ready to
+   upload directly into Triton command-line and web UI tools, so that they are
+   added to the DC's headnode in advance.footnoteref:[not-puppet,Note that this
+   procedure ensures administrators are not expected to perform error-prone
+   key fingerprint comparisons in the datacenter while setting up servers.]
+
+ * Token encryption keys (HMAC keys) will be generated, written to the token,
+   and then split into 3 pieces, in a Shamir arrangement requiring 2 pieces for
+   recovery. The pieces will be immediately encrypted within a DH "box"
+   with an ephemeral key and a backup media public key (one key per piece) so
+   that they can only be recovered with the use of the backup media private key.
+   Then they may be transported by any appropriate means to the location of each
+   backup media to be written out. They need not be decrypted when writing out
+   to the media (as the media private key is there to decrypt them during
+   recovery).
+
+This scheme will be implemented as a set of tools that can run on at least OSX,
+Linux or SmartOS, to correctly program Yubikeys and back up credentials, either
+in bulk, or as part of a pre-flight environment run during deployment. The
+choice of a backup option by the administrator will not be optional (as not
+doing so may lead to data loss in the case of a single Yubikey malfunction).
+
+A recommended outline of the full deployment procedure is included in the
+sections [[green-field]] and [[brown-field]], which include examples for both
+a "small setup" deployment not using a pre-flight environment, and a larger
+deployment using one.
+
+The tooling to initialize backup media will ensure that each initialization
+operation takes place on different media, and will produce the media public key
+in an opaque, checksummed format. The tooling for programming Yubikeys will
+refuse to operate unless it is provided with a minimum number of valid backup
+media identities in this correct opaque format. This helps prevent
+administrators from erroneously failing to back up keys.
+
+The three Shamir pieces must be stored separately on independent backup media,
+generally recommended to be either archival paper, or LTO or DAT magnetic tape.
+Optical media is the next most reliable option, followed by flash media such as
+high quality SD cards.
+
+The following table highlights the recommended options for long-term key backup,
+as well as a recommended verification and refresh interval for each.
+
+The verification interval indicates how often (at a minimum) an administrator
+should inspect and verify the data on the backup media to check its integrity.
+The refresh interval indicates a minimum interval at which administators should
+expect to have to copy the data to fresh media. Even if the current media
+passes inspection, it is recommended that media older than this still be
+replaced.
+
+.Backup media recommendations
+[options="header"]
+|===
+
+| Media type               | Verification interval | Refresh interval
+
+| Magnetic tape (LTO, DAT) | 5 years               | 10 years
+
+| Printed archival paper   | 3 years               | 10 years
+
+| Optical (CD, DVD, BD)    | 1 year                | 5 years
+
+| Flash (SD, CF)           | 1 year                | 3 years
+
+|===
+
+The initial preparation of the offline root key for a datacenter will be
+done using the same tooling as regular key programming and generation, and will
+be written out as 3 pieces encrypted to the backup media private keys.
+
+Full tooling will also be provided for recovering from these backup formats
+a specified CN encryption key, combining the Shamir pieces, and writing it
+to a fresh Yubikey ready for use. This tooling can also be used during
+regular media inspections to check data integrity.
+
+### Use of zone keys and certificates by customers
+
+Quite aside from the internal use of zone keys and certificates within Triton's
+components, they are also expected to be used by customers.
+
+In conjunction with the RBACv2 work (RFD 48), signing requests to Triton
+services (such as CloudAPI) using a zone key will grant authentication as a
+"machine principal". This principal may be added to roles by a customer, in
+order to grant it authorization to manage resources under the account.
+
+The `keyId` string used is expected to include the full UUID of the zone in
+question, and the UUID of the CN which hosts it. This mechanism will not
+require the use of the zone certificate.
+
+Since the existing `triton` tools and libraries already support the use of the
+SSH agent for key storage, it is expected that they can be used with the
+zone soft token without significant modification (they may require some in
+order to generate the `keyId` correctly, but it is as yet unclear).
+
+The existing support for account-key-signed certificates for Docker and CMON
+will be extended to support the use of those interfaces as a machine principal,
+as well.
+
+Though it is somewhat out of scope here, it is expected that mechanisms for
+grouping machines as access control targets (e.g. RFD 48 style projects) may
+also be useful for grouping machines as principals. In this way it should be
+possible to grant some group of machines access to account resources and have
+this apply to newly provisioned members of that group automatically.
+
+While zone certificates are not used for Triton authentication, endpoints on
+CloudAPI will be added to assist in the validation of zone certificates by
+customer code or services. This should allow zone keys and certificates to be
+used for other purposes as well (such as bootstrapping a chain of trust for
+customer systems).
+
+## Relationship with TLS
+
+To fully protect the Triton admin VLAN against IP and MAC spoofing attacks from
+rogue network hardware, it will be necessary to begin protecting all connections
+with TLS. Part of establishing a TLS connection is verifying the identity of
+both parties to the connection, using X.509 certificates.
+
+The proposed zone certificate design above does not make any provision for
+supplying X.509 certificates for TLS, however, and many TLS implementations
+require having the private key for the certificate in memory or available on
+disk (they do not support keys held in tokens).
+
+As a result, headnode services will generate separate keys for TLS use which
+are kept on the zone itself. They will produce certificates for these keys which
+are signed by the zone's soft token key.
+
+These certificates will have an enforced short lifetime of 60 seconds. Clients
+connecting to headnode services will verify that the certificate presented
+expires no more than 60 seconds into the future. This mitigates issues around
+certificate revocation (since the zone soft token can easily be revoked by the
+system simply by removing access to the socket).
+
+Clients when connecting will verify the server certificate either by checking
+its signature against the zone token key registered in binder, or by obtaining
+the SSH certificate signed by the CN by use of a well-known URL or request
+packet (depending on protocol) sent to the server.
+
+## Service startup step-by-step
+
+### CloudAPI
+
+ . The (headnode) CN hosting the CloudAPI instance boots up (see <<cn-boot>>
+   for more details)
+ .. It starts up the zone soft token manager daemon, which will LoFS mount
+    sockets into all zones (see <<soft-token>>). The daemon does not unlock the
+    keystores at startup.
+ . The CloudAPI zone begins to start up
+ .. Soft token socket is mounted into the zone.
+ . SMF service `cloudapi` starts -- it execs `node`
+ . CloudAPI calls into the `triton-registrar` library to set up its service
+   registration
+ .. Registrar opens the soft token socket and retrieves the public key and
+    certificate signed by the GZ.
+ ... Soft token manager daemon accepts the connection on the socket in the zone
+     and forks off a dedicated privilege-separated child for this zone. The
+     child then decrypts the keystore and loads it into memory.
+ .. Registrar connects to binder zones and begins registration by writing a
+    signed statement about the CloudAPI zone's IP address and keys, including
+    the GZ certificate.
+ .. Binder receives and validates the registration
+ ... First, binder retrieves the list of valid headnodes from the gossip service
+     on its host CN (via the soft token socket?)
+ ... Then, it compares the signature on the certificate given by the registrant
+     to this list and finds it was signed by a valid headnode
+ ... The certificate presented includes metadata about the zone, including any
+     values of `sdc_role` or `manta_role` tags. Binder validates that such
+     values should be allowed to register under the given DNS name.
+ ... After validating the signature on the statement from the registrant, binder
+     begins serving DNS records about it.
+ . CloudAPI opens its cueball pool to connect to VMAPI
+ .. Cueball is running in bootstrap mode, and first establishes a bootstrap
+    resolver to connect to binder
+ ... The bootstrap requests each binder's certificate by looking up the binder
+     service hostname with rrtype CERT (see RFC4398)
+ ... The bootstrap resolver then retrieves the list of valid headnodes from the
+     gossip service on its host CN, and uses this list to validate the binder
+     instances' certificates. It also checks that the `sdc_role`/`manta_role`
+     value matches up.
+ ... The TSIG information on the response is also validated.
+ ... The bootstrap emits only the binders that pass validation (along with their
+     keys) to be used as resolvers.
+ .. Cueball begins service resolution for VMAPI
+ ... It uses the resolvers from the bootstrap stage to contact binder and
+     request both SRV and CERT records for VMAPI (and validates the response's
+     TSIG using the keys from the bootstrap). (These CERT records are signed
+     by the binder instance instead of the CN.)
+ ... Validated records are emitted as backends (with keys from CERT records
+     attached)
+ .. Cueball connects to VMAPI
+ ... TLS is established, and the VMAPI's certificate is validated as being
+     signed by the CERT registrant key from DNS, and the expiry and issuance
+     dates are checked.
+ . Now CloudAPI is registered and connected to VMAPI. It repeats these steps
+   (without bootstrap, since that's already done) for other services.
+ . When CloudAPI wants to make a request to VMAPI, it takes a pre-validated
+   TLS connection from the pool and makes an HTTP request on it.
+ .. The outgoing HTTP request is signed with the zone key of CloudAPI, and
+    includes CloudAPI's registered binder hostname (the service name) as part
+    of the keyId.
+ .. VMAPI requests the CERT records associated with the name connecting to it
+    from binder and validates that a key there matches the one signing the
+    incoming request.
+ .. Then, VMAPI validates the connecting service name against its own policy of
+    which services are allowed to talk to it, and decides whether to accept or
+    reject the request.
+
+[[cn-boot]]
+## CN boot
+
+Unlike headnodes, ordinary Triton CNs boot over the network. Today, this is
+designed to happen by launching the iPXE binary from flash media within each
+server. The iPXE binary then makes a DHCP request, and receives a response
+containing an HTTP URI from which to fetch the kernel and `boot_archive`.
+
+iPXE supports HTTPS with certificate validation, and this will be used to secure
+the CN boot process. It is currently considered unreasonable to add a full
+software stack needed to produce signatures from the Yubikey's asymmetric keys
+in iPXE, however, so it is proposed that anonymous access to the kernel image
+and `boot_archive` be maintained as it is today (i.e., the authentication
+at this stage will be one-way: the CN verifying the boot server's identity,
+guarding against rogue DHCP and HTTP servers).
+
+Since iPXE's certificate validation mechanism is limited to a set of CA
+certificates, which have to reside on the same flash media as iPXE itself, we
+treat boot-up here slightly differently to regular service-to-service (or
+CN-to-service) authentication.
+
+On the flash media with iPXE will be a set of self-signed X.509 certificates
+describing the keys of each of the headnodes in the datacenter at the time when
+the flash media is prepared.
+
+The `booter` zones in the installation will generate a local TLS private key
+each, and have it cross-signed by the signing keys of all the headnodes in the
+data center. They will serve the full set of cross-signed certs in their TLS
+handshake, as alternative chains footnoteref:[alt-chains,"Alternative chains"
+here refers to the TLS notion of providing a single entity certificate, signed
+by a single issuer DN, and then providing multiple certificates for that issuer
+DN that are signed by different upstream issuers themselves. This practice is
+already commonly used in the Internet today when introducing new CAs and is
+quite widely supported.], so that the flash media need only contain one
+headnode in common with the real current set for the boot to be successful.
+
+Once a CN has been set up and is operating normally, it will periodically
+mount its boot flash media and update the set of headnode CA certificates stored
+there.
+
+[[green-field]]
+## Green-field deployment step-by-step
+
+ * Run through steps required to deploy the whole system from root key to
+   all CNs up and running
+
+ . Before beginning to set up hardware, run tools (on laptop) to generate root
+   key and program Yubikey for initial set of headnodes. Set up 3 DVD-Rs as
+   backup media (as multi-track UDF), burn media key and initial metadata to
+   first track, followed by backups of root key and disk encryption secrets for
+   the headnodes.
+ . Run tool to update the USB flash drive image for booting headnodes. Copies
+   the root public key into it, as well as the top-level certificates for the
+   initial set of headnodes (edits the .img file in one step).
+ . Deploy the headnodes for the datacenter, with Yubikeys already present in
+   the chassis at first boot.
+ . Add CNs (small deployment method)
+ .. (If needed) Update the USB flash drive image to be deployed with the current
+    set of headnodes' certificates (run the .img updater tool).
+ .. Run tools (on laptop) to write a Yubikey for each new CN to be deployed.
+    Supply the identities of 3 distinct backup media, and the tool outputs the
+    encrypted pieces.
+ .. Transport the 3 pieces to the locations of the DVD-Rs set up at the
+    beginning and write them in as a new UDF track.
+ .. Copy-paste the public keys written to the Yubikey (output by the tool) into
+    adminui or a commandline tool on a headnode to establish trust.
+ .. Place Yubikey into the new CN and boot.
+ . Add CNs (large deployment method with pre-flight)
+ .. Add blank Yubikeys into each new CN in the fleet
+ .. Boot new CNs to pre-flight. After pre-flight checks are completed, it will
+    write the Yubikey, and pass both the public key and the encrypted pieces of
+    for backup to the pre-flight controller.
+ .. Pre-flight will also write the correct USB image (with certificates added)
+    to the USB flash drive in each CN.
+ .. Transport the encrypted pieces of each key from the pre-flight controller to
+    the location of the backup media and write them out.
+ .. Copy the public keys from the pre-flight controller to a headnode to
+    establish trust.
+ .. Boot the new CNs.
+
+[[brown-field]]
+## Brown-field deployment
+
+ * Deploying this on an existing DC
+
+## Intermediate states of security
+
+ * The road to validating everything in the admin vlan, what intermediate states
+   will look like while upgrading.
+ * What things will look like if you never add any Yubikeys (TLS with just 
+   self-signed certs, open trust).
+
+## PostgreSQL and Moray
+
+ * Auth and TLS. Using LDAP to validate signatures as passwords?
+
+[[soft-token]]
+## Zone soft token details
+
+ * Paths, permissions, operations, privs?
+
+## Hardware support for CCID/Yubikeys
+
+ * Layout the options -- using PC/SC, daemon, having our own driver and framework
