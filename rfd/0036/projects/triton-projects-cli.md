@@ -48,11 +48,11 @@ In the case of the manifest difference between `mongodb-rs2` and the others, we 
 
 ```bash
 $ triton projects --dated
-NAME           MANIFEST  MANIFEST DATE     #INST  STATUS 
-cache-layer-1  3861a218  2012-01-15 17:10  6      1 nginx reprovisioning
-mongodb-rs0    edf2ab36  2012-01-17 14:23  5      normal
-mongodb-rs1    edf2ab36  2012-01-17 14:23  5      normal      
-mongodb-rs2    c441569f  2012-01-19 09:01  5      normal
+NAME           MANIFEST  MANIFEST DATE        #INST  STATUS 
+cache-layer-1  3861a218  2012-01-15 17:10:01  6      1 nginx reprovisioning
+mongodb-rs0    edf2ab36  2012-01-17 14:23:01  5      normal
+mongodb-rs1    edf2ab36  2012-01-17 14:23:01  5      normal      
+mongodb-rs2    c441569f  2012-01-19 09:01:01  5      normal
 ```
 
 
