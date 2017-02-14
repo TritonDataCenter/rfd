@@ -26,22 +26,6 @@ services:
 
 Options avalailable for services include:
 
-## `service_type`
-
-Required
-
-- `continuous` (default)
-- `scheduled`
-- `event`
-
-MVP: Only `continuous`
-
-Example:
-
-```yaml
-service_type: continuous
-```
-
 ## `compute_type`
 
 Required
