@@ -7,7 +7,7 @@ state: draft
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [RFD 26 Network Shared Storage for Triton](#rfd-26-network-shared-storage-for-Triton)
+- [RFD 26 Network Shared Storage for Triton](#rfd-26-network-shared-storage-for-triton)
   - [Introduction](#introduction)
   - [Current prototype](#current-prototype)
   - [Use cases](#use-cases)
@@ -53,7 +53,9 @@ state: draft
         - [CreateVolume](#createvolume)
         - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid)
         - [GetVolumeReferences GET /volumes/volume-uuid/references](#getvolumereferences-get-volumesvolume-uuidreferences)
-        - [UpdateVolume PUT /volumes/volume-uuid](#updatevolume-put-volumesvolume-uuid)
+        - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid)
+        - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork)
+        - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
         - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name)
         - [RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesvolume-uuidrollbacktosnapshot)
@@ -95,6 +97,15 @@ state: draft
       - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
         - [Input](#input-5)
         - [Output](#output-6)
+      - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid-1)
+        - [Input](#input-6)
+        - [Output](#output-7)
+      - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork-1)
+        - [Input](#input-7)
+        - [Output](#output-8)
+      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-1)
+        - [Input](#input-8)
+        - [Output](#output-9)
       - [Snapshots](#snapshots)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot-1)
@@ -799,13 +810,24 @@ A list of volume objects of the following form:
 
 ###### Input
 
-| Param         | Type         | Description                              |
-| ------------- | ------------ | ---------------------------------------- |
-| name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
-| size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
-| type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
-| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be fabric networks owned by the user sending the request. |
-| labels        | Object       | An object representing key/value pairs that correspond to label names/values. |
+| Param         | Type         | Mandatory | Description                             |
+| ------------- | ------------ |-----------|---------------------------------------- |
+| name          | String       | Yes       | The desired name for the volume. If missing, a unique name for the current user will be generated |
+| size          | String       | No        | The desired minimum storage capacity for that volume. |
+| type          | String       | Yes       | The type of volume. Currently only `'tritonnfs'` is supported. |
+| networks      | Array        | Yes       | A list of UUIDs representing networks on which the volume is reachable. These networks must be fabric networks owned by the user sending the request. |
+| labels        | Object       | No        | An object representing key/value pairs that correspond to label names/values. |
+
+####### Size
+
+The `size` input parameter must match the following regular expression:
+
+```
+/(\d+)(g|m|G|M|gb|mb|GB|MB)/
+```
+
+All units are in ibibytes (mebibytes and gibibytes). `g`, `G`, `gb` and `GB`
+stand for "gibibytes". `m`, `M`, `mb` and `MB` stand for "mebibytes".
 
 ###### Output
 
@@ -850,24 +872,60 @@ volume with UUID `volume-uuid`:
 ]
 ```
 
-##### UpdateVolume PUT /volumes/volume-uuid
+##### UpdateVolume POST /volumes/volume-uuid
 
-The UpdateVolume endpoint can be used to update the following properties of a
+The `UpdateVolume` endpoint can be used to update the following properties of a
 shared volume:
 
 * `name`, to rename a volume.
-* `networks`, to change the networks to which a shared volume is connected,
-  which changes the set of VMs that can use it.
-
-Adding or removing networks to a shared volume may require to reboot its
-underlying storage VM. See the section entitled [Impact of networking
-changes](#impact-of-networking-changes) for more details.
+* `tags`, to add/remove tags for a given volume
 
 ###### Input
 
 | Param               | Type         | Description                     |
 | ------------------- | ------------ | --------------------------------|
 | uuid            | String       | The uuid of the volume object       |
+| name | String | The new name of the volume with uuid `uuid` |
+| tags | Array of string | The new tags for the volume with uuid `uuid` |
+
+Sending any other input parameter will result in an error. Updating other
+properties of a volume, such as the networks it's attached to, must be performed
+by using other separate endpoints.
+
+###### Output
+
+The response is empty, and the HTTP status code is 204. This allows the
+implementation to not have to reload the updated volume, and thus minimizes
+latency. If users need to get an updated representation of the volume, they can
+send a `GetVolume` request.
+
+##### AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork
+
+`AttachVolumeToNetwork` can be used to make a volume reachable on a given
+network.
+
+###### Input
+
+| Param           | Type         | Description                     |
+| --------------- | ------------ | --------------------------------|
+| uuid            | String       | The uuid of the volume object   |
+| network_uuid    | String       | The uuid of the network to which the volume with uuid `uuid` should be attached |
+
+###### Output
+
+A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+
+##### DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork
+
+`DetachVolumeFromNetwork` can be used to make a volume that used ot be reachable
+on a given network not reachable on that network anymore.
+
+###### Input
+
+| Param           | Type         | Description                     |
+| --------------- | ------------ | --------------------------------|
+| uuid            | String       | The uuid of the volume object   |
+| network_uuid    | String       | The uuid of the network from which the volume with uuid `uuid` should be dettached |
 
 ###### Output
 
@@ -1135,7 +1193,8 @@ not elastic.
 Currently, there is just one volume type named `'tritonnfs'`, and its associated
 volume packages objects have only one specific property:
 
-* `size`: the storage capacity provided by volumes created with this package.
+* `size`: a Number representing the storage capacity in mebibytes provided by
+  volumes created with this package.
 * `compute_package_uuid`: the UUID of the compute package to use to provision
   the storage VMs when a new volume using this package is created.
 
@@ -1382,9 +1441,9 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
 | owner_uuid    | String       | The UUID of the volume's owner. |
-| size          | Number       | The desired minimum storage capacity for that volume in megabytes. See sections [packages sizes](#packages-sizes) and [packages' storage capacity](#packages'-storage-capacity) for more details. |
+| size          | Number       | The desired minimum storage capacity for that volume in mebibytes. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
-| networks      | Array        | A list of strings representing UUIDs of networks on which the volume is reachable. These networks must be fabric networks and owned by the user with UUID `owner_uuid`. |
+| networks      | Array        | A list of UUIDs representing networks on which the volume is reachable. These networks must be fabric networks and owned by the user with UUID `owner_uuid`. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
 | ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
 | tags          | Object       | An object representing key/value pairs that correspond to tags names/values. Docker volumes' labels are implemented with tags. |
@@ -1405,6 +1464,7 @@ either ready to use (`state` === `'ready'`) or when it failed to be created
 
 | Param           | Type        | Description                     |
 | --------------- | ----------- | --------------------------------|
+| owner_uuid    | String       | The UUID of the volume's owner. |
 | uuid            | String      | The uuid of the volume object   |
 | force           | Boolean     | If true, the volume can be deleted even if there are still non-deleted containers that reference it .   |
 
@@ -1425,6 +1485,64 @@ is actually deleted, users need to poll the volume's `state` property.
 
 If resources are using the volume to be deleted, the request results in an error
 and the error contains a list of resources that are using the volume.
+
+#### UpdateVolume POST /volumes/volume-uuid
+
+The UpdateVolume endpoint can be used to update the following properties of a
+shared volume:
+
+* `name`, to rename a volume.
+* `tags`, to add/remove tags for a given volume
+
+##### Input
+
+| Param               | Type         | Description                     |
+| ------------------- | ------------ | --------------------------------|
+| owner_uuid    | String       | The UUID of the volume's owner. |
+| uuid            | String       | The uuid of the volume object       |
+| name | String | The new name of the volume with uuid `uuid` |
+| tags | Array of string | The new tags for the volume with uuid `uuid` |
+
+##### Output
+
+The response is empty, and the HTTP status code is 204. This allows the
+implementation to not have to reload the updated volume, and thus minimizes
+latency. If users need to get an updated representation of the volume, they can
+send a `GetVolume` request.
+
+#### AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork
+
+`AttachVolumeToNetwork` can be used to make a volume reachable on a given
+network.
+
+##### Input
+
+| Param           | Type         | Description                     |
+| --------------- | ------------ | --------------------------------|
+| owner_uuid    | String       | The UUID of the volume's owner. |
+| uuid            | String       | The uuid of the volume object   |
+| network_uuid    | String       | The uuid of the network to which the volume with uuid `uuid` should be attached |
+
+##### Output
+
+A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+
+#### DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork
+
+`DetachVolumeFromNetwork` can be used to make a volume that used ot be reachable
+on a given network not reachable on that network anymore.
+
+##### Input
+
+| Param           | Type         | Description                     |
+| --------------- | ------------ | --------------------------------|
+| owner_uuid    | String       | The UUID of the volume's owner. |
+| uuid            | String       | The uuid of the volume object   |
+| network_uuid    | String       | The uuid of the network from which the volume with uuid `uuid` should be dettached |
+
+##### Output
+
+A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
 #### Snapshots
 
@@ -1584,6 +1702,8 @@ Volumes are be represented as objects that share a common set of properties:
   troubleshooting/debugging purposes. See the section [Volumes state
   machine](#volumes-state-machine) for a diagram and further details about the
   volumes' state machine.
+* `networks`: a list of network UUIDs that represents the networks on which this
+  volume can be reached.
 * `error`: an optional property present when the `state` property is `failed`.
   It allows users to get further details on why a volume is in the `failed`
   state. Its value is an object with the following properties:
@@ -1609,7 +1729,8 @@ extra properties:
   filesystem in the host's filesystem.
 * `vm_uuid`: the UUID of the Triton VM running the NFS server that exports the
   actual storage provided by this volume.
-* `size`: the storage size available for this volume, in megabytes.
+* `size`: a Number representing the storage size available for this volume, in
+  mebibytes.
 
 ##### Deletion and usage semantics
 
