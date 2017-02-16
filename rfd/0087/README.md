@@ -18,13 +18,13 @@ state: predraft
 
 ## Overview
 
-Docker supports an endpoint for getting/streaming events for containers. As of
+Docker supports an endpoint for getting events for containers. As of
 2017-02-06, sdc-docker does not support this endpoint. Recent changes to the
-Docker cli for Docker version 1.13.0 have increased the priority of
-implementing the /events endpoint at least minimally, as the cli now depends on
-/events to gather the exit code for the `docker run` command and users will
-get errors and the wrong exit code for every `docker run` with the new version
-until this is implemented.
+Docker CLI for Docker version 1.13.0 have increased the priority of
+implementing the /events endpoint at least minimally. The CLI now depends on
+/events to gather the exit code for the `docker run` command. As a result,
+user of sdc-docker will get errors and the wrong exit code for every `docker
+run` with the new version until this is implemented.
 
 This document discusses what would be required to implement the minimal
 container components of the of /events, with extra focus on what will be
@@ -33,9 +33,11 @@ run` with Docker 1.13.0.
 
 ## What is /events and why does it matter?
 
-At the time of this writing Docker's documentation for events is
-[here](https://docs.docker.com/engine/api/v1.25/#operation/SystemEvents) though
-recent changes seem to indicate that this URL is not permanent.
+At the time of this writing, it's not possible to link to Docker's documentation
+for events and recent changes indicate URLs for documentation are not permanent
+either. If you go to [this page](https://docs.docker.com/engine/api/v1.25/) and
+search for "Monitor events" you can find what little documentation there is
+(last checked 2017-02-15).
 
 When a client runs `docker run ...` the call to events looks like:
 
@@ -80,9 +82,15 @@ Transfer-Encoding: chunked
 0
 ```
 
-with a chunk in the chunked response for each event. Since `docker run` calls
-/events after `/create`, we don't see the create event in this stream. We also
-don't see the attach that happens before the `start`.
+with a chunk in the chunked response for each event. Since the order of the `docker run` calls is:
+
+ * /create
+ * /attach
+ * /events
+ * /start
+
+we don't see the create or attach events in this stream as they happened before
+our events call.
 
 As of Docker 1.13.0, Docker uses the `exitCode` from the `die` event here as
 the exit code of the `docker run` command. Without implementing this the user
@@ -128,8 +136,8 @@ supported Docker events (see section below "Docker Events").
 
 In addition to filters, docker events supports a `since` and an `until`. The `until`
 would be pretty straight-forward to implement for *future* values if it weren't
-for the fact that it gives you all data since the daemon last started. This
-means if I do:
+for the fact that it gives you all data since the daemon last started (unless
+you also pass a --since value). This means if I do:
 
 ```
 docker events --filter event=start --until=2017-01-27T20:15:00
@@ -300,7 +308,26 @@ exitCode for example in the case of a die event), it's also possible that at
 different layers of the stack it will be more difficult to have access to the
 required additional information. Especially in a timely manner.
 
-## Properties of a solution
+When Docker wants the exit code, it can simply wait(3c) for the process to exit
+and read the exit code directly. When sdc-docker wants the exit code this
+currently needs to come from:
+
+ * zoneadmd writing the value to the lastexited file
+ * vm-agent noticing that the VM exited
+ * vm-agent loading the value using vmadm (which reads the lastexited file)
+ * vm-agent doing a PUT to VMAPI with the new VM object
+ * sdc-docker calling VMAPI to see the exit code.
+
+and this process can take several seconds.
+
+Docker does not document the data that comes with the other events so these
+would need to be reverse engineered. However it is obvious from the experiments
+already run that Docker (strangely) includes the image name with many of these
+responses. In Docker it's easy to pull out that information since we're only
+dealing with one host's containers. In sdc-docker, we'd need to do an additional
+query to IMGAPI to load that information.
+
+## Requirements for a solution
 
 What is required here just for `docker run` (to resolve
 [DOCKER-996](https://smartos.org/bugview/DOCKER-996)) is at
@@ -309,48 +336,12 @@ minimum that we must have:
  * the ability to output a `die` event any time a container exits
  * the die event must include the exit code
 
-As mentioned in the previous section, this problem is significantly complicated
-by the distributed nature of `attach` for docker containers in sdc-docker.
-
-### Triton Changefeed
-
-As what we'd like for the `docker run` use of `/events` is a feed of the
-changes to a given container or set of containers, the Changefeed mechanism
-described in [RFD 5](https://github.com/joyent/rfd/blob/master/rfd/0005/README.md) and
-implemented in VMAPI seems like a logical place to start. However there are a
-few things to consider here.
-
-Changefeed operates on VMAPI which is itself a cache of the VM data which
-ultimately belongs to a CN. This means that when Changefeed emits an event, it
-is telling you when the *cache* of the current state was updated, not when the
-event itself occurred on the CN. Additionally, Changefeed only tells you *that*
-something changed, not *what changed* or the new value, this means that you must
-separately query VMAPI to find the current cached state which might be different
-from the state immediately following a change since there could be intervening
-changes.
-
-As it stands currently, it's also not possible to watch changefeed for an
-individual VM. So the options would be:
-
- * modify Changefeed and allow watching for changes for an individual VM and
-   have sdc-docker create a separate listener for each `docker run` or `docker
-   attach` session.
-
- * have sdc-docker listen for *all* VM changes and filter out those we're not
-   waiting for exit from as a client of changefeed.
-
-It's open for discussion which of these would be preferable. With separate
-listeners, one concern might be the overhead and whether the Changefeed changes
-belong with the design of that API. With a single listener there would be more
-data passed that would just be ignored most of the time by sdc-docker.
-
-In addition, we'd probably want to add the `exit_status` and `boot_timestamp`
-fields to the set of VM properties that changefeed can detect.
-
-Even if we modify Changefeed in these ways, we still have a number of
-correctness problems here that seem as though they'll be impossible to solve
-with the existing implementation of changefeed. More on that in the next
-section.
+If we add support for the `die` event, we remove all the user-visible errors
+added here in the `docker run` path, and we also fix the exit codes returned by
+the Docker CLI in this case. As mentioned in the [previous
+section](#distributed-nature-of-actions-in-sdc-docker), this problem is
+significantly complicated by the distributed nature of `attach` for docker
+containers in sdc-docker.
 
 ### Correctness of exit codes and loss of information
 
@@ -376,24 +367,96 @@ we may see that the VM has exited and see the exit status, but we cannot know if
 the VM has started and exited more than once since the last time we loaded.
 Additionally if Changefeed notifies us that a VM object changed, we do not get
 the state along with that and need to query for it. When we do so, we don't know
-if there were intermediate changes between our notification and our GET. Even if
-we did, since VMAPI itself may miss events as the load from the CN works
-similarly, we would not know for sure that the exit code available now is the
-correct exit code for the user's attach session.
+if there were intermediate changes between our notification and our GET.
+
+Even if we were sure we were notified of every change at VMAPI, it would still
+be possible to miss events since VMAPI may never be notified about some events.
+This is because on the CN, the process works similar in that changes are noticed
+via an event mechanism (sysevents, or event ports) that does not tell us exactly
+what changed but only that a change occurred, and we need to load the object to
+see what changed. In the meantime, there may have been other events that we
+missed and therefore were never able to tell VMAPI about.
+
+Without knowing that we didn't miss any stop/start cycles here, we can't know
+that the exit code available now is the correct exit code for the user's attach
+session, and giving the user the wrong exit code could have disastrous
+consequences. For example, if:
+
+ * user has a process that does `docker run ... /.../backup.sh` to run a backup
+   script that copies data out of the container to some remote location.
+ * the backup process exits with a non-zero code because it had an error and
+   didn't complete the backup (exit 1).
+ * another script the user is running happens to start that container (maybe a
+   bug, or maybe some other script being run) and exits successfully (exit 0).
+ * sdc-docker only finds out about the state after the second change, because
+   for some reason the notify/load loop took long enough that the load completed
+   after the second stop.
+ * sdc-docker outputs a `die` event with exitCode 0
+ * user's script sees successful execution of backup.sh and destroys the
+   container, losing data since the backup did not actually exit with status 0.
 
 Until we've resolved [ZAPI-690](https://smartos.org/bugview/ZAPI-690), we also
 have the problem where VMAPI's information may move both forward and backward
-(we may temporarily overwrite old data on top of new data in some cases).
+(we may temporarily overwrite old data on top of new data in some cases). Which
+might have impact here as well if we're relying on VMAPI data via polling after
+being notified.
 
 ### Also... About those History Features
 
 As mentioned above, the docker endpoints support `until` and `since` which also
-throw a wrench into the use of Changefeed. Changefeed does not store any
-historical data and therefore will now support these features.
+throw a wrench into the use of Changefeed (discussed below). Changefeed does not
+store any historical data and therefore will now support these features.
 
 ## Ideas for discussion
 
-It seems that to resolve this correctly, we'd want:
+### Triton Changefeed
+
+As what we'd like for the `docker run` use of `/events` is a feed of the
+changes to a given container or set of containers, the Changefeed mechanism
+described in [RFD 5](https://github.com/joyent/rfd/blob/master/rfd/0005/README.md) and
+implemented in VMAPI seems like a logical place to start. However there are a
+few things to consider here.
+
+Changefeed operates on VMAPI which is itself a cache of the VM data which
+ultimately belongs to a CN. This means that when Changefeed emits an event, it:
+
+ 1) is telling you when the *cache* of the current state was updated, not when the
+    event itself occurred on the CN
+ 2) only tells you *that* something changed, not *what changed* or the new value
+ 3) requires (due to #2) that you separately query VMAPI to find the current
+    cached state which might be different from the state immediately following a
+    change since there could be intervening changes.
+
+As it stands currently, it's also not possible to watch changefeed for an
+individual VM. So the options would be:
+
+ * modify Changefeed and allow watching for changes for an individual VM and
+   have sdc-docker create a separate listener for each `docker run` or `docker
+   attach` session.
+
+ * have sdc-docker listen for *all* VM changes and filter out those we're not
+   waiting for exit from as a client of changefeed.
+
+If we decide it's worth going this route, it's open for discussion which of
+these would be preferable. With separate listeners, one concern might be the
+overhead and whether the Changefeed changes belong with the design of that API.
+With a single listener there would be more data passed that would just be
+ignored most of the time by sdc-docker.
+
+In addition, we'd probably want to add the `exit_status` and `boot_timestamp`
+fields to the set of VM properties that changefeed can detect.
+
+Even if we modify Changefeed in these ways, we still have a number of
+correctness problems here that seem as though they'll be impossible to solve
+with the existing implementation of changefeed. More on that in a [previous
+section](#correctness-of-exit-codes-and-loss-of-information).
+
+Given the problems listed here, it seems Changefeed may not be the best option
+unless some major changes are made.
+
+### If not Changefeed, then what?
+
+It seems that to resolve this correctly, we'd probably want:
 
  * an ordered log of all changes to a VM that happen on the CN
  * a mechanism to query this from sdc-docker
@@ -439,11 +502,12 @@ With [OS-3429](https://smartos.org/bugview/OS-3429), support was added to
 zoneadm/zoneadmd to write the lastexited file in /zones/<uuid>/lastexited which
 contains the last exit timestamp and status of init for the zone. This file is
 is overwritten on each exit. If we were to modify this mechanism such that it
-appends a line to the file on each exit, instead of overwriting the file, we
-would be able to have an accurate record of all exits. If we did this and
-exposed it via cn-agent in a way that sdc-docker could consume, we would have
-everything we need to implement the `die` events, including for history (back
-the point where the CN was booted onto a supporting platform).
+appends a line to the file on each exit with the code and timestamp, instead of
+overwriting the file, we would be able to have an accurate record of all exits.
+If we did this and exposed it via cn-agent in a way that sdc-docker could
+consume, we would have everything we need to implement the `die` events,
+including for history (back the point where the CN was booted onto a supporting
+platform).
 
 The biggest downside to doing this is that it would require a platform update in
 order to roll this feature out.
