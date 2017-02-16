@@ -343,6 +343,8 @@ section](#distributed-nature-of-actions-in-sdc-docker), this problem is
 significantly complicated by the distributed nature of `attach` for docker
 containers in sdc-docker.
 
+## Current limitations that conflict with requirements
+
 ### Correctness of exit codes and loss of information
 
 There are a number of cases where we may end up with incorrect exit codes if
@@ -405,7 +407,7 @@ being notified.
 
 As mentioned above, the docker endpoints support `until` and `since` which also
 throw a wrench into the use of Changefeed (discussed below). Changefeed does not
-store any historical data and therefore will now support these features.
+store any historical data and therefore will not support these features.
 
 ## Ideas for discussion
 
