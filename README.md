@@ -91,7 +91,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 46 Origin images for Triton and Manta core images](./rfd/0046/README.md) |
 | draft    | [RFD 47 Retention policy for Joyent engineering data in Manta](./rfd/0047/README.md) |
 | predraft | [RFD 48 Triton A&A Overhaul (AUTHAPI)](./rfd/0048/README.md) |
-| (WIP)    | [RFD 49 AUTHAPI internals](./rfd/0049/README.md) |
+| predraft | [RFD 49 AUTHAPI internals](./rfd/0049/README.md) |
 | predraft | [RFD 50 Enhanced Audit Trail for Instance Lifecycle Events](./rfd/0050/README.md) |
 | draft    | [RFD 51 Code Review Guidance](./rfd/0051/README.md) |
 | draft    | [RFD 52 Moray test suite rework](./rfd/0052/README.md) |
@@ -128,7 +128,8 @@ formal writing that it has come to represent.)
 | publish | [RFD 83 Triton `http_proxy` support](./rfd/0083/README.md) |
 | predraft | [RFD 84 Providing Manta access on multiple networks](./rfd/0084/README.md) |
 | draft    | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |
-| (WIP) | [RFD86 ContainerPilot 3](./rfd/0086/README.md)
+| predraft | [RFD 86 ContainerPilot 3](./rfd/0086/README.md) |
+| predraft | [RFD 87 Docker Events for Triton](./rfd/0087/README.md) |
 
 ## Contents of an RFD
 
