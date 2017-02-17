@@ -1777,7 +1777,9 @@ Indexes are setup for the following searchable properties:
 
 ![Volumes state FSM](images/volumes-state-fsm.png)
 
-#### Reaping failed and deleted volumes
+#### Data retention policy
+
+##### Reaping failed and deleted volumes
 
 Volumes in state `failed` and `deleted` do not need to be present in persistent
 storage forever. Not deleting these entries has an impact on performance. For
