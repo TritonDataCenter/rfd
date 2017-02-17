@@ -192,10 +192,9 @@ The reason is that the filter used to make sure that all objects returned
 actually match the provided filter use a filter that is not aware of the indexed
 fields' type _for all unindexed fields_.
 
-The [`compileQuery` function](https://github.com/joyent/moray/blob/master/lib/ob
-jects/common.js#L126-L304) is the one responsible for [updating the type of the
-values specified in the `findobjects` request's filter](https://github.com/joyen
-t/moray/blob/master/lib/objects/common.js#L44-L123).
+The [`compileQuery` function](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L126-L304)
+is the one responsible for [updating the type of the values specified in the
+`findobjects` request's filter](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L44-L123).
 
 However, it [only considers indexes that are fully reindexed as
 valid](https://github.com/joyent/moray/blob/master/lib/objects/comm
