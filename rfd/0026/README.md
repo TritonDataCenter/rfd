@@ -1444,7 +1444,7 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 | owner_uuid    | String       | The UUID of the volume's owner. |
 | size          | Number       | The desired minimum storage capacity for that volume in mebibytes. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
-| networks      | Array        | A list of UUIDs representing networks on which the volume is reachable. These networks must be fabric networks and owned by the user with UUID `owner_uuid`. |
+| networks      | Array        | A list of UUIDs representing networks on which the volume will be reachable. These networks must be owned by the user with UUID `owner_uuid`. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
 | ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
 | tags          | Object       | An object representing key/value pairs that correspond to tags names/values. Docker volumes' labels are implemented with tags. |
