@@ -222,7 +222,7 @@ Here's a diagram which helps to understand where these events are emitted:
 
 ![Event Diagram](http://docs.master.dockerproject.org/engine/reference/api/images/event_state.png)
 
-source: [http://docs.master.dockerproject.org/engine/reference/api/docker_remote_api/#/docker-events](http://docs.master.dockerproject.org/engine/reference/api/docker_remote_api/#/docker-events)
+source: [[Docker API Reference](http://docs.master.dockerproject.org/engine/reference/api/docker_remote_api/#/docker-events)]
 
 #### attach
 
