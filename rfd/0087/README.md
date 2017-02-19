@@ -16,7 +16,7 @@ state: predraft
 
 # RFD 87 Docker Events for Triton
 
-## Overview
+## What is this and why do we need it?
 
 Docker supports an endpoint for getting events for containers. As of
 2017-02-06, sdc-docker does not support this endpoint. Recent changes to the
@@ -31,7 +31,9 @@ container components of the of /events, with extra focus on what will be
 required to minimally support the 'die' event which is required for `docker
 run` with Docker 1.13.0.
 
-## What is /events and why does it matter?
+## What Docker Events look like
+
+### API calls made by docker run (1.13.0+)
 
 At the time of this writing, it's not possible to link to Docker's documentation
 for events and recent changes indicate URLs for documentation are not permanent
@@ -132,12 +134,12 @@ specifying a container, implementing only the following filters:
 where `ContainerId` is a Docker container Id, and `EventType` is one of the
 supported Docker events (see section below "Docker Events").
 
-### History Features
+### --since and --until
 
-In addition to filters, docker events supports a `since` and an `until`. The `until`
-would be pretty straight-forward to implement for *future* values if it weren't
-for the fact that it gives you all data since the daemon last started (unless
-you also pass a --since value). This means if I do:
+Along with filters, `docker events` supports `since` and `until` options. The
+`until` would be pretty straight-forward to implement for *future* values if it
+weren't for the fact that it gives you all data since the daemon last started
+(unless you also pass a --since value). This means if I do:
 
 ```
 docker events --filter event=start --until=2017-01-27T20:15:00
@@ -160,7 +162,7 @@ These "history" features will be difficult to implement with the current design
 of Triton and sdc-docker. More on that below in the [Complicating
 Factors](#complicating-factors) section.
 
-## Docker's Supported Events
+### List of Docker supported events
 
 Docker supports the following events:
 
@@ -216,70 +218,105 @@ This leaves us with the following:
 that we could possibly implement at this point. Below we'll go through each of
 these briefly.
 
-### attach
+Here's a diagram which helps to understand where these events are emitted:
+
+![Event Diagram](http://docs.master.dockerproject.org/engine/reference/api/images/event_state.png)
+
+source: [http://docs.master.dockerproject.org/engine/reference/api/docker_remote_api/#/docker-events](http://docs.master.dockerproject.org/engine/reference/api/docker_remote_api/#/docker-events)
+
+#### attach
 
 Emitted when a container is attached via `docker attach` or the attach that
 happens when using `docker run` without the `-d` flag.
 
-### commit
+#### commit
 
 Emitted when an image is created from a container using `docker commit`.
 
-### copy
+#### copy
 
 Emitted whenever files are copied to/from a container.
 
-### destroy
+#### destroy
 
 Emitted when a container is destroyed.
 
-### detach
+#### detach
 
 Emitted when a `docker attach` or `docker run` detaches from its session
 connected to the stdio of the init process for a container.
 
-### die
+#### die
 
 Emitted any time a container stops (init exits).
 
-### exec\_create
+#### exec\_create
 
 Emitted when a `docker exec` session is created.
 
-### exec\_detach
+#### exec\_detach
 
 Emitted when a `docker exec` client disconnects from the session.
 
-### exec\_start
+#### exec\_start
 
 Emitted when a `docker exec` session is started.
 
-### kill
+#### kill
 
 Emitted when a signal is sent to the container's init process via
 `docker kill`.
 
-### rename
+#### rename
 
 Emitted when a container's name is changed. (alias in sdc-docker)
 
-### restart
+#### restart
 
 Emitted on `docker restart`, after `die` and `start`.
 
-### start
+#### start
 
 Emitted whenever the container goes to a running state.
 
-### stop
+#### stop
 
 Emitted when the container `die`s via a `docker stop` command.
 
-### top
+#### top
 
 Emitted when a client gets the `ps` output for a container via `docker top`.
 
-## Complicating factors
+## Summary of solution requirements
+
+What is required here just for `docker run` (to resolve
+[DOCKER-996](https://smartos.org/bugview/DOCKER-996)) is at
+minimum that we must have:
+
+ * the ability to output a `die` event any time a container exits
+ * the die event must include the exit code
+
+If we add support for the `die` event, we remove all the user-visible errors
+added here in the `docker run` path, and we also fix the exit codes returned by
+the Docker CLI in this case. As discussed in the [next
+section](#distributed-nature-of-actions-in-sdc-docker), this problem is
+significantly complicated by the distributed nature of `attach` for docker
+containers in sdc-docker.
+
+If we want to solve the more general problem and have what's needed to provide
+all the Docker events, it seems we'll also need:
+
+ * SmartOS to write out (for all containers):
+   * timestamp of creation (create\_timestamp just added to log?)
+   * timestamp when the VM goes to running
+   * timestamp of destroy
+   * timestamp and fields of all updates (any time a VM object is updated,
+     this requires a number of different components to log what they're doing)
+
+And the rest of the events could potentially be done either in cn-agent (for
+machine\_kill, or attach/detach for example) or in the APIs.
+
+## What makes this hard to implement?
 
 ### Distributed nature of actions in sdc-docker
 
@@ -327,29 +364,11 @@ responses. In Docker it's easy to pull out that information since we're only
 dealing with one host's containers. In sdc-docker, we'd need to do an additional
 query to IMGAPI to load that information.
 
-## Requirements for a solution
-
-What is required here just for `docker run` (to resolve
-[DOCKER-996](https://smartos.org/bugview/DOCKER-996)) is at
-minimum that we must have:
-
- * the ability to output a `die` event any time a container exits
- * the die event must include the exit code
-
-If we add support for the `die` event, we remove all the user-visible errors
-added here in the `docker run` path, and we also fix the exit codes returned by
-the Docker CLI in this case. As mentioned in the [previous
-section](#distributed-nature-of-actions-in-sdc-docker), this problem is
-significantly complicated by the distributed nature of `attach` for docker
-containers in sdc-docker.
-
-## Current limitations that conflict with requirements
-
 ### Correctness of exit codes and loss of information
 
 There are a number of cases where we may end up with incorrect exit codes if
-this endpoint is implemented insufficiently. This is actually the case with
-pre-1.13.0 clients and the existing sdc-docker implementation as well.
+this endpoint is implemented insufficiently. These are actually already possible
+with pre-1.13.0 clients and the existing sdc-docker implementation as well.
 
 Cases where exit codes can be lost include:
 
@@ -373,11 +392,11 @@ if there were intermediate changes between our notification and our GET.
 
 Even if we were sure we were notified of every change at VMAPI, it would still
 be possible to miss events since VMAPI may never be notified about some events.
-This is because on the CN, the process works similar in that changes are noticed
-via an event mechanism (sysevents, or event ports) that does not tell us exactly
-what changed but only that a change occurred, and we need to load the object to
-see what changed. In the meantime, there may have been other events that we
-missed and therefore were never able to tell VMAPI about.
+This is because on the CN, the process works similarly in that changes are
+noticed via an event mechanism (sysevents, or event ports) that does not tell us
+exactly what changed but only that a change occurred, and we need to load the
+object to see what changed. In the meantime, there may have been other events
+that we missed and therefore were never able to tell VMAPI about.
 
 Without knowing that we didn't miss any stop/start cycles here, we can't know
 that the exit code available now is the correct exit code for the user's attach
@@ -403,13 +422,17 @@ have the problem where VMAPI's information may move both forward and backward
 might have impact here as well if we're relying on VMAPI data via polling after
 being notified.
 
-### Also... About those History Features
+### Maintenance of history vs. current state
 
 As mentioned above, the docker endpoints support `until` and `since` which also
 throw a wrench into the use of Changefeed (discussed below). Changefeed does not
 store any historical data and therefore will not support these features.
 
-## Ideas for discussion
+Additionally, VMAPI and vmadm also don't store history currently. Everything in
+Triton works based on the current state which means that displaying history is
+not possible since we're not tracking all state changes.
+
+## Solutions that won't work
 
 ### Triton Changefeed
 
@@ -456,18 +479,7 @@ section](#correctness-of-exit-codes-and-loss-of-information).
 Given the problems listed here, it seems Changefeed may not be the best option
 unless some major changes are made.
 
-### If not Changefeed, then what?
-
-It seems that to resolve this correctly, we'd probably want:
-
- * an ordered log of all changes to a VM that happen on the CN
- * a mechanism to query this from sdc-docker
-
-At minimum for the immediate issue, we'd need to log every time a zone has
-exited and the exit code. In the future if we want to support other `/events`,
-we'll need to also record the information required for those events.
-
-### Utilizing vminfod
+### vminfod
 
 One potential way to implement this would be to rely on `vminfod` ala
 [OS-2647](https://smartos.org/bugview/OS-2647) / [RFD
@@ -480,8 +492,9 @@ one CN, we don't need to deal with problems of distributed consistency which
 would be required if we were storing this data in (potentially HA) APIs.
 
 A problem with this approach that would require additional changes is that
-vminfod, as prototyped currently, is itself *also* a cache. This means that it
-stores the current state but may not store every possible intermediate change.
+vminfod, as prototyped currently, is itself *also* a cache similar to VMAPI.
+This means that it stores the current state but may not store every possible
+intermediate change.
 
 A "VM" in Triton is a virtual construct on top of a number of things including:
 
@@ -498,7 +511,31 @@ which are unreliable and other mechanisms such as event port watchers on various
 files. It is not possible with these watchers to currently guarantee that
 vminfod sees all changes.
 
-### Changing "lastexited"
+## Possible components of a solution
+
+### An ordered log of changes
+
+It seems that to resolve this correctly, we'd probably want:
+
+ * an ordered log of all changes to a VM that happen on the CN
+ * a mechanism to query this from sdc-docker
+
+At minimum for the immediate issue, we'd need to log every time a zone has
+exited and the exit code. In the future if we want to support other `/events`,
+we'll need to also record the information required for those events.
+
+In addition to the docker events, having this data on a CN could allow us to
+implement a `vmadm history` command that would give us a view of all changes to
+VMs on a CN. This command could have:
+
+ * the ability to list all VM changes
+ * the abillty to list all VM changes in a specific timeframe
+ * the ability to list all changes to a specific VM
+ * the abillty to list all changes to a specific VM in a specific timeframe
+
+Which would be handy for debugging problems on CNs.
+
+### lastexited, and possible enhancements
 
 With [OS-3429](https://smartos.org/bugview/OS-3429), support was added to
 zoneadm/zoneadmd to write the lastexited file in /zones/<uuid>/lastexited which
@@ -519,7 +556,7 @@ changes at the same time to write out other information that will require
 platform changes, such as potentially writing out a file on every VM boot as
 well.
 
-### Going further
+### Other events and an ordered log of all changes
 
 Instead of just making the lastexited change described above, we could also
 consider solving a bigger problem by trying to get SmartOS itself to write out a
@@ -557,8 +594,29 @@ Having this single log of all changes to a VM on a CN would give us the
 missing primitives required to fully support `docker events` for those events
 that we listed above as making sense with sdc-docker at all.
 
+## Open questions
+
+### How should data be stored?
+
+Assuming we're going to write out a log of all changes to each VM on a CN, we'll
+need to figure out where to store this log. It probably doesn't make sense to
+store it with the zone, since the record would then go away when the zone is
+deleted. We also would need to figure out what format this file should have.
+Just lines of JSON? And if/when the data should be compacted, archived or
+removed.
+
+### How should sdc-docker consume the data?
+
+If there's a log existing on each CN for VMs, there will need to be some
+mechanism for APIs to access this. Possible options include:
+
+ * Having vm-agent keeping VMAPI updated with all the entries from the log(s)
+ * Having vm-agent (or cn-agent) listen for requests for VM history and read the
+   files when requested.
+
+But there will probably be more options that come out in discussion.
+
 ## See also
 
  * [DOCKER-996](https://smartos.org/bugview/DOCKER-996) (ticket for the 1.13.0 breakage)
- * [RFD 30](https://github.com/joyent/rfd/blob/master/rfd/0030/README.md) (handling last\_exited in case of CN crash)
-
+ * [RFD 30](https://github.com/joyent/rfd/blob/master/rfd/0030/README.md) (handling lastexited in case of CN crash)
