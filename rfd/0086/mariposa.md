@@ -10,7 +10,7 @@ The proposal is in two parts. A read-only endpoint exposing the state of all ser
 
 ##### `GetStatus GET /status`
 
-This API will expose the state of all services associated with this ContainerPilot instance.
+This API will expose the state of all services associated with this ContainerPilot instance, including their dependencies.
 
 *Example Response*
 
@@ -25,6 +25,7 @@ Content-Length: 328
       "address": "192.168.1.100",
       "port": 80,
       "status": "healthy"
+      "depends_on": ["backend1", "backend2"]
     },
     {
       "name": "consul_agent",
@@ -38,7 +39,7 @@ Content-Length: 328
 
 ### Control plane endpoint
 
-##### `PutEnviron POST /v3/environ`
+##### `PutEnv POST /v3/env`
 
 This API allows a hook to update the environment variables that ContainerPilot provides to lifecycle hooks. The body of the POST must be in JSON format. The keys will be used as the environment variable to set, and the values will be the values to set for those environment variables. The environment variables take effect for all future processes spawned and override any existing environment variables. Unsetting an variable is supporting by passing an empty string or `null` as the JSON value for that key. This API returns HTTP400 if the the key is not a valid environment variable name, otherwise HTTP200 with no body.
 
@@ -48,7 +49,7 @@ This API allows a hook to update the environment variables that ContainerPilot p
 curl -XPOST \
     -d '{"ENV1": "value1", "ENV2": "value2", "ENV_TO_CLEAR": ""}' \
     --unix-socket /var/containerpilot.sock \
-    http:/v3/environ
+    http:/v3/env
 ```
 
 ##### `PutMetric POST /v3/metric`
