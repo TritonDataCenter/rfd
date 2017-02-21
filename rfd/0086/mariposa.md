@@ -41,7 +41,7 @@ Content-Length: 328
 
 ##### `PutEnv POST /v3/env`
 
-This API allows a hook to update the environment variables that ContainerPilot provides to lifecycle hooks. The body of the POST must be in JSON format. The keys will be used as the environment variable to set, and the values will be the values to set for those environment variables. The environment variables take effect for all future processes spawned and override any existing environment variables. Unsetting an variable is supporting by passing an empty string or `null` as the JSON value for that key. This API returns HTTP400 if the the key is not a valid environment variable name, otherwise HTTP200 with no body.
+This API allows a hook to update the environment variables that ContainerPilot provides to lifecycle hooks. The body of the POST must be in JSON format. The keys will be used as the environment variable to set, and the values will be the values to set for those environment variables. The environment variables take effect for all future processes spawned and override any existing environment variables. Unsetting an variable is supporting by passing an empty string or `null` as the JSON value for that key. This API returns HTTP400 if the key is not a valid environment variable name, otherwise HTTP200 with no body.
 
 *Example Request*
 
