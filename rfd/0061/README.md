@@ -10,32 +10,36 @@ state: predraft
 -->
 
 <!--
-    Copyright 2016 Joyent, Inc.
+    Copyright 2017 Joyent, Inc.
 -->
 
 # RFD 61 CNAPI High Availability
 
 ## Introduction
 
-The Trition Compute Node API (or CNAPI) fulfills an important role within the
-hiearchy of the Triton stack. It not only maintains an up to date picture of
-compute nodes running in the datacenter and their lifecycle-related data, such
-as compute node status, hardware dimensions, boot parameters, etc, but also
-serializes and controls access to compute node resources, prepares and handles
-actions performed to be performed on compute nodes or their containers.
+The Triton Compute Node API (or CNAPI) fulfills an important role within the
+Triton stack.
 
-Given the position it occupies on the critical path of normal operation of the
-Triton stack, it is therefore not surprising that if the CNAPI service is
-interrupted, because of scheduled maintenance or headnode failure, the impact
-to the datacenter is great. Should the situation arise where a CNAPI instance
-becomes unavailable, it is desireable to have service requests flow to
-sibling instances to pick up the slack. The main idea is to minimize disruption to
-upstream dependents.
+CNAPI is responsible for:
+    - Maintaining an up to date picture of compute nodes running in the
+      datacenter and their lifecycle-related data such as running status,
+      hardware dimensions, boot parameters, etc.
+    - Serializing and controling access to compute node resources.
+    - Preparing and handling actions to be performed on compute nodes or their
+      containers.
+
+If the CNAPI service is interrupted, because of scheduled maintenance or
+headnode failure, there is a signficant negative impact on the datacenter.
+Should the situation arise where a CNAPI instance becomes unavailable, it is
+therefore desireable to have service requests flow to sibling instances to pick
+up the slack. The main objective is to minimize disruption to upstream
+dependents.
 
 While distribution of the workload amongst redundant instances is a potential
 side-benefit, running multiple instances of CNAPI is a primarily a step to
 mitigating the risk should one of those instances experience problems as a
 result of software, hardware or network faults.
+
 
 ## This RFD
 
@@ -46,17 +50,32 @@ The ultimate goal of this document is to:
     - Outline what needs to be done to allow CNAPI to co-exist with multiple instances
       of itself and be be brought up to the model described above.
 
-Because CNAPI is composed of a number of subsystems it is worthwhile to look at
-each subsystem in turn. We shall examine what each does and what changes, if
-any, are required to in order to correctly operate multiple CNAPI instances. As
-currently designed some CNAPI subsystems are more able to deal other instances
-(without unwanted or undefined behavior, such as clobbering of data) of itself
-running in parallel than others.
+Because CNAPI is comprised of a number of sub-systems, it is worthwhile to look
+at each sub-system in turn. We shall examine how each one works and what
+changes, if any, are required to in order to allow them to correctly operate
+multiple CNAPI instances. As currently designed some CNAPI subsystems are more
+able to deal other instances (without unwanted or undefined behavior, such as
+unintentional overwriting of data) of itself running in parallel than others.
 
 In general, the guiding principle should be to allow any CNAPI instance to
 provide correct and up to date information and successfully fulfill any
 request, regardless of which other CNAPI instance may have initiated or
 performed the work.
+
+
+### Agents
+
+Loosely speaking, agents are of services running the global zone that are
+typically a means of performing operations which require greater access to
+operation system facilities, such as creation of zones, gathering metrics, etc.
+
+One of the steps of the compute node setup process is installation of
+global-zone agents. Global zone agents may also be updated via through
+`cn-agent` (described below), via CNAPI.
+
+Some agents may also run within a zone to provide facilities to the core service
+running within a zone. Some examples of these are the `config` and `amon`
+agents.
 
 
 ## CNAPI subsystems
@@ -73,15 +92,11 @@ CNAPI's use of restify which presents an HTTP server interface.
 
 ### Relationship With the Compute Node Agent
 
-One of the steps of the compute node setup process is installation of agents.
-Agents are of services running the global zone that are typically a means of
-performing operations which require greater access to operation system
-facilities, such as creation of zones, gathering metrics, etc.
-
-One such agent is the compute node agent, or `cn-agent`. It allows CNAPI to
-execute actions on and receive periodic data from the compute node. It's role
-with respect to CNAPI, as well as strategies to allow multiple CNAPI to service
-its requests will be examined in greater depth in the subsequent sections.
+One global-zone agent is the compute node agent, or `cn-agent`. It allows CNAPI
+to execute actions on the compute node as well as receive periodic data from
+it. It's role as it relates to CNAPI, as well as strategies to allow multiple
+CNAPI to service its requests, will be examined in greater depth in the
+following sections.
 
 
 ### Relationship with the Ur Agent
@@ -137,14 +152,11 @@ seconds, `cn-agent` POSTs a message to the CNAPI at that IP address to let
 it know the server is still present. CNAPI uses this information to determine
 wether a compute node's status is 'running' or 'unknown'.
 
+# Problems
+
 This is a problem because if one CNAPI instance is created and another
 destroyed, the CNAPI instance at the IP-address we may have on-hand could be
 unvavailable.
-
-
-### Compute Node Agent Task Execution
-
-One method CNAPI use to execute code on a compute node is via `cn-agent`.
 
 
 ### VM Status Updates
@@ -154,3 +166,70 @@ compute node within a certain amount of time. When `cn-agent` starts, it looks
 up CNAPI's IP address and begins to periodically post to a URL there.
 
 This CNAPI endpoint is the first step in computing compute node `status`.
+
+
+### Compute Node Agent Task Execution
+
+One method CNAPI use to execute code on a compute node is via `cn-agent`.
+
+
+# Next Steps
+
+## Server Status
+
+CNAPI's existing server status management mechanism relies on writing to moray
+each time a heartbeat is received. For large numbers of compute nodes, each
+heartbeating every 5 seconds, this becomes prohibitive.
+
+It would be ideal to only have to write to moray any time there is a signficant
+change in server's status (ie it comes up or goes down).
+
+Any new logic should not signficantly regress existing CNAPI behaviour.
+
+
+### Tentative Plan
+
+Have cn-agent maintain persistent connections to CNAPI and use these to
+determine server status. Only write to moray if/when something changes.
+
+
+#### POV of cn-agent
+
+On start-up:
+    - resolve cnapi.\<datacenter\_name>.<dns\_domain>
+    - open a (HTTP?) connection to CNAPI
+
+Periodically:
+    - write a byte to CNAPI via this connection
+
+
+#### POV of CNAPI
+
+On start-up:
+    - cnapi ensures it has a moray bucket (cnapi_instance_agent)
+        (string cnapi_uuid, string server_uuid)
+
+On receiving a new connection:
+    - write a record with CNAPI uuid and the uuid of cn-agent server
+    - CNAPI's restify endpoint accepts a connection from a cn-agent residing on
+      compute node with identified by `server_uuid`
+
+On connection opened:
+    - update server status => 'running'
+
+On connection loss:
+    - check if `cnapi_instance_agent` bucket still lists us as the CNAPI acting
+      on behalf of this compute node. If so:
+        - update server status => 'unknown'
+      else:
+        - do nothing
+
+Periodically:
+    - check all tracked connections have sent a byte in the last 2 seconds.
+
+If no message in last 2 seconds:
+    - update server status => 'unknown'
+
+Questions/Thoughts:
+    - how does cn-agent maintain compatability with older CNAPI
+    - how does CNAPI maintain compatability with older cn-agent
