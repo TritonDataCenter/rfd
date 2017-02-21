@@ -44,4 +44,4 @@ ContainerPilot 2.x will be tagged in GitHub but marked as deprecated. The `maste
 
 ##### Joyent Support
 
-There are several organizations using ContainerPilot 2.x in production. We will support ContainerPilot 2.x for _N_?? (TODO) with bug fixes released as patch versions but without additional features being added.
+There are several organizations using ContainerPilot 2.x in production. We will support ContainerPilot 2.x for 3 months after the 3.0.0 final release with bug fixes released as patch versions but without additional features being added.
