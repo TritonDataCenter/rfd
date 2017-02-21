@@ -79,7 +79,7 @@ curl -XPOST \
 
 ##### `MaintenanceMode POST /v3/maintenance`
 
-This API allows a hook to force ContainerPilot to go into maintenance mode. This replaces the SIGUSR1 handler from 2.x and behaves identically: all health checks are stopped and the discovery backend is sent a message to deregister the services. This endpoint returns a HTTP200 with no body.
+This API allows a hook to toggle ContainerPilot's maintenance mode. This replaces the SIGUSR1 handler from 2.x and behaves identically: all health checks are stopped and the discovery backend is sent a message to deregister the services. Making the same request when in maintenance mode causes ContainerPilot to exit maintenance mode. This endpoint returns a HTTP200 with no body.
 
 *Example Request*
 
