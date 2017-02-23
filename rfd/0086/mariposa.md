@@ -88,7 +88,7 @@ When the `disable` URL parameter is used, ContainerPilot will exit maintenance m
 ```
 curl -XPOST \
     --unix-socket /var/containerpilot.sock \
-    http:/v3/maintenance
+    http:/v3/maintenance/enable
 ```
 
 *Example Response*
