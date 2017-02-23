@@ -10,7 +10,7 @@ The proposal is in two parts. A read-only endpoint exposing the state of all ser
 
 ##### `GetStatus GET /status`
 
-This API will expose the state of all services associated with this ContainerPilot instance, including their dependencies.
+This API will expose the state of all services associated with this ContainerPilot instance as seen by ContainerPilot. The API endpoint also reports the dependencies of each service.
 
 *Example Response*
 
@@ -77,16 +77,29 @@ curl -XPOST \
     http:/v3/reload
 ```
 
-##### `MaintenanceMode POST /v3/maintenance`
+##### `MaintenanceMode POST /v3/maintenance/{enable|disable}`
 
-This API allows a hook to toggle ContainerPilot's maintenance mode. This replaces the SIGUSR1 handler from 2.x and behaves identically: all health checks are stopped and the discovery backend is sent a message to deregister the services. Making the same request when in maintenance mode causes ContainerPilot to exit maintenance mode. This endpoint returns a HTTP200 with no body.
+This API allows a hook to toggle ContainerPilot's maintenance mode. This replaces the SIGUSR1 handler from 2.x and behaves identically: when maintenance mode is enabled via the `enable` endpoint, all health checks are stopped and the discovery backend is sent a message to deregister the services. Requests to `/v3/status` will show all services with `status: "maintenance"`.
+
+When the `disable` endpoint is used, ContainerPilot will exit maintenance mode. Requests to enable or disable maintenance mode are idempotent; requesting `enable` twice enables maintenance mode and does nothing on the second request. This endpoint returns a HTTP200 with a JSON body reporting whether the request was an update.
 
 *Example Request*
 
 ```
 curl -XPOST \
     --unix-socket /var/containerpilot.sock \
-    http:/v3/maintenance
+    http:/v3/maintenance/enable
+```
+
+*Example Response*
+
+```
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 21
+{
+  "updated": true
+}
 ```
 
 
