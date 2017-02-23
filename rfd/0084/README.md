@@ -50,20 +50,25 @@ and half of them would have a private IP. Configuring this would look like:
 
 ```json
 {
+    "metadata": {
+        "v": 2
+    },
     "d141fd2e-cb51-4e39-bb8e-e7ebfb0dc989": {
         ...
         "loadbalancer": [
             {
                 "image_uuid": "2b4bb987-427c-435f-becf-a1465de9bfa8",
-                "networks": [
-                    "7e15c9dd-aef7-4b6e-8e7d-be878c9212a0",
-                    "c2bf1351-fed0-4e72-a02e-e64963a0b427"
+                "untrusted_networks": [
+                    { "ipv4_uuid": "7e15c9dd-aef7-4b6e-8e7d-be878c9212a0" },
+                    { "ipv4_uuid": "c2bf1351-fed0-4e72-a02e-e64963a0b427" }
                 ],
                 "count": 5
             },
             {
                 "image_uuid": "2b4bb987-427c-435f-becf-a1465de9bfa8",
-                "networks": [ "c2bf1351-fed0-4e72-a02e-e64963a0b427" ],
+                "untrusted_networks": [
+                    { "ipv4_uuid": "c2bf1351-fed0-4e72-a02e-e64963a0b427" }
+                ],
                 "count": 5
             }
         ],
@@ -72,26 +77,18 @@ and half of them would have a private IP. Configuring this would look like:
 }
 ```
 
-The contents of `"networks"` can be either an array of UUIDs, or specified in
-the [interface-centric style], as with VMAPI. (This is how `manta-adm show -j`
-will display the configuration.) For example, the first configuration above
-could have been specified as:
+The contents of `"untrusted_networks"` is an array of NIC configurations
+specified in the [interface-centric style], as with VMAPI. In the future, this
+will enable you to specify IPv4 and IPv6 networks on the same interface. Note
+that when specifying things this way, you cannot use `ipv4_ips` or `ipv6_ips`,
+since a single address cannot belong to multiple instances.
 
-```json
-{
-    "image_uuid": "2b4bb987-427c-435f-becf-a1465de9bfa8",
-    "networks": [
-        { "ipv4_uuid": "7e15c9dd-aef7-4b6e-8e7d-be878c9212a0" },
-        { "ipv4_uuid": "c2bf1351-fed0-4e72-a02e-e64963a0b427" }
-    ],
-    "count": 5
-}
-```
-
-In the future, this will enable you to specify IPv4 and IPv6 networks on the
-same interface. Note that when specifying things this way, you cannot use
-`ipv4_ips` or `ipv6_ips`, since a single address cannot belong to multiple
-instances.
+Note that there is a new, required `"metadata"` object which contains a `"v"`
+field, specifying that the configuration is written in the new format (version
+2). This field will make sure that old versions of `manta-adm` refuse to work
+with the new configuration format, instead of interpreting it incorrectly.
+`manta-adm show -j` will produce this field when printing things out in the new
+format.
 
 When updating an existing configuration, `manta-adm` should show, in addition to
 its planned provisions and reprovisions, the NIC additions and removals that it
@@ -107,6 +104,11 @@ untrusted access. When the `haproxy` configuration is generated, the untrusted
 group will need to be set up for each required network. Untrusted networks will
 be the set of networks available in the zone that are not on the `admin` or
 `manta` networks.
+
+If no untrusted networks are found, then `haproxy` will not have an untrusted
+front-end, and will only listen on the trusted address. This will allow for
+provisioning load balancers in the future that are only used internally by
+Manta.
 
 ## Preparing for IPv6
 
