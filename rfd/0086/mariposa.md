@@ -79,9 +79,9 @@ curl -XPOST \
 
 ##### `MaintenanceMode POST /v3/maintenance/{enable|disable}`
 
-This API allows a hook to toggle ContainerPilot's maintenance mode. This replaces the SIGUSR1 handler from 2.x and behaves identically: when maintenance mode is enabled via the `enable` URL parameter, all health checks are stopped and the discovery backend is sent a message to deregister the services. Requests to `/v3/status` will show all services with `status: "maintenance"`.
+This API allows a hook to toggle ContainerPilot's maintenance mode. This replaces the SIGUSR1 handler from 2.x and behaves identically: when maintenance mode is enabled via the `enable` endpoint, all health checks are stopped and the discovery backend is sent a message to deregister the services. Requests to `/v3/status` will show all services with `status: "maintenance"`.
 
-When the `disable` URL parameter is used, ContainerPilot will exit maintenance mode. Requests to enable or disable maintenance mode are idempotent; requesting `enable` twice enables maintenance mode and does nothing on the second request. This endpoint returns a HTTP200 with a JSON body reporting whether the request was an update.
+When the `disable` endpoint is used, ContainerPilot will exit maintenance mode. Requests to enable or disable maintenance mode are idempotent; requesting `enable` twice enables maintenance mode and does nothing on the second request. This endpoint returns a HTTP200 with a JSON body reporting whether the request was an update.
 
 *Example Request*
 
