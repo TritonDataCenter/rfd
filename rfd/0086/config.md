@@ -2,9 +2,9 @@
 
 JSON as a configuration language leaves much to be desired. It has no comments, is unforgiving in editing (we've specifically written code in ContainerPilot to point out extraneous trailing commas in the config!). Any configuration language change should also support those users we know who are generating ContainerPilot configurations automatically.
 
-We will abandon JSON in favor of the more human-friendly YAML configuration language. It has a particular advantage for those users who are generating configuration because of the ubiquity of YAML-generating libraries (this is its major advantage over Hashicorp HCL). During ContainerPilot configuration loading, we can check for files in `/etc/containerpilot.d/` (a configurable location via the `-config` flag) and merge them together.
+We will abandon JSON in favor of the more human-friendly YAML configuration language. It has a particular advantage for those users who are generating configuration because of the ubiquity of YAML-generating libraries (this is its major advantage over Hashicorp HCL).
 
-The merging process is as follows:
+The `CONTAINERPILOT` environment variable and `-config` command line flag will no longer support passing in the contents of the configuration file as a string. Instead they will now indicate the directory location for configuration files, with a default value of `/etc/containerpilot.d` (note that we're removing the `file://` prefix as well). During ContainerPilot configuration loading, we can check for files in the config directory and merge them together. The merging process is as follows:
 
 - Lexigraphically sort all the config files.
 - Multiple `service`, `health`, `sensor` blocks are unioned.
