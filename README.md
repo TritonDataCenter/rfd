@@ -130,6 +130,9 @@ formal writing that it has come to represent.)
 | draft    | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |
 | predraft | [RFD 86 ContainerPilot 3](./rfd/0086/README.md) |
 | predraft | [RFD 87 Docker Events for Triton](./rfd/0087/README.md) |
+| predraft | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md)
+| predraft | [RFD 89 Project Tiresias](./rfd/0089/README.md)
+
 
 ## Contents of an RFD
 
