@@ -42,10 +42,10 @@ We also miss important issues in the noise and wind up debugging them much
 later when they've caused cascading failures.
 
 This RFD describes how Manta alarms work today, the problems that make them
-difficult to work with, and a relatively modest list of proposed changes to
-address the most burning issues.  Because subtle design choices have led to some
-of these burning issues, it's worth examining the usability problems in some
-detail to make sure we actually address them.
+difficult to work with, and a modest list of proposed changes to address the
+most burning issues.  Because subtle design choices have led to some of these
+burning issues, it's worth examining the usability problems in some detail to
+make sure we actually address them.
 
 The underlying goals and design principles are described in [RFD
 6](https://github.com/joyent/rfd/blob/master/rfd/0006/README.md).
@@ -172,8 +172,8 @@ new alarm.  When we resolve the underlying issue, we can close that alarm and
 know that we're not papering over some other problem, and the alarm should not
 reopen.
 
-Some additional research is needed about the existing probe templates to make
-sure this makes sense for all of them.
+The "Proposed probe groups" section below discusses exactly how this scheme
+applies to all existing Manta probes.
 
 
 ### Same issue opens several alarms
@@ -325,7 +325,8 @@ incrementally improving what we've got.
 
 **Metrics:** We still have no robust historical nor real-time metrics, so we
 still have no good way to notify when the request rate drops, when the error
-rate spikes, or any number of other metric-based issues go awry.
+rate spikes, or any number of other metric-based issues go awry.  The unofficial
+plan for this is to integrate CMON and Prometheus with Manta.
 
 **Tracking alarms with tickets:** We described cases where we would like to
 suppress notifications for an issue.  Ideally, we'll want to re-enable
@@ -375,8 +376,8 @@ when instances are deployed and removed.
 
 **Ability for operators to add probes:** It's often desirable to add probes for
 known runtime issues (e.g., [OS-5363](https://smartos.org/bugview/OS-5363)).
-There's no tooling to support this today, and the probes may be dropped by
-a subsequent "mantamon drop".
+There's no tooling to support this today, and the probes would be dropped by a
+subsequent "mantamon drop".
 
 **Loosey-goosey bash scripts:** Many Manta probes today are implemented as
 inline bash scripts that are not very readable, have no comments, do not
@@ -416,27 +417,195 @@ proposed by this RFD).  However, at this point the operational problems are so
 acute and a complete solution so incompletely understood that we think it's
 worth doing the incremental work proposed here.
 
-## Summary of proposed changes
 
-- For each probe template we already have (at least for major ones), add
-  documentation about the check similar to what's described above.  Tag each
-  piece of documentation with a unique identifier and include this in the probe
-  group's name.
-- Tooling changes:
-  - "mantamon add" should create probe groups for each probe template rather
-    than just for each component.
-  - "mantamon alarms" should list only alarms, not faults.  There should be
-    additional options to list the faults associated with an alarm.
-  - "mantamon" needs an subcommand for suppressing notifications for an alarm.
-  - "mantamon" probably needs a subcommand for managing maintenance windows.
+## Proposed probe groups
 
-"mantamon add" and "mantamon drop" likely need to deal with systems that
-already have groups deployed with the old organization scheme.
+This section lists all probes in Manta today and how they will be grouped after
+this change.  As mentioned above, probes today are grouped by the type of zone
+(also called the _role_ or the SAPI service name).  The proposal is to replace
+most of these with a single probe group per datacenter (per probe), but there
+are several special cases as well.
+
+These are the criteria for putting probes into probe groups:
+
+* If two problems are likely to have different root causes or different
+  remediation steps, they probably should be in different probe groups.  This
+  allows us to more easily divide up work of debugging and fixing alarms, and
+  it also allows us to disable or enable notifications for known issues without
+  affecting notifications for different issues.
+* If two problems are likely to be caused by the same underlying issue (e.g.,
+  Registrar in both Muskie and Moray reporting an error), they probably should
+  be in the same probe group (even if they're in different types of zones, as
+  in this case).
+
+### Service-specific probes
+
+These probes all currently apply to a specific service, though in some
+cases the check runs in a zone for a different service than the one being
+monitored.  Even though they're per-service, it still makes sense to move away
+from per-service probegroups because we want different failure modes to
+generate different alarms even if they're in the same type of zone.
+
+Current probe name                                      | Proposed grouping    | Notes
+------------------------------------------------------- | -------------------- | -------
+mahi v1 falling behind by more than 5000 changenumbers  | One per DC           | "authcache" zones only 
+mahi v2 falling behind by more than 5000 changenumbers  | One per DC           | "authcache" zones only
+redis-ok                                                | One per DC           | "authcache" zones only
+haproxy memory size (1G)                                | One per DC           | "loadbalancer" zones only
+muppet memory size (512M)                               | One per DC           | "loadbalancer" zones only
+stud memory size (1G)                                   | One per DC           | "loadbalancer" zones only
+no backend servers                                      | One per DC           | "loadbalancer" zones only
+ZK: ruok                                                | One per DC           | "nameservice" zones only
+mackerel-compute-missing                                | One per DC           | "ops" zones only
+mackerel-request-missing                                | One per DC           | "ops" zones only 
+mackerel-storage-missing                                | One per DC           | "ops" zones only 
+mackerel-summary-missing                                | One per DC           | "ops" zones only 
+manatee-backups-failed                                  | One per DC           | "ops" zones only
+mola-create-link-files-piling-up                        | One per DC           | "ops" zones only
+mola-job-running-too-long                               | One per DC           | "ops" zones only
+mola-mako-files-piling-up                               | One per DC           | "ops" zones only 
+mola-moray-files-piling-up                              | One per DC           | "ops" zones only 
+wrasse-behind                                           | One per DC           | "ops" zones only
+database dataset space running low                      | One per DC           | "postgres" zones only
+manatee-stat                                            | One per DC           | "postgres" zones only
+manatee-state-transition                                | One per DC           | "postgres" zones only
+minnow heartbeat too old                                | One per storage zone | "storage" zones only
+shrimp-nginx-ping                                       | One per storage zone | checks "storage" zones, but runs in "webapi"
+
+
+### Generic probes
+
+These probes apply to all non-global zones, all global zones, or both.  A few of
+these are easy:
+
+Current probe name          | Proposed grouping    | Notes
+--------------------------- | -------------------- | -----
+free space on / below 20%   | One per DC           | applies to all non-GZs
+logs not uploaded           | One per DC           | applies to all non-GZs
+mbackup: logs not uploaded  | One per DC           | applies to GZs only
+
+A more complicated case is the "svcs: SMF maintenance" probe.  Ideally, we would
+get a new alarm for each distinct SMF service FMRI that goes into maintenance.
+(So if 18 "registrars" went into maintenance, that would be one alarm.  But if a
+"config-agent" went into maintenance, that would be a different alarm.)  That's
+because often many instances of a service go into maintenance for the same
+reason, and that may be a known issue for which we'd like to suspend
+notifications, but we don't want to squelch notifications when other services in
+the same zone or service go into maintenance.  Amon does not support this, but
+we can approximate it by keeping the one-probegroup-per-service pattern that's
+used prior to this change.
+
+Current probe name          | Proposed grouping    | Notes
+--------------------------- | -------------------- | -----
+svcs: SMF maintenance       | One per service      |
+
+
+Less obvious is what to do with the "cpu utilization" probe.  This is currently
+attached to all non-global zones, but it measures server-wide CPU utilization.
+As a result, when it fires today, it opens one alarm for each type of zone on
+the CN.  This was done so that we'd understand which components were affected by
+CPU saturation, but it makes it more difficult to understand the CNs affected.
+Keeping with the pattern, we propose putting these probes into one probe group
+per datacenter.  We may want to explore putting the probes on GZs instead of
+non-global zones, but that's basically orthogonal.
+
+Current probe name          | Proposed grouping    | Notes
+--------------------------- | -------------------- | -----
+cpu utilization             | One per DC           |
+
+
+
+### Log scanning probes
+
+Scanning logs and firing alarms based only on the severity of the message does
+not lend itself to providing actionable messages for each type of problem.
+In the long term, we probably need to replace error- and fatal-level messages
+with messages that have a well-known property (similar to FMA's event classes)
+that identifies the specific problem (and effectively the knowledge article
+associated with this issue).  In that world, we would have one probegroup per
+distinct kind of problem.
+
+That's beyond the scope of this RFD, so the plan here is to maintain one probe
+group per log file monitored.  This roughly corresponds to one probe group per
+probe.  This differs from what we have today, where any log files in the same
+type of zone are grouped together.  Two cases worth mentioning are:
+
+* Today, because the Registrar log scanner is grouped with other log scanners in
+  the zone, when Registrar hits a problem, we get one alarm per service instead
+  of just one alarm.
+* Today, if many different components within a service hit a problem
+  (particularly in the "ops" zone, which has a lot of different components whose
+  alarms are driven by their log files), they all get grouped into one alarm.
+
+In the new scheme, there would be one probe group for all Registrar log files in
+all components and one probe group for each distinct log file in the "ops" zone
+(and other zones).
+
+Probe name                               | Messages matched      | Proposed grouping
+---------------------------------------- | --------------------- | ----------------
+binder: logscan                          | bunyan: error only    | one per DC
+electric-moray-logscan                   | bunyan: error only    | one per DC
+jobsupervisor-logscan-core               | regex related to "dumped core" | one per DC
+jobsupervisor-logscan-error, jobsupervisor-logscan-fatal | bunyan: error and fatal | one per DC (for both probes)
+mackerel-logscan                         | bunyan: fatal only    | one per DC
+mahi-replicator-logscan-error            | bunyan: error only    | one per DC
+mahi-server-logscan-error                | bunyan: error only    | one per DC
+mako-gc-logscan                          | string: "fatal error" | one per DC
+manatee-backupserver-logscan             | bunyan: fatal only    | one per DC
+manatee-logscan                          | bunyan: fatal only    | one per DC
+manatee-snapshotter-logscan              | bunyan: fatal only    | one per DC
+marlin-agent-logscan-core                | regex related to "dumped core" | one per DC
+marlin-agent-logscan-error,marlin-agent-logscan-fatal | bunyan: error and fatal | one per DC (for both probes)
+minnow-logscan                           | bunyan: error only    | one per DC
+mola-audit-logscan-error,mola-audit-logscan-fatal | bunyan: error and fatal | one per DC (for both probes)
+mola-gc-create-links-logscan-error,mola-gc-create-links-logscan-fatal | bunyan: error and fatal | one per DC (for both probes)
+mola-logscan-error,mola-logscan-fatal | bunyan: error and fatal | one per DC (for both probes)
+mola-moray-gc-logscan-error,mola-moray-gc-logscan-fatal | bunyan: error and fatal | one per DC (for both probes)
+mola-pg-transform-logscan-error,mola-pg-transform-logscan-fatal | bunyan: error and fatal | one per DC (for both probes)
+moray-logscan                            | bunyan: "error" only  | one per DC 
+muppet-logscan                           | bunyan: "error" only  | one per DC
+muskie-logscan                           | bunyan: "error" only  | one per DC
+pg\_dump-logscan                         | regex "fatal"         | one per DC
+registrar-logscan                        | bunyan: "fatal" only  | one per DC
+ZK: logscan 'Connection refused'         | regex                 | one per DC
+ZK: logscan 'ERROR'                      | regex                 | one per DC
+
+This change does not address any of the other potential issues here:
+
+* There are no probes for the config-agent log.
+* Many probes only match "error"-level bunyan messages or "fatal" ones, but not
+  both.
+* Most services do not watch the log files for events where the service dumped
+  core.  That said, since Manta is supposed to survive service failure, core
+  dump notifications are not necessarily critical, and may be better driven by
+  thoth.
+
+
+## Status of this RFD
+
+Done:
+
+- basic outline of goals and plan
+- research existing probe groups and how to restructure them
+
+Not yet done:
+
+- Given the new probe group design, design appropriate configuration
+  format for the probes, groups, and documentation, and then update this RFD.
+- Prototype tooling for working with alarms and update this RFD.
+  - adding and removing probes and probe groups.  This should deal with probes
+    and probe groups set up by pre-RFD-85 tools.  Ideally, this should also
+    allow administrators to add their own probes that are ignored by the tooling.
+  - listing alarms (and their knowledge articles), faults, probe groups, and
+    probes
+  - closing open alarms
+  - enabling and disabling probes
+  - enabling and disabling notifications for alarms
+  - managing maintenance windows
+- Identify the most important knowledge articles to start with and write them as
+  proof-of-concept for the general approach.
 
 ## Open questions
-
-We need to review the existing probe templates to make sure this scheme works
-for them.
 
 It's not clear how much of today's "mantamon" is worth preserving.  Note that
 none of this behavior is Manta-specific, so this could become a generic amon
@@ -487,8 +656,17 @@ probes, then rollback, then re-add probes with the old tools.
 There are no end-user security implications because these are all private
 interfaces.
 
-Additionally, no interfaces are being created or changed, nor additional private
-information being provided to a consumer that couldn't already access it.
+The only interfaces being created are:
+
+- a new format for configuring probes
+- a new format for documenting probes
+
+These will likely only be processed by tools in the same repository as the data,
+though it would still be worthwhile to include version information so that we
+can separate the tools for use by other components if desired.
+
+No private information being provided to a consumer that couldn't already access
+it.
 
 
 ## See also
