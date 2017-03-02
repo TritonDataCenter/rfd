@@ -94,7 +94,7 @@ properties we'd like for a more general topology tree.
 The end goal of all of this is to have a single, albeit verbose, way to
 get a snapshot of everything that's hardware related in the system
 (basically all the FRUs) and relevant information related to their
-context in broader topology (e.g. [RFD 7 / LLDP](../0007/).
+context in broader topology (e.g. [RFD 7 / LLDP](../0007/)).
 
 By having the information available, even if it's not in the simplest
 form to consume, it will allow folks to make forward progress on

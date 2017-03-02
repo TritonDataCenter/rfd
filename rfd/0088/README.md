@@ -296,7 +296,8 @@ another.
 This should also be used as a way to report on what's inside of the data
 center. For example, we could use these classes as one way to group and
 summarize things. Say, we have so many Mantis Shrimp MK III, so many
-HAs, and so many of the different HC models.
+Hallasan-As, and so many of the different Hallasan-C models (all
+different names for different hardware BOMs).
 
 Another possible way we could use this is to construct various
 `/etc/path_to_inst` style files so that we could have consistent naming
