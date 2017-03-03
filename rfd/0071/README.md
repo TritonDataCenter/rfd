@@ -493,7 +493,7 @@ ease in debugging.
 
 ### Prototype
 
-A working prototype that is built on top of the existing Manta SDK for Node.js is available at https://github.com/geek/manta-encryption/
+A working prototype that is built on top of the existing Manta SDK for Node.js is available at https://cr.joyent.us/#/c/1110/
 
 
 ### API
