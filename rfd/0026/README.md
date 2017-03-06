@@ -888,7 +888,8 @@ volume with UUID `volume-uuid`:
 The `UpdateVolume` endpoint can be used to update the following properties of a
 shared volume:
 
-* `name`, to rename a volume.
+* `name`, to rename a volume. See [the section on renaming volumes](#renaming)
+  for further details.
 * `tags`, to add/remove tags for a given volume
 
 ###### Input
@@ -1501,7 +1502,8 @@ and the error contains a list of resources that are using the volume.
 The UpdateVolume endpoint can be used to update the following properties of a
 shared volume:
 
-* `name`, to rename a volume.
+* `name`, to rename a volume. See [the section on renaming volumes](#renaming)
+  for further details.
 * `tags`, to add/remove tags for a given volume
 
 ##### Input
@@ -1725,9 +1727,26 @@ Volumes are be represented as objects that share a common set of properties:
 
 ##### Naming constraints
 
+###### Uniqueness
+
 Volume names need to be __unique per account__. As indicated in the "Shared
 storage implementation" section, several volumes might be on the same zone at
 some point.
+
+###### Renaming
+
+Renaming a volume is not allowed for volumes that are referenced by active
+Docker containers. The rationale is that docker volumes are identified by their
+name for a given owner. Allowing to rename volumes referenced (mounted) by
+active Docker containers would thus mean to either:
+
+1. Store the reference from Docker containers to volumes as a uuid. A Docker
+   container `foo` mounting a volume `bar` would still be able to mount it if
+   that volume's name changed to `baz`, even though that volume might be used
+   for a completely different purpose. Think of `bar` and `baz` as `db-primary`
+   and `db-secondary` for a real-world use case.
+
+2. Break volume references.
 
 ##### Type-specific properties
 
