@@ -12,7 +12,10 @@
 
 The project manifest defines all the services of a project, as well as other details that may be added in time. Each project has a single active manifest that defines the expected state of the entire project.
 
+The `tags` fields is optional. If provided, these manifest tags will be accessible via the Triton CLI, and able to be filtered upon in project list operations. 
+
 ```yaml
+tags: web, cache
 services:
   nginx:
     service_type: continuous

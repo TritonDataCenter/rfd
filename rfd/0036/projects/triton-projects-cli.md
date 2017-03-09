@@ -13,9 +13,48 @@
 The following commands are all within the scope a specified project, within a specified organization. See more details about [specifying the organization and project](../projects/triton-cli.md#specifying-the-organization-and-project) for CLI commands.
 
 
-## `triton (projects|project list|project ls)`
+## `triton (projects|project list|project ls) [OPTIONS]`
 
 List all projects in an organization.
+
+Options:
+
+- standard triton cli list controls (field selection, no headers, long, etc)
+- field selection should provide a "manifest date", which contains first time mariposa saw the sha1sum of the manifest
+- filter (by name or tag for example)
+- show service and scale
+
+```bash
+$ triton projects
+NAME           MANIFEST  #INST  STATUS 
+cache-layer-1  3861a218  6      1 nginx reprovisioning
+mongodb-rs0    edf2ab36  5      normal
+mongodb-rs1    edf2ab36  5      normal      
+mongodb-rs2    c441569f  5      normal
+```
+
+In the above example, `COUNT` is just the total number of all service instances. Alternative view showing service and scale:
+
+```bash
+$ triton projects --services
+NAME           MANIFEST  #INST  SERVICES         STATUS 
+cache-layer-1  3861a218  6      nginx:3,redis:3  1 nginx reprovisioning
+mongodb-rs0    edf2ab36  5      mongodb:5        normal
+mongodb-rs1    edf2ab36  5      mongodb:5        normal      
+mongodb-rs2    c441569f  5      mongodb:5        normal
+```
+
+In the case of the manifest difference between `mongodb-rs2` and the others, we could include the `manifest date` field to see which one is outdated:
+
+```bash
+$ triton projects --dated
+NAME           MANIFEST  MANIFEST DATE        #INST  STATUS 
+cache-layer-1  3861a218  2012-01-15 17:10:01  6      1 nginx reprovisioning
+mongodb-rs0    edf2ab36  2012-01-17 14:23:01  5      normal
+mongodb-rs1    edf2ab36  2012-01-17 14:23:01  5      normal      
+mongodb-rs2    c441569f  2012-01-19 09:01:01  5      normal
+```
+
 
 
 ## `triton project (add|create|new) <project name> (-m <path to project manifest>| project manifest on STDIN)`
@@ -35,6 +74,27 @@ Sets a the specified project as the default for all interactions. This has the p
 ## `triton project (get|show)`
 
 Show the project manifest and details for the specified project.
+
+Options:
+
+- no headers (just print the manifest)
+
+```bash
+$ triton project show
+---
+UUID: 3861a21803fcd9eb92a403027b0da2bb7add4de1
+CREATED: 2017-01-05 17:00
+STATUS
+  nginx: 2 running, 1 reprovisioning
+  redis: 3 running
+---
+
+tags: web, cache
+services:
+  nginx:
+   service_type: continuous
+   ...
+```
 
 
 ## `triton project update (-m <path to project manifest>| project manifest on STDIN) [--rolling=<positive int>] [--(canary|count)=<positive int>] [--previous=<version uuid>] [(-f|--force)]`
@@ -96,14 +156,88 @@ triton project reprovision --rolling=3
 ```
 
 
-## `triton project (versions|version list|version ls)`
+## `triton project (versions|version list|version ls) [OPTIONS]`
 
 List all versions of the specified project, most recent on top.
 
+Options:
 
-## `triton project version get <version uuid>`
+- standard triton cli list controls (field selection, no headers, long, etc)
+- show changed services (short cut for field selection)
 
-Show the details for the specified version uuid.
+```bash
+$ triton project versions
+SHORTID      TIME
+3861a218     2017-01-05 17:00
+05e17b64     2017-01-04 16:00
+c538b66c     2017-01-03 15:00
+```
+
+Or with option flag that indicates inclusion of changed services per version:
+
+```bash
+$ triton project versions
+SHORTID      TIME               CHANGED
+3861a218     2017-01-05 17:00   nginx
+05e17b64     2017-01-04 16:00   redis
+c538b66c     2017-01-03 15:00   nginx, redis
+```
+
+## `triton project version get <version uuid> [OPTIONS]`
+
+Show the details for the specified version uuid. 
+
+Options:
+
+- no headers (just print the manifest)
+
+```bash
+$ triton project get 3861a218
+---
+UUID: 3861a21803fcd9eb92a403027b0da2bb7add4de1
+CREATED: 2017-01-05 17:00
+SERVICES CHANGED: nginx
+---
+
+tags: web, cache
+services:
+  nginx:
+   service_type: continuous
+   ...
+```
+
+
+## `triton project tag (add|create|new) <space separated list of tags>`
+
+Assign one more more deployment tags to the project.
+
+```bash
+$ triton project tag add staging qa-needed
+```
+
+## `triton project (tags|tag ls|tag list) [OPTIONS]`
+
+List all manifest and deployment tags associated with the project.
+
+Options:
+- standard triton cli list controls (field selection, no headers, long, etc)
+
+```bash
+$ triton project tag ls
+TYPE         TAG
+manifest     web
+manifest     cache
+deployment   staging
+deployment   qa-needed
+```
+
+## `triton project tag (delete|remove|rm) <space separated list of tags>
+
+Remove one or more tags from the project.
+
+```bash
+triton project tag rm qa-needed
+```
 
 
 ## `triton project (revert|rollback) <version uuid> [--rolling=<positive int>] [--(canary|count)=<positive int>]`
@@ -173,7 +307,6 @@ Starts one instance of each service specified in the project manifest. Behavior 
 Optional arguments:
 
 - `version` the version UUID to start
-
 
 ## `triton project (reprovision|restart) [--service=<service name or uuid>] [--version=<version uuid>] [--image=<imagespec:tag>] [--instance=<name|uuid>] [--compute_node=<uuid>] [--(count|canary)=<positive integer>] [rolling=<positive integer>]`
 
