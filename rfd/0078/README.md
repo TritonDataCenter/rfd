@@ -192,10 +192,9 @@ The reason is that the filter used to make sure that all objects returned
 actually match the provided filter use a filter that is not aware of the indexed
 fields' type _for all unindexed fields_.
 
-The [`compileQuery` function](https://github.com/joyent/moray/blob/master/lib/ob
-jects/common.js#L126-L304) is the one responsible for [updating the type of the
-values specified in the `findobjects` request's filter](https://github.com/joyen
-t/moray/blob/master/lib/objects/common.js#L44-L123).
+The [`compileQuery` function](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L126-L304)
+is the one responsible for [updating the type of the values specified in the
+`findobjects` request's filter](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L44-L123).
 
 However, it [only considers indexes that are fully reindexed as
 valid](https://github.com/joyent/moray/blob/master/lib/objects/comm
@@ -216,8 +215,9 @@ the filter `(&(str_field=foo)(boolean_field=true))` is able to match a value
 `'true'` (a string, when it should be a boolean `true`) for its property
 `boolean_field`.
 
-This problem only applies to indexes that have a non-string type. Filtering on
-new indexes of type `'string'` filters results as expected.
+This problem only applies to _unindexed_ fields that have a _non-string_ type.
+Filtering on any field of type `'string'` results as expected (with the caveat
+described in the other sections regarding pagination).
 
 This limitation with search filters using non-string values is [already
 mentioned in the moray-test-suite repository](https://github.com/joyent/moray-te
@@ -556,8 +556,12 @@ search filter.
 
 This information is present in moray's bucket cache for every bucket in two
 different properties: `index` and `reindex_active`. If a `findobjects` request
-uses a field that is either not present in the `index` array or present in the
-`reindex_active` array, it results in an `NotIndexedError`.
+uses a field that is either:
+
+1. not present in the `index` array
+2. present in the `reindex_active` array
+
+it results in an `NotIndexedError`.
 
 This change would solve the problematic use case presented in that document,
 where a user of moray needs to add new indexes to an existing moray bucket and
@@ -579,10 +583,10 @@ identical results at worse, and more correct results at best.
 However, because current code relies on the current erroneous behavior, it is
 important to provide a backward compatible interface. Thus, this solution should
 be opt-in, and clients that want to switch to the strict behavior would need to
-pass the `disallowUnindexedFiltering` option and set it to `true`:
+pass the `requireIndexes` option and set it to `true`:
 
 ```
-findobjects('bucketName', filter, {disallowUnindexedFiltering: true}, callback);
+findobjects('bucketName', filter, {requireIndexes: true}, callback);
 ```
 
 Once all usage of `findobjects` requests switch to the strict behavior, it
@@ -597,5 +601,5 @@ could be negligible, as it would require to perform at most two additional array
 items lookups in JavaScript.
 
 It might actually improve the performance of `findobjects` requests using the
-`disallowUnindexedFiltering` mode, as in this mode the additional filtering
-applied at the application level should not be needed.
+`requireIndexes` mode, as in this mode the additional filtering applied at the
+application level should not be needed.

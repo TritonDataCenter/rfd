@@ -219,6 +219,24 @@ The "story" to Triton operators then is this: Try to configure your IMGAPI to be
 backed by Manta, then all images except core images themselves are in Manta
 and hence durable. Otherwise, there is a $period window for image file loss.
 
+### consider limiting what local IMGAPI data is backed up
+
+Discussing with Todd, we talked about how locally stored docker images in
+IMGAPI (excepting those from 'docker build', which are sent to manta if
+that storage is available) that are retrieved via 'docker pull' could perhaps
+be considered ephemeral... in that they could be redownloaded from the
+remote Docker registry if they are purged. That seems problematic for, say, a
+Docker registry that is now offline, or for which the user might no longer have
+creds (if auth has changed).
+
+If we were to consider allowing that, then something that could be done is
+to have IMGAPI separate those "emphemeral" image files from the other
+"stor=local" files. We'd only put the "stor=local" non-emphemeral files on
+a zfs filesystem under IMGAPI delegate dataset, and then we'd be able to limit
+cross-headnode backing up of IMGAPI data to just that (presumably smaller)
+subset of image file data.
+
+
 ## sdcadm status
 
 I'm consider implementing a `sdcadm status` as part of this work that will

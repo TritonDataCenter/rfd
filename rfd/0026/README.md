@@ -48,20 +48,21 @@ state: draft
       - [Expressing locality with affinity filters](#expressing-locality-with-affinity-filters)
   - [REST APIs](#rest-apis)
     - [Changes to CloudAPI](#changes-to-cloudapi)
+      - [Volume objects representation](#volume-objects-representation)
       - [New `/volumes` endpoints](#new-volumes-endpoints)
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
-        - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid)
-        - [GetVolumeReferences GET /volumes/volume-uuid/references](#getvolumereferences-get-volumesvolume-uuidreferences)
-        - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid)
-        - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork)
-        - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork)
-        - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
-        - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name)
-        - [RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesvolume-uuidrollbacktosnapshot)
-        - [ListVolumeSnapshots GET /volume/volume-uuid/snapshots](#listvolumesnapshots-get-volumevolume-uuidsnapshots)
-        - [DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesvolume-uuidsnapshotssnapshot-name)
-        - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid)
+        - [GetVolume GET /volumes/id](#getvolume-get-volumesid)
+        - [GetVolumeReferences GET /volumes/id/references](#getvolumereferences-get-volumesidreferences)
+        - [UpdateVolume POST /volumes/id](#updatevolume-post-volumesid)
+        - [AttachVolumeToNetwork POST /volumes/id/attachtonetwork](#attachvolumetonetwork-post-volumesidattachtonetwork)
+        - [DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork](#detachvolumefromnetwork-post-volumesiddetachfromnetwork)
+        - [CreateVolumeSnapshot POST /volumes/id/snapshot](#createvolumesnapshot-post-volumesidsnapshot)
+        - [GetVolumeSnapshot GET /volumes/id/snapshots/snapshot-name](#getvolumesnapshot-get-volumesidsnapshotssnapshot-name)
+        - [RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesidrollbacktosnapshot)
+        - [ListVolumeSnapshots GET /volume/id/snapshots](#listvolumesnapshots-get-volumeidsnapshots)
+        - [DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesidsnapshotssnapshot-name)
+        - [DeleteVolume DELETE /volumes/id](#deletevolume-delete-volumesid)
         - [ListVolumePackages GET /volumepackages](#listvolumepackages-get-volumepackages)
         - [GetVolumePackage GET /volumepackages/volume-package-uuid](#getvolumepackage-get-volumepackagesvolume-package-uuid)
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
@@ -88,31 +89,31 @@ state: draft
       - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
         - [Input](#input-2)
         - [Output](#output-3)
-      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid-1)
+      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid)
         - [Input](#input-3)
         - [Output](#output-4)
       - [CreateVolume POST /volumes](#createvolume-post-volumes)
         - [Input](#input-4)
         - [Output](#output-5)
-      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid-1)
+      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid)
         - [Input](#input-5)
         - [Output](#output-6)
-      - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid-1)
+      - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid)
         - [Input](#input-6)
         - [Output](#output-7)
-      - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork-1)
+      - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork)
         - [Input](#input-7)
         - [Output](#output-8)
-      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-1)
+      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork)
         - [Input](#input-8)
         - [Output](#output-9)
       - [Snapshots](#snapshots)
         - [Snapshot objects](#snapshot-objects)
-        - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot-1)
-        - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name-1)
-        - [RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesvolume-uuidrollbacktosnapshot-1)
-        - [ListVolumeSnapshots GET /volume/volume-uuid/snapshots](#listvolumesnapshots-get-volumevolume-uuidsnapshots-1)
-        - [DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesvolume-uuidsnapshotssnapshot-name-1)
+        - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
+        - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name)
+        - [RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesvolume-uuidrollbacktosnapshot)
+        - [ListVolumeSnapshots GET /volume/volume-uuid/snapshots](#listvolumesnapshots-get-volumevolume-uuidsnapshots)
+        - [DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesvolume-uuidsnapshotssnapshot-name)
       - [Volume objects](#volume-objects)
         - [Common layout](#common-layout)
         - [Naming constraints](#naming-constraints)
@@ -120,7 +121,8 @@ state: draft
         - [Deletion and usage semantics](#deletion-and-usage-semantics)
         - [Persistent storage](#persistent-storage)
       - [Volumes state machine](#volumes-state-machine)
-      - [Reaping failed and deleted volumes](#reaping-failed-and-deleted-volumes)
+      - [Data retention policy](#data-retention-policy)
+        - [Reaping failed and deleted volumes](#reaping-failed-and-deleted-volumes)
   - [Snapshots](#snapshots-1)
     - [Use case](#use-case)
     - [Implementation](#implementation)
@@ -700,6 +702,15 @@ to be created to support shared volumes and their use cases.
 
 ### Changes to CloudAPI
 
+#### Volume objects representation
+
+Volume objects are represented in CloudAPI the same way as their internal
+representation in VOLAPI for both their [common properties](#common-layout) as
+well as their [type specific ones](#type-specific-properties). The only
+exception is that the `uuid` field is named `id` to adhere to current
+conventions between the representation of Triton objects in CLoudAPI and
+internal APIs.
+
 #### New `/volumes` endpoints
 
 Users need to be able to manage their shared volumes from CloudAPI. Most of the
@@ -762,7 +773,7 @@ A list of volume objects of the following form:
 ```
 [
   {
-    "uuid": "e435d72a-2498-8d49-a042-87b222a8b63f",
+    "id": "e435d72a-2498-8d49-a042-87b222a8b63f",
     "name": "my-volume",
     "owner_uuid": "ae35672a-9498-ed41-b017-82b221a8c63f",
     "type": "tritonnfs",
@@ -789,7 +800,7 @@ A list of volume objects of the following form:
     }
   },
   {
-    "uuid": "a495d72a-2498-8d49-a042-87b222a8b63c",
+    "id": "a495d72a-2498-8d49-a042-87b222a8b63c",
     "name": "my-other-volume",
     "owner_uuid": "d1c673f2-fe9c-4062-bf44-e13959d26407",
     "type": "someothervolumetype",
@@ -840,22 +851,22 @@ state is `creating`. Users need to poll the newly created volume with the
 If the creation process fails, the volume object has its state set to `failed`
 and an `error` property that documents what the cause for the failure was.
 
-##### GetVolume GET /volumes/volume-uuid
+##### GetVolume GET /volumes/id
 
 GetVolume can be used to get data from an already created volume, or to
 determine when a volume being created is ready to be used.
 
 ###### Input
 
-| Param           | Type         | Description                     |
-| --------------- | ------------ | --------------------------------|
-| uuid            | String       | The uuid of the volume object   |
+| Param         | Type         | Description                     |
+| ------------- | ------------ | --------------------------------|
+| id            | String       | The uuid of the volume object   |
 
 ###### Output
 
-A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+A [volume object](#volume-objects) representing the volume with UUID `id`.
 
-##### GetVolumeReferences GET /volumes/volume-uuid/references
+##### GetVolumeReferences GET /volumes/id/references
 
 `GetVolumeReferences` can be used to list resources that are using the volume
 with UUID `volume-uuid`.
@@ -872,21 +883,22 @@ volume with UUID `volume-uuid`:
 ]
 ```
 
-##### UpdateVolume POST /volumes/volume-uuid
+##### UpdateVolume POST /volumes/id
 
 The `UpdateVolume` endpoint can be used to update the following properties of a
 shared volume:
 
-* `name`, to rename a volume.
+* `name`, to rename a volume. See [the section on renaming volumes](#renaming)
+  for further details.
 * `tags`, to add/remove tags for a given volume
 
 ###### Input
 
 | Param               | Type         | Description                     |
 | ------------------- | ------------ | --------------------------------|
-| uuid            | String       | The uuid of the volume object       |
-| name | String | The new name of the volume with uuid `uuid` |
-| tags | Array of string | The new tags for the volume with uuid `uuid` |
+| id            | String       | The id of the volume object       |
+| name | String | The new name of the volume with id `id` |
+| tags | Array of string | The new tags for the volume with id `id` |
 
 Sending any other input parameter will result in an error. Updating other
 properties of a volume, such as the networks it's attached to, must be performed
@@ -899,7 +911,7 @@ implementation to not have to reload the updated volume, and thus minimizes
 latency. If users need to get an updated representation of the volume, they can
 send a `GetVolume` request.
 
-##### AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork
+##### AttachVolumeToNetwork POST /volumes/id/attachtonetwork
 
 `AttachVolumeToNetwork` can be used to make a volume reachable on a given
 network.
@@ -908,30 +920,30 @@ network.
 
 | Param           | Type         | Description                     |
 | --------------- | ------------ | --------------------------------|
-| uuid            | String       | The uuid of the volume object   |
-| network_uuid    | String       | The uuid of the network to which the volume with uuid `uuid` should be attached |
+| id            | String       | The id of the volume object   |
+| network_id    | String       | The id of the network to which the volume with id `id` should be attached |
 
 ###### Output
 
-A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+A [volume object](#volume-objects) representing the volume with ID `id`.
 
-##### DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork
+##### DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork
 
 `DetachVolumeFromNetwork` can be used to make a volume that used ot be reachable
 on a given network not reachable on that network anymore.
 
 ###### Input
 
-| Param           | Type         | Description                     |
-| --------------- | ------------ | --------------------------------|
-| uuid            | String       | The uuid of the volume object   |
-| network_uuid    | String       | The uuid of the network from which the volume with uuid `uuid` should be dettached |
+| Param         | Type         | Description                     |
+| ------------- | ------------ | --------------------------------|
+| id            | String       | The id of the volume object   |
+| network_id  | String       | The id of the network from which the volume with id `id` should be dettached |
 
 ###### Output
 
-A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+A [volume object](#volume-objects) representing the volume with ID `id`.
 
-##### CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot
+##### CreateVolumeSnapshot POST /volumes/id/snapshot
 
 ###### Input
 
@@ -941,19 +953,18 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
 ###### Output
 
-The volume object representing the volume with UUID `volume-uuid`, with the
-newly created snapshot added to its `snapshots` list property. Note that
-creating a snapshot can fail as no space might be left in the corresponding zfs
-dataset.
+The volume object representing the volume with ID `id`, with the newly created
+snapshot added to its `snapshots` list property. Note that creating a snapshot
+can fail as no space might be left in the corresponding zfs dataset.
 
-##### GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name
+##### GetVolumeSnapshot GET /volumes/id/snapshots/snapshot-name
 
 ###### Output
 
 The [snapshot object](#snapshot-objects) with name `snapshot-name` for the
-volume with UUID `volume-uuid`.
+volume with ID `id`.
 
-##### RollbackToVolumeSnapshot POST /volumes/volume-uuid/rollbacktosnapshot
+##### RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot
 
 Note that rolling back a NFS shared volume to a given snapshot requires its
 underlying storage VM to be stopped and restarted.
@@ -962,16 +973,16 @@ underlying storage VM to be stopped and restarted.
 
 | Param         | Type         | Description                              |
 | ------------- | ------------ | ---------------------------------------- |
-| uuid          | String       | The uuid of the snapshot object that represents the state to which to rollback. |
+| snapshot_id   | String       | The id of the snapshot object that represents the state to which to rollback. |
 | name          | String       | The name of the snapshot object that represents the state to which to rollback. |
 
 ###### Output
 
-The volume object that represents the volume with UUID `volume-uuid` with its
-state property set to `rolling_back`. When the volume has been rolled back to
-the snapshot with name `name`, the volume's `state` property is `ready`.
+The volume object that represents the volume with ID `id` with its state
+property set to `rolling_back`. When the volume has been rolled back to the
+snapshot with name `name`, the volume's `state` property is `ready`.
 
-##### ListVolumeSnapshots GET /volume/volume-uuid/snapshots
+##### ListVolumeSnapshots GET /volume/id/snapshots
 
 ###### Input
 
@@ -982,25 +993,25 @@ the snapshot with name `name`, the volume's `state` property is `ready`.
 ###### Output
 
 A list of [snapshot objects](#snapshot-objects) that were created from the
-volume with UUID `volume-uuid`.
+volume with ID `id`.
 
-##### DeleteVolumeSnapshot DELETE /volumes/volume-uuid/snapshots/snapshot-name
+##### DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name
 
 ###### Output
 
-The [volume object](#volume-objects) that represents the volume with UUID
-`volume-uuid`. This volume object can be polled to determine when the snapshot
-with name `snapshot-name` is not present in the `snapshots` list anymore, which
-means the snapshot was deleted successfully.
+The [volume object](#volume-objects) that represents the volume with ID `id`.
+This volume object can be polled to determine when the snapshot with name
+`snapshot-name` is not present in the `snapshots` list anymore, which means the
+snapshot was deleted successfully.
 
-##### DeleteVolume DELETE /volumes/volume-uuid
+##### DeleteVolume DELETE /volumes/id
 
 ###### Input
 
-| Param           | Type        | Description                     |
-| --------------- | ----------- | --------------------------------|
-| uuid            | String      | The uuid of the volume object   |
-| force           | Boolean     | If true, the volume can be deleted even if there are still non-deleted containers that reference it .   |
+| Param         | Type        | Description                     |
+| ------------- | ----------- | --------------------------------|
+| id            | String      | The id of the volume object   |
+| force         | Boolean     | If true, the volume can be deleted even if there are still non-deleted containers that reference it .   |
 
 If `force` is not specified or `false`, deletion of a shared volume is not
 allowed if it has at least one "active user". If `force` is true, the constraint
@@ -1443,7 +1454,7 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 | owner_uuid    | String       | The UUID of the volume's owner. |
 | size          | Number       | The desired minimum storage capacity for that volume in mebibytes. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
-| networks      | Array        | A list of UUIDs representing networks on which the volume is reachable. These networks must be fabric networks and owned by the user with UUID `owner_uuid`. |
+| networks      | Array        | A list of UUIDs representing networks on which the volume will be reachable. These networks must be owned by the user with UUID `owner_uuid`. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
 | ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
 | tags          | Object       | An object representing key/value pairs that correspond to tags names/values. Docker volumes' labels are implemented with tags. |
@@ -1491,7 +1502,8 @@ and the error contains a list of resources that are using the volume.
 The UpdateVolume endpoint can be used to update the following properties of a
 shared volume:
 
-* `name`, to rename a volume.
+* `name`, to rename a volume. See [the section on renaming volumes](#renaming)
+  for further details.
 * `tags`, to add/remove tags for a given volume
 
 ##### Input
@@ -1715,9 +1727,26 @@ Volumes are be represented as objects that share a common set of properties:
 
 ##### Naming constraints
 
+###### Uniqueness
+
 Volume names need to be __unique per account__. As indicated in the "Shared
 storage implementation" section, several volumes might be on the same zone at
 some point.
+
+###### Renaming
+
+Renaming a volume is not allowed for volumes that are referenced by active
+Docker containers. The rationale is that docker volumes are identified by their
+name for a given owner. Allowing to rename volumes referenced (mounted) by
+active Docker containers would thus mean to either:
+
+1. Store the reference from Docker containers to volumes as a uuid. A Docker
+   container `foo` mounting a volume `bar` would still be able to mount it if
+   that volume's name changed to `baz`, even though that volume might be used
+   for a completely different purpose. Think of `bar` and `baz` as `db-primary`
+   and `db-secondary` for a real-world use case.
+
+2. Break volume references.
 
 ##### Type-specific properties
 
@@ -1777,7 +1806,9 @@ Indexes are setup for the following searchable properties:
 
 ![Volumes state FSM](images/volumes-state-fsm.png)
 
-#### Reaping failed and deleted volumes
+#### Data retention policy
+
+##### Reaping failed and deleted volumes
 
 Volumes in state `failed` and `deleted` do not need to be present in persistent
 storage forever. Not deleting these entries has an impact on performance. For

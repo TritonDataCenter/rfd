@@ -49,7 +49,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 3 Triton Compute Nodes Reboot](./rfd/0003/README.md) |
 | draft    | [RFD 4 Docker Build Implementation For Triton](./rfd/0004/README.md) |
 | publish  | [RFD 5 Triton Change Feed Support](./rfd/0005/README.md) |
-| draft    | [RFD 6 Improving Triton and Manta RAS Infrastructure](./rfd/0006/README.md) |
+| publish  | [RFD 6 Improving Triton and Manta RAS Infrastructure](./rfd/0006/README.md) |
 | draft    | [RFD 7 Datalink LLDP and State Tracking](./rfd/0007/README.md) |
 | publish  | [RFD 9 sdcadm fabrics management](./rfd/0009/README.md) |
 | publish  | [RFD 10 Sending GZ Docker Logs to Manta](./rfd/0010/README.md) |
@@ -85,7 +85,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |
 | draft    | [RFD 41 Improved JavaScript errors](./rfd/0041/README.md) |
 | predraft | [RFD 42 Provide global zone pkgsrc package set](./rfd/0042/README.md) |
-| predraft | [RFD 43 Rack Aware Network Pools](./rfd/0043/README.md) |
+| draft    | [RFD 43 Rack Aware Network Pools](./rfd/0043/README.md) |
 | predraft | [RFD 44 Create VMs with Delegated Datasets](./rfd/0044/README.md) |
 | draft    | [RFD 45 Tooling for code reviews and code standards](./rfd/0045/README.md) |
 | draft    | [RFD 46 Origin images for Triton and Manta core images](./rfd/0046/README.md) |
@@ -130,6 +130,9 @@ formal writing that it has come to represent.)
 | draft    | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |
 | predraft | [RFD 86 ContainerPilot 3](./rfd/0086/README.md) |
 | predraft | [RFD 87 Docker Events for Triton](./rfd/0087/README.md) |
+| draft    | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md)
+| draft    | [RFD 89 Project Tiresias](./rfd/0089/README.md)
+
 
 ## Contents of an RFD
 
