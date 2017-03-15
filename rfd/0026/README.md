@@ -824,21 +824,10 @@ A list of volume objects of the following form:
 | Param         | Type         | Mandatory | Description                             |
 | ------------- | ------------ |-----------|---------------------------------------- |
 | name          | String       | Yes       | The desired name for the volume. If missing, a unique name for the current user will be generated |
-| size          | String       | No        | The desired minimum storage capacity for that volume. |
+| size          | Number       | No        | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes. |
 | type          | String       | Yes       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | Yes       | A list of UUIDs representing networks on which the volume is reachable. These networks must be fabric networks owned by the user sending the request. |
 | labels        | Object       | No        | An object representing key/value pairs that correspond to label names/values. |
-
-####### Size
-
-The `size` input parameter must match the following regular expression:
-
-```
-/(\d+)(g|m|G|M|gb|mb|GB|MB)/
-```
-
-All units are in ibibytes (mebibytes and gibibytes). `g`, `G`, `gb` and `GB`
-stand for "gibibytes". `m`, `M`, `mb` and `MB` stand for "mebibytes".
 
 ###### Output
 
@@ -1452,7 +1441,7 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
 | owner_uuid    | String       | The UUID of the volume's owner. |
-| size          | Number       | The desired minimum storage capacity for that volume in mebibytes. |
+| size          | Number       | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes. |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | A list of UUIDs representing networks on which the volume will be reachable. These networks must be owned by the user with UUID `owner_uuid`. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
