@@ -16,9 +16,9 @@ zone core agents (e.g. vm-agent, cn-agent, etc.). It is built from the
 included in the USB key used for datacenter install.
 
 1. Initial headnode (HN) setup runs this shar, initiated by the
-   [headnode.sh](XXX) script.
-2. Compute node (CN) setup -- initiated by the CNAPI [server-setup.js](XXX) job
-   calling the [agentsetup.sh](XXX) script -- downloads this shar (from the
+   [headnode.sh](https://github.com/joyent/sdc-headnode/blob/master/scripts/headnode.sh) script.
+2. Compute node (CN) setup -- initiated by the CNAPI [server-setup.js](https://github.com/joyent/sdc-cnapi/blob/master/lib/workflows/server-setup.js) job
+   calling the [agentsetup.sh](https://github.com/joyent/sdc-headnode/blob/master/scripts/agentsetup.sh) script -- downloads this shar (from the
    assets zone) and runs it.
 3. For *updates* to newer agents, the operator uses `sdcadm experimental
    update-agents` which pulls down the latest agentsshar from updates.joyent.com,
@@ -47,6 +47,22 @@ There are a number of problems here that we want to improve:
 - Current handling for what agent instances (i.e. what agent version/image UUID)
   are installed is poor. See [Tracking agent instances](#tracking-agent-instances) below
   for details.
+
+- There's no "blessed" procedure for removing a Server or factory reset it
+  other than calling the related CNAPI HTTP end-points. None of these calls
+  takes care of removing agent instances from SAPI, leading to agent instances
+  remaining into SAPI forever, despite of the server being removed or, what it's
+  worse, exceptions for those instances when the server factory reset is used.
+
+- SAPI design ignores that instances are created in servers: currently, there's
+  no way to perform a proper search for instances of any type being on a given
+  server other than performing a search for **every** instance existing in SAPI
+  and then loop over the results to check which of these instances have a
+  `server_uuid` value which matches with the server we are interested into.
+  The same happen when we're trying to verify that all the instances of a
+  given VM/agent are using the same image_uuid, but in this case we can, at least,
+  scope our search by service UUID. It would be desirable to add the required
+  indexes and provide instance searches for these cases.
 
 There are other issues that might expand the scope of this RFD:
 
@@ -242,8 +258,7 @@ to handle agent updates, which are a common sore point in Triton updates.
 
 - TOOLS-1648: 'sdcadm post-setup cmon' should create cmon-agent instances
   This will enable TOOLS-1631 for 'cmon-agent'.
-- TODO: TOOLS ticket for 'sdcadm create' support for agents
-  Link this to TOOLS-1631.
+- TOOLS-1651: 'sdcadm create should support agent instances'.
 - TODO: for multiple-server support for 'sdcadm create'
 - TODO: consider ticket for 'sdcadm ex update-agents' to be able to skip the
   'latest' linking
@@ -268,10 +283,17 @@ necessarily having to have fully moved off the agentsshar.
 - Having an 'sdcadm' service might surprise some parts of 'sdcadm up'.
   Ensure 'sdcadm up' skips 'sdcadm' and points to 'sdcadm self-update'
   appropriately. Ensure that 'sdcadm create sdcadm' doesn't work.
+  (Related issue: TOOLS-1585)
 - Include `params.server_uuid` in all SAPI agent instances.
 - Updating 'gz-tools': Either get 'sdcadm ex update-gz-tools' to update the SAPI
   service and instances accordingly, or do the part from M4 for moving to using
   'sdcadm up' for updating gz-tools.
+- SAPI-285: 'Create Service should not validate presence of provide image_uuid
+  into local IMGAPI'
+- Update SAPI to index and provide search options for instances image_uuid and
+  server_uuid.
+- Any call to CNAPI factory-reset or delete for a given server should remove
+  every agent instance existing into that server from SAPI.
 
 ## M3: Accurate VM instance tracking in SAPI (bonus points)
 
@@ -306,11 +328,15 @@ ticketed:
 - cn-agent agent_install should refresh sysinfo for that server.
   TODO: *Is* it already refreshing sysinfo? Note that because we propose to
   deprecate `sysinfo['SDC Agents']`, we don't really need this change.
+  It is refreshing server sysinfo here: https://github.com/joyent/sdc-cn-agent/blob/master/lib/tasks/agent_install.js#L427-L437
+  And, indeed, it's not using a WF job for it.
 - sysinfo-refresh shouldn't use a WF job. Is there a benefit to using WF
   for this? Perhaps queueing when refreshing for every server in the DC?
   sysinfo-refresh's for unsetup CNs can clog up WF (at least its history
   of jobs), FWIW. Arguably this is off-topic for this RFD.
 - Does SAPI ListInstances support paging? It'll need to.
+  Answer: No, it does not support pagging. Indeed, it attempts to load
+  every existing instance by looping on moray findObjects in batches of 1000.
 - SAPI CreateInstance, UpgradeInstance and DeleteInstance should work for agent
   instances.
 - Get a service for 'gz-tools' and instances, and move to using 'sdcadm up' for
