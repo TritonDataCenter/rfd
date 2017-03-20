@@ -298,7 +298,7 @@ That way, it's in the amon notification message.  The chat bot could notice this
 and report the detailed information.  It would be ideal if amon included this in
 emails, but there's a lot of complexity associated with that, and it's probably
 beyond the scope of this work.
- 
+
 Of course, we still need the low-level information about what script was run and
 the results so that we can debug the problem.
 
@@ -587,29 +587,286 @@ Done:
 
 - basic outline of goals and plan
 - research existing probe groups and how to restructure them
+- prototype of new probe group configuration, documentation, and command-line
+  interface using `manta-adm` that supports updating probes and probe groups;
+  listing alarms, faults, and probe groups; and enabling and disabling alarm
+  notifications.
+- prototype knowledge article content for all probes today
 
-Not yet done:
+To do:
+- finish the above prototype work: add documentation, tests, and test scaling,
+  multi-datacenter configurations, etc.
 
-- Given the new probe group design, design appropriate configuration
-  format for the probes, groups, and documentation, and then update this RFD.
-- Prototype tooling for working with alarms and update this RFD.
-  - adding and removing probes and probe groups.  This should deal with probes
-    and probe groups set up by pre-RFD-85 tools.  Ideally, this should also
-    allow administrators to add their own probes that are ignored by the tooling.
-  - listing alarms (and their knowledge articles), faults, probe groups, and
-    probes
-  - closing open alarms
-  - enabling and disabling probes
-  - enabling and disabling notifications for alarms
-  - managing maintenance windows
-- Identify the most important knowledge articles to start with and write them as
-  proof-of-concept for the general approach.
+Tickets:
+- [MANTA-3195 manta amon configuration could use work](http://smartos.org/bugview/MANTA-3195)
+- [MANTA-3196 want tool for creating and managing amon maintenance windows](http://smartos.org/bugview/MANTA-3196)
+
+## manta-adm CLI changes
+
+Due to all of the existing issues with `mantamon` (see tickets linked to
+MANTA-3195), and because `manta-adm` is intended to be a unified interface for
+administering Manta, the proposal is to deprecate `mantamon` entirely and build
+a new set of commands under `manta-adm alarm`.
+
+Below is the proposed change to the manual page to describe these changes.  You
+can currently see the latest version of the proposal in [the feature branch for
+this
+work](https://github.com/joyent/sdc-manta/compare/master...davepacheco:dev-RFD-85).
+Look at "docs/man/man1/manta-adm.md", and select the "rich diff" to see a
+rendered version.
+
+    diff --git a/docs/man/man1/manta-adm.md b/docs/man/man1/manta-adm.md
+    index 6c50d43..a35e050 100644
+    --- a/docs/man/man1/manta-adm.md
+    +++ b/docs/man/man1/manta-adm.md
+    @@ -1,4 +1,4 @@
+    -# MANTA-ADM 1 "2016" Manta "Manta Operator Commands"
+    +# MANTA-ADM 1 "2017" Manta "Manta Operator Commands"
+
+     ## NAME
+
+    @@ -6,6 +6,8 @@ manta-adm - administer a Manta deployment
+
+     ## SYNOPSIS
+
+    +`manta-adm alarm SUBCOMMAND... [OPTIONS...]`
+    +
+     `manta-adm cn [-l LOG_FILE] [-H] [-o FIELD...] [-n] [-s] CN_FILTER`
+
+     `manta-adm genconfig "lab" | "coal"`
+    @@ -30,6 +32,9 @@ deployment.  This command only operates on zones within the same datacenter.
+     The command may need to be repeated in other datacenters in order to execute it
+     across an entire Manta deployment.
+
+    +`manta-adm alarm`
+    +  List and configure amon-based alarms for Manta.
+    +
+     `manta-adm cn`
+       Show information about Manta servers in this DC.
+
+    @@ -125,6 +130,14 @@ Many commands also accept:
+       Emit verbose log to LOGFILE.  The special string "stdout" causes output to be
+       emitted to the program's stdout.
+
+    +Commands that make changes support:
+    +
+    +`-n, --dryrun`
+    +  Print what changes would be made without actually making them.
+    +
+    +`-y, --confirm`
+    +  Bypass all confirmation prompts.
+    +
+     **Important note for programmatic users:** Except as noted below, the output
+     format for this command is subject to change at any time. The only subcommands
+     whose output is considered committed are:
+    @@ -133,13 +146,176 @@ whose output is considered committed are:
+     * `manta-adm show`, only when used with either the "-o" or "-j" option
+     * `manta-adm zk list`, only when used with the "-o" option
+
+    -The output for any other commands may change at any time. Documented
+    +The output for any other commands may change at any time.  The `manta-adm alarm`
+    +subcommand is still considered an experimental interface.  All other documented
+     subcommands, options, and arguments are committed, and you can use the exit
+    -status of the program to determine success of failure.
+    +status of the program to determine success or failure.
+
+
+     ## SUBCOMMANDS
+
+    +### "alarm" subcommand
+    +
+    +`manta-adm alarm close ALARM_ID...`
+    +
+    +`manta-adm alarm config probegroups list [-H] [-o FIELD...]`
+    +
+    +`manta-adm alarm config show`
+    +
+    +`manta-adm alarm config update [-n] [-y] [--unconfigure]`
+    +
+    +`manta-adm alarm config verify [--unconfigure]`
+    +
+    +`manta-adm alarm details ALARM_ID...`
+    +
+    +`manta-adm alarm faults ALARM_ID...`
+    +
+    +`manta-adm alarm list [-H] [-o FIELD...]`
+    +
+    +`manta-adm alarm metadata events`
+    +
+    +`manta-adm alarm metadata ka [EVENT_NAME...]`
+    +
+    +`manta-adm alarm notify on|off ALARM_ID...`
+    +
+    +`manta-adm alarm show`
+    +
+    +The `manta-adm alarm` subcommand provides several tools that allow operators to:
+    +
+    +* view and configure amon probes and probe groups (`config` subcommand)
+    +* view open alarms (`show`, `list`, `details`, and `faults` subcommands)
+    +* configure notifications for open alarms (`notify` subcommand)
+    +* view local metadata about alarms and probes (`metadata` subcommand)
+    +
+    +The primary commands for working with alarms are:
+    +
+    +* `manta-adm alarm config update`: typically used during initial deployment and
+    +  after other deployment operations to ensure that the right set of probes and
+    +  probe groups are configured for the deployed components
+    +* `manta-adm alarm show`: summarize open alarms
+    +* `manta-adm alarm details ALARM_ID...`: report detailed information (including
+    +  suggested actions) for the specified alarms
+    +* `manta-adm alarm close ALARM_ID...`: close open alarms, indicating that they
+    +  no longer represent issues
+    +
+    +For background about Amon itself, probes, probegroups, and alarms, see the
+    +Triton Amon reference documentation.
+    +
+    +As with other subcommands, this command only operates on the current Triton
+    +datacenter.  In multi-datacenter deployments, alarms are managed separately in
+    +each datacenter.
+    +
+    +Some of the following subcommands can operate on many alarms.  These subcommands
+    +exit failure if they fail for any of the specified alarms, but the operation may
+    +have completed successfully for other alarms.  For example, closing 3 alarms is
+    +not atomic.  If the operation fails, then 1, 2, or 3 alarms may still be open.
+    +
+    +`manta-adm alarm close ALARM_ID...`
+    +
+    +Close the specified alarms.  These alarms will no longer show up in the
+    +`manta-adm alarm list` or `manta-adm alarm show` output.  Amon purges closed
+    +alarms completely after some period of time.
+    +
+    +If the underlying issue that caused an alarm is not actually resolved, then a
+    +new alarm may be opened for the same issue.  In some cases, that can happen
+    +almost immediately.  In other cases, it may take many hours for the problem to
+    +resurface.  In the case of transient issues, a new alarm may not open again
+    +until the issue occurs again, which could be days, weeks, or months later.  That
+    +does not mean the underlying issue was actually resolved.
+    +
+    +`manta-adm alarm config probegroups list [-H] [-o FIELD...]`
+    +
+    +List configured probe groups in tabular form.  This is primarily useful in
+    +debugging unexpected behavior from the alarms themselves.  The `manta-adm alarm
+    +config show` command provides a more useful summary of the probe groups that are
+    +configured.
+    +
+    +`manta-adm alarm config show`
+    +
+    +Shows summary information about the probes and probe groups that are configured.
+    +This is not generally necessary but it can be useful to verify that probes are
+    +configured as expected.
+    +
+    +`manta-adm alarm config update [-n] [-y] [--unconfigure]`
+    +
+    +Examines the Manta components that are deployed and the alarm configuration
+    +(specifically, the probes and probe groups deployed to monitor those components)
+    +and compares them with the expected configuration.  If these do not match,
+    +prints out a summary of proposed changes to the configuration and optionally
+    +applies those changes.
+    +
+    +If `--unconfigure` is specified, then the tool removes all probes and probe
+    +groups.
+    +
+    +This is the primary tool for updating the set of deployed probes and probe
+    +groups.  Operators would typically use this command:
+    +
+    +- during initial deployment to deploy probes and probe groups
+    +- after deploying (or undeploying) any Manta components to deploy (or remove)
+    +  probes related to the affected components
+    +- after updating the `manta-adm` tool itself, which bundles the probe
+    +  definitions, to deploy any new or updated probes
+    +- at any time to verify that the configuration matches what's expected
+    +
+    +This operation is idempotent.
+    +
+    +This command supports the `-n/--dryrun` and `-y/--confirm` options described
+    +above.
+    +
+    +`manta-adm alarm config verify [--unconfigure]`
+    +
+    +Behaves exactly like `manta-adm alarm config update --dryrun`.
+    +
+    +`manta-adm alarm details ALARM_ID...`
+    +
+    +Prints detailed information about any number of alarms.  The detailed
+    +information includes the time the alarm was opened, the last time an event was
+    +associated with this alarm, the total number of events associated with the
+    +alarm, the affected components, and information about the severity, automated
+    +response, and suggested actions for this issue.
+    +
+    +`manta-adm alarm faults ALARM_ID...`
+    +
+    +Prints detailed information about the events (faults) associated with any number
+    +of alarms.  The specific information provided depends on the alarm.  If the
+    +alarm related to a failed health check command, then the exit status,
+    +terminating signal, stdout, and stderr of the command are provided.  If the
+    +alarm relates to an error log entry, the contents of the log entry are provided.
+    +There can be many faults associated with a single alarm, though not all of them
+    +are reported by this command.
+    +
+    +`manta-adm alarm list [-H] [-o FIELD...]`
+    +
+    +Lists open alarms in tabular form.  See also the `manta-adm alarm show` command.
+    +
+    +`manta-adm alarm metadata events`
+    +
+    +List the names for all of the events known to this version of `manta-adm`.  Each
+    +event corresponds to a distinct kind of problem.  For details about each one,
+    +see `manta-adm alarm metadata ka`.  The list of events comes from metadata
+    +bundled with the `manta-adm` tool.
+    +
+    +`manta-adm alarm metadata ka [EVENT_NAME...]`
+    +
+    +Print out knowledge articles about each of the specified events.  This
+    +information comes from metadata bundled with the `manta-adm` tool.  If no events
+    +are specified, prints out knowledge articles about all events.
+    +
+    +Knowledge articles include information about the severity of the problem, the
+    +impact, the automated response, and the suggested action.
+    +
+    +`manta-adm alarm notify on|off ALARM_ID...`
+    +
+    +Enable or disable notifications for the specified alarms.  Notifications are
+    +generally configured through Amon, which supports both email and XMPP
+    +notification for new alarms and new events on existing, open alarms.  This
+    +command controls whether notifications are enabled for the specified alarms.
+    +
+    +`manta-adm alarm show`
+    +
+    +Summarize open alarms.  For each alarm, use the `manta-adm alarm details`
+    +subcommand to view more information about it.
+    +
+
+     ### "cn" subcommand
+
+    @@ -479,15 +655,8 @@ See above for information about the `-l`, `-H`, and `-o` options for
+     ordinal number of each server), "datacenter", "zoneabbr", "zonename", "ip", and
+     "port".
+
+    -The `manta-adm zk fixup` command supports options:
+    -
+    -`-n, --dryrun`
+    -  Print what changes would be made without actually making them.
+    -
+    -`-y, --confirm`
+    -  Bypass all confirmation prompts.
+    -
+    -It also supports the `-l/--log_file` option described above.
+    +The `manta-adm zk fixup` command supports the `-l/--log_file`, `-n/--dryrun`,
+    +and `-y/--confirm` options described above.
+
+
+     ## EXIT STATUS
+    @@ -504,7 +673,7 @@ It also supports the `-l/--log_file` option described above.
+
+     ## COPYRIGHT
+
+    -Copyright (c) 2016 Joyent Inc.
+    +Copyright (c) 2017 Joyent Inc.
+
+     ## SEE ALSO
+
 
 ## Open questions
-
-It's not clear how much of today's "mantamon" is worth preserving.  Note that
-none of this behavior is Manta-specific, so this could become a generic amon
-management tool suite.
 
 It would be good if these knowledge articles were actually part of the FMA event
 registry described in RFD 6.  It's not yet clear how best to do that.  However,
@@ -624,6 +881,8 @@ The existing repositories that would be affected by this are:
 - `sdc-manta`: manta deployment tooling, which delivers `mantamon`
 - `mantamon`: contains the probe templates and tooling used to manage Manta
   alarms today
+- `manta`: contains the Manta Operator Guide, whose documentation will be
+  updated to reflect the CLI changes
 
 As mentioned above, we may end up wanting to separate the tools from the
 configuration, and we'll be adding documentation.  The specific new
