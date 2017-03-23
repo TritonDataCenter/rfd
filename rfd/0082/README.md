@@ -219,7 +219,10 @@ on VM components as well.
    Again, this is meant to mirror how core *VM* instances are managed via
    SAPI (which, granted, isn't rigorous currently).
 
-4. Expand the definition of CNAPI server.agents to include more than just those
+4. Provide a mechanism to clear all the agent instances associated with a
+   server from SAPI when the server is deleted.
+
+5. Expand the definition of CNAPI server.agents to include more than just those
    components under "/opt/smartdc/agents" -- "dockerlogger", "gz-tools",
    etc.
 
@@ -275,25 +278,15 @@ necessarily having to have fully moved off the agentsshar.
   it is clear how that is done. Also add a 'sdcadm check cnapi-server-agents'
   that can be used to check this and will provide steps for correcting it if
   wrong.
-- Update 'sdcadm' installation to have an instance UUID.
-- Headnode setup and 'sdcadm ex update-other' changes to add 'gz-tools' and
-  'sdcadm' services.
-- cn-agent changes so the 'dockerlogger', 'gz-tools', and 'sdcadm' instance
-  UUID and image uuid are included in 'server.agents'.
-- Having an 'sdcadm' service might surprise some parts of 'sdcadm up'.
-  Ensure 'sdcadm up' skips 'sdcadm' and points to 'sdcadm self-update'
-  appropriately. Ensure that 'sdcadm create sdcadm' doesn't work.
-  (Related issue: TOOLS-1585)
 - Include `params.server_uuid` in all SAPI agent instances.
-- Updating 'gz-tools': Either get 'sdcadm ex update-gz-tools' to update the SAPI
-  service and instances accordingly, or do the part from M4 for moving to using
-  'sdcadm up' for updating gz-tools.
 - SAPI-285: 'Create Service should not validate presence of provide image_uuid
   into local IMGAPI'
 - Update SAPI to index and provide search options for instances image_uuid and
   server_uuid.
 - Any call to CNAPI factory-reset or delete for a given server should remove
   every agent instance existing into that server from SAPI.
+- SAPI CreateInstance, UpgradeInstance and DeleteInstance should work for agent
+  instances.
 
 ## M3: Accurate VM instance tracking in SAPI (bonus points)
 
@@ -307,7 +300,6 @@ This section is optional for this RFD.
 - Update 'sdcadm svcs' to no longer have the hack that manually adds the
   'assets' service.
 - TODO: Is this the only consistent missing SAPI data from headnode install?
-
 
 ## M4: Dropping the agentsshar
 
@@ -337,16 +329,28 @@ ticketed:
 - Does SAPI ListInstances support paging? It'll need to.
   Answer: No, it does not support pagging. Indeed, it attempts to load
   every existing instance by looping on moray findObjects in batches of 1000.
-- SAPI CreateInstance, UpgradeInstance and DeleteInstance should work for agent
-  instances.
-- Get a service for 'gz-tools' and instances, and move to using 'sdcadm up' for
-  updating gz-tools. This will obsolete 'sdcadm experimental update-gz-tools'.
 
 Some current tickets:
 
 - AGENT-1053: "Note that my plan is to provide support for new agent setup by
   cn-agent and use it for cmon-agent update this week" --pedro
 
+## M5: gz-tools, dockerlogger and sdcadm
+
+- Update 'sdcadm' installation to have an instance UUID.
+- Headnode setup and 'sdcadm ex update-other' changes to add 'gz-tools' and
+  'sdcadm' services.
+- cn-agent changes so the 'dockerlogger', 'gz-tools', and 'sdcadm' instance
+  UUID and image uuid are included in 'server.agents'.
+- Having an 'sdcadm' service might surprise some parts of 'sdcadm up'.
+  Ensure 'sdcadm up' skips 'sdcadm' and points to 'sdcadm self-update'
+  appropriately. Ensure that 'sdcadm create sdcadm' doesn't work.
+  (Related issue: TOOLS-1585)
+- Updating 'gz-tools': Either get 'sdcadm ex update-gz-tools' to update the SAPI
+  service and instances accordingly, or do the part from M4 for moving to using
+  'sdcadm up' for updating gz-tools.
+- Get a service for 'gz-tools' and instances, and move to using 'sdcadm up' for
+  updating gz-tools. This will obsolete 'sdcadm experimental update-gz-tools'.
 
 
 ## Trent's scratch notes
