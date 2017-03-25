@@ -480,6 +480,23 @@ public_network:
 
 
 
+## `firewalls`
+
+Optional
+
+Specifies firewall rules to apply to instances of the service.
+
+Examples
+
+```
+firewalls:
+	- <firewall name>
+	- <firewall name>
+	- <firewall name>
+```
+
+
+
 ## `volumes`
 
 Optional

@@ -95,7 +95,7 @@ volumes:
         placement:
             cn:
                 - service!=~<service name>
-unmanaged_instances
+unmanaged_instances:
     <name>:
         description: <textual description>
         compute_type: kvm
