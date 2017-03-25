@@ -40,8 +40,8 @@ services:
             parallelism: 2
             window: 3m
         restart:
-					- on-failure
-					- on-cn-restart
+            - on-failure
+            - on-cn-restart
         placement:
             cn:
                 - service!=~<this service name>
