@@ -86,8 +86,8 @@ Example:
 
 ```yaml
 resources:
-	package: g4-highcpu-512M
-	max_instances: 50
+  package: g4-highcpu-512M
+  max_instances: 50
 ```
 
 ## `tags`
@@ -335,32 +335,30 @@ Example:
 
 ```yaml
 healthchecks:
-	<name>
-	  - type: (http|https)
-    - network: <network name/uuid> # optional
-    - port: 443 # optional, defaults to 80 or 443 based on healthcheck type
-    - path: /some/path/on/container
-    - interval: 30
-    - timeout: 10
-    - retries: 3
-
-	<name>
-	  - type: tcp
-    - network: <network name/uuid> # optional
-    - port: 9078 # required
-    - interval: 30
-    - timeout: 10
-    - retries: 3
-
-	<name>
-	  - type: command
-	  - command # the command to run in the container
-		  /usr/bin/mysql \
-			  -u wpdbuser -sN \
-			  wp -e "SELECT COUNT(1) FROM wp_posts;"
-    - interval: 30
-    - timeout: 10
-    - retries: 3
+    <name>
+        - type: (http|https)
+        - network: <network name/uuid> # optional
+        - port: 443 # optional, defaults to 80 or 443 based on healthcheck type
+        - path: /some/path/on/container
+        - interval: 30
+        - timeout: 10
+        - retries: 3
+    <name>
+        - type: tcp
+        - network: <network name/uuid> # optional
+        - port: 9078 # required
+        - interval: 30
+        - timeout: 10
+        - retries: 3
+    <name>
+        - type: command
+        - command # the command to run in the container
+        /usr/bin/mysql \
+            -u wpdbuser -sN \
+            wp -e "SELECT COUNT(1) FROM wp_posts;"
+        - interval: 30
+        - timeout: 10
+        - retries: 3
 ```
 
 
@@ -406,11 +404,11 @@ Example:
 
 ```yaml
 restart:
-	condition:
-		- on-failure
-		- on-cn-restart
-	max_attempts: 3
-	window: 90s
+    condition:
+        - on-failure
+        - on-cn-restart
+    max_attempts: 3
+    window: 90s
 ```
 
 
@@ -428,9 +426,9 @@ Example:
 
 ```yaml
 stop:
-  - timeout: 10s
-  - preservestopped:
-	  - on-failure
+    - timeout: 10s
+    - preservestopped:
+        - on-failure
 ```
 
 
@@ -518,30 +516,30 @@ Examples:
 
 ```yaml
 monitors:
-	highram # the user-specified trigger name
-		metric: containermonitor.ram_used
-		operator: >
-		value: 80%
-		sustain: 5m
-		action: notify
-		instances: 1
-		retrigger_delay: 5m
-	lowutilization
-    source: containerpilot.tps
-    operator: <
-    value: .3
-    sustain: 2m
-    action: decr
-    instances: 1
-		retrigger_delay: 60m
-	highlatency
-    source: service.another_servicename.containerpilot.dblatency
-    operator: >
-    value: 90
-    sustain: 15s
-    action: increment
-    instances: 1
-		retrigger_delay: 7m
+    highram # the user-specified trigger name
+        metric: containermonitor.ram_used
+        operator: >
+        value: 80%
+        sustain: 5m
+        action: notify
+        instances: 1
+        retrigger_delay: 5m
+    lowutilization
+        source: containerpilot.tps
+        operator: <
+        value: .3
+        sustain: 2m
+        action: decr
+        instances: 1
+        retrigger_delay: 60m
+    highlatency
+        source: service.another_servicename.containerpilot.dblatency
+        operator: >
+        value: 90
+        sustain: 15s
+        action: increment
+        instances: 1
+        retrigger_delay: 7m
 ```
 
 
