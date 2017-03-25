@@ -20,8 +20,9 @@ A project is a collection of related services, metadata, and other resources. Us
 
 - [Services, also defined in this RFD](../services)
 Services are a new abstraction that will largely replace the direct use of instances
-- Fabrics
-- [Volumes, as defined in RFD26](/joyent/rfd/blob/master/rfd/0026/README.md#introduction)
+- Fabrics (user-defined VLANs and networks)
+- Firewall rules
+- [Volumes, as defined in RFD26](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction)
 - Unmanaged instances
 This is a new name for compute instances (VMs and containers) as we knew them before the introduction of projects and services in this RFD.
 
