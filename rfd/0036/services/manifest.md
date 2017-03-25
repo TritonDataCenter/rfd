@@ -71,38 +71,24 @@ Example:
 image: 0x74696d/triton-elasticsearch:0.1.1
 ```
 
-## `package`
+## `resources`
 
 Optional
 
-Can specify:
+Used to specify the package type for all instances of a service, and maximum number of instances of the service.
 
-- a package name
-- a package uuid
-- a package family, by name
+Options:
+
+- `package`: `<package name|uuid>`
+- `max_instances`: `<integer>`, negative values unlimit the count; default is `-1`
 
 Example:
 
 ```yaml
-package: g4-highcpu-512M
+resources:
+  package: g4-highcpu-512M
+  max_instances: 50
 ```
-
-## `memory`
-
-Optional
-
-- If `compute_type==manta`, this is the requested DRAM cap for the Manta job.
-- If `package` is omitted, or if `package` specifies a family, the smallest package that satisfies this DRAM value will be chosen.
-
-Example:
-
-```yaml
-memory: 512m
-```
-
-## `labels`
-
-Alias for `tags`
 
 ## `tags`
 
@@ -116,16 +102,30 @@ tags:
   - triton.cns.services=elasticsearch-master
 ```
 
-## `affinity`
+## `placement`
 
 Optional
 
-From DOCKER-630. Affinity filters are one of the following
+Allows users to control (or guide) the placement of containers based on a number of constraints. As instances are being provisioned, the placement constraints can limit them to compute nodes, racks, or data centers that match (including negative match) user specified criteria.
 
-- Filter on instance names: `container<op><value>`
-- Filter by instance labels/tags: `<tag name><op><value>`
+Scopes:
 
-`<op>` is one of:
+- `cn`, `compute_node`, or `node`: evaluates only against the characteristics of the compute node
+- `rack`: for future use, not an MVP feature
+- `dc` or `data_center`: for future use, not an MVP feature
+
+Criteria:
+
+- `project`: matches other projects within the same organization only
+- `project:<tag name>`: matches the tags on other projects within the same organization only
+- `service`: matches services within the same project only
+- `service:<tag name>` matches tags on services within the same project only
+- `volume`: matches volumes within the same project only
+- `volume:<tag name>` matches tags on volumes within the same project only
+- `cn:<tag name>`: matches a CN with a specified tag
+- `cn:<uuid>`: matches a given CN UUID
+
+Operators:
 
 - `==`: The new container must be on the same node as the container(s) identified by `<value>`.
 - `!=`: The new container must be on a different node as the container(s) identified by `<value>`.
@@ -141,27 +141,50 @@ Some rules and operators in context:
 - `container!=foo*` Run on a different node to all containers with names starting with "foo":
 - `container!=/^foo/` Same as above, with regular expression
 
-Multiple filters are allowed for a single service, though mixing of "soft" and "hard" filters is not supported. All "hard" filter rules must be fully satisfied for the instance provisioning to succeed.
+Examples:
 
-Example:
-
-```yaml
-affinity: 
-  - container!=foo*
 ```
+placement:
+	cn|compute_node:
+		# do not place on a compute node with the specified project name
+		- project!=<project name>
+		# try to avoid CNs with the specified service (soft rule, must be a service in this project)
+		- service!=~<service name>
+	rack: # not an MVP feature
+		# require that the instance be in the same rack as a CN with a specified tag (but not necessarily on that CN)
+		- cn:<tag name>==<tag value>
+	dc|data_center: # not an MVP feature
+		# do not provision in a DC that also has a project with a given tag (only evals against projects in this org)
+		- project:<tag name>!==<tag value>
+```
+
+
 
 ## `ports`
 
 Optional
 
-As with sdc-docker, this infers that the instance will have an interface on the "public" network, and that fwapi will open the specified ports.
+As with sdc-docker, this infers that the instance will have an interface on the "public" network, and that fwapi will open the specified ports. The "public" network will be either the default public network for the project, or network specified in `public_network`.
 
-Example:
+Examples:
 
 ```
 ports:
   - 8500
 ```
+
+Alternatively, these can be specified as a dictionary with network names and ports:
+
+```
+ports:
+	<network name>
+	  - 80
+	  - 443
+	<network name>
+	  - 8500
+```
+
+
 
 ## `dns`
 
@@ -176,6 +199,8 @@ dns:
   - 127.0.0.1
 ```
 
+
+
 ## `dns_search`
 
 Optional
@@ -188,6 +213,8 @@ Example:
 dns_search:
   - my.example.com
 ```
+
+
 
 ## `environment`
 
@@ -207,6 +234,8 @@ environment:
   - CONTAINERPILOT=file:///etc/containerpilot.json
 ```
 
+
+
 ## `mdata`
 
 Optional
@@ -224,6 +253,8 @@ mdata:
   - com.example.cluster-name={{ .cns.svc.public }}
 ```
 
+
+
 ## `entrypoint`
 
 Optional
@@ -235,6 +266,8 @@ Example:
 ```yaml
 command: /some/executable.sh
 ```
+
+
 
 ## `command`
 
@@ -256,6 +289,8 @@ command:
   --default.path.conf=/etc/elasticsearch
 ```
 
+
+
 ## `containerpilot`
 
 Optional
@@ -276,6 +311,8 @@ To use the default network and port, it is enough to simply declare a truthy val
 containerpilot: true
 ```
 
+
+
 ## `healthchecks`
 
 Optional
@@ -288,8 +325,9 @@ The `ServicesHealth` agent responsible for running health checks will run in a N
 
 Supported types:
 
-- `http|https`: makes a request to the given URL and validate response code, headers, or body as configured.
+- `http|https`: makes a request to the given URL and validate response code. Any HTTP 200 response is healthy; and other response is unhealthy.
 - `tcp`: verifies that a service is accepting tcp connections on a given port.
+- `command`: (only valid for Docker images) executes the specified test command in the container. An exit code of zero is healthy; any other exit code is unhealthy.
 
 Additional details are required for each type. Appropriate limits need to be identified for the number of health checks on a single service and their maximum timeout.
 
@@ -297,45 +335,82 @@ Example:
 
 ```yaml
 healthchecks:
-  - type: https # the request is made from the user's nat zone
-    network: network name/uuid # optional, default is "public"; the network (including user fabric netwokrs) on which the service is listening
-    port: 443 # optional, defaults to 80 or 443 based on healthcheck type
-    path: /some/path/on/container
-    poll: 30
-    timeout: 10
-    retries: 3
-
-  - type: tcp # the command is run in the container (only supported for non-KVM)
-    port: 23
-    poll: 30
-    timeout: 10
-    retries: 3
+    <name>
+        - type: (http|https)
+        - network: <network name/uuid> # optional
+        - port: 443 # optional, defaults to 80 or 443 based on healthcheck type
+        - path: /some/path/on/container
+        - interval: 30
+        - timeout: 10
+        - retries: 3
+    <name>
+        - type: tcp
+        - network: <network name/uuid> # optional
+        - port: 9078 # required
+        - interval: 30
+        - timeout: 10
+        - retries: 3
+    <name>
+        - type: command
+        - command # the command to run in the container
+        /usr/bin/mysql \
+            -u wpdbuser -sN \
+            wp -e "SELECT COUNT(1) FROM wp_posts;"
+        - interval: 30
+        - timeout: 10
+        - retries: 3
 ```
+
+
+
+## `start`
+
+Optional
+
+This policy affects normal startup, restarts, and scaling attempts.
+
+- `parallelism`: `<integer>` the number of instances to attempt to start, scale, or replace simultaneously; default `1`
+- `window`: `<duration>` the maximum time to wait after the start attempt before starting `healthchecks` on the instance; default `60s`
+
+
+```
+start:
+    parallelism: 1
+    window: 60s
+```
+
+
 
 ## `restart`
 
 Optional
 
-This has a complex relationship with health checks and service type (`continuous|scheduled|event`) that needs further definition.
+Defines the behavior for restarting individual instances of a service. If an instance fails, it will be restarted according to the policy here. At the exhaustion of the restart policy, this instance will be abandoned and a new instance will be provisioned to replace it (called reprovisioning in Mariposa).
 
-Scenario:
+Upon restart of an instance, the start window is reset before health check attempts are restarted.
 
-The CN on which a `service_type=continuous` instance is provisioned goes offline. This should cause Mariposa to attempt to provision a replacement instance on another CN (because the services health checks failed and Mariposa is aware that the CN is offline). If the CN then restarts, and the instance is set to restart, this will result in overcapacity for that service's scale. The user expects Mariposa to scale down the number of instances using the policy described in `triton service scale`.
+Options:
 
-Values:
+- `condition`: one or more of:
+	- `(no|never)`: never attempt to restart the instance (not compatible with other values)
+	- `on-failure`: (default) attempt to restart if the health check fails or if PID 1 (in a container) exits non-zero (can be combined with others)
+	- `on-cn-restart`: (default) attempt to restart the instance when the compute node is restarted (can be combined with others)
+	- `always`: attempt to restart the container regardless of the conditions that caused it to stop, including the normal exit of PID 1 (includes `on-failure` and `on-cn-restart`,  not compatible with other values)
+- `max_attempts`: `<integer>` number times to attempt to restart a container before giving up; default: `3`
+- `window`: `<duration>` Maximum time after a restart (or start) attempt to wait before deciding if the start has succeeded; default `60s`
 
-- `no`
-- `on-failure[:max-retry]`
-- `always`
-- `unless-stopped`
-
-Adopts the [Docker's options and logic](https://docs.docker.com/engine/reference/run/#restart-policies-restart).
 
 Example:
 
 ```yaml
-restart: no
+restart:
+    condition:
+        - on-failure
+        - on-cn-restart
+    max_attempts: 3
+    window: 90s
 ```
+
 
 
 ## `stop`
@@ -344,67 +419,146 @@ Optional
 
 Controls the instance behavior when it stops. Sub-options include:
 
-- `timeout`: the stop timeout expressed as an integer number of seconds; negative numbers will wait indefinitely
-- `preservestopped`: `on-failure` (default); will not automatically delete stopped instances if they exit with a non-zero status; also supports `no` and `always`
+- `timeout`: the stop timeout expressed as an integer number of seconds; negative numbers will wait indefinitely; default is `10s`
+- `preservestopped`: will not automatically delete stopped instances if they exit; supports the same options as the restart policy; default is `on-failure`
 
 Example:
 
 ```yaml
 stop:
-  - timeout: -1
-  - preservestopped: always
+    - timeout: 10s
+    - preservestopped:
+        - on-failure
 ```
 
 
-## `triggers`
 
-Triggers, called "alerts" by some providers, define the threshold performance values on which to scale up or down. Triggers can use any metric exposed by [Container Monitor](https://github.com/joyent/rfd/blob/master/rfd/0027/README.md) or [ContainerPilot](https://www.joyent.com/blog/containerpilot-telemetry). Additionally, the Container Monitor and ContainerPilot metrics of other services in the same project can be used as triggers (example: scaling DB instances based on request latency reported by the main app).
-
-Example:
-
-```yaml
-triggers:
-    - highram # the user-specified trigger name
-        metric: containermonitor.ram_used
-        operator: >
-        value: 80%
-        time: 5 minutes
-        action: increment # incr|decrement|decr
-        instances: 1
-    - lowutilization
-        source: containerpilot.tps
-        operator: <
-        value: .3
-        time: 2 minutes
-        action: decr # increment|incr|decrement
-        instances: 1
-    - highlatency
-        source: service.another_servicename.containerpilot|containermonitor.dblatency
-        operator: >
-        value: 90
-        time: 3 minutes
-        action: increment # incr|decrement|decr
-        instances: 1
-```
-
-
-## `autoscale`
+## `logging`
 
 Optional
 
-Not required for MVP
+Logging configuration. Only supported for Docker containers in MVP.
 
-A group of sub-options that configure how the scheduler handles scaling triggers (defined elsewhere in the manifest).
+```
+logging:
+	driver: syslog
+	options:
+		syslog-address: "tcp://192.168.0.42:123"
+```
 
-- `enable`: Default is `notify|notify-only`; can also be `true|1` or `false|0`
-- `min`: The minimum number of instances of the service; default is `1`
-- `max`: The maximum number of instances, but how
-- `retrigger_delay`: The amount of time to wait after a scaling event before aknowledging new events; default is `60s`
-- `notify_email`: one or more email addresses to notify when scaling events are triggered
+
+
+## `networks`
+
+Optional
+
+The list of network names or IDs to attached to every instance of this service. Defaults to the default network for the project.
+
+Examples:
+
+```
+networks:
+	- <network name>
+	- <network name>
+	- <network name>
+```
+
+
+
+## `public_network`
+
+Optional
+
+The network name or ID to treat as public for any open ports for this service. Defaults to the default public network for the project. If `ports` are defined for the service, the service will be attached to this network, and those ports will be opened on it.
+
+Examples:
+
+```
+public_network:
+	- <network name>
+```
+
+
+
+## `firewalls`
+
+Optional
+
+Specifies firewall rules to apply to instances of the service.
+
+Examples
+
+```
+firewalls:
+	- <firewall name>
+	- <firewall name>
+	- <firewall name>
+```
+
+
+
+## `volumes`
+
+Optional
+
+Specifies an attachment and mount point for an RFD26 volume.
+
+```
+volumes:
+	- <volume name>:<mount point in instance>
+```
+
+
+
+## `monitors`
+
+Not required for MVP.
+
+Monitors, called "alerts" by some providers, define the threshold performance values on which to scale up or down. This implements autoscaling (alternate spellings, for people searching this doc: auto scaling and auto-scaling).
+
+Monitors can use any metric exposed by [Container Monitor](https://github.com/joyent/rfd/blob/master/rfd/0027/README.md) or [ContainerPilot](https://www.joyent.com/blog/containerpilot-telemetry). Additionally, the Container Monitor and ContainerPilot metrics of other services in the same project can be used as triggers (example: scaling DB instances based on request latency reported by the main app).
+
+Options:
+
+- `metric`: `<name of metric>`
+- `operator`: `<`,`>`,`=`,`<=`,or `>=`
+- `value`: `<integer, real, or percent>`
+- `sustain`: `<duration>`; optional, default is `90s`
+- `action`: `(notify|increment|incr|decrement|decr)`; optional, default is `notify`
+- `instances`: `<integer>`; optional, default is `0`
+- `retrigger_delay`: `<duration>`; optional, default is `5m`
+
+
+Examples:
 
 ```yaml
-autoscale: XXX # Needs more detail
+monitors:
+    highram # the user-specified trigger name
+        metric: containermonitor.ram_used
+        operator: >
+        value: 80%
+        sustain: 5m
+        action: notify
+        instances: 1
+        retrigger_delay: 5m
+    lowutilization
+        source: containerpilot.tps
+        operator: <
+        value: .3
+        sustain: 2m
+        action: decr
+        instances: 1
+        retrigger_delay: 60m
+    highlatency
+        source: service.another_servicename.containerpilot.dblatency
+        operator: >
+        value: 90
+        sustain: 15s
+        action: increment
+        instances: 1
+        retrigger_delay: 7m
 ```
+
 
 
 ## `webhooks`

@@ -15,21 +15,99 @@ The project manifest defines all the services of a project, as well as other det
 The `tags` fields is optional. If provided, these manifest tags will be accessible via the Triton CLI, and able to be filtered upon in project list operations. 
 
 ```yaml
-tags: web, cache
+defaults:
+    network: <network name>
+    public_network: <network name or uuid>
+tags:
+    - <tag name> = <tag value>
+    - <tag name> = <tag value>
+    - <tag name> = <tag value>
 services:
-  nginx:
-    service_type: continuous
-    compute_type: docker
-    image: autopilotpattern/nginx:latest
-    package: g4-highcpu-512M
-    ports:
-      - 80
-      - 443
-  redis:
-    service_type: continuous
-    compute_type: docker
-    image: autopilotpattern/redis:latest
-    package: g4-general-4G
+    <name>:
+        description: <textual description>
+        service_type: continuous
+        compute_type: docker
+        image: autopilotpattern/nginx:latest
+        resources:
+            package: g4-highcpu-512M
+            max_instances: 150
+        environment:
+            - ES_HEAP_SIZE={{ .package.ram }}
+        mdata:
+            - com.example.cluster-name={{ .cns.svc.public }}
+        containerpilot: true
+        start:
+            parallelism: 2
+            window: 3m
+        restart:
+            - on-failure
+            - on-cn-restart
+        placement:
+            cn:
+                - service!=~<this service name>
+                - service=~<another service name>
+        networks:
+            - <network name>
+        public_network:
+            - <network name or UUID>
+        ports:
+            - 80
+            - 443
+        tags:
+            - <tag name> = <tag value>
+            - <tag name> = <tag value>
+            - <tag name> = <tag value>
+        logging:
+            driver: syslog
+            options:
+                syslog-address: "tcp://192.168.0.42:123"
+        volumes:
+            - <volume name>:<mount point in instance>
+vlans:
+    <name>:
+        description: <textual description>
+        # VLAN IDs must be automatically generated
+networks:
+    <name>:
+        description: <textual description>
+        vlan: <name>
+        subnet: <cidr>
+        gateway: <ip addr>
+        resolvers: # default is 8.8.8.8 and 8.8.4.4
+            - <ip addr>
+            - <ip addr>
+        nat-enabled: <falsey> # NAT is on by default, the only useful value here is false
+firewalls:
+    <name>:
+        description: <textual description>
+        from: (any|<(project|network|tag|instance) name|id>)
+        to: (any|<(project|network|tag|instance) name|id>)
+        allow: <rule>
+        deny: <rule>
+        enabled: <truthy>
+volumes:
+    <name>:
+        description: <textual description>
+        network:
+            - <network name>
+            - <network name> # one or multiple networks may be specified
+        size:
+        placement:
+            cn:
+                - service!=~<service name>
+unmanaged_instances:
+    <name>:
+        description: <textual description>
+        compute_type: kvm
+        image: ubuntu:16.04
+        package: g4-highcpu-512M
+        mdata:
+            - com.example.es-node-master=true
+        networks:
+            - <network name>
+        tags:
+            - <tag name> = <tag value>
+            - <tag name> = <tag value>
 ```
 
 [Reference the service manifest documentation](../service/manifest.md) for services details.
