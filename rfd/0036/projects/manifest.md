@@ -18,6 +18,16 @@ The `tags` fields is optional. If provided, these manifest tags will be accessib
 defaults:
     network: <network name>
     public_network: <network name or uuid>
+cns:
+    namespace:
+		    # "public" is a reserved name for
+		    # the default public network
+        public: mydomain.example.com
+        <network name>: <domain space>
+    # the service name to point queries for
+    # the top of the namespace
+    primary_service: <service name>
+    ttl: 5m # default TTL for all services
 tags:
     - <tag name> = <tag value>
     - <tag name> = <tag value>
@@ -50,6 +60,11 @@ services:
             - <network name>
         public_network:
             - <network name or UUID>
+        cns:
+            services:
+                - <service name>
+            ttl: <duration> # overrides default
+            hysterises: <duration> # extended period of unhealth before removing an instance from DNS
         ports:
             - 80
             - 443

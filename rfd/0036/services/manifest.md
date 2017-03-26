@@ -480,6 +480,30 @@ public_network:
 
 
 
+## `cns`
+
+Optional
+
+Triton Container Name Service automated DNS details.
+
+Options:
+
+- `services`: `<service name>`; multiple may be specified; if no service names are specified, the default is the Mariposa service name
+- `ttl`: `<duration>`; overrides the default set in the top-level CNS directive for the project
+- `hysteresis`: `<duration>` an extended period of unhealth before stopping advertisement of an instance in CNS/DNS
+
+Example:
+
+```
+        cns:
+            services:
+                - <service name>
+            ttl: <duration>
+            hysterises: <duration>
+```
+
+
+
 ## `firewalls`
 
 Optional
