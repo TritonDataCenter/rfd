@@ -499,7 +499,7 @@ Example:
             services:
                 - <service name>
             ttl: <duration>
-            hysterises: <duration>
+            hysteresis: <duration>
 ```
 
 
