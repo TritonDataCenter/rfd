@@ -20,8 +20,8 @@ defaults:
     public_network: <network name or uuid>
 cns:
     namespace:
-		    # "public" is a reserved name for
-		    # the default public network
+        # "public" is a reserved name for
+        # the default public network
         public: mydomain.example.com
         <network name>: <domain space>
     # the service name to point queries for
