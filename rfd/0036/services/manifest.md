@@ -319,7 +319,7 @@ Optional
 
 Health checks are run on the specified poll frequency on each instance of the service. If the health check is unsuccessful after the specified retries, the instance will be declared unhealthy, stopped, and a new instance provisioned for the service.
 
-If the ContainerPilot details are configured, the scheduler should automatically detect and use the ContainerPilot health checks, in addition to any user-specified health checks here. **Implemention note:** the ContainerPilot health-checks, upstreams, etc. can change after initial launch of the container. Mariposa must be able to accommodate these changes.
+If the ContainerPilot details are configured, the scheduler should automatically detect and use the ContainerPilot health checks, in addition to any user-specified health checks here. **Implementation note:** the ContainerPilot health-checks, upstreams, etc. can change after initial launch of the container. Mariposa must be able to accommodate these changes.
 
 The `ServicesHealth` agent responsible for running health checks will run in a NAT zone associated with the project that is connected to the service's network.
 

@@ -64,7 +64,7 @@ services:
             services:
                 - <service name>
             ttl: <duration> # overrides default
-            hysterises: <duration> # extended period of unhealth before removing an instance from DNS
+            hysteresis: <duration> # extended period of unhealth before removing an instance from DNS
         ports:
             - 80
             - 443
