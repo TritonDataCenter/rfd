@@ -1,9 +1,10 @@
 # Kubernetes on Mariposa
 
 ```yaml
-cns
+cns:
     namespace:
         public: mydomain.example.com
+    primary_service: worker
 services:
     controller:
         description: Controller nodes run primary Kubernetes services and etcd
@@ -40,11 +41,11 @@ services:
                 - project!=~{{ .this.project }}
                 - service!=~{{ .this.service }}
         cns:
-            service:
+            services:
                 - worker
             ttl: 0s
             hysteresis: 5m
-        ports
+        ports:
             - 80
             - 443
 ```

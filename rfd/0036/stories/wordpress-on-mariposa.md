@@ -1,7 +1,7 @@
 # WordPress on Mariposa
 
 ```yaml
-cns
+cns:
     namespace:
         public: mydomain.example.com
     primary_service: nginx
@@ -150,6 +150,5 @@ volumes:
         size: 10g
         placement:
             cn:
-                - volume!=~{{ .this.volume }}
                 - project!=~{{ .this.project }}
 ```
