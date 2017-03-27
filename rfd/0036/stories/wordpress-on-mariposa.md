@@ -17,8 +17,8 @@ services:
             package: g4-highcpu-1G
         placement:
             cn:
-                - service!=~ {{ .this.service }}
-                - project!=~ {{ .this.project }}
+                - service!=~{{ .this.service }}
+                - project!=~{{ .this.project }}
         volumes:
             - user-data:/var/www/html/content/uploads
         environment:
@@ -59,8 +59,8 @@ services:
             package: g4-highcpu-128m
         placement:
             cn:
-                - service!=~ {{ .this.service }}
-                - project!=~ {{ .this.project }}
+                - service!=~{{ .this.service }}
+                - project!=~{{ .this.project }}
         environment:
             CONSUL={{ .this.project.cns.private.consul }}
 
@@ -74,8 +74,8 @@ services:
             package: g4-general-4g
         placement:
             cn:
-                - service!=~ {{ .this.service }}
-                - project!=~ {{ .this.project }}
+                - service!=~{{ .this.service }}
+                - project!=~{{ .this.project }}
         environment:
             CONSUL={{ .this.project.cns.private.consul }}
             MYSQL_USER={{ .this.meta.mysql.user }}
@@ -88,6 +88,8 @@ services:
             MANTA_BUCKET={{ .this.project.name }}/stor/mysql
             MANTA_URL=https://us-east.manta.joyent.com
             MANTA_USER={{ .this.project.organization }}
+            MANTA_KEY_ID={{ .this.meta.mysql.backup.key_id }}
+            MANTA_PRIVATE_KEY={{ .this.meta.mysql.backup.key_material }}
 
     memcached:
         description: 
@@ -99,8 +101,8 @@ services:
             package: g4-highcpu-512m
         placement:
             cn:
-                - service!=~ {{ .this.service }}
-                - project!=~ {{ .this.project }}
+                - service!=~{{ .this.service }}
+                - project!=~{{ .this.project }}
         environment:
             CONSUL={{ .this.project.cns.private.consul }}
     
@@ -137,8 +139,8 @@ services:
             max_instances=1
         placement:
             cn:
-                - service!=~ {{ .this.service }}
-                - project!=~ {{ .this.project }}
+                - service!=~{{ .this.service }}
+                - project!=~{{ .this.project }}
         environment:
             CONSUL={{ .this.project.cns.private.consul }}
 
@@ -148,6 +150,6 @@ volumes:
         size: 10g
         placement:
             cn:
-                - volume!=~ {{ .this.volume }}
-                - project!=~ {{ .this.project }}
+                - volume!=~{{ .this.volume }}
+                - project!=~{{ .this.project }}
 ```

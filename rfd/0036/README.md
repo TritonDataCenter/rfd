@@ -215,6 +215,10 @@ The following user stories are intended to provide a narrative understanding of 
 - [Health-checking, monitoring, and scaling jupiter.example.com](./stories/jupiter-example-com-monitoring-and-health.md)
 - [Creating, copying, and moving projects like microsite.jupiter.example.com](./stories/microsite-jupiter-example-com.md) (also includes secret management)
 
+## Sample manifests
+
+- [Kubernetes on Mariposa](./stories/kubernetes-on-mariposa.md)
+- [WordPress on Mariposa](./stories/wordpress-on-mariposa.md)
 
 ## Implementation and architecture
 

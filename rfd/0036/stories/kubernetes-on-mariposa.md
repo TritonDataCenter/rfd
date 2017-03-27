@@ -18,8 +18,8 @@ services:
             - on-cn-restart
         placement:
             cn:
-                - project!=~ {{ .this.project }}
-                - service!=~ {{ .this.service }}
+                - project!=~{{ .this.project }}
+                - service!=~{{ .this.service }}
         cns:
             service:
                 - controller
@@ -37,8 +37,8 @@ services:
             - on-cn-restart
         placement:
             cn:
-                - project!=~ {{ .this.project }}
-                - service!=~ {{ .this.service }}
+                - project!=~{{ .this.project }}
+                - service!=~{{ .this.service }}
         cns:
             service:
                 - worker
