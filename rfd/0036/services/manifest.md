@@ -319,7 +319,7 @@ Optional
 
 Health checks are run on the specified poll frequency on each instance of the service. If the health check is unsuccessful after the specified retries, the instance will be declared unhealthy, stopped, and a new instance provisioned for the service.
 
-If the ContainerPilot details are configured, the scheduler should automatically detect and use the ContainerPilot health checks, in addition to any user-specified health checks here. **Implemention note:** the ContainerPilot health-checks, upstreams, etc. can change after initial launch of the container. Mariposa must be able to accommodate these changes.
+If the ContainerPilot details are configured, the scheduler should automatically detect and use the ContainerPilot health checks, in addition to any user-specified health checks here. **Implementation note:** the ContainerPilot health-checks, upstreams, etc. can change after initial launch of the container. Mariposa must be able to accommodate these changes.
 
 The `ServicesHealth` agent responsible for running health checks will run in a NAT zone associated with the project that is connected to the service's network.
 
@@ -476,6 +476,30 @@ Examples:
 ```
 public_network:
 	- <network name>
+```
+
+
+
+## `cns`
+
+Optional
+
+Triton Container Name Service automated DNS details.
+
+Options:
+
+- `services`: `<service name>`; multiple may be specified; if no service names are specified, the default is the Mariposa service name
+- `ttl`: `<duration>`; overrides the default set in the top-level CNS directive for the project
+- `hysteresis`: `<duration>` an extended period of unhealth before stopping advertisement of an instance in CNS/DNS
+
+Example:
+
+```
+        cns:
+            services:
+                - <service name>
+            ttl: <duration>
+            hysteresis: <duration>
 ```
 
 

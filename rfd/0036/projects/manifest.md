@@ -18,6 +18,16 @@ The `tags` fields is optional. If provided, these manifest tags will be accessib
 defaults:
     network: <network name>
     public_network: <network name or uuid>
+cns:
+    namespace:
+        # "public" is a reserved name for
+        # the default public network
+        public: mydomain.example.com
+        <network name>: <domain space>
+    # the service name to point queries for
+    # the top of the namespace
+    primary_service: <service name>
+    ttl: 5m # default TTL for all services
 tags:
     - <tag name> = <tag value>
     - <tag name> = <tag value>
@@ -50,6 +60,11 @@ services:
             - <network name>
         public_network:
             - <network name or UUID>
+        cns:
+            services:
+                - <service name>
+            ttl: <duration> # overrides default
+            hysteresis: <duration> # extended period of unhealth before removing an instance from DNS
         ports:
             - 80
             - 443
@@ -120,3 +135,8 @@ Additional object types that might be expected in future iterations of the proje
 Though JSON is the preferred data interchange format throughout Triton, the inability to support inline comments has proven challenging in ContainerPilot. Those comments are more than a convenience, they're critically needed for inline documentation. This is especially true in operations where small changes can make the difference between smooth running and miserable disaster.
 
 Given that, the default format for the project and service manifest is YAML, and efforts should be made to preserve in their entirety the valid, YAML-formatted manifest file submitted by the user.
+
+## Sample manifests
+
+- [Kubernetes on Mariposa](../stories/kubernetes-on-mariposa.md)
+- [WordPress on Mariposa](../stories/wordpress-on-mariposa.md)
