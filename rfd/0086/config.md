@@ -7,7 +7,7 @@ We will abandon JSON in favor of the somewhat more human-friendly [JSON5](https:
 The `CONTAINERPILOT` environment variable and `-config` command line flag will no longer support passing in the contents of the configuration file as a string. Instead they will now indicate the directory location for configuration files, with a default value of `/etc/containerpilot.d` (note that we're removing the `file://` prefix as well). During ContainerPilot configuration loading, we can check for files in the config directory and merge them together. The merging process is as follows:
 
 - Lexigraphically sort all the config files.
-- Multiple `service`, `health`, `sensor` blocks are unioned.
+- Multiple `jobs` (formerly `services`), `health`, `sensor` blocks are unioned.
 - Keys with the same name replace those that occurred previously.
 
 For example consider the two JSON5 files below.
@@ -18,7 +18,7 @@ For example consider the two JSON5 files below.
   consul: {
     host: "localhost:8500"
   },
-  services: [
+  jobs: [
     {
       name: "nginx",
       port: 80
@@ -45,7 +45,7 @@ For example consider the two JSON5 files below.
   consul: {
     host: "consul.svc.triton.zone:8500"
   },
-  services: [
+  jobs: [
     {
       name: "appA",
       port: 9000
@@ -72,7 +72,7 @@ These will be merged as follows:
   consul: {
     host: "consul.svc.triton.zone:8500"
   },
-  services: [
+  jobs: [
     {
       name: "nginx",
       port: 80
@@ -115,13 +115,13 @@ The full example configuration for ContainerPilot found in the existing docs wou
     format: "default",
     output: "stdout"
   },
-  services: [
+  jobs: [
     {
       name: "app",
       // this is upstart-like syntax indicating we want to start this
       // service when the "setup" service has exited with success but
       // give up after 60 sec
-      start: "exitSuccess setup timeout 60s",
+      when: "setup exitSuccess timeout 60s",
       exec: "/bin/app",
       restart: "never",
       port: 80,
@@ -147,24 +147,24 @@ The full example configuration for ContainerPilot found in the existing docs wou
     {
       name: "setup",
       // we can create a chain of "prestart" events
-      start: "onStarted consul-agent",
+      when: "consul-agent healthy",
       exec: "/usr/local/bin/preStart-script.sh",
       restart: "never"
     },
     {
       name: "preStop",
-      start: "onStopping app",
+      when: "app stopping",
       exec: "/usr/local/bin/preStop-script.sh",
       restart: "never",
     },
     {
       name: "postStop",
-      start: "onStopped app",
+      when: "app stopped",
       exec: "/usr/local/bin/postStop-script.sh",
     },
     {
-      // a service that doesn't have a start block starts up on the
-      // global "onStartup" event by default
+      // a service that doesn't have a "when" field starts up on the
+      // global "startup" event by default
       name: "consul-agent",
       // note we don't have a port here because we don't intend to
       // advertise one to the service discovery backend
@@ -182,6 +182,16 @@ The full example configuration for ContainerPilot found in the existing docs wou
       exec: "/usr/local/bin/tash.sh arg1",
       frequency: "1500ms",
       timeout: "100ms",
+    },
+    {
+      name: "reload-app",
+      when: "watch.app changes",
+      exec: "/usr/local/bin/reload-app.sh",
+    },
+    {
+      name: "reload-nginx",
+      when: "watch.nginx changes",
+      exec: "/usr/local/bin/reload-nginx.sh",
     }
   ],
   health: {
@@ -196,13 +206,11 @@ The full example configuration for ContainerPilot found in the existing docs wou
   watches: {
     {
       name: "app",
-      exec: "/usr/local/bin/reload-app.sh",
       poll: 10,
       timeout: "10s"
     },
     {
       name: "nginx",
-      exec: "/usr/local/bin/reload-nginx.sh",
       poll: 30,
       timeout: "30s",
     }

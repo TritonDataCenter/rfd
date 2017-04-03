@@ -12,14 +12,14 @@ Later in v2 we expanded the polling behaviors of `health` checks and `onChange` 
 
 In v3 we'll eliminate the concept of a "main" application and embrace the notion that ContainerPilot is an init system for running inside containers. Each process will have its own health check(s), dependencies, frequency of run or restarting ("run forever", "run once", "run every N seconds"), and lifecycle hooks for startup and shutdown.
 
-For each application managed, the command will be included in the ContainerPilot `services` block. This change eliminates the `task` and `coprocess` config sections. For running the applications we can largely reuse the existing process running code, which includes `SIGCHLD` handlers for process reaping. Below is an example configuration, using the JSON5 configuration syntax described in the [config updates](config.md) section.
+For each application managed, the command will be included in the ContainerPilot `jobs` block. This change merges the `services`, `task`, and `coprocess` config sections. For running the applications we can largely reuse the existing process running code, which includes `SIGCHLD` handlers for process reaping. Below is an example configuration, using the JSON5 configuration syntax described in the [config updates](config.md) section.
 
 ```json5
 {
-  services: [
+  jobs: [
     {
       name: "nginx",
-      start: "onStarted consul_agent",
+      when: "consul-agent healthy",
       exec: 'nginx -g "daemon off;"'
       port: 80,
       heartbeat: 5,
@@ -30,7 +30,7 @@ For each application managed, the command will be included in the ContainerPilot
       ]
     },
     {
-      name: "consul_agent",
+      name: "consul-agent",
       exec: "consul -agent",
       port: 8500,
       interfaces: ["localhost"],
@@ -58,24 +58,24 @@ _Related GitHub issues:_
 
 #### Multiple health checks
 
-ContainerPilot 3 will support the ability for a service to have multiple health checks. All health checks for a service must be in a passing state before a service can be marked as healthy. The service definition will be separated from the health check definition in order to support proposed [configuration improvements](config.md).
+ContainerPilot 3 will support the ability for a job to have multiple health checks. All health checks for a job must be in a passing state before a job can be marked as healthy. The job definition will be separated from the health check definition in order to support proposed [configuration improvements](config.md).
 
 We'll make the following changes:
 
-- ContainerPilot will maintain state for all services, which can be either `healthy` or `unhealthy`, and all health checks, which can be either `passing` or `failing`.
-- All health checks must be marked `passing` before ContainerPilot will mark the service a `healthy`.
-- A service in a `healthy` state will send heartbeats (a `Pass` message) to the discovery backend every `heartbeat` seconds with a TTL of `ttl`.
-- A health check will poll every `poll` seconds, with a timeout of `timeout`. If any health check fails (returns a non-zero exit code or times out), the associated service is marked `unhealthy` and a `Fail` message is sent to the discovery service.
-- Once any health check fails, _all_ health checks need to pass before the service will be marked healthy again. This is required to avoid service flapping.
+- ContainerPilot will maintain state for all jobs, which can be either `healthy` or `unhealthy`, and all health checks, which can be either `passing` or `failing`.
+- All health checks must be marked `passing` before ContainerPilot will mark the job as `healthy`.
+- A job in a `healthy` state will send heartbeats (a `Pass` message) to the discovery backend every `heartbeat` seconds with a TTL of `ttl`.
+- A health check will poll every `poll` seconds, with a timeout of `timeout`. If any health check fails (returns a non-zero exit code or times out), the associated job is marked `unhealthy` and a `Fail` message is sent to the discovery job.
+- Once any health check fails, _all_ health checks need to pass before the job will be marked healthy again. This is required to avoid service flapping.
 
-**Important note:** end users should not provide a health check with a long polling time to perform some supporting task like backends. This will cause "slow startup" as their service will not be marked healthy until the first polling window expires. Instead they should create another service for this task.
+**Important note:** end users should not provide a health check with a long polling time to perform some supporting task like backends. This will cause "slow startup" as their job will not be marked healthy until the first polling window expires. Instead they should create another job for this task.
 
 ```json5
 {
   consul: {
     host: "consul.svc.triton.zone"
   },
-  services: [
+  jobs: [
     {
       name: "nginx",
       port: 80,
@@ -104,9 +104,9 @@ _Related GitHub issues:_
 - [Allow multiple health checks per service](https://github.com/joyent/containerpilot/issues/245)
 
 
-#### Non-advertising services
+#### Non-advertising jobs
 
-Some applications are intended only for internal consumption by other applications in the container and not should not be advertised to the discovery backend (ex. Consul agent). These applications can mark themselves as "non-advertising" simply by not providing a `port` configuration. ContainerPilot will track the state of non-advertising applications but not register them with service discovery, so it can fire `watch` handlers for other services that depend on it. In the example above, the Consul Agent will not be advertised but Nginx can still have it marked as a dependency.
+Some applications are intended only for internal consumption by other applications in the container and not should not be advertised to the discovery backend (ex. Consul agent). These applications can mark themselves as "non-advertising" simply by not providing a `port` configuration. ContainerPilot will track the state of non-advertising applications but not register them with service discovery, so it can fire `watch` handlers for other jobs that depend on it. In the example above, the Consul Agent will not be advertised but Nginx can still have it marked as a dependency.
 
 _Related GitHub issues:_
 - [Coprocess hooks](https://github.com/joyent/containerpilot/issues/175)
@@ -133,16 +133,18 @@ That being said, a more expressive configuration of event handlers may more grac
 
 ContainerPilot will provide events and each service can opt-in to having a `start` condition on one of these events. Because the life-cycle of each service triggers new events, the user can create a dependency chain among all the services in a container (and their external dependencies). This effectively replaces the `preStart`, `preStop`, and `postStop` behaviors.
 
-The configuration for `start` is similar to [`upstart` job lifecycle hooks](http://upstart.ubuntu.com/cookbook/#id118) -- a string in the format `<event> [optional event source] [optional timeout]`.
+ContainerPilot will generate events for all jobs internally, but the user can create a `watch` to query service discovery periodicially and generate `changed` events. This replaces the existing `backends` feature, except that `watches` don't fire their own executables. Instead the user should create a job that watches for events that the `watch` fires.
+
+The configuration for `start` is similar to [`upstart` job lifecycle hooks](http://upstart.ubuntu.com/cookbook/#id118) -- a string in the format `[optional event source] <event> [optional timeout]`.
 
 ContainerPilot will provide the following events:
 
 - `startup`: when ContainerPilot has completed all configuration and has started its telemetry server and control socket. This event also signals the start of all timers used for the optional timeout. This event may not have an event source. If no `start` is configured for a service, starting on this event is the default behavior.
 - `exitSuccess`: when a service exits with exit code 0. This event requires an event source.
 - `exitFailed`: when a service exits with a non-zero exit code. This event requires an event source.
-- `onHealthy`: when ContainerPilot determines that a dependency has been marked healthy. This can be determined by either a `watch` for an external service (registered with the discovery backend) or by a passing health check for another service in the same container. This is only triggered when there were previously no healthy instances (typically when the application first starts but also if all instances have previously failed). This event requires an event source.
-- `onChange`: when ContainerPilot receives notice of a change to the membership of a service. This event requires an event source.
-- `onUnhealthy`: when ContainerPilot receives notices that the dependency has been marked unhealthy (no instances available of a previously healthy service). This event requires an event source.
+- `healthy`: when ContainerPilot determines that a dependency has been marked healthy. This can be determined by either a `watch` for an external service (registered with the discovery backend) or by a passing health check for another service in the same container. This is only triggered when there were previously no healthy instances (typically when the application first starts but also if all instances have previously failed). This event requires an event source.
+- `changed`: when ContainerPilot receives notice of a change to the membership of a service. This event requires an event source.
+- `unhealthy`: when ContainerPilot receives notices that the dependency has been marked unhealthy (no instances available of a previously healthy service). This event requires an event source.
 - `stopping`: when a service in the same container receives SIGTERM. This event requires an event source.
 - `stopped`: when the process for a service in the same container exits. This event requires an event source.
 
@@ -150,14 +152,14 @@ The optional event source is the service that is emitting the event. The optiona
 
 Some example `start` configurations:
 
-- `start: "startup"`: start immediately (this is the default behavior if unspecified).
-- `start: "onSuccess myPreStart timeout 60s"`: wait up to 60 seconds for the service in the same container named `myPreStart` to exit successfully.
-- `start: "onHealthy myDb"`: wait forever, until the service `myDb` has a healthy instance. This service could be in the same container or external.
-- `start: "stopped myDb"`: start after the service in this container named `myDb` stops. This could be useful for copying a backup of the data off the instance.
+- `when: "startup"`: start immediately (this is the default behavior if unspecified).
+- `when: "myPreStart exitSuccess timeout 60s"`: wait up to 60 seconds for the service in the same container named `myPreStart` to exit successfully.
+- `when: "myDb healthy"`: wait forever, until the service `myDb` has a healthy instance. This service could be in the same container or external.
+- `when: "myDb stopped"`: start after the service in this container named `myDb` stops. This could be useful for copying a backup of the data off the instance.
 
-Each service, health check, or watch handler runs independently (in its own goroutine) and publishes its own events. Events are broadcast to all handlers and a handler will handle events in the order they are received (buffering events as necessary). This means events from multiple publishers can be interleaved, but events for a single publisher will arrive in the order they were sent; e.g. a handler won't receive a `stopped` before a `stopping`. (In practice, handlers will receive messages in the same order as all other handlers but this isn't going to be an invariant of the system in case we need to change the internals later.)
+Each job, health check, or watch handler runs independently (in its own goroutine) and publishes its own events. Events are broadcast to all handlers and a handler will handle events in the order they are received (buffering events as necessary). This means events from multiple publishers can be interleaved, but events for a single publisher will arrive in the order they were sent; e.g. a handler won't receive a `stopped` before a `stopping`. (In practice, handlers will receive messages in the same order as all other handlers but this isn't going to be an invariant of the system in case we need to change the internals later.)
 
-In the example below, we have a Node.js service `app`. It needs to get some configuration data from the environment in a one-time `setup` service. The Node app has to make requests to redis and a database. The app can gracefully handle a missing redis but can't safely start without the database (this is an intentionally arbitrary example). We also need a consul-agent service to be running so that we can get the configuration for all of the above.
+In the example below, we have a Node.js service `app`. It needs to get some configuration data from the environment in a one-time `setup` job. The Node app has to make requests to redis and a database. The app can gracefully handle a missing redis but can't safely start without the database (this is an intentionally arbitrary example). We also need a consul-agent job to be running so that we can get the configuration for all of the above.
 
 The diagram below roughly describes the dependencies we have.
 
@@ -173,10 +175,10 @@ The configuration syntax for `start` doesn't permit multiple dependencies, but w
 
 ```json5
 {
-  services: [
+  jobs: [
     {
       name: "consul-agent",
-      start: "startup", // this is the default
+      when: "startup", // this is the default
       exec: "consul -agent -join {{ .CONSUL }}"
     },
     {
@@ -184,20 +186,30 @@ The configuration syntax for `start` doesn't permit multiple dependencies, but w
       // onHealthy for an external db implies we are also waiting for
       // consul-agent so we meet that requirement too
       name: "configure-db-connection",
-      start: "onHealthy database",
+      when: "database healthy",
       exec: "/bin/configure-db.sh"
     },
     {
       name: "setup",
-      start: "onSuccess configure-db-connection",
+      when: "configure-db-connection exitSuccess",
       exec: "/bin/setup.sh"
     },
     {
       name: "app",
       // 'app' will never start if 'setup' fails
-      start: "onSuccess setup",
+      when: "setup exitSuccess",
       exec: "node /bin/app.js"
     },
+    {
+      name: "reconfigure-db-connection.sh",
+      when: "watch.database changed",
+      exec: "reconfigure-db-connection.sh",
+    },
+    {
+      name: "reconfigure-redis-connection.sh",
+      when: "watch.redis changed",
+      exec: "reconfigure-redis-connection.sh",
+    }
   ],
   health: [
     {
@@ -213,19 +225,17 @@ The configuration syntax for `start` doesn't permit multiple dependencies, but w
   watches: [
     {
       name: "database",
-      exec: "reconfigure-db-connection.sh",
     },
     {
       // we gracefully handle missing redis so this is a soft dependency.
       // we update the config whenver the list of members changes
       name: "redis",
-      exec: "reload-redis-configuration.sh"
     }
   ]
 }
 ```
 
-In the example above, if `setup` fails ContainerPilot will never start `app`, so it should mark the `app` service state as failed as well. If ContainerPilot reaches a state where no services can continue, it should exit. To avoid stalled containers, ContainerPilot will need a way to automatically detect unresolvable states.
+In the example above, if `setup` fails ContainerPilot will never start `app`, so it should mark the `app` job state as failed as well. If ContainerPilot reaches a state where no jobs can continue, it should exit. To avoid stalled containers, ContainerPilot will need a way to automatically detect unresolvable states.
 
 _Related GitHub issues:_
 - [Startup dependency sequencing](https://github.com/joyent/containerpilot/issues/273)
