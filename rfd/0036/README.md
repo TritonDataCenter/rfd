@@ -13,13 +13,86 @@ state: draft
     Copyright 2016 Casey Bisson, Joyent
 -->
 
-# RFD 36 Mariposa
+# RFD 36 Triton Service Manager (TSM, formerly Mariposa)
 
 Cloud infrastructure (IaaS) providers offer compute, network, and storage resources on which applications can be built and operated. However, those solutions leave it to the customer to assemble those infrastructure components to meet their needs. A given application might require several compute instances for a given component, but the customer is typically responsible for maintaining a mental model of their application, provisioning each instance, and then recognizing the compute instances that support a given software component within a larger list of instances.
 
-Template-driven provisioning tools like Terraform and many others, along with judicious tagging of instances provide some help to infrastructure customers, but even then there remains a significant gap between raw infrastructure and the applications IaaS customers wish to build and run.
+Template-driven provisioning tools like Terraform, CloudFormation and many others, along with judicious tagging of instances provide some help to infrastructure customers, but even then there remains a significant gap between raw infrastructure and the applications cloud customers wish to build and run.
 
-This RFD proposes features that would allow users to organize their infrastructure in ways that better represent their application components. The first of these organizing concepts is the *service*. A service is a collection of compute instances running the same software image with the same configuration, and a collection of services is called a *project*.
+The market demonstrates this gap with its investment in Mesos, Kubernetes, and other open source solutions for container scheduling and orchestration. Sadly, those tools have built-in assumptions about running on Linux guests, as well as generally poor support for multi-tenancy and control-plane security that make them unusable in a multi-tenant cloud and require running within VMs on that cloud.
+
+This RFD proposes features that would bring application management tools into our cloud as core features. Roughly speaking, these features include:
+
+- The ability to deploy a set of resources, including compute instances
+- The ability to monitor and replace instances representing a logical service if they fail
+- The ability to easily scale the number of instances representing a logical service up and down
+- The ability to define a logical service, made up of a set of instances that are automatically managed by these features
+- The ability to update that logical service definition, and for the management features here to apply those updates by deploying new instances to replace the running instances
+
+That brief list of features is intended as a guide for what this RFD will explore, not as an exhaustive or fully defined list. Additionally, the resource groupings that are described in this RFD may be a target of RBACv2 (described in RFD13 and 48), but they do not replace RBACv2.
+
+
+
+## Core principles
+
+- Mariposa offers mechanisms, not policies
+- Services must be a first-class object
+- Services are made up of instances on Triton
+- Users must be able to express their intent about a service, including configuration
+- Mariposa must support grouping of services for deployment and management as a set
+- Triton (via Mariposa) must take responsibility for converging the infrastructure to the desired state of the service
+- Service health is a first class attribute of the service
+- Service lifecycle is a first class notion
+- Mariposa must support fine-grained placement of resources
+- Mariposa must support RBAC access control
+- Mariposa must provide a mechanisms for observability, including monitoring, logging, auditing, and debugging
+
+
+
+## Prior art
+
+There is no one example of exactly what this RFD proposes, but there are a number of examples in which some portion of the features and principles described here have been implemented.
+
+
+
+### CloudFormation, Terraform, and other deployment tools
+
+AWS' [CloudFormation](https://aws.amazon.com/cloudformation/) is the first-class solution for deploying or provisioning a set of resources on AWS. CloudFormation templates can specify VPC details, IAM policies, load balancer configuration, auto scaling groups, and many other AWS resources. [CoreOS is just one example](https://coreos.com/kubernetes/docs/latest/kubernetes-on-aws.html) of vendors using CloudFormation to make installation of software on AWS easier. CloudFormation can make it easy to provision a set of resources, but it does nothing to improve management after provisioning. The specific implementation is also often criticized, especially by those using other cloud provisioning tools, like [Hashicorp's Terraform](https://www.terraform.io/). Despite these inadequacies, the ease of use cloud users enjoy by being able to paste a deployment template (a manifest, as described elsewhere in this document), click a button, and provision a large set of resources is unmatched by alternatives.
+
+
+
+### Auto Scaling Groups
+
+AWS' [Auto Scaling Groups](https://aws.amazon.com/autoscaling/) represent a very basic example of service definition with supervision. Though most people thing of Auto Scaling as a way to respond to performance metrics, the first mode of operation is actually just as a supervisor with health checks:
+
+> Whether you are running one Amazon EC2 instance or thousands, you can use Auto Scaling to detect impaired Amazon EC2 instances and unhealthy applications, and replace the instances without your intervention. This ensures that your application is getting the compute capacity that you expect.
+
+Once an Auto Scaling Group is defined (a service definition, as described elsewhere in this document), AWS customers can easily change the number of running instances of that service. It's [entirely optional to connect performance metrics to it](https://aws.amazon.com/autoscaling/getting-started/) for fully automated scaling.
+
+CloudFormation and Auto Scaling Groups represent some of the most important baseline features proposed for Mariposa, especially the deep integration with the cloud IaaS, but neither of them supports the management features that are also required for users building and running cloud applications today.
+
+
+
+### Compose
+
+Most every early Docker user has experienced a moment of great joy when discovering Docker Compose and using it to run a composed set of containers via a single manifest. Sadly, that joy was often later followed by the realization that running Docker Compose in production across multiple VMs required substantially more work, including the use of Docker Swarm (or Swarm Mode on more recent versions of Docker)
+
+The key features to note, however:
+
+- Ability to define a set of services
+
+Combined with Autopilot Pattern...
+
+
+
+### Mesos+Marathon and Kubernetes
+
+https://twitter.com/mipsytipsy/status/826241609972932608
+
+https://twitter.com/Kris__Nova/status/848960871665725443
+
+
+would allow users to organize their infrastructure in ways that better represent their application components. The first of these organizing concepts is the *service*. A service is a collection of compute instances running the same software image with the same configuration, and a collection of services is called a *project*.
 
 
 ## Concepts
@@ -291,3 +364,10 @@ Those components are intended to be private services and agents within Triton, e
                                └────────────────────┘
 
 ```
+
+## Revision history
+
+- [27 March, 2017: kick-off content](https://github.com/joyent/rfd/tree/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036)
+- [9 March, 2017: reorganized and added implementation straw man](https://github.com/joyent/rfd/tree/e38e0b02776a286db47c9fccea1e90646b5f31ef/rfd/0036)
+- [13 December, 2016: added user stories](https://github.com/joyent/rfd/tree/e1b4b05a236e084de065b0765510ec5069210f30/rfd/0036)
+- [13 June, 2016: initial draft focusing on end-user experience](https://github.com/joyent/rfd/blob/8529d2d2f6f386d977c66fbf08bab928b3fc91ba/rfd/0036)
