@@ -118,9 +118,8 @@ The full example configuration for ContainerPilot found in the existing docs wou
   jobs: [
     {
       name: "app",
-      // this is upstart-like syntax indicating we want to start this
-      // service when the "setup" service has exited with success but
-      // give up after 60 sec
+      // we want to start this job when the "setup" job has exited
+      // with success but give up after 60 sec
       when: {
           source: "setup",
           event: "exitSuccess",
