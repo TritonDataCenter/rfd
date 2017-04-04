@@ -19,8 +19,11 @@ For each application managed, the command will be included in the ContainerPilot
   jobs: [
     {
       name: "nginx",
-      when: "consul-agent healthy",
-      exec: 'nginx -g "daemon off;"'
+      when: {
+        source: "consul-agent",
+        event: "healthy"
+      },
+      exec: "nginx",
       port: 80,
       heartbeat: 5,
       ttl: 10,
@@ -86,12 +89,12 @@ We'll make the following changes:
   health: [
     {
       name: "check-A",
-      service: "nginx",
+      job: "nginx",
       exec: "curl -s --fail localhost/health"
     },
     {
       name: "check-B",
-      service: "nginx",
+      job: "nginx",
       exec: "curl -s --fail localhost/otherhealth"
     }
   ]
@@ -131,11 +134,11 @@ ContainerPilot hasn't eliminated the complexity of dependency management -- that
 
 That being said, a more expressive configuration of event handlers may more gracefully handle all the above situations and reduce the end-user confusion. Rather than surfacing just changes to dependency membership lists, we'll expose changes to the overall state as ContainerPilot sees it.
 
-ContainerPilot will provide events and each service can opt-in to having a `start` condition on one of these events. Because the life-cycle of each service triggers new events, the user can create a dependency chain among all the services in a container (and their external dependencies). This effectively replaces the `preStart`, `preStop`, and `postStop` behaviors.
+ContainerPilot will provide events and each service can opt-in to having a `when` condition on one of these events. Because the life-cycle of each service triggers new events, the user can create a dependency chain among all the services in a container (and their external dependencies). This effectively replaces the `preStart`, `preStop`, and `postStop` behaviors.
 
 ContainerPilot will generate events for all jobs internally, but the user can create a `watch` to query service discovery periodicially and generate `changed` events. This replaces the existing `backends` feature, except that `watches` don't fire their own executables. Instead the user should create a job that watches for events that the `watch` fires.
 
-The configuration for `start` is similar to [`upstart` job lifecycle hooks](http://upstart.ubuntu.com/cookbook/#id118) -- a string in the format `[optional event source] <event> [optional timeout]`.
+The configuration for `when` includes an `event`, a sometimes-optional `source`, and an optional `timeout`.
 
 ContainerPilot will provide the following events:
 
@@ -152,10 +155,10 @@ The optional event source is the service that is emitting the event. The optiona
 
 Some example `start` configurations:
 
-- `when: "startup"`: start immediately (this is the default behavior if unspecified).
-- `when: "myPreStart exitSuccess timeout 60s"`: wait up to 60 seconds for the service in the same container named `myPreStart` to exit successfully.
-- `when: "myDb healthy"`: wait forever, until the service `myDb` has a healthy instance. This service could be in the same container or external.
-- `when: "myDb stopped"`: start after the service in this container named `myDb` stops. This could be useful for copying a backup of the data off the instance.
+- `when: {event: "startup"}`: start immediately (this is the default behavior if unspecified).
+- `when: {source: "myPreStart", event: "exitSuccess", timeout: "60s"}`: wait up to 60 seconds for the service in the same container named `myPreStart` to exit successfully.
+- `when: {source: "myDb", event: "healthy"}`: wait forever, until the service `myDb` has a healthy instance. This service could be in the same container or external.
+- `when: {source: "myDb", event: "stopped"}`: start after the service in this container named `myDb` stops. This could be useful for copying a backup of the data off the instance.
 
 Each job, health check, or watch handler runs independently (in its own goroutine) and publishes its own events. Events are broadcast to all handlers and a handler will handle events in the order they are received (buffering events as necessary). This means events from multiple publishers can be interleaved, but events for a single publisher will arrive in the order they were sent; e.g. a handler won't receive a `stopped` before a `stopping`. (In practice, handlers will receive messages in the same order as all other handlers but this isn't going to be an invariant of the system in case we need to change the internals later.)
 
@@ -171,14 +174,16 @@ app ---+----> database ---+----> consul-agent ----> container start
        +~~~~> redis ------+
 ```
 
-The configuration syntax for `start` doesn't permit multiple dependencies, but we can describe a chain of dependencies by forcing one of the hard dependencies to depend on the other as shown in the configuration below. The user could also accomplish the same dependency chain by merging the `configure-db-connection` and `setup` service executables, or even by having the `setup` executable poll the ContainerPilot status endpoint for more fine-grained control.
+The configuration syntax for `when` doesn't permit multiple dependencies, but we can describe a chain of dependencies by forcing one of the hard dependencies to depend on the other as shown in the configuration below. The user could also accomplish the same dependency chain by merging the `configure-db-connection` and `setup` service executables, or even by having the `setup` executable poll the ContainerPilot status endpoint for more fine-grained control.
 
 ```json5
 {
   jobs: [
     {
       name: "consul-agent",
-      when: "startup", // this is the default
+      when: {
+        event: "startup" // this is the default
+      },
       exec: "consul -agent -join {{ .CONSUL }}"
     },
     {
@@ -186,28 +191,43 @@ The configuration syntax for `start` doesn't permit multiple dependencies, but w
       // onHealthy for an external db implies we are also waiting for
       // consul-agent so we meet that requirement too
       name: "configure-db-connection",
-      when: "database healthy",
+      when: {
+        source: "database",
+        event: "healthy"
+      }
       exec: "/bin/configure-db.sh"
     },
     {
       name: "setup",
-      when: "configure-db-connection exitSuccess",
+      when: {
+        source: "configure-db-connection",
+        event: "exitSuccess"
+      },
       exec: "/bin/setup.sh"
     },
     {
       name: "app",
       // 'app' will never start if 'setup' fails
-      when: "setup exitSuccess",
+      when: {
+        source: "setup",
+        event: "exitSuccess"
+      },
       exec: "node /bin/app.js"
     },
     {
       name: "reconfigure-db-connection.sh",
-      when: "watch.database changed",
+      when: {
+        source: "watch.database",
+        event: "changed"
+      },
       exec: "reconfigure-db-connection.sh",
     },
     {
       name: "reconfigure-redis-connection.sh",
-      when: "watch.redis changed",
+      when: {
+        source: "watch.redis",
+        event: "changed"
+      },
       exec: "reconfigure-redis-connection.sh",
     }
   ],
@@ -216,7 +236,8 @@ The configuration syntax for `start` doesn't permit multiple dependencies, but w
       // because we haven't provided a port for consul-agent this health check
       // won't result in it registering with service discovery, but we still
       // get its health events inside this container
-      name: "consul-agent",
+      name: "consul-agent-check",
+      job: "consul-agent",
       exec:  "consul info | grep peers",
       poll: 5,
       timeout: "5s"

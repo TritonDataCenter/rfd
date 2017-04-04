@@ -31,7 +31,7 @@ For example consider the two JSON5 files below.
   health: [
     {
       name: "checkA",
-      service: "nginx"
+      job: "nginx"
       exec: "curl -s --fail localhost/health"
     }
   ]
@@ -58,7 +58,7 @@ For example consider the two JSON5 files below.
   health: [
     {
       name: "checkB",
-      service: "nginx"
+      job: "nginx"
       exec: "curl -s --fail localhost/otherhealth"
     }
   ]
@@ -89,12 +89,12 @@ These will be merged as follows:
   health: [
     {
       name: "checkA",
-      service: "nginx"
+      job: "nginx"
       exec: "curl -s --fail localhost/health"
     },
     {
       name: "checkB",
-      service: "nginx"
+      job: "nginx"
       exec: "curl -s --fail localhost/otherhealth"
     }
   ]
@@ -121,7 +121,11 @@ The full example configuration for ContainerPilot found in the existing docs wou
       // this is upstart-like syntax indicating we want to start this
       // service when the "setup" service has exited with success but
       // give up after 60 sec
-      when: "setup exitSuccess timeout 60s",
+      when: {
+          source: "setup",
+          event: "exitSuccess",
+          timeout: "60s"
+      },
       exec: "/bin/app",
       restart: "never",
       port: 80,
@@ -147,19 +151,28 @@ The full example configuration for ContainerPilot found in the existing docs wou
     {
       name: "setup",
       // we can create a chain of "prestart" events
-      when: "consul-agent healthy",
+      when: {
+          source: "consul-agent",
+          event: "healthy"
+      },
       exec: "/usr/local/bin/preStart-script.sh",
       restart: "never"
     },
     {
       name: "preStop",
-      when: "app stopping",
+      when: {
+          source: "app",
+          event: "stopping"
+      },
       exec: "/usr/local/bin/preStop-script.sh",
       restart: "never",
     },
     {
       name: "postStop",
-      when: "app stopped",
+      when: {
+          source: "app",
+          event: "stopped"
+      },
       exec: "/usr/local/bin/postStop-script.sh",
     },
     {
@@ -197,7 +210,7 @@ The full example configuration for ContainerPilot found in the existing docs wou
   health: {
     {
       name: "checkA",
-      service: "nginx",
+      job: "nginx",
       exec: "/usr/bin/curl --fail -s -o /dev/null http://localhost/app",
       poll: 5,
       timeout: "5s",
