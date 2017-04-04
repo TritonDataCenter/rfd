@@ -136,11 +136,9 @@ That being said, a more expressive configuration of event handlers may more grac
 
 ContainerPilot will provide events and each service can opt-in to starting on a `when` condition on one of these events. Because the life-cycle of each service triggers new events, the user can create a dependency chain among all the services in a container (and their external dependencies). This effectively replaces the `preStart`, `preStop`, and `postStop` behaviors.
 
-ContainerPilot will generate events for all jobs internally, but the user can create a `watch` to query service discovery periodicially and generate `changed` events. This replaces the existing `backends` feature, except that `watches` don't fire their own executables. Instead the user should create a job that watches for events that the `watch` fires. A `watch` event source will be named `"watch.<watch name>"` to differentiate it from job events with the same name.
+#### "When"
 
-The configuration for `when` includes an `event`, a sometimes-optional `source`, and an optional `timeout`.
-
-ContainerPilot will provide the following events:
+The configuration for `when` includes an `event`, a sometimes-optional `source`, and an optional `timeout`. ContainerPilot will provide the following events:
 
 - `startup`: when ContainerPilot has completed all configuration and has started its telemetry server and control socket. This event also signals the start of all timers used for the optional timeout. This event may not have an event source. If no `start` is configured for a service, starting on this event is the default behavior.
 - `exitSuccess`: when a service exits with exit code 0. This event requires an event source.
@@ -160,7 +158,16 @@ Some example `start` configurations:
 - `when: {source: "myDb", event: "healthy"}`: wait forever, until the service `myDb` has a healthy instance. This service could be in the same container or external.
 - `when: {source: "myDb", event: "stopped"}`: start after the service in this container named `myDb` stops. This could be useful for copying a backup of the data off the instance.
 
+
+#### Watches
+
+ContainerPilot will generate events for all jobs internally, but the user can create a `watch` to query service discovery periodicially and generate `changed` events. This replaces the existing `backends` feature, except that `watches` don't fire their own executables. Instead the user should create a job that watches for events that the `watch` fires. A `watch` event source will be named `"watch.<watch name>"` to differentiate it from job events with the same name.
+
+#### Ordering
+
 Each job, health check, or watch handler runs independently (in its own goroutine) and publishes its own events. Events are broadcast to all handlers and a handler will handle events in the order they are received (buffering events as necessary). This means events from multiple publishers can be interleaved, but events for a single publisher will arrive in the order they were sent; e.g. a handler won't receive a `stopped` before a `stopping`. (In practice, handlers will receive messages in the same order as all other handlers but this isn't going to be an invariant of the system in case we need to change the internals later.)
+
+#### Example
 
 In the example below, we have a Node.js service `app`. It needs to get some configuration data from the environment in a one-time `setup` job. The Node app has to make requests to redis and a database. The app can gracefully handle a missing redis but can't safely start without the database (this is an intentionally arbitrary example). We also need a consul-agent job to be running so that we can get the configuration for all of the above.
 

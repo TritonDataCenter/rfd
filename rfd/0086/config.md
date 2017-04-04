@@ -215,6 +215,7 @@ The full example configuration for ContainerPilot found in the existing docs wou
       timeout: "5s",
     }
   }
+  // see "multiprocess.md" for more details on this section
   watches: {
     {
       name: "app",
@@ -228,6 +229,7 @@ The full example configuration for ContainerPilot found in the existing docs wou
     }
   },
   control: {
+    // see "mariposa.md" for details on this section
     socket: "/var/run/containerpilot.socket"
   },
   telemetry: {
