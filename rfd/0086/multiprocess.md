@@ -134,9 +134,9 @@ ContainerPilot hasn't eliminated the complexity of dependency management -- that
 
 That being said, a more expressive configuration of event handlers may more gracefully handle all the above situations and reduce the end-user confusion. Rather than surfacing just changes to dependency membership lists, we'll expose changes to the overall state as ContainerPilot sees it.
 
-ContainerPilot will provide events and each service can opt-in to having a `when` condition on one of these events. Because the life-cycle of each service triggers new events, the user can create a dependency chain among all the services in a container (and their external dependencies). This effectively replaces the `preStart`, `preStop`, and `postStop` behaviors.
+ContainerPilot will provide events and each service can opt-in to starting on a `when` condition on one of these events. Because the life-cycle of each service triggers new events, the user can create a dependency chain among all the services in a container (and their external dependencies). This effectively replaces the `preStart`, `preStop`, and `postStop` behaviors.
 
-ContainerPilot will generate events for all jobs internally, but the user can create a `watch` to query service discovery periodicially and generate `changed` events. This replaces the existing `backends` feature, except that `watches` don't fire their own executables. Instead the user should create a job that watches for events that the `watch` fires.
+ContainerPilot will generate events for all jobs internally, but the user can create a `watch` to query service discovery periodicially and generate `changed` events. This replaces the existing `backends` feature, except that `watches` don't fire their own executables. Instead the user should create a job that watches for events that the `watch` fires. A `watch` event source will be named `"watch.<watch name>"` to differentiate it from job events with the same name.
 
 The configuration for `when` includes an `event`, a sometimes-optional `source`, and an optional `timeout`.
 
