@@ -48,6 +48,7 @@ state: draft
       - [Expressing locality with affinity filters](#expressing-locality-with-affinity-filters)
   - [REST APIs](#rest-apis)
     - [Changes to CloudAPI](#changes-to-cloudapi)
+      - [Filtering shared volumes' storage zones from the `ListMachines` endpoint](#filtering-shared-volumes-storage-zones-from-the-listmachines-endpoint)
       - [Volume objects representation](#volume-objects-representation)
       - [New `/volumes` endpoints](#new-volumes-endpoints)
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
@@ -68,8 +69,6 @@ state: draft
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
-      - [Filtering shared volumes zones from list endpoint](#filtering-shared-volumes-zones-from-list-endpoint)
-      - [New `internal_role` property on VM objects](#new-internal_role-property-on-vm-objects)
       - [New internal `required_nfs_volumes` property on VM objects](#new-internal-required_nfs_volumes-property-on-vm-objects)
       - [New `mounting_volume` parameter for the `ListVms` endpoint](#new-mounting_volume-parameter-for-the-listvms-endpoint)
         - [Input](#input)
@@ -702,6 +701,19 @@ to be created to support shared volumes and their use cases.
 
 ### Changes to CloudAPI
 
+#### Filtering shared volumes' storage zones from the `ListMachines` endpoint
+
+Machines acting as shared volumes' storage zones are an implementation detail
+that should not be exposed to end users. As such, they need to be filtered out
+from the `ListMachines` endpoint. Thus, CloudAPI's `ListMachines` endpoint will
+always pass -- in addition to any other search predicate set due to other
+`ListMachines` parameters -- the following predicate to VMAPI's ListVms
+endpoint:
+
+```
+{ne: ['tags', '*smartdc_role=nfsserver*']}
+```
+
 #### Volume objects representation
 
 Volume objects are represented in CloudAPI the same way as their internal
@@ -1054,28 +1066,6 @@ endpoints](https://apidocs.joyent.com/cloudapi/#machines) will need to fail with
 an appropriate error message when used on shared volumes zones.
 
 ### Changes to VMAPI
-
-#### Filtering shared volumes zones from list endpoint
-
-Zones acting as shared volumes hosts are an implementation detail that should
-not be exposed to end users. As such, they need to be filtered out from the
-`ListVms` endpoint
-
-#### New `internal_role` property on VM objects
-
-A new `internal_role` property with the value `tritonnfs_volume` will need to be
-added on VM objects.
-
-This property overlaps with [the current `smartdc_role` tag used to provision
-NFS shared volumes zones](https://github.com/joyent/sdc-volapi
-/blob/master/lib/endpoints/volumes.js#L153), but it has the benefit of being
-indexable without requiring any change to Moray.
-
-This new `internal_role` property will be empty for any VM object other than
-those representing NFS server zones. Changes will be made to CloudAPI's
-`ListMachines` endpoint to filter out VMs with a value of `tritonnfs_server`
-from its output and to all other machines-related CloudAPI endpoints to fail
-with a clear error message for such VMs.
 
 #### New internal `required_nfs_volumes` property on VM objects
 
