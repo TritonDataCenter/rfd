@@ -91,8 +91,18 @@ https://twitter.com/mipsytipsy/status/826241609972932608
 
 https://twitter.com/Kris__Nova/status/848960871665725443
 
+https://twitter.com/cloud_opinion/status/849426011271954432
+
+https://twitter.com/catlgrep/status/849429522218967042
 
 would allow users to organize their infrastructure in ways that better represent their application components. The first of these organizing concepts is the *service*. A service is a collection of compute instances running the same software image with the same configuration, and a collection of services is called a *project*.
+
+## More
+
+- Health
+- Health vs. discovery
+- Health vs. rescheduling
+- ZFS clone zones with fail-over
 
 
 ## Concepts
