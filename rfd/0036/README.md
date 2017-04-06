@@ -13,7 +13,7 @@ state: draft
     Copyright 2016 Casey Bisson, Joyent
 -->
 
-# RFD 36 Triton Service Manager (TSM, formerly Mariposa)
+# RFD 36 Triton Service Manager (TSM, code named Mariposa)
 
 Cloud infrastructure (IaaS) providers offer compute, network, and storage resources on which applications can be built and operated. However, those solutions leave it to the customer to assemble those infrastructure components to meet their needs. A given application might require several compute instances for a given component, but the customer is typically responsible for maintaining a mental model of their application, provisioning each instance, and then recognizing the compute instances that support a given software component within a larger list of instances.
 
@@ -55,7 +55,7 @@ There is no one example of exactly what this RFD proposes, but there are a numbe
 
 
 
-### CloudFormation, Terraform, and other deployment tools
+### CloudFormation, Terraform, and other templated deployment tools
 
 AWS' [CloudFormation](https://aws.amazon.com/cloudformation/) is the first-class solution for deploying or provisioning a set of resources on AWS. CloudFormation templates can specify VPC details, IAM policies, load balancer configuration, auto scaling groups, and many other AWS resources. [CoreOS is just one example](https://coreos.com/kubernetes/docs/latest/kubernetes-on-aws.html) of vendors using CloudFormation to make installation of software on AWS easier. CloudFormation can make it easy to provision a set of resources, but it does nothing to improve management after provisioning. The specific implementation is also often criticized, especially by those using other cloud provisioning tools, like [Hashicorp's Terraform](https://www.terraform.io/). Despite these inadequacies, the ease of use cloud users enjoy by being able to paste a deployment template (a manifest, as described elsewhere in this document), click a button, and provision a large set of resources is unmatched by alternatives.
 
@@ -97,12 +97,62 @@ https://twitter.com/catlgrep/status/849429522218967042
 
 would allow users to organize their infrastructure in ways that better represent their application components. The first of these organizing concepts is the *service*. A service is a collection of compute instances running the same software image with the same configuration, and a collection of services is called a *project*.
 
+
+
+## What types of applications is Mariposa intended for?
+
+### Stateless
+
+Stateless applications...12 factor apps...call them what you may, they're easy. They're the hello world for every containers-as-a-service platform. By eliminating the problems with state, the CaaS platform simply has to inject configuration (including secrets. Discovery can be done at the infrastructure layer (CNS on Triton is an example, though buggy DNS clients make that problematic), or it can be done at the application layer (as Consul is used by ContainerPilot).
+
+
+
+### Stateful, with internal state management
+
+It is possible to [automate the operations of stateful applications](https://www.joyent.com/blog/persistent-storage-patterns#databases) so that [they operate statelessly from the perspective of the scheduler](https://www.joyent.com/blog/app-centric-micro-orchestration#handling-persistent-data). These solutions may not work for every application or for every CAP guarantee, but they can work for many. Some examples include [Consul on Autopilot](https://github.com/autopilotpattern/consul), [MySQL on Autopilot](https://github.com/autopilotpattern/mysql), and [Mongo on Autopilot](https://github.com/autopilotpattern/mongodb).
+
+As currently implemented (based on the limitations of the tools and infrastructure), this process requires that each node get its state over the network at start time. This can require cloning from an existing node (as in Consul and Mongo), or restoring a filesystem backup and then syncing with the primary (as in MySQL).
+
+A common criticism of that approach is that upgrading an existing instance takes longer than necessary, because the tools and infrastructure provision a new instance with none of the state of the instance it is intended to upgrade/replace. However, this internalization of state or persistence management is especially important at other critical times in an application's lifecycle:
+
+- Scaling up
+When scaling an application is scaled up, there can be no presumption that there is an existing filesystem a new instance can use. Instead, the new instances must be bootstrapped by copying/generating their state from elsewhere.
+- Recovery from the loss of a node
+Recovery in this case is effectively the same as scaling the application up after it was unexpectedly scaled down. Again, the application must be prepared to copy or construct state for a the replacement instance.
+
+
+
+### Stateful, with external state management
+
+Despite some of the operational advantages to applications that internalize the management of their persistence layer, we must acknowledge that very few applications do so. These applications may have documented approaches for backing up their filesystem state, adding replicas, upgrades on top of an existing filesystem, and recovering after filesystem failures. These apps may have varying resiliency to the loss of a filesystem or entire instance(s). This RFD generalizes this problem to a need for persistent filesystems that are defined separately from the compute instances and whose lifecycle is managed separately.
+
+Triton provides limited mechanisms for this now:
+
+- [sdc-docker supports `--volumes-from`](https://apidocs.joyent.com/docker/features/volumes), which allows one container to be used as the storage volume for another
+- [RFD26 proposes NFS shared volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) which are implemented as zones
+- [ZFS datasets can be delegated to an instance](https://docs.joyent.com/private-cloud/instances/delegated-data-sets), though it is [not safe delegate datasets to untrusted users](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md#safety-considerations)
+- [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, but that feature largely requires a delegated dataset (see above), and is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141)
+
+For the most part, however, instances are provisioned and left running indefinitely while operators update their software using traditional workflows.
+
+
+
+### Applications presented as services to others
+
+
+
+
 ## More
 
 - Health
 - Health vs. discovery
 - Health vs. rescheduling
+
+## Extra features
+
 - ZFS clone zones with fail-over
+- Volume instances (non-NFS)
+- Persistent IPs
 
 
 ## Concepts
