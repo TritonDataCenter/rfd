@@ -107,78 +107,81 @@ The tests here refer to specific procedures described above.
 
 Notes | Component                     | Test
 ----- | ----------------------------- | -----------
-      | authcache                     | test restarting an instance's service
-      | authcache                     | test disabling an instance's service (wait at least 5m)
-(1)   | authcache                     | test removing/adding an instance from/to DNS (wait at least 7m)
-(1)   | authcache                     | test halting/booting an instance (wait at least 10m)
-      | authcache                     | test partitioning an instance
-      | electric-moray                | test restarting an instance's service (haproxy)
-      | electric-moray                | test restarting an instance's service (electric-moray)
-      | electric-moray                | test disabling an instance's service (haproxy)
-      | electric-moray                | test disabling an instance's service (electric-moray)
-      | electric-moray                | test removing/adding an instance from/to DNS
-      | electric-moray                | test halting/booting an instance
-      | electric-moray                | test partitioning an instance
-      | moray, shard 1                | test restarting an instance's service (haproxy)
-      | moray, shard 1                | test restarting an instance's service (moray)
-(2)   | moray, shard 1                | test disabling an instance's service (haproxy)
-(2)   | moray, shard 1                | test disabling an instance's service (moray)
-(2)   | moray, shard 1                | test removing/adding an instance from/to DNS
-(2)   | moray, shard 1                | test halting/booting an instance
-(2)   | moray, shard 1                | test partitioning an instance
-      | moray, shard 2                | test restarting an instance's service (haproxy)
-      | moray, shard 2                | test restarting an instance's service (moray)
-      | moray, shard 2                | test disabling an instance's service (haproxy)
-      | moray, shard 2                | test disabling an instance's service (moray)
-      | moray, shard 2                | test removing/adding an instance from/to DNS
-      | moray, shard 2                | test halting/booting an instance
-      | moray, shard 2                | test partitioning an instance
-      | webapi                        | test restarting an instance's service (haproxy)
-      | webapi                        | test restarting an instance's service (muskie)
-      | webapi                        | test disabling an instance's service (haproxy)
-      | webapi                        | test disabling an instance's service (muskie)
-      | webapi                        | test removing/adding an instance from/to DNS
-      | webapi                        | test halting/booting an instance
-      | webapi                        | test partitioning an instance   
-      | storage                       | test restarting an instance's service (mako/nginx)
-      | storage                       | test disabling an instance's service (mako/nginx)
-      | storage                       | test removing/adding an instance from/to DNS
-      | storage                       | test halting/booting an instance
-      | storage                       | test partitioning an instance
-      | nameservice (1st)             | test restarting an instance's service (binder)
-      | nameservice (1st)             | test restarting an instance's service (ZooKeeper)
-      | nameservice (1st)             | test disabling an instance's service (binder)
-      | nameservice (1st)             | test disabling an instance's service (ZooKeeper)
-      | nameservice (1st)             | test halting/booting an instance
-      | nameservice (1st)             | test partitioning an instance
-      | nameservice (ZK leader)       | test restarting an instance's service (binder)
-      | nameservice (ZK leader)       | test restarting an instance's service (ZooKeeper)
-      | nameservice (ZK leader)       | test disabling an instance's service (binder)
-      | nameservice (ZK leader)       | test disabling an instance's service (ZooKeeper)
-      | nameservice (ZK leader)       | test halting/booting an instance
-      | nameservice (ZK leader)       | test partitioning an instance
-      | postgres (async)              | test restarting an instance's service (manatee-sitter)
-      | postgres (async)              | test disabling an instance's service (manatee-sitter)
-      | postgres (async)              | test halting/booting an instance
-      | postgres (async)              | test partitioning an instance
-(3)   | postgres (sync)               | test restarting an instance's service (manatee-sitter)
-(4)   | postgres (sync)               | test disabling an instance's service (manatee-sitter)
-(4)   | postgres (sync)               | test halting/booting an instance
-(4)   | postgres (sync)               | test partitioning an instance
-(3)   | postgres (primary)            | test restarting an instance's service (manatee-sitter)
-(4)   | postgres (primary)            | test disabling an instance's service (manatee-sitter)
-(4)   | postgres (primary)            | test halting/booting an instance
-(4)   | postgres (primary)            | test partitioning an instance
+|      | authcache                     | test restarting an instance's service
+|      | authcache                     | test disabling an instance's service (wait at least 5m)
+|[1](#footnote1)   | authcache                     | test removing/adding an instance from/to DNS (wait at least 7m)
+|[1](#footnote1)   | authcache                     | test halting/booting an instance (wait at least 10m)
+|      | authcache                     | test partitioning an instance
+|      | electric-moray                | test restarting an instance's service (haproxy)
+|      | electric-moray                | test restarting an instance's service (electric-moray)
+|      | electric-moray                | test disabling an instance's service (haproxy)
+|      | electric-moray                | test disabling an instance's service (electric-moray)
+|      | electric-moray                | test removing/adding an instance from/to DNS
+|      | electric-moray                | test halting/booting an instance
+|      | electric-moray                | test partitioning an instance
+|      | moray, shard 1                | test restarting an instance's service (haproxy)
+|      | moray, shard 1                | test restarting an instance's service (moray)
+|[2](#footnote2)   | moray, shard 1                | test disabling an instance's service (haproxy)
+|[2](#footnote2)   | moray, shard 1                | test disabling an instance's service (moray)
+|[2](#footnote2)   | moray, shard 1                | test removing/adding an instance from/to DNS
+|[2](#footnote2)   | moray, shard 1                | test halting/booting an instance
+|[2](#footnote2)   | moray, shard 1                | test partitioning an instance
+|      | moray, shard 2                | test restarting an instance's service (haproxy)
+|      | moray, shard 2                | test restarting an instance's service (moray)
+|      | moray, shard 2                | test disabling an instance's service (haproxy)
+|      | moray, shard 2                | test disabling an instance's service (moray)
+|      | moray, shard 2                | test removing/adding an instance from/to DNS
+|      | moray, shard 2                | test halting/booting an instance
+|      | moray, shard 2                | test partitioning an instance
+|      | webapi                        | test restarting an instance's service (haproxy)
+|      | webapi                        | test restarting an instance's service (muskie)
+|      | webapi                        | test disabling an instance's service (haproxy)
+|      | webapi                        | test disabling an instance's service (muskie)
+|      | webapi                        | test removing/adding an instance from/to DNS
+|      | webapi                        | test halting/booting an instance
+|      | webapi                        | test partitioning an instance   
+|      | storage                       | test restarting an instance's service (mako/nginx)
+|      | storage                       | test disabling an instance's service (mako/nginx)
+|      | storage                       | test removing/adding an instance from/to DNS
+|      | storage                       | test halting/booting an instance
+|      | storage                       | test partitioning an instance
+|      | nameservice (1st)             | test restarting an instance's service (binder)
+|      | nameservice (1st)             | test restarting an instance's service (ZooKeeper)
+|      | nameservice (1st)             | test disabling an instance's service (binder)
+|      | nameservice (1st)             | test disabling an instance's service (ZooKeeper)
+|      | nameservice (1st)             | test halting/booting an instance
+|      | nameservice (1st)             | test partitioning an instance
+|      | nameservice (ZK leader)       | test restarting an instance's service (binder)
+|      | nameservice (ZK leader)       | test restarting an instance's service (ZooKeeper)
+|      | nameservice (ZK leader)       | test disabling an instance's service (binder)
+|      | nameservice (ZK leader)       | test disabling an instance's service (ZooKeeper)
+|      | nameservice (ZK leader)       | test halting/booting an instance
+|      | nameservice (ZK leader)       | test partitioning an instance
+|      | postgres (async)              | test restarting an instance's service (manatee-sitter)
+|      | postgres (async)              | test disabling an instance's service (manatee-sitter)
+|      | postgres (async)              | test halting/booting an instance
+|      | postgres (async)              | test partitioning an instance
+|[3](#footnote3)   | postgres (sync)               | test restarting an instance's service (manatee-sitter)
+|[4](#footnote4)   | postgres (sync)               | test disabling an instance's service (manatee-sitter)
+|[4](#footnote4)   | postgres (sync)               | test halting/booting an instance
+|[4](#footnote4)   | postgres (sync)               | test partitioning an instance
+|[3](#footnote3)   | postgres (primary)            | test restarting an instance's service (manatee-sitter)
+|[4](#footnote4)   | postgres (primary)            | test disabling an instance's service (manatee-sitter)
+|[4](#footnote4)   | postgres (primary)            | test halting/booting an instance
+|[4](#footnote4)   | postgres (primary)            | test partitioning an instance
 
 Notes:
 
-1. Authcache tests add an extra 5m because of muskie's cache.
-2. For shard 1 moray, make sure that we verify afterwards that minnow records
+<a name="footnote1">1.</a>  Authcache tests add an extra 5m because of muskie's cache.
+
+<a name="footnote2">2.</a> For shard 1 moray, make sure that we verify afterwards that minnow records
    are continuing to be updated, and that jobs continue running without issue
    across the test.
-3. Restarting manatee-sitter on the PostgreSQL primary or sync will likely
+
+<a name="footnote3">3.</a> Restarting manatee-sitter on the PostgreSQL primary or sync will likely
    result in a longer period of errors and high latency -- up to a minute.
-4. These operations on manatee-sitter on a PostgreSQL primary or sync should
+
+<a name="footnote4">4.</a> These operations on manatee-sitter on a PostgreSQL primary or sync should,
    result in a takeover by the cluster.  There may be an outage of up to about
    2 minutes until this happens, and then roles in the cluster will have
    changed, so it will be important to re-check roles before starting the next
