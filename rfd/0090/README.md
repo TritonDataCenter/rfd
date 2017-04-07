@@ -135,8 +135,8 @@ and others.
 The longer a thread is waiting to run, the higher its scheduling priority will
 become so that no runnable thread is starved of CPU forever. Runnable thread
 priorities are recalculated on a regular basis and then the scheduler uses those
-to actually determine which threads to run. This happens for all processes
-regardless of zone and the zone's `cpu_shares` in relation to all of the zone's
+to actually determine which threads to run. This happens for all threads
+regardless of zone, and the zone's `cpu_shares` in relation to all of the zone's
 thread's recent CPU usage is just one of the additional inputs that get
 considered when determining the priority.
 
