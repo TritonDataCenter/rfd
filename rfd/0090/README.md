@@ -74,7 +74,7 @@ away and monopolizing *all* the available extra capacity.
 
 # CPU Caps vs. CPU Shares
 
-In addition to CPU caps, we have CPU shares. This document is mostly focussed on
+In addition to CPU caps, we have CPU shares. This document is mostly focused on
 caps, but it's worth briefly discussing shares, since when a system has no caps
 and multiple zones are competing for CPU the only component of Triton instance
 packages that will mediate their interaction here would be the CPU shares. The
@@ -142,7 +142,7 @@ considered when determining the priority.
 
 It is important to note here that it is only zones with runnable threads that
 factor into the scheduling priority recalculations. The `cpu_shares` are just a
-number that gets input into this calulation. The value on its own is
+number that gets input into this calculation. The value on its own is
 meaningless. Even the value in relation to other zones on the CN that do not
 have runnable threads is meaningless. It is only useful as a weight in the
 calculation made when there more runnable threads than CPUs and multiple zones
