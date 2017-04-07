@@ -72,7 +72,7 @@ performance for all other instances on a system. Adding a `cpu_cap` to one
 instance protects other instances to some degree from that instance running
 away and monopolizing *all* the available extra capacity.
 
-# CPU Caps vs. CPU Shares
+## CPU Caps vs. CPU Shares
 
 In addition to CPU caps, we have CPU shares. This document is mostly focused on
 caps, but it's worth briefly discussing shares, since when a system has no caps
@@ -128,7 +128,8 @@ it then gives them a priority based on a variety of inputs including:
 
  * the the zone's `cpu_shares` value
  * the thread's "nice" value
- * how much CPU time the thread has recently accumulated.
+ * how much CPU time the thread has recently accumulated
+ * how much CPU time the zone has recently accumulated
 
 and others.
 
@@ -157,6 +158,45 @@ In summary, it's important to note:
  * even when they are relevant, `cpu_shares` are only a single input into the
    scheduler function for threads running within a zone on a specific CN
 
+With all of this said, people have asked "What's the point then of
+`cpu_shares`?" The kernel internally calls this scheduling FSS (fair share
+scheduling) and FSS is basically a variation on time-sharing, where each
+runnable thread has a chance to run. The problem this system attempts to solve
+is that we apply our definition of "fairness" across the zones and don't want
+one zone to dominate another. For example, if Zone A has 1000 runnable threads
+and Zone B has 50. We don't want Zone A to get most of the CPU time. This is
+where FSS comes in. It looks at the zones as well as the threads to ensure that
+a "collection" of runnable threads is being considered in the scheduling
+priority calculation.
+
+### Example
+
+In order to help debunk one of the common misconceptions about `cpu_shares`
+(that a zone with twice as many shares will always get twice as much CPU) we'll
+use an example. Consider a case where we have:
+
+ * only two zones (zoneA and zoneB) on a single CN that has 32 CPU cores
+ * zoneA with `cpu_shares` = 2000 and which has 40 always-runnable threads
+ * zoneB with `cpu_shares` = 1000 and which has 1000 always-runnable threads
+
+since the total number of runnable threads (1040) is much larger than the number
+of cores (32) the `cpu_shares`/FSS system will try to make sure all 1040 threads
+get a chance to run.
+
+Since zoneA has fewer runnable threads, when each thread runs it will have a
+larger contribution to the zone's total usage accumulation (because each thread
+is a larger proportion of the zone's usage) and therefore a larger individual
+runtime / accumulation. As they accumulate runtime, their priority will be
+decreased, and as the 1000 threads of zoneB wait longer their priority is
+increased. Since there are a lot of them, eventually we'll be running a lot more
+of the threads from zoneB until the accumulated usage for the zoneA threads goes
+down and they once again have a high enough priority to run.
+
+Looking at this CN at any given point in time, there may in fact be a lot more
+work being done on CPU for zoneB than zoneA, even though zoneA has a higher
+`cpu_shares` value. The key here again is that the `cpu_shares` value is not a
+guarantee. It's simply one of many factors that go into scheduling threads on a
+CN.
 
 ## Minimum CPU
 
