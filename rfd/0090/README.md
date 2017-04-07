@@ -39,7 +39,8 @@ zone.cpu-cap
 ```
 
 importantly this is only an upper bound and does not relate directly to other
-controls such as CPU Shares (FSS).
+controls such as CPU Shares (FSS). Some more discussion of this in the next
+section.
 
 One can find the value of `cpu_cap` from within an instance using:
 
@@ -71,22 +72,99 @@ performance for all other instances on a system. Adding a `cpu_cap` to one
 instance protects other instances to some degree from that instance running
 away and monopolizing *all* the available extra capacity.
 
-## Caps vs Shares
+# CPU Caps vs. CPU Shares
 
-In addition to CPU Caps, we have CPU shares (also called FSS some places). This
-document is focussed only on caps, but it's worth mentioning that if a system
-has no caps, when multiple zones are competing for CPU the only component of
-Triton instance packages that will mediate their interaction here would be the
-CPU shares. The interactions of CPU shares with the system are complex and hard
-to explain to users, and as such, in a world where sum of the caps is equal to
-or less than the number of cores * 100 we could consider avoiding shares
-entirely.
+In addition to CPU caps, we have CPU shares. This document is mostly focused on
+caps, but it's worth briefly discussing shares, since when a system has no caps
+and multiple zones are competing for CPU the only component of Triton instance
+packages that will mediate their interaction here would be the CPU shares. The
+interaction of CPU shares with the system are complex and very often
+misunderstood. We'll attempt to make this a bit clearer here.
 
-People have also often asked for a *minimum* amount of CPU for an instance.
-The current design does not allow for setting an actual minimum except through
-limiting every *other* instance on the CN such that the sum of the cores
-available minus the sum of other instance `cpu_cap`s will be the effective
-minimum for your container (almost always negative currently).
+Since at least 2007 SDC/Triton has had something called `cpu_shares` they're
+called this everywhere in the Triton stack except PAPI (long story which we'll
+not go into here) where the name is `fss`, and in some OS internals not exposed
+directly to the user. In the SmartOS system itself these end up ultimately as
+the zone.cpu-shares resource control about which
+[resource\_controls(5)](https://smartos.org/man/5/resource_controls) says:
+
+```
+zone.cpu-shares
+
+    Sets a value on the number of fair share scheduler (FSS) CPU shares
+    for a zone.  CPU shares are first allocated to the zone, and then
+    further subdivided among projects within the zone as specified in the
+    project.cpu-shares entries.  Expressed as an integer. This resource
+    control does not support the syslog action.
+```
+
+This comment gives part of the story for how this mechanism actually works:
+
+https://github.com/joyent/illumos-joyent/blob/cffceb43dae21922039e7df6115340cd3b978a78/usr/src/uts/common/disp/fss.c#L57-L257
+
+but there are still more factors at play than what's described there. Note
+especially that it says the cpu-shares rctl is "one of the inputs" used to
+calculate thread priority.
+
+In SmartOS the basic unit that can be scheduled to run is a thread. And for
+purposes of this discussion we only care about "runnable" threads. Threads that
+are not running or threads that are blocked on I/O (which most threads are most
+of the time) have no relevant impact on the scheduler.
+
+When the total number of runnable threads is less than the number of CPUs in the
+CN (i.e. the system is not busy), `cpu_shares` doesn't come into play. In this
+case zones are only limited if they have more runnable threads than their
+`cpu_cap` allows them to run. The system tracks CPU execution time and if a zone
+has a `cpu_cap` and the total execution time of its threads reaches the cap, the
+execution of threads for the zone will be stopped and it won't be scheduled
+again until its usage counter has decayed enough to make it runnable. This means
+the execution profile for a zone hitting its cap would take on a "sawtooth" shape
+as its threads are scheduled, run into the cap and are not scheduled for a while.
+
+While `cpu_cap` operates even when the system is not busy, `cpu_shares` are only
+really relevant when the system has more runnable threads than CPUs available.
+In this state, the scheduler is periodically looking at the "ready" threads and
+it then gives them a priority based on a variety of inputs including:
+
+ * the the zone's `cpu_shares` value
+ * the thread's "nice" value
+ * how much CPU time the thread has recently accumulated.
+
+and others.
+
+The longer a thread is waiting to run, the higher its scheduling priority will
+become so that no runnable thread is starved of CPU forever. Runnable thread
+priorities are recalculated on a regular basis and then the scheduler uses those
+to actually determine which threads to run. This happens for all threads
+regardless of zone, and the zone's `cpu_shares` in relation to all of the zone's
+thread's recent CPU usage is just one of the additional inputs that get
+considered when determining the priority.
+
+It is important to note here that it is only zones with runnable threads that
+factor into the scheduling priority recalculations. The `cpu_shares` are just a
+number that gets input into this calculation. The value on its own is
+meaningless. Even the value in relation to other zones on the CN that do not
+have runnable threads is meaningless. It is only useful as a weight in the
+calculation made when there more runnable threads than CPUs and multiple zones
+have runnable threads.
+
+In summary, it's important to note:
+
+ * `cpu_shares` are not a percentage of anything
+ * `cpu_shares` don't directly relate to other zones on a given CN
+ * `cpu_shares` are only relevant when a system has more runnable threads than
+   available CPUs
+ * even when they are relevant, `cpu_shares` are only a single input into the
+   scheduler function for threads running within a zone on a specific CN
+
+
+## Minimum CPU
+
+Customers, prospects and users have also often asked for a *minimum* amount of
+CPU for an instance. The current design does not allow for setting an actual
+minimum except through limiting every *other* instance on the CN such that the
+sum of the cores available minus the sum of other instance `cpu_cap`s will be
+the effective minimum for your container (almost always negative currently).
 
 ## History
 
