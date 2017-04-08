@@ -701,14 +701,19 @@ to be created to support shared volumes and their use cases.
 
 ### Changes to CloudAPI
 
-#### Filtering shared volumes' storage zones from the `ListMachines` endpoint
+#### Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints
 
 Machines acting as shared volumes' storage zones are an implementation detail
 that should not be exposed to end users. As such, they need to be filtered out
-from the `ListMachines` endpoint. Thus, CloudAPI's `ListMachines` endpoint will
-always pass -- in addition to any other search predicate set due to other
-`ListMachines` parameters -- the following predicate to VMAPI's ListVms
-endpoint:
+from any of the `*Machines` endpoints (e.g `ListMachines`, `GetMachine`, etc.).
+
+Filtering out NFS volumes' storage VMs will be done by filtering on the
+`smartdc_role` tag: VMs with the `nfsserver` `smartdc_role` tag will be filtered
+out.
+
+For instance, CloudAPI's `ListMachines` endpoint will always pass -- in addition
+to any other search predicate set due to other `ListMachines` parameters -- the
+following predicate to VMAPI's ListVms endpoint:
 
 ```
 {ne: ['tags', '*smartdc_role=nfsserver*']}
