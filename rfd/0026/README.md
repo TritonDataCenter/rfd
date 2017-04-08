@@ -330,10 +330,10 @@ available by `tritonnfs` [volume packages](#volume-packages), the creation fails
 and outputs the list of available sizes. The available volume sizes can also be
 listed with [CloudAPI's ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
 
-When specifying a volume size without a suffix, gibibytes are assumed: a size of
-`10` means `10 gibibytes`. When using suffixes in the size parameter, binary
-units are assumed. That is: `10g` means `10 Gibibtyes`, same for `10G`, `10gb`
-and `10GB`.
+Specifying a unit in the size parameter is required. Available unit suffixes are
+`m`, `M`, `g` and `G`. Units are are assumed to be expressed in ibibytes. That
+is: `10g` means `10 Gibibytes`, same for `10G`. `10m` means `10 Mebibytes`, same
+for `10M`.
 
 ###### Network
 
@@ -443,10 +443,10 @@ packages](#volume-packages), the creation fails and outputs the list of
 available sizes. The available volume sizes can also be listed with [CloudAPI's
 ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
 
-When specifying a volume size without a suffix, gibibytes are assumed: a size of
-`10` means `10 gibibytes`. When using suffixes in the size parameter, binary
-units are assumed. That is: `10g` means `10 Gibibtyes`, same for `10G`, `10gb`
-and `10GB`.
+Specifying a unit in the size parameter is required. Available unit suffixes are
+`m`, `M`, `g` and `G`. Units are are assumed to be expressed in ibibytes. That
+is: `10g` means `10 Gibibytes`, same for `10G`. `10m` means `10 Mebibytes`, same
+for `10M`.
 
 ###### Network
 
