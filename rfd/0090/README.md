@@ -271,13 +271,16 @@ The maximum performance will then decrease over time as other instances are
 provisioned on the CN or as they start using more of their CPU. This makes
 testing and capacity planning harder as the application running in the zone can
 not rely on current peak performance being anywhere near normal peak
-performance.
+performance. The ability to provide consistent experience for customers through
+limiting their CPU to what they're paying for was also listed as one of the
+motivations for adding CPU Caps in [PSARC
+2004/402](https://us-east.manta.joyent.com/jmc/public/opensolaris/ARChive/PSARC/2004/402/caps_psarc.pdf).
 
-In addition to these performance penalties, having different packages with
+In addition to these performance issues, having different packages with
 different amounts of bursting makes instance placement much more difficult. If
-there are two instances that both have 1G of DRAM, but one has a `cpu_cap` of 800
-and the other has 400, depending where we place these instances one could be up
-to twice as fast as the other (if for example we place each of them on an
+there are two instances that both have 1G of DRAM, but one has a `cpu_cap` of
+800 and the other has 400, depending where we place these instances one could be
+up to twice as fast as the other (if for example we place each of them on an
 otherwise empty CN). In other circumstances such as a CN that's usually fairly
 busy on CPU, both of these instances will see the same performance. It's even
 possible that the one with the lower `cpu_cap` regularly sees better performance
@@ -362,3 +365,8 @@ back into this document, possibly with more questions.
    * should they be able to specify whether they want predictable performance or
      bursting?
  * How does KVM fit into a capless world? Or does it?
+
+## Related Reading
+
+ * [CPU Caps PSARC 2004/402](https://us-east.manta.joyent.com/jmc/public/opensolaris/ARChive/PSARC/2004/402/caps_psarc.pdf)
+ * [FSS(7)](https://smartos.org/man/7/FSS)
