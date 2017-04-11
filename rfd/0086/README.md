@@ -20,3 +20,4 @@ This RFD is broken into multiple sections:
 - [Configuration improvements](config.md)
 - [Backwards compatibility and support](compat.md)
 - [Consolidate discovery on Consul](consul.md)
+- [Example configurations](examples/)

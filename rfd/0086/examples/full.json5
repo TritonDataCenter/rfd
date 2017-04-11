@@ -1,0 +1,138 @@
+/*
+This example is the full configuration example in the ContainerPilot v2
+documentation, expressed in terms of ContainerPilot v3 configuration.
+*/
+{
+  consul: "localhost:8500",
+  logging: {
+    level: "INFO",
+    format: "default",
+    output: "stdout"
+  },
+  jobs: [
+    {
+      name: "app",
+      exec: "/bin/app",
+      restarts: "unlimited",
+      port: 80,
+      when: {
+        // we want to start this job when the "setup" job has exited
+        // with success but give up after 60 sec
+        source: "setup",
+        event: "exitSuccess",
+        timeout: "60s"
+      },
+      health: {
+        exec: "/usr/bin/curl --fail -s -o /dev/null http://localhost/app",
+        interval: 5,
+        tll: 10,
+        timeout: "5s",
+      },
+      tags: [
+        "app",
+        "prod"
+      ],
+      interfaces: [
+        "eth0",
+        "eth1[1]",
+        "192.168.0.0/16",
+        "2001:db8::/64",
+        "eth2:inet",
+        "eth2:inet6",
+        "inet",
+        "inet6",
+        "static:192.168.1.100", // a trailing comma isn't an error!
+        ]
+    },
+    {
+      name: "setup",
+      // we can create a chain of "prestart" events
+      when: {
+        source: "consul-agent",
+        event: "healthy"
+      },
+      exec: "/usr/local/bin/preStart-script.sh",
+      restart: "never"
+    },
+    {
+      name: "preStop",
+      when: {
+        source: "app",
+        event: "stopping"
+      },
+      exec: "/usr/local/bin/preStop-script.sh",
+      restart: "never",
+    },
+    {
+      name: "postStop",
+      when: {
+        source: "app",
+        event: "stopped"
+      },
+      exec: "/usr/local/bin/postStop-script.sh",
+    },
+    {
+      // a service that doesn't have a "when" field starts up on the
+      // global "startup" event by default
+      name: "consul-agent",
+      // note we don't have a port here because we don't intend to
+      // advertise one to the service discovery backend
+      exec: "consul -agent -join consul",
+      restart: "always"
+    },
+    {
+      name: "consul-template",
+      exec: ["consul-template", "-consul", "consul",
+             "-template", "/tmp/template.ctmpl:/tmp/result"],
+      restart: "always",
+    },
+    {
+      name: "task1",
+      exec: "/usr/local/bin/tash.sh arg1",
+      timeout: "100ms",
+      when: {
+        interval: "1500ms"
+      }
+    },
+    {
+      name: "reload-app",
+      when: "watch.app changes",
+      exec: "/usr/local/bin/reload-app.sh",
+      timeout: "10s"
+    },
+    {
+      name: "reload-nginx",
+      when: "watch.nginx changes",
+      exec: "/usr/local/bin/reload-nginx.sh",
+      timeout: "30s"
+    }
+  ],
+  // see "multiprocess.md" for more details on this section
+  watches: {
+    {
+      name: "app",
+      interval: 10
+    },
+    {
+      name: "nginx",
+      interval: 30
+    }
+  },
+  control: {
+    // see "mariposa.md" for details on this section
+    socket: "/var/run/containerpilot.socket"
+  },
+  telemetry: {
+    port: 9090,
+    interfaces: "eth0"
+    sensors: [
+      {
+        name: "metric_id"
+        help: "help text"
+        type: "counter"
+        interval: 5
+        exec: "/usr/local/bin/sensor.sh"
+      }
+    ]
+  }
+}
