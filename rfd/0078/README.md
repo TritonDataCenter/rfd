@@ -17,7 +17,7 @@ state: draft
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
 
-- [RFD 78 Making Moray's findobjects requests robust with regards to unindexed fields](#rfd-78-making-morays-findobjects-requests-more-robust-with-regards-to-unindexed-fields)
+- [RFD 78 Making Moray's findobjects requests robust with regards to unindexed fields](#rfd-78-making-morays-findobjects-requests-robust-with-regards-to-unindexed-fields)
   - [Introduction](#introduction)
     - [Context](#context)
     - [Terminology](#terminology)
@@ -39,8 +39,17 @@ state: draft
     - [Other factors that contribute to an increase in reindexing time](#other-factors-that-contribute-to-an-increase-in-reindexing-time)
   - [Other use cases](#other-use-cases)
   - [Proposed solution](#proposed-solution)
-      - [Backward compatibility](#backward-compatibility)
-    - [Performance impact](#performance-impact)
+    - [Implementation details](#implementation-details)
+      - [Introduction of a "metadata" message in the moray protocol](#introduction-of-a-metadata-message-in-the-moray-protocol)
+      - [Changes to the node-moray client's API](#changes-to-the-node-moray-clients-api)
+        - [Changes to the Moray constructor](#changes-to-the-moray-constructor)
+        - [Changes to the findobjects method](#changes-to-the-findobjects-method)
+      - [Changes to the moray server](#changes-to-the-moray-server)
+        - [Handling of the findObjects' requireIndexes option](#handling-of-the-findobjects-requireindexes-option)
+        - [Sending an additional metadata record for each findObjects reponse](#sending-an-additional-metadata-record-for-each-findobjects-reponse)
+        - [Performance impact](#performance-impact)
+    - [Backward compatibility](#backward-compatibility)
+    - [Forward compatibility](#forward-compatibility)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -550,37 +559,154 @@ However, only applying the changes to solve issues #2 and #3 would still not
 guarantee reliable results for all `findobjects` requests, and solving issue #1
 would solve all of them.
 
-In other words, in order to serve a `findobjects` request reliably, indexes need
-to be present and ready to use (i.e reindexed) for every field used in the
-search filter.
+In other words, in order to serve a `findobjects` request reliably, __indexes
+need to be present and ready to use (i.e reindexed) for every field used in the
+search filter__.
 
-This information is present in moray's bucket cache for every bucket in two
-different properties: `index` and `reindex_active`. If a `findobjects` request
-uses a field that is either:
-
-1. not present in the `index` array
-2. present in the `reindex_active` array
-
-it results in an `NotIndexedError`.
+The solution proposed in this document is that if a `findobjects` request uses
+at least one field for which an index is not usable, and if its `options`
+parameter sets its `requireIndexes` property to `true`, it results in an
+`NotIndexedError`.
 
 This change would solve the problematic use case presented in that document,
 where a user of moray needs to add new indexes to an existing moray bucket and
-use them from a Triton core service. In that case, the only new requirement
-after opting-in into this new interface would be to handle errors returned by
-`findobjects` requests until the reindexing process is complete.
+use them from a Triton core service.
+
+In that case, the only new requirement after opting-in into this new interface
+would be to handle errors returned by `findobjects` requests until the
+reindexing process is complete.
 
 `findobjects` requests using newly added indexes will fail for a period of time
 that is at best equivalent to the duration of the reindexing process, and at
 worse to the duration of the reindexing process plus the bucket cache's eviction
 delay (currently set to 5 minutes).
 
-#### Backward compatibility
+### Implementation details
+
+The goal is to allow moray clients to be able to opt into the mode where
+`findObjects` requests respond with an error if the moray service that handles
+them cannot guarantee that all fields included in the search filter represent
+index that can be used.
+
+#### Introduction of a "metadata" message in the moray protocol
+
+However, since moray servers do not respond with an error when unhandled
+parameters are sent with a given request, it is not possible to rely on servers
+that haven't been upgraded to support handling the `requireIndexes: true`
+parameter to respond with errors.
+
+To handle the case of moray servers not supporting this new parameter, the
+protocol of the communication between moray clients and servers will need to be
+changed if the `requireIndexes` option is set to true.
+
+When the `requireIndexes` parameter is set, the first `data` event received by
+moray clients will be considered to be a `metadata` record. A metadata record is
+a record that has a property named `_handledOptions`. The value of this property
+will be an array of strings containing the name of all options passed to the
+`findObjects` requests that were handled by the server.
+
+Including the `requireIndexes` option, these options names are:
+
+* `req_id`
+* `limit`
+* `offset`
+* `sort`
+* `requireIndexes`
+
+If the first `'data'` event received by the moray client is not a metadata
+record, and if the `requireIndexes` option is set to true, the client will emit
+an `error` event on the request.
+
+If the `requireIndexes` option is not set to true, the moray client will not
+enforce the presence of a metadata record.
+
+#### Changes to the node-moray client's API
+
+node-moray's API will be changed so that:
+
+1. a `requireIndexes` option can be passed to `findObjects` requests
+
+2. a new error event will be emitted in the case this `requireIndexes` option is
+   set to true and the first `data` event emitted for the response does not
+   contain the value `requireIndexes` in the event's `_handledOptions` property.
+
+In order to make it both convenient for new programs using the moray client that
+want to opt-in into that behavior, and for existing programs who want to opt-in
+into that behavior _per request_, both the node-moray's constructor API and the
+`findObjects` method's API will be changed.
+
+##### Changes to the Moray constructor
+
+A new `requireIndexes` property on the `options` parameter will be handled. When
+the value of this property is set to `true`, _all_ `findObjects` requests
+performed via this client will be considered to require indexes, or they will
+emit an `'error'` event.
+
+This method of opting into the proposed solution will be recommended for any new
+program that can rely on the presence of the server-side support.
+
+##### Changes to the findObjects method
+
+The `findobjects` method will accept an additional `requireIndexes` property on
+its `options` parameter. When the value of this property is set to `true`, _only
+this specific_ `findObjects` request will be considered to require indexes, or
+it will emit an `'error'` event.
+
+This method of opting into the proposed solution will be recommended for any new
+program that __cannot_ rely on the presence of the server-side support.
+
+#### Changes to the moray server
+
+##### Handling of the findObjects' requireIndexes option
+
+The moray server will support a new option for `findObjects` requests named
+`requireIndexes`. When the value of this option is `true`, the server will check
+that none of the fields used in the search filter:
+
+1. is present in the bucket's `reindex_active` array
+2. is not present in the bucket's `index` array
+
+Otherwise, it will respond with a `NotIndexedError` error.
+
+##### Sending an additional metadata record for each findObjects response
+
+For every `findObjects` request, regardless of whether the `requireIndexes`
+option is present/set to `true`, a new `metadata` record will be sent as the
+first `data` record of the response.
+
+This record will have only one property named `_handledOptions`, and will
+include all the `findObjects` options that were handled by the server.
+
+These options names are:
+
+* `req_id`
+* `limit`
+* `offset`
+* `sort`
+* `requireIndexes`
+
+##### Performance impact
+
+Even though this needs to be measured, the performance impact of the proposed
+changes could be negligible, as it would require to:
+
+1. perform at most two additional array items lookups in JavaScript to check
+   that no unusable index is being used
+
+2. send one additional metadata record as part of the response
+
+It might actually improve the performance of `findobjects` requests using the
+`requireIndexes` mode, as in this mode the additional filtering applied at the
+application level should not be needed, since we'd be sure that all filtering
+was done at the database engine's level.
+
+### Backward compatibility
 
 In addition to solving the use cases described in this document, opting-in by
 setting this new flag would be recommended for any use case as it would return
 identical results at worse, and more correct results at best.
 
-However, because current code relies on the current erroneous behavior, it is
+However, because some code relies on the current erroneous behavior, it is
 important to provide a backward compatible interface. Thus, this solution should
 be opt-in, and clients that want to switch to the strict behavior would need to
 pass the `requireIndexes` option and set it to `true`:
@@ -592,14 +718,49 @@ findobjects('bucketName', filter, {requireIndexes: true}, callback);
 Once all usage of `findobjects` requests switch to the strict behavior, it
 should be possible to make this the default in moray without causing any
 significant breakage. It could then allow to remove support for filtering on
-unindexed fields, which could make some of the existing moray codebase simpler.
+unindexed fields, which could make some of the existing moray code base simpler.
 
-### Performance impact
+### Forward compatibility
 
-Even though this needs to be measured, the performance impact of that change
-could be negligible, as it would require to perform at most two additional array
-items lookups in JavaScript.
+Even if not recommended, after the proposed changes to the moray server are
+released as part of a Triton release, it is possible that some Triton setups
+will not upgrade to that release.
 
-It might actually improve the performance of `findobjects` requests using the
-`requireIndexes` mode, as in this mode the additional filtering applied at the
-application level should not be needed.
+When a moray client uses the new `requireIndexes` option for `findObjects`
+requests handled by a moray server that was not upgraded to support it, the
+node-moray client instance will emit an error event, potentially making the
+process exit prematurely.
+
+The recommendation in this case is to handle the error event and to fall back to
+a behavior that is reasonable for users and operators.
+
+Using the work done as part of RFD 26 as an example, the new VOLAPI service
+needs to be able to search VM objects based on a new `required_nfs_volumes`
+field.
+
+An index will be added on this field in VMAPI, and all `ListVms` requests
+handled by VMAPI will set the `requireIndexes` option for `findObjects` to
+`true` _only_ when the `required_nfs_volumes` parameter is sent as part of the
+request's parameters.
+
+When this request emits an error event because moray is not upgraded, or because
+the reindexing process for the `required_nfs_volumes` field is not completed,
+VMAPI will respond with a HTTP 503 `InvalidSearchFieldError` error.
+
+The consumer of VMAPI, in this case VOLAPI, will fall back to sending a HTTP 503
+`UnsupportedError` error to its clients, which will then output explicit and
+clear error messages to end users.
+
+In this specific example, sdc-docker will send an error message mentioning that
+a volume can't be deleted when a user runs a `docker volume rm` command.
+CloudAPI will send an error message mentioning that the user needs to pass a
+`force: true` input parameter to the `DeleteVolume` endpoint in order to delete
+a volume.
+
+The rationale for the generic use case is that every consumer of moray opting
+into the ``requireIndexes: true`` option of `findObjects` requests will do this
+as part of a new feature of Triton.
+
+Thus, it should always be able to provide a fallback that, in the worse case, is
+to communicate to users and operators that moray needs to be upgraded in order
+to be able to use that new feature.
