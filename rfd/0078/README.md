@@ -727,9 +727,8 @@ released as part of a Triton release, it is possible that some Triton setups
 will not upgrade to that release.
 
 When a moray client uses the new `requireIndexes` option for `findObjects`
-requests handled by a moray server that was not upgraded to support it, the
-node-moray client instance will emit an error event, potentially making the
-process exit prematurely.
+requests handled by a moray server that was not upgraded to support it, an error
+event will be emitted on the corresponding request object.
 
 The recommendation in this case is to handle the error event and to fall back to
 a behavior that is reasonable for users and operators.
