@@ -130,7 +130,7 @@ the image is activated.
 
 
 
-# Appendix (you can ignore from here down, example image schemas and configs)
+# Appendix 1: Examples from Todd
 
 ## Image manifest v2.2
 
@@ -342,4 +342,239 @@ $ curl -k -X GET https://192.168.99.100:5000/v2/bbox/blobs/sha256:b97bf8f0407939
         "WorkingDir": "/home/alice",
     }
 }
+```
+
+# Appendix 2: A walkthrough of digests examples
+
+Here is walkthrough pulling alpine:latest from Docker Hub, tagging it,
+pushing it to a private Docker Hub repo, `docker inspect`ing it, and comparing
+those to raw Docker Hub Registry API responses to illustrate the Docker
+Registry API v2 schema 2 *manifest* and *config* for images.
+
+Some terminology for the new "schema 2" (a.k.a. v2.2) world:
+
+- A *docker image* is made up of a "config" and one or more (allows zero?)
+  "layers". Unlike in earlier Docker, an image's intermediate layers are
+  not `docker run`nable images. For some level of backward compat, synthetic
+  image configs are created for those intermediate layers by the Docker Engine
+  as needed.
+- A *image manifest* is used to describe a Docker image for pushing to and
+  pulling from a Docker Registry. It is a JSON object that refers to the
+  "config" and "layers" by content digest. Those content digests are used to
+  download the config and layers from the registry for a "docker pull".
+  The digest of the manifest content is called the *manifest digest* here. There
+  is no specified normalized form -- the exact content returned by the registry
+  is used. The manifest format is [specified
+  here](https://github.com/docker/distribution/blob/master/docs/spec/manifest-v2-2.md).
+- A Docker *image config* is a JSON object that describes the image, e.g.
+  the architecture, os, container "Cmd", history, and importantly the content
+  digests of its layers (uncompressed). This *somewhat* duplicates the
+  layer content digests in the "manifest" (but may differ because they are
+  the digest of uncompressed content). However, because the config includes
+  in-order layer content digests, the digest of the config JSON (the *config
+  digest*) is a unique content-based identifier for the image. This is
+  the *docker image id*.
+- A Docker *image layer* is, typically, a compressed Docker "rootfs diff" tar.
+  Its content-type is defined in the image manifest.
+
+When identifying an image, the "config digest" is often referred to as the
+image "id" and the "manifest digest" is often referred to as just the "digest".
+
+
+## docker pull
+
+```
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker pull alpine:latest
+latest: Pulling from library/alpine
+627beaf3eaaf: Pull complete
+Digest: sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4
+Status: Downloaded newer image for alpine:latest
+```
+
+- `alpine:latest` is a "RepoTag".
+- `sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4` is
+  the *manifest* digest.
+- `627beaf3eaaf` is the prefix of the Alpine image's only layer's digest.
+
+We can see these values in the raw Docker Registry API manifest for this image:
+
+```
+[node-docker-registry-client/examples/v2]$ node getManifest.js -s2 alpine:latest
+# response headers
+{
+    "content-length": "528",
+    "content-type": "application/vnd.docker.distribution.manifest.v2+json",
+    "docker-content-digest": "sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4",
+    "docker-distribution-api-version": "registry/2.0",
+    "etag": "\"sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4\"",
+    "date": "Thu, 13 Apr 2017 22:43:29 GMT",
+    "strict-transport-security": "max-age=31536000",
+    "x-request-received": 1492123408835,
+    "x-request-processing-time": 498
+}
+# manifest
+{
+    "schemaVersion": 2,
+    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+    "config": {
+        "mediaType": "application/vnd.docker.container.image.v1+json",
+        "size": 1278,
+        "digest": "sha256:4a415e3663882fbc554ee830889c68a33b3585503892cc718a4698e91ef2a526"
+    },
+    "layers": [
+        {
+            "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+            "size": 1905270,
+            "digest": "sha256:627beaf3eaaff1c0bc3311d60fb933c17ad04fe377e1043d9593646d8ae3bfe1"
+        }
+    ]
+}
+```
+
+## docker images
+
+We can list the pulled image:
+
+```
+
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker images
+REPOSITORY                   TAG                 IMAGE ID            CREATED             SIZE
+alpine                       latest              4a415e366388        5 weeks ago         3.987 MB
+```
+
+and with the digest:
+
+```
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker images --digests
+REPOSITORY                   TAG                 DIGEST                                                                    IMAGE ID            CREATED             SIZE
+alpine                       latest              sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4   4a415e366388        5 weeks ago         3.987 MB
+```
+
+That "DIGEST" is the *manifest digest*.
+
+Where does that "IMAGE ID" come from? As discussed in the terminology above,
+that is the image "config digest", which we can see in `docker inspect`
+output.
+
+
+## docker inspect
+
+```
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker inspect sha256:4a415e3663882fbc55
+[
+    {
+        "Id": "sha256:4a415e3663882fbc554ee830889c68a33b3585503892cc718a4698e91ef2a526",
+        "RepoTags": [
+            "alpine:latest"
+        ],
+        "RepoDigests": [
+            "alpine@sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4"
+        ],
+        "Parent": "",
+        ...
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:23b9c7b43573dd164619ad59e9d51eda4095926729f59d5f22803bcbe9ab24c2"
+            ]
+        }
+    }
+]
+```
+
+This inspect output format is *mostly* a massaged form of the image "config",
+which we can see from the raw Registry API response:
+
+```
+$ node downloadBlob.js alpine@sha256:4a415e3663882fbc554ee830889c68a33b3585503892cc718a4698e91ef2a526
+Repo: docker.io/alpine
+Downloading blob to "4a415e366388.blob".
+...
+
+$ cat 4a415e366388.blob | json
+{
+  ...
+  "history": [
+    {
+      "created": "2017-03-03T20:32:37.723773456Z",
+      "created_by": "/bin/sh -c #(nop) ADD file:730030a984f5f0c5dc9b15ab61da161082b5c0f6e112a9c921b42321140c3927 in / "
+    }
+  ],
+  "rootfs": {
+    "type": "layers",
+    "diff_ids": [
+      "sha256:23b9c7b43573dd164619ad59e9d51eda4095926729f59d5f22803bcbe9ab24c2"
+    ]
+  }
+}
+```
+
+In the inspect output:
+
+- "Id" is the "config digest"
+- "RepoDigests" is the "$repo@$digest" (*manifest digest*) form that you can
+  use with `docker pull ...`. Currently it just has one entry.
+
+
+Forms that the Docker Engine supports to identify the image:
+
+```
+docker inspect 4a415e366388             # docker id or a unique prefix of it
+docker inspect sha256:4a415e366388      # ... with the digest algorithm
+docker inspect alpine:latest            # repo:tag
+# The complete "repo@digest" (this is the *manifest digest*):
+docker inspect alpine@sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4
+```
+
+
+## docker push
+
+We can tag this image for a different repo and push that:
+
+```
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker tag 4a415e3663882fbc5 trentm/foo:mybartag
+
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker push trentm/foo:mybartag
+The push refers to a repository [docker.io/trentm/foo]
+23b9c7b43573: Pushed
+mybartag: digest: sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4 size: 528
+```
+
+- `digest: sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4`
+  is the *manifest digest* again. Here the Docker Engine just reused the
+  exact manifest content that was received in the earlier "docker pull",
+  hence the same digest.
+- `23b9c7b43573` is the *uncompressed* layer digest. After an image is pulled,
+  it is the uncompressed digest that is the identifier for the layer content.
+  This keeps its independent of the compression algorithm. IIUC, the Docker
+  Engine would be free to use a different compression for the pull
+  (and hence have to change the content-type in the manifest for that layer).
+
+If we now look at `docker inspect` we can see our added tag and repo digest:
+
+```
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker inspect 4a415e3663882fbc55
+[
+    {
+        "Id": "sha256:4a415e3663882fbc554ee830889c68a33b3585503892cc718a4698e91ef2a526",
+        "RepoTags": [
+            "alpine:latest",
+            "trentm/foo:mybartag"
+        ],
+        "RepoDigests": [
+            "alpine@sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4",
+            "trentm/foo@sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4"
+        ],
+        "Parent": "",
+...
+
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker images
+REPOSITORY                   TAG                 IMAGE ID            CREATED             SIZE
+alpine                       latest              4a415e366388        5 weeks ago         3.987 MB
+trentm/foo                   mybartag            4a415e366388        5 weeks ago         3.987 MB
+
+ubuntu@3334dcb4-0dc2-4ebd-b3e5-62a74de4db9b:~$ docker images --digests
+REPOSITORY                   TAG                 DIGEST                                                                    IMAGE ID            CREATED             SIZE
+alpine                       latest              sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4   4a415e366388        5 weeks ago         3.987 MB
+trentm/foo                   mybartag            sha256:58e1a1bb75db1b5a24a462dd5e2915277ea06438c3f105138f97eb53149673c4   4a415e366388        5 weeks ago         3.987 MB
 ```
