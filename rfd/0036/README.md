@@ -75,27 +75,256 @@ CloudFormation and Auto Scaling Groups represent some of the most important base
 
 ### Compose
 
-Most every early Docker user has experienced a moment of great joy when discovering Docker Compose and using it to run a composed set of containers via a single manifest. Sadly, that joy was often later followed by the realization that running Docker Compose in production across multiple VMs required substantially more work, including the use of Docker Swarm (or Swarm Mode on more recent versions of Docker)
+Most every early Docker user has experienced a moment of great joy when discovering Docker Compose and using it to run a composed set of containers via a single manifest. Sadly, that joy was often later followed by the realization that running Docker Compose in production across multiple VMs required substantially more work, including the use of Docker Swarm (or Swarm Mode on more recent versions of Docker). On Triton, however, because the Docker API is exposed via sdc-docker and users can address an entire data center without needing Docker Swarm or creating any VMs, Docker Compose has proven incredibly powerful.
 
-The key features to note, however:
+The critical feature Docker Compose offers over the Docker client itself is the ability to define [one or more services in a manifest, typically named `docker-compose.yaml`](https://docs.docker.com/compose/compose-file/). The [service definition](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples) includes features that are common to other examples here, including Kubernetes, Mesos+Marathon, and others. When combined with the [Autopilot Pattern](http://autopilotpattern.io), it is possible to [automate the operations of stateful applications](https://www.joyent.com/blog/persistent-storage-patterns#databases) so that [they operate statelessly from the perspective of the scheduler](https://www.joyent.com/blog/app-centric-micro-orchestration#handling-persistent-data). We've even demonstrated this with [MySQL on Autopilot](https://github.com/autopilotpattern/mysql). For example:
 
-- Ability to define a set of services
+Start a single node of MySQL. This node will become the primary, because no other node is currently running:
 
-Combined with Autopilot Pattern...
+```bash
+$ docker-compose up -d
+Creating tritonmysql_consul_1
+Creating tritonmysql_mysql_1
+```
+
+
+Add two read-only MySQL replicas by scaling the number of MySQL instances to three:
+
+```bash
+$ docker-compose scale mysql=3
+Creating and starting tritonmysql_mysql_2 ... done
+Creating and starting tritonmysql_mysql_3 ... done
+```
+
+Check the primary to see that the replicas have registered:
+
+```bash
+$ docker exec -it tritonmysql_mysql_1 mysql -urepluser -p<password> -e "SHOW SLAVE HOSTS"
++-----------+-----------------+------+-----------+--------------------------------------+
+| Server_id | Host            | Port | Master_id | Slave_UUID                           |
++-----------+-----------------+------+-----------+--------------------------------------+
+|     38003 | 192.168.130.233 | 3306 |      6431 | 2a5c4dfa-1bc1-11e7-8d2c-90b8d09cb4b6 |
+|     30173 | 192.168.131.1   | 3306 |      6431 | 2a806bf6-1bc1-11e7-8d2c-90b8d0cd9a09 |
++-----------+-----------------+------+-----------+--------------------------------------+
+```
+
+
+Insert data on the primary:
+
+```bash
+$ docker exec -it tritonmysql_mysql_1 bash -c 'curl -s -o words.sql --fail https://gist.githubusercontent.com/misterbisson/0c8b944a5adfd5db2f47b29a657164b0/raw/37bcc7030a5e63869a1ab45367df9338cb8868dc/words.sql && mysql -udbuser -p<password> demodb < words.sql && rm words.sql'
+```
+
+Check that it was replicated to the read-only replicas:
+
+```bash
+$ docker exec -it tritonmysql_mysql_2 mysql -udbuser -p<password> demodb -e "SELECT COUNT(1) FROM words"
+
++----------+
+| COUNT(1) |
++----------+
+|   471772 |
++----------+
+```
+
+Check the status of a replica:
+
+```bash
+$ docker exec -it tritonmysql_mysql_2 mysql -urepluser -p<password> -e "SHOW SLAVE STATUS\G"
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.130.193
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: mysql-bin.000004
+          Read_Master_Log_Pos: 6876776
+               Relay_Log_File: mysqld-relay-bin.000002
+                Relay_Log_Pos: 6876986
+        Relay_Master_Log_File: mysql-bin.000004
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 6876776
+              Relay_Log_Space: 6877191
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 27178
+                  Master_UUID: c5f9870b-1fae-11e7-a6c9-90b8d0b39d83
+             Master_Info_File: /var/lib/mysql/master.info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for the slave I/O thread to update it
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: c5f9870b-1fae-11e7-a6c9-90b8d0b39d83:1-12
+            Executed_Gtid_Set: c5f9870b-1fae-11e7-a6c9-90b8d0b39d83:1-12
+                Auto_Position: 1
+```
+
+
+Remove the MySQL primary, causing a new primary to be elected:
+
+```bash
+$ docker rm -f tritonmysql_mysql_1
+tritonmysql_mysql_1
+```
+
+Check the status of another replica, after the loss of the old primary:
+
+```bash
+$ docker exec -it tritonmysql_mysql_3 mysql -urepluser -p<password> -e "SHOW SLAVE STATUS\G"
+*************************** 1. row ***************************
+               Slave_IO_State: Waiting for master to send event
+                  Master_Host: 192.168.130.238
+                  Master_User: repluser
+                  Master_Port: 3306
+                Connect_Retry: 60
+              Master_Log_File: mysql-bin.000001
+          Read_Master_Log_Pos: 6877002
+               Relay_Log_File: mysqld-relay-bin.000002
+                Relay_Log_Pos: 634
+        Relay_Master_Log_File: mysql-bin.000001
+             Slave_IO_Running: Yes
+            Slave_SQL_Running: Yes
+              Replicate_Do_DB: 
+          Replicate_Ignore_DB: 
+           Replicate_Do_Table: 
+       Replicate_Ignore_Table: 
+      Replicate_Wild_Do_Table: 
+  Replicate_Wild_Ignore_Table: 
+                   Last_Errno: 0
+                   Last_Error: 
+                 Skip_Counter: 0
+          Exec_Master_Log_Pos: 6877002
+              Relay_Log_Space: 839
+              Until_Condition: None
+               Until_Log_File: 
+                Until_Log_Pos: 0
+           Master_SSL_Allowed: No
+           Master_SSL_CA_File: 
+           Master_SSL_CA_Path: 
+              Master_SSL_Cert: 
+            Master_SSL_Cipher: 
+               Master_SSL_Key: 
+        Seconds_Behind_Master: 0
+Master_SSL_Verify_Server_Cert: No
+                Last_IO_Errno: 0
+                Last_IO_Error: 
+               Last_SQL_Errno: 0
+               Last_SQL_Error: 
+  Replicate_Ignore_Server_Ids: 
+             Master_Server_Id: 23347
+                  Master_UUID: a7accd33-1faf-11e7-a6cf-90b8d080d1c5
+             Master_Info_File: /var/lib/mysql/master.info
+                    SQL_Delay: 0
+          SQL_Remaining_Delay: NULL
+      Slave_SQL_Running_State: Slave has read all relay log; waiting for the slave I/O thread to update it
+           Master_Retry_Count: 86400
+                  Master_Bind: 
+      Last_IO_Error_Timestamp: 
+     Last_SQL_Error_Timestamp: 
+               Master_SSL_Crl: 
+           Master_SSL_Crlpath: 
+           Retrieved_Gtid_Set: a7accd33-1faf-11e7-a6cf-90b8d080d1c5:1
+            Executed_Gtid_Set: a7accd33-1faf-11e7-a6cf-90b8d080d1c5:1,
+c5f9870b-1fae-11e7-a6c9-90b8d0b39d83:1-12
+                Auto_Position: 1
+```
+
+Check the status of the new primary:
+
+```bash
+$ docker exec -it tritonmysql_mysql_2 mysql -urepluser -p<password> -e "SHOW SLAVE HOSTS"
++-----------+---------------+------+-----------+--------------------------------------+
+| Server_id | Host          | Port | Master_id | Slave_UUID                           |
++-----------+---------------+------+-----------+--------------------------------------+
+|     43951 | 192.168.131.4 | 3306 |     23347 | a749daac-1faf-11e7-a6cf-90b8d0943fd2 |
++-----------+---------------+------+-----------+--------------------------------------+
+```
+
+Bring the MySQL composition back up to full strength:
+
+```bash
+$ docker-compose scale mysql=3
+Creating and starting tritonmysql_mysql_4 ... done
+```
+
+Do a rolling update of all three MySQL containers. Typically, this is how you'd deploy an updated image, or configuration changes (for configuration details in the manifest or environment variables). Docker Compose automatically detects those types of changes and will replace containers on `docker-compose up -d`; however, the following example sets the `--force-recreate` flag instead:
+
+```bash
+$ docker-compose up -d --force-recreate mysql
+Recreating tritonmysql_mysql_3
+Recreating tritonmysql_mysql_4
+Recreating tritonmysql_mysql_2
+```
+
+That example demonstrates Docker Compose's features to turn a a manifest—the `docker-compose.yml` file—into running containers and use it to manage the lifecycle of those containers. The MySQL containers, in turn, demonstrate how even traditionally stateful applications that expect persistent filesystems can be operated in ways that automate their management and make them as easy to operate as stateless applications (see also [stateful, with internal state management
+](#stateful-with-internal-state-management), below.
 
 
 
 ### Mesos+Marathon and Kubernetes
 
-https://twitter.com/mipsytipsy/status/826241609972932608
+Mesos' history is older than Docker's, but attention on Mesos seemed to grow with the release of [Marathon, a Mesos framework for running Docker containers](https://mesosphere.github.io/marathon/). That combo pioneered cluster management, scheduling, and orchestration of Docker containers, and it was the foundation of many of the earliest Docker in production success stories. Those interested in running Docker containers seem to have mostly moved on to Kubernetes now, but Marathon still deserves mention for one critical reason:
 
-https://twitter.com/Kris__Nova/status/848960871665725443
+Mesos+Marathon and Docker Compose competed in the marketplace for a time, and the features of the two are worth comparing.
 
-https://twitter.com/cloud_opinion/status/849426011271954432
+- Both allow you to define applications using manifest files
+- Both make it easy to scale and update applications
+- Compose runs entirely in the client (in a way, it's like a Docker-specific version of Hashicorp's Terraform), but Mesos+Marathon runs in the cloud with your apps
+- Compose can't monitor and re-schedule applications if they fail, but Mesos+Marathon supports that by default
 
-https://twitter.com/catlgrep/status/849429522218967042
+This feature comparison is important because it highlights what most users seem to want for most applications: the ease of use and convenience of Docker Compose with the supervisory features of Marathon, all offered as a service.
 
-would allow users to organize their infrastructure in ways that better represent their application components. The first of these organizing concepts is the *service*. A service is a collection of compute instances running the same software image with the same configuration, and a collection of services is called a *project*.
+However, Kubernetes has since replaced Mesos+Marathon as the default solution in many people's minds for container orchestration. Kubernetes offers many of the same features as Mesos+Marathon:
+
+- Cluster management, scheduling, and orchestration of Docker containers
+- Uses manifests to define applications
+- Makes it easy to scale and update Dockerized applications
+- Runs in the cloud with your apps (often self-hosted/operated)
+- Monitors and re-schedules containers if they fail
+
+Additionally, Kubernetes offers features not found natively in Mesos+Marathon, or at least not in earlier versions before Kubernetes took Mesos+Marathon's place:
+
+- [Kube-proxy](https://kubernetes.io/docs/admin/kube-proxy/) load-balancing
+- DNS-based discovery (also present in Docker for the past year)
+
+In practice, Kubernetes is also used in conjunction with a variety of additional tools, sometimes commercial, for logging, monitoring, and network virtualization.
+
+If the container is viewed as a type of compute virtualization, then users running Kubernetes (or any other CaaS platform) are effectively duplicating many of the services of a cloud on top of the cloud they run it on. The Linux kernel and its namespaces take the place of a hypervisor and hardware virtual machines. The [Kubernetes controller](https://kubernetes.io/docs/admin/kube-controller-manager/) (one HA set per cluster) and [Kublet](https://kubernetes.io/docs/admin/kubelet/) (on each node) form the control plane and do the work of cluster management. This layering of a cloud creates some complexity, as [highlighted by Charity Majors](https://twitter.com/mipsytipsy/status/826241609972932608) and [Kris Nova](https://twitter.com/Kris__Nova/status/848960871665725443):
+
+![Charity Majors discovering the challenges of Kubernetes on AWS](./_assets/mipsytipsy-tweet.png)
+
+![Kris Nova's poll about Kubernetes on AWS practices](./_assets/kris-nova-tweet.png)
+
+A separate question about [whether or not AWS would offer Kubernetes-as-a-service](https://twitter.com/cloud_opinion/status/849426011271954432) unearthed [a pair of interesting GitHub issues](https://twitter.com/catlgrep/status/849429522218967042) for AWS' [ECS scheduler, Blox](https://aws.amazon.com/blogs/aws/blox-new-open-source-scheduler-for-amazon-ec2-container-service/).
 
 
 
@@ -120,11 +349,13 @@ When scaling an application is scaled up, there can be no presumption that there
 - Recovery from the loss of a node
 Recovery in this case is effectively the same as scaling the application up after it was unexpectedly scaled down. Again, the application must be prepared to copy or construct state for a the replacement instance.
 
+See also [the example with MySQL on Autopilot running in Docker Compose](#compose), above.
+
 
 
 ### Stateful, with external state management
 
-Despite some of the operational advantages to applications that internalize the management of their persistence layer, we must acknowledge that very few applications do so. These applications may have documented approaches for backing up their filesystem state, adding replicas, upgrades on top of an existing filesystem, and recovering after filesystem failures. These apps may have varying resiliency to the loss of a filesystem or entire instance(s). This RFD generalizes this problem to a need for persistent filesystems that are defined separately from the compute instances and whose lifecycle is managed separately.
+Despite some of the operational advantages to applications that internalize the management of their persistence layer, we must acknowledge that very few applications do so. These applications may have documented approaches for backing up their filesystem state, adding replicas, performing upgrades on top of an existing filesystem, and recovering after filesystem failures. These apps may have varying resiliency to the loss of a filesystem or entire instance(s). This RFD generalizes this problem to a need for persistent filesystems that are defined separately from the compute instances and whose lifecycle is managed separately.
 
 Triton provides limited mechanisms for this now:
 
@@ -133,18 +364,39 @@ Triton provides limited mechanisms for this now:
 - [ZFS datasets can be delegated to an instance](https://docs.joyent.com/private-cloud/instances/delegated-data-sets), though it is [not safe delegate datasets to untrusted users](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md#safety-considerations)
 - [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, but that feature largely requires a delegated dataset (see above), and is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141)
 
-For the most part, however, instances are provisioned and left running indefinitely while operators update their software using traditional workflows.
+For the most part, however, instances are provisioned and left running indefinitely while operators update their software using traditional workflows. This RFD will discuss some potential features that may be added to improve support for these applications below.
 
 
 
 ### Applications presented as services to others
 
+A pattern that can be found in organizations of any size, but is especially common among larger organizations, is for responsibility over different components of an application to be split among multiple teams. A team of DBAs might be responsible for the database(s) while another team is responsible for the application layer. Yet another team might be responsible for all the ecommerce components.
+
+This RFD will discuss the permissions model that might support that only briefly (see RFDs 13 and 48 for more), but will focus on the workflow details and features necessary to support this use.
+
+These applications may fit any of the categories of statefulness described above, with some additional characteristics about how consumers of those applications expect to access them.
+
+Coordination of discovery of the endpoint(s) providing a given service (separate from the discovery of the existence of the service) is often complex. Though a team may choose internally to use [Consul](https://www.consul.io) for discovery between their application components, enforcing that decision on all teams, or even managing Consul services (and permissions) across teams can be a significant challenge.
+
+Often, cross-team discovery expectations and solutions match general expectations of discovery on the internet:
+
+- DNS (though most clients are buggy, and DNS lookups are slow)
+- Load-balancers with well-known DNS names (see above) or IPs (see below)
+- [Virtual IPs](https://en.wikipedia.org/wiki/Virtual_IP_address) (called [Elastic IPs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html) by AWS) that are well-known to the consumers of the services
+
+Triton provides some solutions for this now:
+
+- [Triton CNS](https://www.joyent.com/blog/triton-cns-and-vanity-domains) makes it possible to use well-known DNS names to access any number of instances providing the same service. This works well for web browsers and other consumer applications with well-behaved DNS implementations, but those are exceptional cases and most DNS clients are buggy)
+- There are a number of ways to approach [load balancing on Triton](https://www.joyent.com/networking-and-security/load-balancing), but none that are fully as-a-service
+
+This RFD will discuss some potential features that may be added to improve support for these applications below.
 
 
 
 ## More
 
 - Health
+	- Difference between liveliness and readiness: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
 - Health vs. discovery
 - Health vs. rescheduling
 
