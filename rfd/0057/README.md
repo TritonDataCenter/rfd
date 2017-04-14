@@ -396,7 +396,8 @@ Status: Downloaded newer image for alpine:latest
   the *manifest* digest.
 - `627beaf3eaaf` is the prefix of the Alpine image's only layer's digest.
 
-We can see these values in the raw Docker Registry API manifest for this image:
+We can see these values in the raw Docker Registry API manifest for this image
+(note that Docker likes to use *3-space* indentation for the manifests):
 
 ```
 [node-docker-registry-client/examples/v2]$ node getManifest.js -s2 alpine:latest
@@ -414,20 +415,20 @@ We can see these values in the raw Docker Registry API manifest for this image:
 }
 # manifest
 {
-    "schemaVersion": 2,
-    "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
-    "config": {
-        "mediaType": "application/vnd.docker.container.image.v1+json",
-        "size": 1278,
-        "digest": "sha256:4a415e3663882fbc554ee830889c68a33b3585503892cc718a4698e91ef2a526"
-    },
-    "layers": [
-        {
-            "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
-            "size": 1905270,
-            "digest": "sha256:627beaf3eaaff1c0bc3311d60fb933c17ad04fe377e1043d9593646d8ae3bfe1"
-        }
-    ]
+   "schemaVersion": 2,
+   "mediaType": "application/vnd.docker.distribution.manifest.v2+json",
+   "config": {
+      "mediaType": "application/vnd.docker.container.image.v1+json",
+      "size": 1278,
+      "digest": "sha256:4a415e3663882fbc554ee830889c68a33b3585503892cc718a4698e91ef2a526"
+   },
+   "layers": [
+      {
+         "mediaType": "application/vnd.docker.image.rootfs.diff.tar.gzip",
+         "size": 1905270,
+         "digest": "sha256:627beaf3eaaff1c0bc3311d60fb933c17ad04fe377e1043d9593646d8ae3bfe1"
+      }
+   ]
 }
 ```
 
