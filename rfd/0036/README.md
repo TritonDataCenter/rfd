@@ -402,11 +402,11 @@ This RFD will discuss some potential features that may be added to improve suppo
 
 ## Desirable features not addressed in this RFD
 
+This section discusses three features that might make it easier to operate [stateful applications that require external state management](#stateful-with-external-state-management), as well as one that would improve the operation of [applications presented as services to others](#applications-presented-as-services-to-others). These features are not being further addressed in this RFD, but this section summarizes them as they relate to this RFD.
+
 ### Reprovisioning via public APIs
 
-Though [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, the feature is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141).
-
-Triton and Manta upgrades are done via this private reprovisioning feature. The instance's primary volume is over written with a new image while stateful data in the instance is preserved on another volume in the dataset. This process depends on privileged access, either with a delegated dataset in the instance or with privileges in the global zone.
+Though [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, the feature is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141). Triton and Manta upgrades are done via this private reprovisioning feature. The instance's primary volume is over written with a new image while stateful data in the instance is preserved on another volume in the dataset. This process depends on privileged access, either with a delegated dataset in the instance or with privileges in the global zone.
 
 Though many customers would [happily enjoy the benefits of a delegated ZFS dataset](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md), offering support for reprovisioning depends instead on API mechanisms to manage volumes. Users need to be able to specify what volumes to preserve while the others are overwritten with the new image. CloudAPI provides no mechanism to manage volumes in an instance. AWS' API provides only crude support for mapping EBS block devices to instances, but managing the volumes must be done within the instance itself. Interestingly, [Dockerfiles](https://docs.docker.com/engine/reference/builder/#volume) and the [Docker client](https://docs.docker.com/engine/tutorials/dockervolumes/#adding-a-data-volume) provide straightforward means to define and mount volumes in an instance.
 
@@ -424,10 +424,41 @@ More interesting might be to define a mechanism for an instance to be provisione
 
 
 
-### Volume instances (non-NFS)
+### Volume objects (non-NFS)
 
-- Not just for Docker instances with `--volumes-from`
-- Similar to the old reservations talk?
+The section on [reprovisioning via public APIs](#reprovisioning-via-public-apis) offers some help for separating the lifecycle of the application from its data, while [RFD26](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction), nearing completion at the time of this writing, adds support for NFS-shared volumes.
+
+The volume objects of RFD26 provide a more explicit means of separating those lifecycles, but the implementation makes [intentional trade-offs to support shared network access to those volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#non-requirements). While RFD26 volumes will be helpful for a number of use cases, they will not be a good choice for the primary storage for high performance applications such as databases.
+
+Given that, we might also consider adding support for non-shared volumes that live on a compute node and which customers can mount to their instances on that compute node. An example of this can be seen when [using `--volumes-from` with Docker](https://docs.docker.com/engine/tutorials/dockervolumes/#creating-and-mounting-a-data-volume-container). In that case, the user first creates a Docker instance, then maps the volume from that container into a new container.
+
+```bash
+# First create a container to hold the volume
+# I could create a completely empty container,
+# but busybox gives me some management tools
+$ docker run -d \
+	-v /var/lib/postgresql/data \
+	--name=my-data \
+	busybox sleep 1095d
+
+# Now map that volume into a new container,
+# this one running the app you need
+$ docker run -d \
+	--volumes-from=my-data \
+	--name=my-db \
+	postgres:9.6-alpine
+
+# Now see the data volume mapped in the DB container
+$ docker exec -it my-app df -h
+Filesystem                Size      Used Available Use% Mounted on
+<snip...>
+/dev/sda1                17.9G      2.2G     14.8G  13% /var/lib/postgresql/data
+<snip...>
+```
+
+Using containers as a wrapper for data volumes and mapping them  into other containers works OK, but it's difficult to manage and it's not supported for infrastructure containers or KVM instances. Docker has since introduced [explicit volume objects](https://docs.docker.com/engine/reference/commandline/volume_create/), but creating multiple volumes, attaching them to multiple containers, and keeping everything matched up correctly still requires additional effort for which Docker's tooling provides little help. In practice, most users simply map volumes from the host filesystem for this use-case, though even that requires additional layers of management for any reasonably complex use-case.
+
+Host volumes aren't supported on Triton because the customer doesn't own the underlying host—the bare metal compute node. That relationship adds more complexity: while it's possible to create a data container as shown above, Triton provides no mechanism to reserve space on that CN for your later use. Without that, customers have no guarantee that space will be available for them to run their applications attached to their data at a later time (the concept of "reservations" has previously been discussed to address this problem, though I can find no written record of it at this time).
 
 
 
@@ -436,6 +467,7 @@ More interesting might be to define a mechanism for an instance to be provisione
 [AWS explains migrating elastic IPs can take time](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html#using-eip-migration):
 
 > [T]he process of migrating the Elastic IP address can take a few minutes. [...] If the Elastic IP address is in a moving state for longer than 5 minutes, contact [premium support].
+
 
 
 ## Concepts
