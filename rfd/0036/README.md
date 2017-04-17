@@ -382,7 +382,7 @@ Often, cross-team discovery expectations and solutions match general expectation
 
 - DNS (though most clients are buggy, and DNS lookups are slow)
 - Load-balancers with well-known DNS names (see above) or IPs (see below)
-- [Virtual IPs](https://en.wikipedia.org/wiki/Virtual_IP_address) (called [Elastic IPs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html) by AWS) that are well-known to the consumers of the services
+- [Virtual IPs](https://en.wikipedia.org/wiki/Virtual_IP_address) (called [Elastic IPs](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html) by AWS) that are well-known to the consumers of the services (though moving Elastic IPs can take time, see below)
 
 Triton provides some solutions for this now:
 
@@ -400,11 +400,42 @@ This RFD will discuss some potential features that may be added to improve suppo
 - Health vs. discovery
 - Health vs. rescheduling
 
-## Extra features
+## Desirable features not addressed in this RFD
 
-- ZFS clone zones with fail-over
-- Volume instances (non-NFS)
-- Persistent IPs
+### Reprovisioning via public APIs
+
+Though [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, the feature is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141).
+
+Triton and Manta upgrades are done via this private reprovisioning feature. The instance's primary volume is over written with a new image while stateful data in the instance is preserved on another volume in the dataset. This process depends on privileged access, either with a delegated dataset in the instance or with privileges in the global zone.
+
+Though many customers would [happily enjoy the benefits of a delegated ZFS dataset](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md), offering support for reprovisioning depends instead on API mechanisms to manage volumes. Users need to be able to specify what volumes to preserve while the others are overwritten with the new image. CloudAPI provides no mechanism to manage volumes in an instance. AWS' API provides only crude support for mapping EBS block devices to instances, but managing the volumes must be done within the instance itself. Interestingly, [Dockerfiles](https://docs.docker.com/engine/reference/builder/#volume) and the [Docker client](https://docs.docker.com/engine/tutorials/dockervolumes/#adding-a-data-volume) provide straightforward means to define and mount volumes in an instance.
+
+This feature would be one solution to separating the lifecycle of an instance's data from the application, as is needed for [stateful applications that require external state management](#stateful-with-external-state-management). This would make it easier to upgrade applications while preserving their filesystem(s), but would offer no protection against the loss of data if the compute node or its storage subsystems fail.
+
+
+
+### Public API support for cloning volumes
+
+While support for [reprovisioning via public APIs](#reprovisioning-via-public-apis) would make normal lifecycle management of applications and their data easier, other features are needed to protect against data loss with [stateful applications that require external state management](#stateful-with-external-state-management).
+
+If we assume the addition of volume awareness for instances to CloudAPI for [reprovisioning via public APIs](#reprovisioning-via-public-apis), then it seems fair to also assume features that would support snapshotting those volumes, backing them up to object storage, restoring them, and cloning them to a volume on a different compute node.
+
+More interesting might be to define a mechanism for an instance to be provisioned with one or more designated clones. If combined with health checking mechanisms described elsewhere in this RFD, we might also imagine automated failover as well. Such a mechanism can make only limited guarantees about consistency. Users would need to understand their applications and the appropriateness of such a clone.
+
+
+
+### Volume instances (non-NFS)
+
+- Not just for Docker instances with `--volumes-from`
+- Similar to the old reservations talk?
+
+
+
+### Persistent IPs
+
+[AWS explains migrating elastic IPs can take time](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html#using-eip-migration):
+
+> [T]he process of migrating the Elastic IP address can take a few minutes. [...] If the Elastic IP address is in a moving state for longer than 5 minutes, contact [premium support].
 
 
 ## Concepts
