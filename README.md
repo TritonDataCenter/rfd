@@ -133,6 +133,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md)
 | draft    | [RFD 89 Project Tiresias](./rfd/0089/README.md)
 | predraft | [RFD 90 Handling CPU Caps in Triton](./rfd/0090/README.md)
+| predraft | [RFD 91 Application level metrics in CMON](./rfd/0091/README.md)
 
 
 ## Contents of an RFD
