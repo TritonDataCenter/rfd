@@ -393,16 +393,134 @@ This RFD will discuss some potential features that may be added to improve suppo
 
 
 
-## More
+## Key objects proposed in this RFD
+
+[Services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets) are the key objects or abstractions proposed in this RFD.
+
+
+
+### Service
+
+Services are at the core of Mariposa, and they draw their definition from Auto Scaling Groups, Docker Compose, Marathon, and others [discussed above](#prior-art): in practice, services are any number of compute instances running the same software image and configuration; though conceptually services are just a definition of what the user wants. Defining services, rather than manually creating instances, allows users to specify what they want and how many of them while Mariposa does the work of creating and removing instances as needed to conform to the user's desired state.
+
+A service may represent a complete application, if that application runs in a single container, but it's expected that most applications will be comprised of multiple services. The smallest unit of a service is a single Triton instance, just as an Auto Scaling Group can't target anything smaller than a single EC2 instance. This RFD intentionally avoids operating inside an instance, even though that's the operational model for many of the prior art examples. That isn't to say that isn't an interesting problem or that userland schedulers should not be used on Triton, just that it's not Triton's problem to solve. Triton is a solution for orchestrating cloud infrastructure; it is explicitly not a solution for managing what happens inside the compute instances it creates.
+
+Though many of the examples of prior art above focus on Docker containers, this RFD expects that users would want to use all forms of compute available in Triton to run service instances, including:
+
+- Infrastructure containers
+- KVM virtual machines
+- Docker containers
+- Manta jobs
+
+The prior art examples given above focus on services that run continuously, and that is the priority, but nothing in this RFD should be taken to exclude support for services that run on demand or on a schedule defined by the service operator. Fo
+
+
+
+### Deployment group
+
+*NEEDS A REWRITE*
+
+While [services](#service) abstract any number of compute instances running the same software with the same configuration, a project allows users to group services and other resources together so that they can be managed as a whole without the distraction or complication or unrelated components.
+
+The concept of projects was first introduced with [RBACv2 in RFD13](../0013/README.md#proposal), this RFD intends to replace the definition of services from RFD13. Though projects and other features described in this RFD may be built independently of RBACv2 work, many assumptions about RBACv2 are made throughout this text.
+
+Once projects are implemented, all customer-defined infrastructure resources in Triton, including [compute](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), and other resources that may be defined in the future _must_ be a member of a project. Some resources (networks, for example) may be shared among different projects, while others (example: services and compute instances) must only be part of a single project.
+
+```
+
+                     ┌───────────────┐
+                     │               │
+              ┌──────│ Organizations │──────┐
+              │      │               │      │
+              │      └───────────────┘      │
+        ┌──────────┐                    ┌───────┐
+        │          │                    │       │
+        │ Projects │────────────────────│ Users │
+        │          │                    │       │
+        └──────────┘                    └───────┘
+              │
+        ┌─────┴──────┬───────────┬────────────┐
+        │            │           │            │
+  ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌───────────┐
+  │          │ │          │ │         │ │           │
+  │ Services │ │ Networks │ │ Storage │ │ Unmanaged │
+  │          │ │          │ │         │ │  Compute  │
+  └──────────┘ └──────────┘ └─────────┘ │           │
+        │                               └───────────┘
+        │
+   ┌─────────┐
+   │         │
+   │ Compute │
+   │         │
+   └─────────┘
+
+```
+
+In the above diagram "unmanaged compute" describes both existing instances that were defined before the introduction of services, as well as new instances that a user may define without first defining a service. Support for existing unmanaged compute and their ongoing use, as well as the ability to provision new unmanaged instances is required, despite the introduction of services. However, there is no requirement nor intention of providing a migration plan to convert a collection of existing unmanaged instances into a service.
+
+Projects are described by a [project manifest](./projects/manifest.md), a text file that can be easily copied from elsewhere and in which changes are easily discernible in a text diff. They also have attached metadata as described below.
+
+[Read more about what projects mean in the Mariposa context](./projects), including Triton CLI commands and the manifest file.
+
+
+
+### Deployment meta (including secrets)
+
+*NEEDS A REWRITE*
+
+Many applications require configuration values which are undesirable or unsafe to set in the application image. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
+
+This document proposes a simple method of storing those details and injecting them into containers that offers better security than embedding them in the images or provisioning scripts. It is intended to easily interoperate with existing applications, rather than propose new methods of secret sharing that would require changes in customer applications.
+
+[Read more about meta in the Mariposa context](./meta), including Triton CLI commands and the manifest file.
+
+
+
+## Relationship between these resources and RBACv2
+
+*NEEDS A REWRITE*
+
+Multiple groupings for:
+
+- Deployment
+- Security management
+- Convenience
+
+
+
+## Task queue
+
+*NEEDS A REWRITE*
+
+Scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
+
+[Read more about the the Mariposa task queue](./queue), including Triton CLI commands.
+
+
+
+## Health
+
+*NEEDS A REWRITE*
 
 - Health
 	- Difference between liveliness and readiness: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
 - Health vs. discovery
 - Health vs. rescheduling
 
+
+## Placement and affinity
+
+*NEEDS A REWRITE*
+
+
+
 ## Desirable features not addressed in this RFD
 
 This section discusses three features that might make it easier to operate [stateful applications that require external state management](#stateful-with-external-state-management), as well as one that would improve the operation of [applications presented as services to others](#applications-presented-as-services-to-others). These features are not being further addressed in this RFD, but this section summarizes them as they relate to this RFD.
+
+Also, because this RFD assumes the ability to define services running Docker images, all without interaction with the Docker API presented by sdc-docker, we should consider CloudAPI features to support Docker API-style interactions with instances, such as some equivalent of `docker exec`.
+
+
 
 ### Reprovisioning via public APIs
 
@@ -462,198 +580,37 @@ Host volumes aren't supported on Triton because the customer doesn't own the und
 
 
 
-### Persistent IPs
+### Virtual IPs
 
-[AWS explains migrating elastic IPs can take time](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html#using-eip-migration):
+Virtual IPs are highly desirable for many users, especially those managing [applications being presented as a service to other users](Applications presented as services to others), though exactly how they should work and what application-level availability guarantees they should offer can differ depending on who you ask. For example, [AWS explains migrating Elastic IPs can take time](http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/elastic-ip-addresses-eip.html#using-eip-migration):
 
 > [T]he process of migrating the Elastic IP address can take a few minutes. [...] If the Elastic IP address is in a moving state for longer than 5 minutes, contact [premium support].
 
+As promised there, users should expect requests to a resource fronted by an Elastic IP fronting a host that has failed should fail, and continue to fail while the IP is being migrated over a period of minutes. AWS doesn't offer any automatic health checking mechanisms, so users must also implement their own tools to migrate the IP.
+
+AWS' guarantees fall far short of the hopes of many users, who would prefer automatic, instant failover with no broken or dropped TCP connections.
+
+The distancing of market offerings from customer expectations is further highlighted with RDS, the defining example of an application presented as a service to other cloud users. [AWS explains that users should not depend on persistent IPs for RDS](https://aws.amazon.com/rds/faqs/):
+
+> Please note that, we strongly recommend you use the DNS Name to connect to your DB Instance as the underlying IP address can change (e.g., during a failover).
+
+The lesson there is that RDS users must build their database client applications in a way that tolerates dropped connections, changed IPs, and other failed requests.
 
 
-## Concepts
 
-### Organizations, projects, users
+### Docker features we should add to CloudAPI and node-triton
 
-Significant aspects of this RFD assume the existence of RBACv2 ([proposed in RFD13](../0013/README.md#proposal), with implementation discussion in [RFD48](../0048) and [49](../0049)) and the concepts it introduces, including "organizations" and "projects," and new definition for "users."
+*NEEDS A REWRITE*
 
-The following understanding of those objects is used throughout:
+- Setting stop timeout, including no timeout
+- `docker exec`
+- Mapping volumes from another container via `--volumes-from`
 
-- An organization is a collection of users and projects
-- Any number of organizations can be defined
-- A user must be a member of one or more organizations
-- A user is always a member of their personal organization
-- An organization may have any number of users and projects
-- A project must be a member of one organization
-- A project may have any number of users
-
-The model for this is GitHub's [organizations, users, and repositories](https://help.github.com/categories/setting-up-and-managing-organizations-and-teams/). Projects (similar to GitHub's repositories) are further defined below and throughout this document.
-
-We will expand the following diagram with additional components as we introduce them:
-
-```
-
-                 ┌───────────────┐
-                 │               │
-          ┌──────│ Organizations │──────┐
-          │      │               │      │
-          │      └───────────────┘      │
-    ┌──────────┐                    ┌───────┐
-    │          │                    │       │
-    │ Projects │────────────────────│ Users │
-    │          │                    │       │
-    └──────────┘                    └───────┘
-
-```
-
-### Service
-
-Services are at the core of Mariposa. Services are any number of compute instances running the same software image and configuration. A service may be run in a single compute instance, or can be scaled to any number of instances as needed.
-
-A service may represent a complete application, if that application runs in a single container, but it's expected that most applications will be comprised of multiple services running together as a [project](#project).
-
-```
-
-                 ┌───────────────┐
-                 │               │
-          ┌──────│ Organizations │──────┐
-          │      │               │      │
-          │      └───────────────┘      │
-    ┌──────────┐                    ┌───────┐
-    │          │                    │       │
-    │ Projects │────────────────────│ Users │
-    │          │                    │       │
-    └──────────┘                    └───────┘
-          │
-          │
-    ┌──────────┐
-    │          │
-    │ Services │
-    │          │
-    └──────────┘
-
-```
-
-[Read more about what services mean in the Mariposa context](./services).
-
-
-### Service and compute types
-
-Mariposa is responsible for provisioning and deprovisioning compute instances for the user based on the service definition. This effectively abstracts away what used to be the core definition of the cloud—virtualized compute—from what the user directly manages.
-
-```
-
-                 ┌───────────────┐
-                 │               │
-          ┌──────│ Organizations │──────┐
-          │      │               │      │
-          │      └───────────────┘      │
-    ┌──────────┐                    ┌───────┐
-    │          │                    │       │
-    │ Projects │────────────────────│ Users │
-    │          │                    │       │
-    └──────────┘                    └───────┘
-          │
-          │
-    ┌──────────┐
-    │          │
-    │ Services │
-    │          │
-    └──────────┘
-          │
-          │
-     ┌─────────┐
-     │         │
-     │ Compute │
-     │         │
-     └─────────┘
-```
-
-However, the user still needs to control what type of compute resources are provisioned, and how they'll run.
-
-The types of compute providing a service may include:
-
-- `docker` (default)
-- `infrastructure|lx|smartmachine`
-- `kvm|vm|hvm`
-- `manta`
-
-Only `docker`,`infrastructure`, and `kvm` are required for the MVP.
-
-Not all services run continuously. The growing interest in "function as a service" offerings (as demonstrated in Manta Jobs, and later in AWS' Lambda), as well as the common reality of scheduled batch jobs, indicates that Mariposa should include support for non-continuous services.
-
-These types may include:
-
-- `continuous` runs continuously until stopped
-- `event` runs when triggered, is not restarted when it stops
-- `scheduled` runs according to defined schedule, is not restarted when it stops
-
-Only `continuous` is required for the MVP.
-
-Service and compute types, are discussed further in the [services manifest](./services/manifest.md).
-
-
-### Project
-
-While [services](#service) abstract any number of compute instances running the same software with the same configuration, a project allows users to group services and other resources together so that they can be managed as a whole without the distraction or complication or unrelated components.
-
-The concept of projects was first introduced with [RBACv2 in RFD13](../0013/README.md#proposal), this RFD intends to replace the definition of services from RFD13. Though projects and other features described in this RFD may be built independently of RBACv2 work, many assumptions about RBACv2 are made throughout this text.
-
-Once projects are implemented, all customer-defined infrastructure resources in Triton, including [compute](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), and other resources that may be defined in the future _must_ be a member of a project. Some resources (networks, for example) may be shared among different projects, while others (example: services and compute instances) must only be part of a single project.
-
-```
-
-                     ┌───────────────┐
-                     │               │
-              ┌──────│ Organizations │──────┐
-              │      │               │      │
-              │      └───────────────┘      │
-        ┌──────────┐                    ┌───────┐
-        │          │                    │       │
-        │ Projects │────────────────────│ Users │
-        │          │                    │       │
-        └──────────┘                    └───────┘
-              │
-        ┌─────┴──────┬───────────┬────────────┐
-        │            │           │            │
-  ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌───────────┐
-  │          │ │          │ │         │ │           │
-  │ Services │ │ Networks │ │ Storage │ │ Unmanaged │
-  │          │ │          │ │         │ │  Compute  │
-  └──────────┘ └──────────┘ └─────────┘ │           │
-        │                               └───────────┘
-        │
-   ┌─────────┐
-   │         │
-   │ Compute │
-   │         │
-   └─────────┘
-
-```
-
-In the above diagram "unmanaged compute" describes both existing instances that were defined before the introduction of services, as well as new instances that a user may define without first defining a service. Support for existing unmanaged compute and their ongoing use, as well as the ability to provision new unmanaged instances is required, despite the introduction of services. However, there is no requirement nor intention of providing a migration plan to convert a collection of existing unmanaged instances into a service.
-
-Projects are described by a [project manifest](./projects/manifest.md), a text file that can be easily copied from elsewhere and in which changes are easily discernible in a text diff. They also have attached metadata as described below.
-
-[Read more about what projects mean in the Mariposa context](./projects), including Triton CLI commands and the manifest file.
-
-
-### Project meta (including secrets)
-
-Many applications require configuration values which are undesirable or unsafe to set in the application image. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
-
-This document proposes a simple method of storing those details and injecting them into containers that offers better security than embedding them in the images or provisioning scripts. It is intended to easily interoperate with existing applications, rather than propose new methods of secret sharing that would require changes in customer applications.
-
-[Read more about meta in the Mariposa context](./meta), including Triton CLI commands and the manifest file.
-
-
-### Task queue
-
-Scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
-
-[Read more about the the Mariposa task queue](./queue), including Triton CLI commands.
 
 
 ## User stories
+
+*NEEDS A REWRITE*
 
 The following user stories are intended to provide a narrative understanding of how these features are intended to be used:
 
@@ -663,12 +620,20 @@ The following user stories are intended to provide a narrative understanding of 
 - [Health-checking, monitoring, and scaling jupiter.example.com](./stories/jupiter-example-com-monitoring-and-health.md)
 - [Creating, copying, and moving projects like microsite.jupiter.example.com](./stories/microsite-jupiter-example-com.md) (also includes secret management)
 
+
+
 ## Sample manifests
+
+*NEEDS A REWRITE*
 
 - [Kubernetes on Mariposa](./stories/kubernetes-on-mariposa.md)
 - [WordPress on Mariposa](./stories/wordpress-on-mariposa.md)
 
+
+
 ## Implementation and architecture
+
+*NEEDS A REWRITE*
 
 This RFD is mostly concerned with what users can do with Mariposa, not how those features are implemented. Work to define an implementation has begun in additional RFDs, which propose the following components:
 
@@ -739,6 +704,8 @@ Those components are intended to be private services and agents within Triton, e
                                └────────────────────┘
 
 ```
+
+
 
 ## Revision history
 
