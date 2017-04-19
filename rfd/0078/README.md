@@ -43,12 +43,13 @@ state: draft
       - [Introduction of a "metadata" message in the moray protocol](#introduction-of-a-metadata-message-in-the-moray-protocol)
       - [Changes to the node-moray client's API](#changes-to-the-node-moray-clients-api)
         - [Changes to the Moray constructor](#changes-to-the-moray-constructor)
-        - [Changes to the findobjects method](#changes-to-the-findobjects-method)
+        - [Changes to the findObjects method](#changes-to-the-findobjects-method)
       - [Changes to the moray server](#changes-to-the-moray-server)
         - [Handling of the findObjects' requireIndexes option](#handling-of-the-findobjects-requireindexes-option)
-        - [Sending an additional metadata record for each findObjects reponse](#sending-an-additional-metadata-record-for-each-findobjects-reponse)
-        - [Performance impact](#performance-impact)
+        - [Sending an additional metadata record for each findObjects response](#sending-an-additional-metadata-record-for-each-findobjects-response)
+      - [Performance impact](#performance-impact)
     - [Backward compatibility](#backward-compatibility)
+      - [Caveat](#caveat)
     - [Forward compatibility](#forward-compatibility)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -626,9 +627,10 @@ node-moray's API will be changed so that:
 
 1. a `requireIndexes` option can be passed to `findObjects` requests
 
-2. a new error event will be emitted in the case this `requireIndexes` option is
-   set to true and the first `data` event emitted for the response does not
-   contain the value `requireIndexes` in the event's `_handledOptions` property.
+2. a new `UnhandledOptionsError` `'error'` event will be emitted in the case
+   this `requireIndexes` option is set to true and the first `data` event
+   emitted for the response does not contain the value `requireIndexes` in the
+   event's `_handledOptions` property.
 
 In order to make it both convenient for new programs using the moray client that
 want to opt-in into that behavior, and for existing programs who want to opt-in
@@ -640,7 +642,14 @@ into that behavior _per request_, both the node-moray's constructor API and the
 A new `requireIndexes` property on the `options` parameter will be handled. When
 the value of this property is set to `true`, _all_ `findObjects` requests
 performed via this client will be considered to require indexes, or they will
-emit an `'error'` event.
+emit:
+
+1. a `UnhandledOptionsError` `'error'` event if the server does not respond with
+   a metadata record as the first data event.
+
+2. a `NotIndexedError` `'error'` event if the server responds with a metadata
+   record, but at least one field used in a `findObjects` request's search
+   filter has an index that is not usable.
 
 This method of opting into the proposed solution will be recommended for any new
 program that can rely on the presence of the server-side support.
@@ -649,8 +658,15 @@ program that can rely on the presence of the server-side support.
 
 The `findobjects` method will accept an additional `requireIndexes` property on
 its `options` parameter. When the value of this property is set to `true`, _only
-this specific_ `findObjects` request will be considered to require indexes, or
-it will emit an `'error'` event.
+this specific_ `findObjects` request will be considered to require indexes and
+it will emit:
+
+1. a `UnhandledOptionsError` `'error'` event if the server does not respond with
+   a metadata record as the first data event.
+
+2. a `NotIndexedError` `'error'` event if the server responds with a metadata
+   record, but at least one field used in this `findObjects` request's search
+   filter has an index that is not usable.
 
 This method of opting into the proposed solution will be recommended for any new
 program that __cannot_ rely on the presence of the server-side support.
@@ -685,20 +701,236 @@ These options names are:
 * `sort`
 * `requireIndexes`
 
-##### Performance impact
+#### Performance impact
 
-Even though this needs to be measured, the performance impact of the proposed
-changes could be negligible, as it would require to:
+The performance of a `findObjects` request could be impacted as the proposed
+changes would require to:
 
-1. perform at most two additional array items lookups in JavaScript to check
-   that no unusable index is being used
+1. run additional moray server's pipeline "handlers"
 
-2. send one additional metadata record as part of the response
+2. perform additional properties/array items lookups in JavaScript to check that
+   no unusable index is being used
 
-It might actually improve the performance of `findobjects` requests using the
-`requireIndexes` mode, as in this mode the additional filtering applied at the
-application level should not be needed, since we'd be sure that all filtering
-was done at the database engine's level.
+3. send one additional metadata record as part of the response
+
+In order to quantify this impact, this section documents what performance tests
+have been done so far.
+
+Three different cases were tested:
+
+1. a moray client with the changes described in this document connecting to a
+   moray server without them
+
+2. a moray client and server with the changes described in this document, with
+   the moray client _not_ passing the `requireIndexes: true` option to the
+   `findObjects` method
+
+3. a moray client and server with the changes described in this document, with
+   the moray client passing the `requireIndexes: true` option to the
+   `findObjects` method, thus enabling the new stricted behavior
+
+The performance impact was measured by running [misterdjules/moray-benchmark-sea
+rch-filters/benchmark-reindex.js](https://github.com/misterdjules/moray-benchmar
+k-search-filters/blob/49fda6fe1c802a33a4e13899a8019a89fcf7d114/benchmark-reindex
+ed.js) as following:
+
+```
+(I=0; while [ $I -lt 1000 ]; do node benchmark-reindexed.js -n 1000 --norecreatebucket; I=$((I + 1)); done)
+```
+
+This program uses a moray client with the changes presented in this document,
+connected to a moray server with or without these changes that handles only
+these requests.
+
+It performs `findObjects` requests using composite search filters that only
+include fields whose indexes are usable.
+
+The moray server would run in a SmartOS zone running itself in a VMWare VM. Then
+the following DTrace script running in the same zone would measure the latency
+of `findObjects` requests:
+
+```
+#!/usr/sbin/dtrace -s
+
+#pragma D option quiet
+
+moray*:::findobjects-start
+{
+        latency[arg0] = timestamp;
+        bucket[arg0] = copyinstr(arg2);
+        filter[arg0] = copyinstr(arg3);
+}
+
+moray*:::findobjects-done
+/latency[arg0]/
+{
+@[bucket[arg0], filter[arg0], arg1] =
+    quantize(((timestamp - latency[arg0]) / 1000000));
+
+  @latencies_avg[strjoin(bucket[arg0], "_avg"), filter[arg0], arg1] =
+    avg(((timestamp - latency[arg0]) / 1000000));
+
+  @latencies_min[strjoin(bucket[arg0], "_min"), filter[arg0], arg1] =
+    min(((timestamp - latency[arg0]) / 1000000));
+
+  @latencies_max[strjoin(bucket[arg0], "_max"), filter[arg0], arg1] =
+    max(((timestamp - latency[arg0]) / 1000000));
+
+        latency[arg0] = 0;
+        bucket[arg0] = 0;
+        filter[arg0] = 0;
+}
+```
+
+which is basically [the `find_latency` DTrace script shipped with moray](https://github.com/joyent/moray/blob/d23510d05c04a7f4da5e061965c4c351d3246e77/bin/find_latency.d),
+with a small change that displays minimum, maximum and average latencies in
+addition to a quantized distribution.
+
+The results are shown below for three different combinations mentioned above of
+joyent/moray (using code from master or from the MORAY-104 branch),
+joyent/node-moray (using code from master or from the MORAY-104 branch) and how
+the moray client's `findObjects` is called (whether `requireIndexes: true` is
+passed or not):
+
+1. moray's master/node-moray's MORAY-104 branch/requireIndexes: undefined:
+
+   ```
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_boolean=true))                             500
+           value  ------------- Distribution ------------- count    
+              16 |                                         0        
+              32 |@@@@@                                    132      
+              64 |@@@@@@@@@@@@@@@@@@@@@@                   560      
+             128 |@@@@@@@@@@@                              265      
+             256 |@@                                       41       
+             512 |                                         2        
+            1024 |                                         0        
+
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_number=42))                                500
+           value  ------------- Distribution ------------- count    
+              16 |                                         0        
+              32 |@@@@@                                    123      
+              64 |@@@@@@@@@@@@@@@@@@@@@@@@                 588      
+             128 |@@@@@@@@@@                               246      
+             256 |@                                        37       
+             512 |                                         6        
+            1024 |                                         0        
+
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_string=sentinel))                          500
+           value  ------------- Distribution ------------- count    
+               8 |                                         0        
+              16 |                                         2        
+              32 |@@@@                                     105      
+              64 |@@@@@@@@@@@@@@@@@@@@@@@                  565      
+             128 |@@@@@@@@@@@                              279      
+             256 |@@                                       38       
+             512 |                                         10       
+            1024 |                                         1        
+            2048 |                                         0        
+
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_boolean=true))                             500              117
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_number=42))                                500              119
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_string=sentinel))                          500              127
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_string=sentinel))                          500               30
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_boolean=true))                             500               34
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_number=42))                                500               37
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_boolean=true))                             500              674
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_number=42))                                500              877
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_string=sentinel))                          500             1295
+   ```
+
+2. moray's MORAY-104/node-moray's MORAY-104/requireIndexes: undefined
+
+   ```
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_number=42))                                500
+           value  ------------- Distribution ------------- count    
+              16 |                                         0        
+              32 |@@@@@@                                   152      
+              64 |@@@@@@@@@@@@@@@@@@@@@@@@@                614      
+             128 |@@@@@@@@                                 208      
+             256 |@                                        22       
+             512 |                                         4        
+            1024 |                                         0        
+
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_boolean=true))                             500
+           value  ------------- Distribution ------------- count    
+              16 |                                         0        
+              32 |@@@@@@                                   146      
+              64 |@@@@@@@@@@@@@@@@@@@@@@@@@                618      
+             128 |@@@@@@@@                                 207      
+             256 |@                                        24       
+             512 |                                         5        
+            1024 |                                         0        
+
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_string=sentinel))                          500
+           value  ------------- Distribution ------------- count    
+              16 |                                         0        
+              32 |@@@@                                     109      
+              64 |@@@@@@@@@@@@@@@@@@@@@@@@@@               642      
+             128 |@@@@@@@@                                 211      
+             256 |@                                        30       
+             512 |                                         8        
+            1024 |                                         0        
+
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_number=42))                                500              108
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_boolean=true))                             500              109
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_string=sentinel))                          500              116
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_string=sentinel))                          500               32
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_boolean=true))                             500               37
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_number=42))                                500               40
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_number=42))                                500              938
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_string=sentinel))                          500              964
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_boolean=true))                             500             1003
+   ```
+
+3. moray's MORAY-104/node-moray's MORAY-104/requireIndexes: true
+
+   ```
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_boolean=true))                             500
+           value  ------------- Distribution ------------- count    
+              16 |                                         0        
+              32 |@@@                                      77       
+              64 |@@@@@@@@@@@@@@@@@@@@@@@@                 604      
+             128 |@@@@@@@@@@@                              278      
+             256 |@                                        35       
+             512 |                                         6        
+            1024 |                                         0        
+
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_number=42))                                500
+           value  ------------- Distribution ------------- count    
+              16 |                                         0        
+              32 |@@@                                      87       
+              64 |@@@@@@@@@@@@@@@@@@@@@@@                  582      
+             128 |@@@@@@@@@@@                              280      
+             256 |@@                                       46       
+             512 |                                         5        
+            1024 |                                         0        
+
+   moray_benchmark_reindexed                           (&(uuid=*)(reindexed_string=sentinel))                          500
+           value  ------------- Distribution ------------- count    
+              16 |                                         0        
+              32 |@@@                                      67       
+              64 |@@@@@@@@@@@@@@@@@@@@@@@                  583      
+             128 |@@@@@@@@@@@@                             305      
+             256 |@@                                       42       
+             512 |                                         2        
+            1024 |                                         1        
+            2048 |                                         0        
+
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_boolean=true))                             500              122
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_number=42))                                500              126
+   moray_benchmark_reindexed_avg                       (&(uuid=*)(reindexed_string=sentinel))                          500              127
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_boolean=true))                             500               37
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_string=sentinel))                          500               38
+   moray_benchmark_reindexed_min                       (&(uuid=*)(reindexed_number=42))                                500               42
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_number=42))                                500              743
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_boolean=true))                             500              916
+   moray_benchmark_reindexed_max                       (&(uuid=*)(reindexed_string=sentinel))                          500             1063
+   ```
+
+From these results, it seems that the duration of the execution of the
+`findObjects` handler in the moray server is not significantly longer. Note
+however that these measurements do not account for the extra data message sent
+to the moray client when `requireIndexes: true` is passed to `findObjects`.
 
 ### Backward compatibility
 
@@ -708,17 +940,43 @@ identical results at worse, and more correct results at best.
 
 However, because some code relies on the current erroneous behavior, it is
 important to provide a backward compatible interface. Thus, this solution should
-be opt-in, and clients that want to switch to the strict behavior would need to
-pass the `requireIndexes` option and set it to `true`:
+be opt-in, and clients that want to switch to the strict behavior would need to:
 
-```
-findobjects('bucketName', filter, {requireIndexes: true}, callback);
-```
+1. upgrade to a version of node-moray that implements the changes proposed in
+   this document
+
+2. pass the `requireIndexes` option to the `findObjects` method of node-moray
+   client instances and set it to `true` like following ("morayClient" is an
+   instance of a moray client created with `require('moray').createClient()`):
+
+    ```
+    morayClient.findobjects('bucketName', filter, {requireIndexes: true}, callback);
+    ```
 
 Once all usage of `findobjects` requests switch to the strict behavior, it
 should be possible to make this the default in moray without causing any
 significant breakage. It could then allow to remove support for filtering on
 unindexed fields, which could make some of the existing moray code base simpler.
+
+#### Caveat
+
+There is one use case where the current proposed solution does not provide
+backward compatibility. If:
+
+1. a user of an old node-moray client passes the `requireIndexes: true` to its
+   `findObjects` method
+
+2. the resulting `findObjects` request is handled by a moray server that
+   implements the changes presented in this document
+
+3. all fields included in the search filter have usable indexes
+
+the moray client will receive a metadata record as the first record of the
+response, even though it does not know how to handle it, and will forward it as
+a data record to the user.
+
+In this case, the user of the old moray client would need to handle the metadata
+record explicitly.
 
 ### Forward compatibility
 
@@ -742,9 +1000,11 @@ handled by VMAPI will set the `requireIndexes` option for `findObjects` to
 `true` _only_ when the `required_nfs_volumes` parameter is sent as part of the
 request's parameters.
 
-When this request emits an error event because moray is not upgraded, or because
-the reindexing process for the `required_nfs_volumes` field is not completed,
-VMAPI will respond with a HTTP 503 `InvalidSearchFieldError` error.
+When this request emits an `'UnhandledOptionsError'` error event because the
+moray server is not at a version that supports checking whether indexes are
+usable, or a `'NotIndexedError'` error because the reindexing process for the
+`required_nfs_volumes` field is not completed, VMAPI will respond with a HTTP
+503 `UnsupportedSearchError` error.
 
 The consumer of VMAPI, in this case VOLAPI, will fall back to sending a HTTP 503
 `UnsupportedError` error to its clients, which will then output explicit and
