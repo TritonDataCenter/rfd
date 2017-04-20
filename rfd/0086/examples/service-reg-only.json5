@@ -31,7 +31,7 @@ manage the watching of depdendencies..
         // we'll wait for the "consul-agent healthy" event, which appears
         // inside this container only as it's for a non-advertised job.
         source: "consul-agent",
-        event: "healthy"
+        once: "healthy"
       }
     },
     {

@@ -80,7 +80,7 @@ We'll make the following changes:
 
 #### "When"
 
-The configuration for `when` includes an `event`, a sometimes-optional `source`, and an optional `timeout`. ContainerPilot will provide the following events:
+The configuration for `when` includes an event (either `once` or `each`), a sometimes-optional `source`, and an optional `timeout`. ContainerPilot will provide the following events:
 
 - `startup`: when ContainerPilot has completed all configuration and has started its telemetry server and control socket. This event also signals the start of all timers used for the optional timeout. This event may not have an event source. If no `start` is configured for a service, starting on this event is the default behavior.
 - `exitSuccess`: when a service exits with exit code 0. This event requires an event source.
@@ -96,10 +96,10 @@ The optional event source is the service that is emitting the event. The optiona
 Some example `start` configurations:
 
 - `when: {event: "startup"}`: start immediately (this is the default behavior if unspecified).
-- `when: {source: "myPreStart", event: "exitSuccess", timeout: "60s"}`: wait up to 60 seconds for the service in the same container named `myPreStart` to exit successfully.
-- `when: {source: "myDb", event: "healthy"}`: wait forever, until the service `myDb` has a healthy instance. This service could be in the same container or external.
-- `when: {source: "myDb", event: "stopped"}`: start after the service in this container named `myDb` stops. This could be useful for copying a backup of the data off the instance.
-
+- `when: {source: "myPreStart", once: "exitSuccess", timeout: "60s"}`: wait up to 60 seconds for the service in the same container named `myPreStart` to exit successfully.
+- `when: {source: "myDb", once: "healthy"}`: wait forever, until the service `myDb` has a healthy instance. This service could be in the same container or external.
+- `when: {source: "myDb", once: "stopped"}`: start after the service in this container named `myDb` stops. This could be useful for copying a backup of the data off the instance.
+- `when: {source: "watch.myDb", each: "changed"}`: run the job each time the watch for the service `myDb` reports a change.
 
 #### Watches
 

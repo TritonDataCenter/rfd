@@ -19,7 +19,7 @@ documentation, expressed in terms of ContainerPilot v3 configuration.
         // we want to start this job when the "setup" job has exited
         // with success but give up after 60 sec
         source: "setup",
-        event: "exitSuccess",
+        once: "exitSuccess",
         timeout: "60s"
       },
       health: {
@@ -49,7 +49,7 @@ documentation, expressed in terms of ContainerPilot v3 configuration.
       // we can create a chain of "prestart" events
       when: {
         source: "consul-agent",
-        event: "healthy"
+        once: "healthy"
       },
       exec: "/usr/local/bin/preStart-script.sh",
       restart: "never"
@@ -58,7 +58,7 @@ documentation, expressed in terms of ContainerPilot v3 configuration.
       name: "preStop",
       when: {
         source: "app",
-        event: "stopping"
+        once: "stopping"
       },
       exec: "/usr/local/bin/preStop-script.sh",
       restart: "never",
@@ -67,7 +67,7 @@ documentation, expressed in terms of ContainerPilot v3 configuration.
       name: "postStop",
       when: {
         source: "app",
-        event: "stopped"
+        once: "stopped"
       },
       exec: "/usr/local/bin/postStop-script.sh",
     },
@@ -96,13 +96,19 @@ documentation, expressed in terms of ContainerPilot v3 configuration.
     },
     {
       name: "reload-app",
-      when: "watch.app changes",
+      when: {
+        source: "watch.app",
+        each: "changed"
+      },
       exec: "/usr/local/bin/reload-app.sh",
       timeout: "10s"
     },
     {
       name: "reload-nginx",
-      when: "watch.nginx changes",
+      when: {
+        source: "watch.nginx",
+        each: "changed"
+      },
       exec: "/usr/local/bin/reload-nginx.sh",
       timeout: "30s"
     }

@@ -24,7 +24,7 @@ and postStop behavior
         // guarantee that the job will complete before 'app' is killed
         // so this kind of event should be short-lived.
         source: "app",
-        event: "stopping"
+        once: "stopping"
       },
       exec: "/usr/local/bin/preStop-script.sh",
       restart: "never",
@@ -37,7 +37,7 @@ and postStop behavior
         // has the configuration 'restarts: "unlimited"' then this event
         // will only be received when we SIGHUP or shut down ContainerPilot.
         source: "app",
-        event: "stopped"
+        once: "stopped"
       },
       exec: "/usr/local/bin/postStop-script.sh",
     }

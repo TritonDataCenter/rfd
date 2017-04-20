@@ -30,7 +30,7 @@ dependency on 'redis'; it can handle a missing redis gracefully.
       when: {
         // this job won't fire until mysql is healthy
         source: "watch.mysql",
-        event: "healthy"
+        once: "healthy"
       }
     },
     {
@@ -42,7 +42,7 @@ dependency on 'redis'; it can handle a missing redis gracefully.
       when: {
         // this job will fire whenever redis changes
         source: "watch.redis",
-        event: "changed"
+        each: "changed"
       }
     },
     {
@@ -53,7 +53,7 @@ dependency on 'redis'; it can handle a missing redis gracefully.
       when: {
         // 'app' won't start until the 'configure-db' has succeeeded
         source: "configure-db",
-        event: "exitSuccess"
+        once: "exitSuccess"
       },
       health: {
         exec: "/usr/bin/curl --fail -s -o /dev/null http://localhost:8000",

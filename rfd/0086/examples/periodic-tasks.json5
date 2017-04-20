@@ -24,7 +24,7 @@ and set up jobs that respond to failure of those tasks
       ],
       when: {
         source: "task1",
-        event: "exitFailed"
+        each: "exitFailed"
       }
     }
   ]

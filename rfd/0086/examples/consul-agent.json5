@@ -43,7 +43,7 @@ needs 'consul-agent' to be healthy before it can run.
         // inside this container only as it's for a non-advertised job.
         // note we don't need to script a poll+timeout.
         source: "consul-agent",
-        event: "healthy",
+        once: "healthy",
         timeout: "120s"
       }
     }
@@ -58,7 +58,7 @@ needs 'consul-agent' to be healthy before it can run.
         // 'app' won't start until the 'preStart' has succeeeded, but we
         // give up after 120 seconds
         source: "preStart",
-        event: "exitSuccess"
+        once: "exitSuccess"
         timeout: "120s"
       },
       health: {
