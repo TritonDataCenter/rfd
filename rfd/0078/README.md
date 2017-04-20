@@ -49,7 +49,7 @@ state: draft
         - [Sending an additional metadata record for each findObjects response](#sending-an-additional-metadata-record-for-each-findobjects-response)
       - [Performance impact](#performance-impact)
     - [Backward compatibility](#backward-compatibility)
-      - [Caveat](#caveat)
+      - [Workaround for old moray clients connected to new moray servers](#workaround-for-old-moray-clients-connected-to-new-moray-servers)
     - [Forward compatibility](#forward-compatibility)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -688,7 +688,9 @@ Otherwise, it will respond with a `NotIndexedError` error.
 
 For every `findObjects` request, regardless of whether the `requireIndexes`
 option is present/set to `true`, a new `metadata` record will be sent as the
-first `data` record of the response.
+first `data` record of the response if the property
+`internalOpts.sendHandledOptions` of the `findObjects`' `options` parameter is
+set to true.
 
 This record will have only one property named `_handledOptions`, and will
 include all the `findObjects` options that were handled by the server.
@@ -958,10 +960,9 @@ should be possible to make this the default in moray without causing any
 significant breakage. It could then allow to remove support for filtering on
 unindexed fields, which could make some of the existing moray code base simpler.
 
-#### Caveat
+#### Workaround for old moray clients connected to new moray servers
 
-There is one use case where the current proposed solution does not provide
-backward compatibility. If:
+Let's consider the following use case as an example:
 
 1. a user of an old node-moray client passes the `requireIndexes: true` to its
    `findObjects` method
@@ -971,12 +972,25 @@ backward compatibility. If:
 
 3. all fields included in the search filter have usable indexes
 
-the moray client will receive a metadata record as the first record of the
-response, even though it does not know how to handle it, and will forward it as
+The moray client would receive a metadata record as the first record of the
+response, even though it does not know how to handle it, and would forward it as
 a data record to the user.
 
 In this case, the user of the old moray client would need to handle the metadata
-record explicitly.
+record explicitly, which is not desirable.
+
+In order to work around that problem, a new internal property named
+`internalOpts` for the `options` parameter of `findObjects` requests will be
+handled by the moray server.
+
+Metadata records will be sent by a moray server implementing this RFD _only_ if
+this property is set to `{sendHandledOptions: true}`. Moray clients implementing
+this RFD will set this value.
+
+Users of old moray clients would need to pass `{internalOpts:
+{sendHandledOptions: true}}` to `findObjects` requests when connected to new
+moray servers in order for the request to error with an internal error, which is
+not considered a valid use case.
 
 ### Forward compatibility
 
