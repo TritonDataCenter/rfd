@@ -420,65 +420,36 @@ The prior art examples given above focus on services that run continuously, and 
 
 ### Deployment group
 
-*NEEDS A REWRITE*
+It is expected that most applications are made up of multiple [services](#service). A deployment group defines a set of services and other resources the application operator wishes to work on as a set. It's possible that an entire application run as a single deployment group, but also likely, especially for large applications, that the entire application will be managed in separate deployment groups that share network configuration and publish or consume amongst each other.
 
-While [services](#service) abstract any number of compute instances running the same software with the same configuration, a project allows users to group services and other resources together so that they can be managed as a whole without the distraction or complication or unrelated components.
+The models for deployment groups are [CloudFormation, Terraform](#cloudformation-terraform-and-other-templated-deployment-tools), and [Docker Compose](#compose). Those tools allow users not only to define services (or Auto Scaling Groups on AWS), but also to define other resources, including volumes and networks, needed for a given deployment. Combining these resources that are managed as a group by a single team into a single manifest, even if those resources are shared with other teams or deployments, allows them to be versioned and interacted with as a group, and fits the growing consumer expectations that they should and can manage infrastructure as code.
 
-The concept of projects was first introduced with [RBACv2 in RFD13](../0013/README.md#proposal), this RFD intends to replace the definition of services from RFD13. Though projects and other features described in this RFD may be built independently of RBACv2 work, many assumptions about RBACv2 are made throughout this text.
+Interacting with a set of resources as a group can include duplicating the deployment to create a staging environment, or to create a new instance of a single-tenant application that's presented as a service to another customer. Recognizing the user's need to deploy things as a group provides semantic context that makes it easier to support both those workflows.
 
-Once projects are implemented, all customer-defined infrastructure resources in Triton, including [compute](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), and other resources that may be defined in the future _must_ be a member of a project. Some resources (networks, for example) may be shared among different projects, while others (example: services and compute instances) must only be part of a single project.
-
-```
-
-                     ┌───────────────┐
-                     │               │
-              ┌──────│ Organizations │──────┐
-              │      │               │      │
-              │      └───────────────┘      │
-        ┌──────────┐                    ┌───────┐
-        │          │                    │       │
-        │ Projects │────────────────────│ Users │
-        │          │                    │       │
-        └──────────┘                    └───────┘
-              │
-        ┌─────┴──────┬───────────┬────────────┐
-        │            │           │            │
-  ┌──────────┐ ┌──────────┐ ┌─────────┐ ┌───────────┐
-  │          │ │          │ │         │ │           │
-  │ Services │ │ Networks │ │ Storage │ │ Unmanaged │
-  │          │ │          │ │         │ │  Compute  │
-  └──────────┘ └──────────┘ └─────────┘ │           │
-        │                               └───────────┘
-        │
-   ┌─────────┐
-   │         │
-   │ Compute │
-   │         │
-   └─────────┘
-
-```
-
-In the above diagram "unmanaged compute" describes both existing instances that were defined before the introduction of services, as well as new instances that a user may define without first defining a service. Support for existing unmanaged compute and their ongoing use, as well as the ability to provision new unmanaged instances is required, despite the introduction of services. However, there is no requirement nor intention of providing a migration plan to convert a collection of existing unmanaged instances into a service.
-
-Projects are described by a [project manifest](./projects/manifest.md), a text file that can be easily copied from elsewhere and in which changes are easily discernible in a text diff. They also have attached metadata as described below.
-
-[Read more about what projects mean in the Mariposa context](./projects), including Triton CLI commands and the manifest file.
+In addition to [services](#service), other Triton resources that might be included in a deployment group could include [compute instances](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), and [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), as well as other resources we might create in the future.
 
 
 
 ### Deployment meta (including secrets)
 
-*NEEDS A REWRITE*
+Many applications require configuration values which are undesirable or unsafe to set in the application image or stored in a repo with the service definition. Additionally, these details are often shred among multiple services that are deployed together. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
 
-Many applications require configuration values which are undesirable or unsafe to set in the application image. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
+Additionally, there are often details about a deployment that are known at the orchestration level that are useful within applications. An example might include the number of instances the user has defined for a service. That number can then be used by the service to manage its sharding behavior, if so configured.
 
-This document proposes a simple method of storing those details and injecting them into containers that offers better security than embedding them in the images or provisioning scripts. It is intended to easily interoperate with existing applications, rather than propose new methods of secret sharing that would require changes in customer applications.
-
-[Read more about meta in the Mariposa context](./meta), including Triton CLI commands and the manifest file.
+This document proposes a simple method of storing those details and injecting them into services that offers better security than embedding them in the images or provisioning scripts. It is intended to easily interoperate with existing applications, rather than propose new methods of secret sharing that would require changes in customer applications.
 
 
 
 ## Relationship between these resources and RBACv2
+
+Though this document does not define any aspect of RBACv2, the abstractions defined here need to be considered in that context.   Certainly, users will expect to be able to control permissions on [services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets).
+
+Deployment groups are just one of a number of different logical groupings of resources. As with billing groups, a single object, be it a service, network, volume, or any other, may only be a member of a single deployment group. This differs from more general resource groups that may be used for security purposes or to arrange resources in terms that match the org structure
+
+
+However, unlike groupings that users may use to arrange resources to match organizational structure
+
+
 
 *NEEDS A REWRITE*
 
@@ -486,7 +457,7 @@ Multiple groupings for:
 
 - Deployment
 - Security management
-- Convenience
+- Billing
 
 
 
@@ -604,6 +575,7 @@ The lesson there is that RDS users must build their database client applications
 
 *NEEDS A REWRITE*
 
+- Starting instances with Docker images using CloudAPI
 - Setting stop timeout, including no timeout
 - `docker exec`
 - Mapping volumes from another container via `--volumes-from`
