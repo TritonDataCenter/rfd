@@ -440,7 +440,34 @@ This document proposes a simple method of storing those details and injecting th
 
 
 
-## Relationship between these resources and RBACv2
+## Significant questions and relationship to other work
+
+The addition of these new abstractions raises some questions that are not yet fully defined in this RFD. Additionally, this RFD proposes things that need to be put in context with other RFDs. 
+
+### Task queue
+
+The simple cases of scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. While we're already familiar with the time it takes for actions on individual instances to complete, operating on a service that may have hundreds or thousands of instances is expected to take significantly longer and likely require some form of queuing mechanism. We should also be aware that operating at that scale has broader, possibly more disastrous consequences.
+
+In the case that either the user or systems are in error, either in defining the ideal state of the services or in reconciling the actual state with that ideal, users must have a mechanism to stop further changes from being executed by Mariposa. Users must be able to interact with that work queue, perhaps simply to freeze it or to remove tasks from it. And, we need to consider the need to stop the automatic creation of new tasks in the work queue while users may be working to resolve incidents.
+
+The internal service that's responsible for reconciling differences between the user's defined ideal state for services and the actual state of the infrastructure will likely need to manage this queue. However we define that queue, we need to design it in such a way that recognizes the fallibility of users and systems, and gives users an opportunity to stop further changes, and where possible, reverse course.
+
+
+
+### Health
+
+
+
+*NEEDS A REWRITE*
+
+- Health
+	- Difference between liveliness and readiness: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
+- Health vs. discovery
+- Health vs. rescheduling
+
+
+
+### Relationship between these resources and RBACv2
 
 Though this document does not define any aspect of RBACv2, the abstractions defined here need to be considered in that context.   Certainly, users will expect to be able to control permissions on [services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets).
 
@@ -458,30 +485,11 @@ Multiple groupings for:
 - Deployment
 - Security management
 - Billing
+- CNS namespacing
 
 
 
-## Task queue
-
-*NEEDS A REWRITE*
-
-Scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. To represent this to the user, Triton must expose the task queue and offer the ability to cancel jobs.
-
-[Read more about the the Mariposa task queue](./queue), including Triton CLI commands.
-
-
-
-## Health
-
-*NEEDS A REWRITE*
-
-- Health
-	- Difference between liveliness and readiness: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
-- Health vs. discovery
-- Health vs. rescheduling
-
-
-## Placement and affinity
+### Placement and affinity
 
 *NEEDS A REWRITE*
 
@@ -489,7 +497,7 @@ Scaling, upgrading, even stopping all the instances of an service can take time.
 
 ## Desirable features not addressed in this RFD
 
-This section discusses three features that might make it easier to operate [stateful applications that require external state management](#stateful-with-external-state-management), as well as one that would improve the operation of [applications presented as services to others](#applications-presented-as-services-to-others). These features are not being further addressed in this RFD, but this section summarizes them as they relate to this RFD.
+This section discusses features that might make it easier to operate [stateful applications that require external state management](#stateful-with-external-state-management), as well as one that would improve the operation of [applications presented as services to others](#applications-presented-as-services-to-others). These features are not being further addressed in this RFD, but this section summarizes them as they relate to this RFD.
 
 Also, because this RFD assumes the ability to define services running Docker images, all without interaction with the Docker API presented by sdc-docker, we should consider CloudAPI features to support Docker API-style interactions with instances, such as some equivalent of `docker exec`.
 
@@ -552,6 +560,11 @@ Using containers as a wrapper for data volumes and mapping them  into other cont
 Host volumes aren't supported on Triton because the customer doesn't own the underlying host—the bare metal compute node. That relationship adds more complexity: while it's possible to create a data container as shown above, Triton provides no mechanism to reserve space on that CN for your later use. Without that, customers have no guarantee that space will be available for them to run their applications attached to their data at a later time (the concept of "reservations" has previously been discussed to address this problem, though I can find no written record of it at this time).
 
 
+### Remote block stores (possibly iSCSI)
+
+*NEEDS A REWRITE*
+
+
 
 ### Virtual IPs
 
@@ -567,7 +580,9 @@ The distancing of market offerings from customer expectations is further highlig
 
 > Please note that, we strongly recommend you use the DNS Name to connect to your DB Instance as the underlying IP address can change (e.g., during a failover).
 
-The lesson there is that RDS users must build their database client applications in a way that tolerates dropped connections, changed IPs, and other failed requests.
+The lesson there is that RDS users must build their database client applications in a way that tolerates dropped connections, changed IPs, and other failed requests. Looking beyond AWS at other clouds, it does not appear that anybody offers a solution for application independent high-availability with meaningfully better guarantees than Elastic IPs (in this case, "meaningfully" means "instant failover without dropped connections").
+
+This doesn't mean virtual or persistent IPs are not valuable, however. They are highly desirable, especially for internet-facing services and others that perform better with very long DNS TTLs. They are not, however, a miracle solution that eliminates any need for client-side error handling.
 
 
 
