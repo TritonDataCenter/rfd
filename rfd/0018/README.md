@@ -9,7 +9,8 @@ state: predraft
 
 Currently a user creating a docker container does not select their networks in
 their `docker run` commandline though they can specify the -P in order to get a
-an external NIC. The fabric network they're given is always the network
+an external NIC. The external NIC is based on the default network configured
+for the data center. The fabric network they're given is always the network
 configured in UFDS as the default for their account.
 
 Users also do not directly select their package. The package is chosen based on
@@ -76,7 +77,11 @@ What we propose here is to make a reserved namespace for labels that have
 special meanings for sdc-docker. These would look like:
 
 ```
-com.joyent.<key>=<value>
+com.joyent.<key>=<value>     # Joyent/Triton-specific use cases
+```
+or
+```
+triton.<key>=<value>         # Triton-specific use cases
 ```
 
 and the first of these would be `com.joyent.package`. If a user specifes this
@@ -101,26 +106,48 @@ to match packages, even though the actual label is just the uuid. We'll do the
 lookup from PAPI to allow all 3 of these to work so that customers can set and
 query based on them.
 
-Similar to package, we'd add `com.joyent.networks` for allowing a user to
-specify a list of networks they have access to. As users may want more than one
-attached to a container, this should allow multiple values. Since we cannot have
-multiple --label options with the same key, the current thinking is that we'd
-allow:
+Similar to package, we'd add `triton.networks` and `triton.network.public` to
+provide users the flexibility of selecting networks from the ones they have
+access to. As users may want more than one network attached to a container,
+`triton.networks` should allow multiple values. Since we cannot have multiple
+`--network` or `--label` options with the same key, the current thinking is
+that we'd allow:
 
 ```
-docker create --label "com.joyent.networks=networkA,networkB [...]
+docker create --label "triton.networks=networkA,networkB [...]
 ```
 
 where the value for the key here is a comma separated list of one or more
 networks. Then when doing filtering we could allow:
 
 ```
-docker ps --filter "label=com.joyent.networks=networkA,networkB"
-docker ps --filter "label=com.joyent.network=networkA"  # with some magic
+docker ps --filter "label=triton.networks=networkA,networkB"
+docker ps --filter "label=triton.networks=networkA"
 ```
 
 so that you could look up VMs with a specific combination of networks, or all
 VMs matching a single network.
+
+When user wants a container to present itself on a public network that is
+different from the default external network configured in the data center, the
+user would specify the `triton.network.public` label to set the desired
+"public" network, whether it is external or internal.
+
+The single-value `--network` argument will still be supported for compatibility
+with Docker. It should work together with `--label triton.network.public`.
+However if both `--network` and `--label triton.networks` are specified, the
+`--network` value will be ignored.
+
+Combining the different network arguments above would enable the user to
+attach a container to the desired default or non-default, fabric or non-fabric
+networks at provisioning time.
+
+When the same network is passed more than once through these argunments, the
+duplicated values should be eliminated so that the container does not end up
+having more than one NIC on the same network.
+
+Finally network pools should be allowed and work in the same way as individual
+networks when it comes to specifying networks in these network arguments.
 
 
 ## Future Considerations
@@ -128,23 +155,10 @@ VMs matching a single network.
  * should add a cache for PAPI data in sdc-docker
 
 
-## Open Questions
-
- * Are we ok with the special cases required here for:
-     * the lookup by single network
-     * the lookup/specification of package by any of UUID, short UUID, name
-
- * Any other problems with the overall approach?
-
- * Which namespace should we use for these special labels?
-     * [ZAPI-671](https://devhub.joyent.com/jira/browse/ZAPI-671) might suggest
-       using triton.* namespace instead of com.joyent.*?
-     * fwiw [Docker Docs](https://docs.docker.com/engine/userguide/labels-custom-metadata/#label-keys-namespaces)
-       suggest that "All (third-party) tools should prefix their keys with the
-       reverse DNS notation of a domain controlled by the author. For example,
-       `com.example.some-label`."
-
 ## Tickets
 
  * [DOCKER-502](https://devhub.joyent.com/jira/browse/DOCKER-502) -- adding support for selecting packages
  * [DOCKER-585](https://devhub.joyent.com/jira/browse/DOCKER-585) -- adding support for selecting networks
+ * [DOCKER-897](https://devhub.joyent.com/jira/browse/DOCKER-897) -- expanding support to non-fabric networks
+ * [DOCKER-936](https://devhub.joyent.com/jira/browse/DOCKER-936) -- expanding support to multiple networks
+ * [DOCKER-1020](https://devhub.joyent.com/jira/browse/DOCKER-1020) -- adding support for selecting network for exposed ports
