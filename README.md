@@ -60,7 +60,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 15 Reduce/Eliminate runtime LX image customization](./rfd/0015/README.md) |
 | predraft | [RFD 16 Manta Metering](./rfd/0016/README.md) |
 | draft    | [RFD 17 Cloud Analytics v2](./rfd/0017/README.md) |
-| predraft | [RFD 18 Support for using labels to select networks and packages](./rfd/0018/README.md) |
+| publish  | [RFD 18 Support for using labels to select networks and packages](./rfd/0018/README.md) |
 | predraft | [RFD 19 Interface Drift In Workflow Modules](./rfd/0019/README.md) |
 | draft    | [RFD 20 Manta Slop-Aware Zone Scheduling](./rfd/0020/README.md) |
 | draft    | [RFD 21 Metadata Scrubber For Triton](./rfd/0021/README.md) |
