@@ -612,6 +612,11 @@ Including the `requireIndexes` option, these options names are:
 * `limit`
 * `offset`
 * `sort`
+* `noLimit`
+* `no_count`
+* `sql_only`
+* `noBucketCache`
+* `timeout`
 * `requireIndexes`
 
 If the first `'data'` event received by the moray client is not a metadata
