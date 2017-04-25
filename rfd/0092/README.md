@@ -124,13 +124,28 @@ Related tickets:
 
 ### Cueball changes for better connection management
 
-(Pedro to fill in)
+Sdcadm itself needs to be ready to work with HA setups, which means being able
+to properly talk to services hosted by different VMs on several nodes using
+HTTP. This is exactly the kind of functionality cueball's HTTP Agent library
+has been designed for. (See [TOOLS-1642](https://devhub.joyent.com/jira/browse/TOOLS-1642))
+
+Additionally, sdcadm uses DNS lookups during the updates of moray and SAPI VMs
+when we're just updating a single instance of each one of them. Right now those
+lookups are performed calling system's `/usr/bin/dig` command directly without
+any additional development regarding proper error handling, reconnections to
+binder, ...
+
+While it's not clear if we will be able or not to get rid of these functions,
+in the short term those should use Cueball's resolvers interface, and take
+advantage of all the DNS related functionalities that it provides in order to
+simplify sdcadm itself. (See [TOOLS-1643](https://devhub.joyent.com/jira/browse/TOOLS-1643))
 
 Related tickets:
 [TOOLS-1642](https://devhub.joyent.com/jira/browse/TOOLS-1642),
 [TOOLS-1643](https://devhub.joyent.com/jira/browse/TOOLS-1643)
 
 ### Analyze and test HA-ready candidates
+
 A service must meet the following criteria to be considered HA-capable:
 
 Add Instances
