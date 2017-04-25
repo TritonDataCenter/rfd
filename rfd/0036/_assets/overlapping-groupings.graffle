@@ -356,7 +356,7 @@
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Inventory team\
+\f0\fs20 \cf0 Inventory resource group\
 }</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -806,7 +806,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Stores team}</string>
+\f0\fs20 \cf0 Stores resource group}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -1573,7 +1573,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Catalog team\
+\f0\fs20 \cf0 Catalog resource group\
 }</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -1645,7 +1645,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Offers team\
+\f0\fs20 \cf0 Offers resource group\
 }</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -1717,7 +1717,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Customers team\
+\f0\fs20 \cf0 Customers resource group\
 }</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -1845,7 +1845,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Orders team\
+\f0\fs20 \cf0 Orders resource group\
 }</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
@@ -1915,7 +1915,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Senior web team}</string>
+\f0\fs20 \cf0 Web resource group}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -1986,7 +1986,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Network &amp; security team}</string>
+\f0\fs20 \cf0 Network &amp; security resource group}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -2055,7 +2055,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 DB team}</string>
+\f0\fs20 \cf0 DB resource group}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -2126,7 +2126,7 @@ ingress network}</string>
 {\*\expandedcolortbl;;}
 \pard\tx560\tx1120\tx1680\tx2240\tx2800\tx3360\tx3920\tx4480\tx5040\tx5600\tx6160\tx6720
 
-\f0\fs20 \cf0 Legacy IT team}</string>
+\f0\fs20 \cf0 Legacy IT resource group}</string>
 				<key>VerticalPad</key>
 				<integer>0</integer>
 			</dict>
@@ -2181,7 +2181,7 @@ ingress network}</string>
 	<key>MasterSheets</key>
 	<array/>
 	<key>ModificationDate</key>
-	<string>2017-04-25 16:33:29 +0000</string>
+	<string>2017-04-25 18:16:02 +0000</string>
 	<key>Modifier</key>
 	<string>Casey Bisson</string>
 	<key>NotesVisible</key>
@@ -2262,7 +2262,7 @@ ingress network}</string>
 			</dict>
 		</array>
 		<key>Frame</key>
-		<string>{{-1955, -491}, {1137, 1368}}</string>
+		<string>{{57, -5}, {1286, 873}}</string>
 		<key>ListView</key>
 		<true/>
 		<key>OutlineWidth</key>
@@ -2276,7 +2276,7 @@ ingress network}</string>
 		<key>SidebarWidth</key>
 		<integer>120</integer>
 		<key>VisibleRegion</key>
-		<string>{{60, 0}, {1002, 1226}}</string>
+		<string>{{0, 50}, {1151, 731}}</string>
 		<key>Zoom</key>
 		<real>1</real>
 		<key>ZoomValues</key>
