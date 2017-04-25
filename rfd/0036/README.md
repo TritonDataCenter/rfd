@@ -456,7 +456,7 @@ The internal service that's responsible for reconciling differences between the 
 
 ### Health
 
-
+A significant aspect of this RFD depends on some notion of "health" of an instance. Triton has a notion of instance states
 
 *NEEDS A REWRITE*
 
@@ -471,21 +471,22 @@ The internal service that's responsible for reconciling differences between the 
 
 Though this document does not define any aspect of RBACv2, the abstractions defined here need to be considered in that context.   Certainly, users will expect to be able to control permissions on [services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets).
 
-Deployment groups are just one of a number of different logical groupings of resources. As with billing groups, a single object, be it a service, network, volume, or any other, may only be a member of a single deployment group. This differs from more general resource groups that may be used for security purposes or to arrange resources in terms that match the org structure
+Deployment groups are just one of a number of different logical groupings of resources. As with billing groups, a single object, be it a service, network, volume, or any other, may only be a member of a single deployment group. This differs from more general resource groups that may be used for security purposes or to arrange resources in terms that match the org structure.
 
+For some types of groupings, resources can be in exactly one or zero or one group. For other types of groupings, objects may be in any number of groups.
 
-However, unlike groupings that users may use to arrange resources to match organizational structure
+- Billing groups
+An object must be in exactly one group
+- Deployment groups
+An object must be in zero or one deployment groups
+- Security management groups or simple organizational groups
+An object may be in any number of security groups
+- CNS namespaces
+This needs definition
 
+The following illustration is offered as an example of this RFD's understanding of how users may implement groupings for an application.
 
-
-*NEEDS A REWRITE*
-
-Multiple groupings for:
-
-- Deployment
-- Security management
-- Billing
-- CNS namespacing
+![Overlapping groupings illustration](./_assets/overlapping-groupings.png)
 
 
 
