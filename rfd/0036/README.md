@@ -456,14 +456,37 @@ The internal service that's responsible for reconciling differences between the 
 
 ### Health
 
-A significant aspect of this RFD depends on some notion of "health" of an instance. Triton has a notion of instance states
+A significant aspect of this RFD depends on some notion of the "health" of an instance. Triton has a notion of instance states (TODO: there's an awesome, if only sort-of accurate, diagram showing valid instance state transitions in which shows everything can go to everything; that should be linked here if it can be found), which can include "provisioning" or "running" and similar, but those states don't reflect the health of the application inside the instance.
 
-*NEEDS A REWRITE*
+The failure of PID 1 in a Docker instance will cause the instance transition to the "stopped" state, and may trigger a "restarting," if the instance's restart policy is configured that way (actually, the failure of PID 1 in any instance will trigger this, but it's more common in Docker instances). However, even that behavior cannot be depended on for the needs of most cloud users. Instead, users need to be able to define a test of health, and they expect the scheduler to monitor that health and react to it by scheduling new instances to replace failed instances.
 
-- Health
-	- Difference between liveliness and readiness: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/
-- Health vs. discovery
-- Health vs. rescheduling
+
+
+#### What is health?
+
+From an infrastructure level, the best definition of health is that the application operator knows a healthy or unhealthy instance when they see it (apologies to [justice Potter Stewart](https://en.wikipedia.org/wiki/Jacobellis_v._Ohio)), and for that reason this RFD leaves it to the application operator to define the test that determines the health of an instance. 
+
+Though health has traditionally been a binary state, [Kubernetes differentiates between an instance's "liveliness" and it's application's "readiness"](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) and [Consul allows applications to declare themselves degraded](https://www.consul.io/docs/agent/checks.html) (a "warning" state via an HTTP 429 response). Because this RFD covers both the provisioning of infrastructure—compute instances providing a service—and the health of the service that infrastructure serves, it needs to consider the distinction Kubernetes makes between an instance that has successfully started vs. the health of the application within it. To accommodate that, the strawman config for this RFD proposes that instances be given a window during which that can become healthy after the instance is started.
+
+Though this RFD refuses to attempt a universal definition of "health" for a service, it does attempt to define what should happen if an instance of a service is determined to be unhealthy, within some user configurable space. In broad strokes, unhealthy instances of a service should not be discoverable (with implications for CNS, the only Triton-provided discovery mechanism as this time), and the infrastructure should attempt to schedule replacement instances of that service (rescheduling).
+
+
+
+#### Health vs. discovery
+
+Before continuing, we need to acknowledge that the presence of an instance in a discovery service is never a guarantee that it is operating correctly. Modern applications must accept that any given request may fail due to a number of uncontrollable factors. So, discovery is not a guarantee of availability, but it can help limit the number of instances that an application attempts to interact with to those that are _expected_ to be available. This is important to improving performance in any substantially scaled application.
+
+Given these constraints, it is reasonable that services as defined in this RFD and their health definitions interact with [Triton Container Name Service](https://www.joyent.com/blog/tritoncns-and-docker) and that CNS not include instances of a service that have failed their health checks, though the full details and implications this has on [CNS](https://github.com/joyent/rfd/blob/master/rfd/0001/README.md) need further definition.
+
+
+
+#### Health vs. rescheduling
+
+Though it may not be appropriate for every application, many cloud customers—including both users of [Autoscaling Groups](#auto-scaling-groups) and [Mesos-like schedulers](#mesos-marathon-and-kubernetes)—have developed expectations and dependencies on the infrastructure's ability to reschedule instances that have failed their health checks. That said, the implications of this seemingly simple proposition are significant. [AWS's infamous 2011 outage](https://aws.amazon.com/message/65648/) was caused by a netsplit that caused a "storm" of activity that overwhelmed the infrastructure.
+
+Clearly, meeting customer expectations regarding rescheduling while also avoiding self-inflicted disaster that may spiral out of control from transient conditions including network interruptions or even a single compute node failure may be challenging. Given the target of 2,000 instances per CN, and assuming every instance on the CN is a managed service, a single CN failure could trigger a substantial amount of rescheduling activity. It's easy to understand how a netsplit that affects even a small portion of a DC could be overwhelming. That challenge, however, demands solutions.
+
+This RFD does not attempt to provide answers to the questions raised by by this challenge, just to acknowledge it. It's possible that the solution may include rate limiting, or other approaches, but that remains an open question to be solved.
 
 
 
@@ -561,9 +584,11 @@ Using containers as a wrapper for data volumes and mapping them  into other cont
 Host volumes aren't supported on Triton because the customer doesn't own the underlying host—the bare metal compute node. That relationship adds more complexity: while it's possible to create a data container as shown above, Triton provides no mechanism to reserve space on that CN for your later use. Without that, customers have no guarantee that space will be available for them to run their applications attached to their data at a later time (the concept of "reservations" has previously been discussed to address this problem, though I can find no written record of it at this time).
 
 
-### Remote block stores (possibly iSCSI)
+### Remote block stores
 
-*NEEDS A REWRITE*
+Though Joyent has deep experience with remote storage and its limitations (see [one](https://www.joyent.com/blog/magical-block-store-when-abstractions-fail-us), [two](https://www.joyent.com/blog/network-storage-in-the-cloud-delicious-but-deadly), [three](https://ops.faithlife.com/?p=6), it's an expected abstraction in clouds. This is different from [RFD26's shared NFS volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) in that they're single-tenant (though [Google's offering](https://cloud.google.com/compute/docs/disks/) in [this space](https://cloud.google.com/docs/compare/aws/storage#block_storage) offers [read+write access for a single host and read-only access for many hosts](https://cloud.google.com/compute/docs/disks/add-persistent-disk#use_multi_instances)), demonstrate reasonably high performance, and are tolerable as the backing store for many database applications.
+
+Remote block stores are the most broadly used solution to the critical problem that application operators face of separating the life cycle of compute instances from the data they create and consume in a way that fits the needs of [stateful applications that require external state management](#stateful-with-external-state-management). It should be emphasized that this does not eliminate the risk of data loss due to equipment failures (centralization of data increases that risk in many ways). Joyent has demonstrated alternatives that include [adding internal state management to application images](#stateful-with-internal-state-management). It should be said that state management that goes beyond remote block storage, such as is [demonstrated above](#compose), is absolutely required in any truly resilient and scalable application, but not offering a solution in this space has critical implications to market acceptance.
 
 
 
@@ -598,107 +623,15 @@ This doesn't mean virtual or persistent IPs are not valuable, however. They are 
 
 
 
-## User stories
+## Priorities and roadmap
 
-*NEEDS A REWRITE*
-
-The following user stories are intended to provide a narrative understanding of how these features are intended to be used:
-
-- [jupiter.example.com: what it is and development workflow](./stories/jupiter-example-com.md)
-- [Automatically building and testing jupiter.example.com with Jenkins](./stories/jupiter-example-com-jenkins.md)
-- [Running jupiter.example.com in multiple data centers](./stories/jupiter-example-com-multi-dc.md)
-- [Health-checking, monitoring, and scaling jupiter.example.com](./stories/jupiter-example-com-monitoring-and-health.md)
-- [Creating, copying, and moving projects like microsite.jupiter.example.com](./stories/microsite-jupiter-example-com.md) (also includes secret management)
-
-
-
-## Sample manifests
-
-*NEEDS A REWRITE*
-
-- [Kubernetes on Mariposa](./stories/kubernetes-on-mariposa.md)
-- [WordPress on Mariposa](./stories/wordpress-on-mariposa.md)
-
-
-
-## Implementation and architecture
-
-*NEEDS A REWRITE*
-
-This RFD is mostly concerned with what users can do with Mariposa, not how those features are implemented. Work to define an implementation has begun in additional RFDs, which propose the following components:
-
-- [Projects API](../0079/README.md), which is where [projects](./projects) and their attached [services](./services) and [metadata](./meta) are managed
-- [ProjectsConvergence API](../0080/README.md), which is responsible for watching the actual state of the project and its services, comparing that to the goal state, developing a plan to reconcile those differences, and maintaining a [queue](./queue) of reconciliation plans currently being executed. The name "convergence" emphasizes this component's role in managing reconciliation between the goal state and actual state.
-- [ServicesHealth agent](../0081/README.md), which is responsible for executing [health checks](./services/manifest.md#healthchecks) defined for each service in the project and reporting any failures to the Convergence service. The agents themselves will be spawned and monitored by the ProjectsConvergence service.
-
-Those components are intended to be private services and agents within Triton, exposed via CloudAPI:
-
-```
-                                                ┌─────────────┐
-                                                │             │
-                                                │ Triton user │
-                                                │             │
-                                                └─────────────┘
-                                                       │
-  Public                                               │
-  ─────────────────────────────────────────────────────┼────────────────────
-  Private                                              │
-  Global services                                      ▼
-                                                 ┌──────────┐
-                                                 │          │
-                                                 │ CloudAPI │
-                                                 │          │
-                                                 └──────────┘
-                                                       │
-                                                       ▼
-                 ┌─────────────────────────┐   ┌──────────────┐    ┌───────┐
-                 │                         │   │              │    │       │
-              ┌──│ ProjectsConvergence API │◀─▶│ Projects API │───▶│ Moray │
-              │  │                         │   │              │    │       │
-              │  └─────────────────────────┘   └──────────────┘    └───────┘
-              │               ▲         ▲
-              │               │         │
-              │          Changefeed     │
-              │               ▲         └─────────────────┐
-              │         ┌─────┴───┐                       │
-              │         │         │                       │
-              │     ┌───────┐ ┌───────┐                   │
-              │     │       │ │       │            Health events,
-              └────▶│ vmapi │ │ cnapi │             agent config
-                    │       │ │       │                   ▲
-                    └───────┘ └───────┘                   │
-                        │                                 │
-                        ▼                                 │
-                  Provisioning                            │
-                        │                                 │
-                        │                                 │
-  ──────────────────────┼─────────────────────────────────┼─────────────────
-  Per-project agents    │                                 │
-                        │                     ┌──────────────────────┐
-                        │                     │                      │
-                        │                     │ ServicesHealth agent │
-                        │                     │                      │
-                        │                     └──────────────────────┘
-                        │                                 │
-  ──────────────────────┼─────────────────────────────────┼─────────────────
-  Customer instances    │                                 │
-                        │                                 ▼
-                        │                          TCP and HTTP(S)
-                        │                         health checks via
-                        │                          customer fabric
-                        │                                 │
-                        │      ┌────────────────────┐     │
-                        │      │                    │     │
-                        └─────▶│ Containers and VMs │◀────┘
-                               │                    │
-                               └────────────────────┘
-
-```
+*NEEDS REVISION*
 
 
 
 ## Revision history
 
+- [current](./)
 - [27 March, 2017: kick-off content](https://github.com/joyent/rfd/tree/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036)
 - [9 March, 2017: reorganized and added implementation straw man](https://github.com/joyent/rfd/tree/e38e0b02776a286db47c9fccea1e90646b5f31ef/rfd/0036)
 - [13 December, 2016: added user stories](https://github.com/joyent/rfd/tree/e1b4b05a236e084de065b0765510ec5069210f30/rfd/0036)
