@@ -363,7 +363,7 @@ Triton provides limited mechanisms for this now:
 
 - [sdc-docker supports `--volumes-from`](https://apidocs.joyent.com/docker/features/volumes), which allows one container to be used as the storage volume for another
 - [RFD26 proposes NFS shared volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) which are implemented as zones
-- [ZFS datasets can be delegated to an instance](https://docs.joyent.com/private-cloud/instances/delegated-data-sets), though it is [not safe delegate datasets to untrusted users](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md#safety-considerations)
+- [ZFS datasets can be delegated to an instance](https://docs.joyent.com/private-cloud/instances/delegated-data-sets), though it is [not safe to delegate datasets to untrusted users](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md#safety-considerations)
 - [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, but that feature largely requires a delegated dataset (see above), and is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141)
 
 For the most part, however, instances are provisioned and left running indefinitely while operators update their software using traditional workflows. This RFD will discuss some potential features that may be added to improve support for these applications below.
@@ -444,6 +444,8 @@ This document proposes a simple method of storing those details and injecting th
 
 The addition of these new abstractions raises some questions that are not yet fully defined in this RFD. Additionally, this RFD proposes things that need to be put in context with other RFDs. 
 
+
+
 ### Task queue
 
 The simple cases of scaling, upgrading, even stopping all the instances of an service can take time...sometimes significant time. While we're already familiar with the time it takes for actions on individual instances to complete, operating on a service that may have hundreds or thousands of instances is expected to take significantly longer and likely require some form of queuing mechanism. We should also be aware that operating at that scale has broader, possibly more disastrous consequences.
@@ -486,7 +488,30 @@ Though it may not be appropriate for every application, many cloud customers—i
 
 Clearly, meeting customer expectations regarding rescheduling while also avoiding self-inflicted disaster that may spiral out of control from transient conditions including network interruptions or even a single compute node failure may be challenging. Given the target of 2,000 instances per CN, and assuming every instance on the CN is a managed service, a single CN failure could trigger a substantial amount of rescheduling activity. It's easy to understand how a netsplit that affects even a small portion of a DC could be overwhelming. That challenge, however, demands solutions.
 
-This RFD does not attempt to provide answers to the questions raised by by this challenge, just to acknowledge it. It's possible that the solution may include rate limiting, or other approaches, but that remains an open question to be solved.
+This RFD does not attempt to provide answers to the questions raised by by this challenge, just to acknowledge it. It's possible that the solution may include rate limiting, or other approaches, but that remains an open question to be solved. This RFD also recognizes that rescheduling must not be required for a service, as there are some applications for which it would be harmful. This RFD does not take on those application concerns; instead, it intends to expose a mechanism for application operators to control Triton's behavior to meet their needs.
+
+
+#### Rescheduling vs. restarting vs. starting
+
+[Kubernetes' distinction](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#defining-readiness-probes) between "liveliness" (whether or not the container is running) and "readiness" (whether or not the container is healthy and ready to receive requests) is particularly important as the container is starting, as noted in the given example:
+
+> [A]n application might need to load large data or configuration files during startup. In such cases, you don’t want to kill the application, but you don’t want to send it requests either. 
+
+That example closely links the questions in this section about rescheduling and discovery, as well as recognizes the difference between the health of an application in an instance vs. the running state of the instance. To accommodate that difference, Kubernetes recognizes an `initialDelaySeconds` in the configuration of health checks, defined as the "number of seconds after the container has started before liveness probes are initiated."
+
+Kubernetes also distinguishes between restarting an instance and rescheduling it. [The `restartPolicy` for a pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy) "only refers to restarts of the containers by the kubelet on the same node." Confusingly, Kubernetes has two different abstractions for rescheduling on containers to different nodes: [ReplicationControllers](https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/#rescheduling) and [ReplicaSets](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#when-to-use-a-replicaset), which are managed via [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/). Both promise to do much the same thing:
+
+> [W]hether you have 1 pod you want to keep running, or 1000, a ReplicationController will ensure that the specified number of pods exists, even in the event of node failure or pod termination
+
+In Docker, [rescheduling policies are set in Swarm](https://docs.docker.com/swarm/scheduler/rescheduling/), though it's not clear how that policy is set in the Docker Engine's new [Swarm Mode](https://docs.docker.com/engine/swarm/). Nonetheless, [Docker Services](https://docs.docker.com/engine/swarm/services/) are expected to be rescheduled:
+
+> The Docker swarm mode scheduler may reschedule your running service containers at any time if they become unhealthy or unreachable
+
+...even though rescheduling appears independent from [restart policy](https://docs.docker.com/compose/compose-file/#restartpolicy).
+
+*Needs revision*
+
+
 
 
 
@@ -515,7 +540,99 @@ The following illustration is offered as an example of this RFD's understanding 
 
 ### Placement and affinity
 
-*NEEDS A REWRITE*
+Application operators need some control over placement of their resources for a variety of reasons. The following list is incomplete, but it identifies the key reasons this RFD considers:
+
+- To control fault domains
+- To take advantage of performance domains
+- To comply with regulatory requirements
+
+#### Fault domains
+
+Fault domains include individual compute nodes (CNs), entire data centers (DCs), and units of various scales in between. Those units in between may include:
+
+- Power
+- Network
+- Rack
+
+For many users, a "rack" implies power and network domains, but that assumption is not necessarily true in all cases, especially in private cloud installations that may not conform to the same architecture and topology as our public cloud DCs. However, "rack" is also a very convenient term, and its implications are being increasingly codified in Triton ([see RFD43, for example](https://github.com/joyent/rfd/blob/master/rfd/0043/README.md)).
+
+
+
+#### Performance domains
+
+While application operators will often be very carful to scale across different fault domains, they may also need want to place components within the same performance domain. In many cases, the domains are the same, just used for different reasons. It's easy to imagine users wishing to scale applications across many racks, but keeping a full set of services for each application within the same rack. Some users may wish to refine their discovery 
+
+
+
+#### Regulatory domains
+
+Joyent is familiar with regulatory requirements that require single-tenant hardware for certain applications, or that some applications be guaranteed not to operate on the some hardware with others. Here again
+
+
+
+#### Domains, criteria, operators
+
+The above discusses the fault, performance, and regulatory domains that operators may wish to consider for placement. Those are in addition other factors Triton uses to manage placement, such as:
+
+- The networks to which an instance may be connected
+- The volumes to which an instance may be connected
+- Hardware that can host the instance (SSD drives)
+
+Those factors need to be acknowledged, though users interact with them in ways very different from the placement requirements for fault, performance, and regulatory domains discussed here. 
+
+Though the reasons a person may choose to target a domain may vary, the names of the domains appear to remain the same:
+
+- Compute node (CN)
+- Rack
+- Data center (DC)
+
+Within those, users need to be able to specify different criteria so they may place instances of their services as needed. That criteria might include:
+
+- Group name or UUID (groups may be for deployment, resource, billing, etc.)
+- Groups with a specified tag
+- Service name or UUID
+- Services with a specified tag
+- Volume name or UUID
+- Volumes with a specified tag
+- Instance name or UUID
+- Instances with a specified tag
+- Compute nodes with a specified tag (CN tags are controlled by DC operators, not customers)
+- Compute nodes with a minimum platform image
+
+Finally, the comparison operators:
+
+- `==`: The new container must be on the same node as the container(s) identified by `<value>`.
+- `!=`: The new container must be on a different node as the container(s) identified by `<value>`.
+- `==~`: The new container should be on the same node as the container(s) identified by `<value>`. I.e. this is a best effort or "soft" rule.
+- `!=~`: The new container should be on a different node as the container(s) identified by `<value>`. I.e. this is a best effort or "soft" rule.
+
+Strawman examples, formatted in JSON5:
+
+```json5
+{
+  "placement": {
+    "cn|compute_node": [
+      # do not place on a compute node with the specified resource group name
+      "group:deployment!=<project name>",
+      # try to avoid CNs with the specified service (soft rule, must be a service in this deployment group)
+      "service!=~<service name>"
+    ],
+    "rack": [
+      # require that the instance be in the same rack as a CN with a specified tag (but not necessarily on that CN)
+      "cn:<tag name>==<tag value>"
+    ],
+    "dc|data_center": [
+      # do not provision in a DC that also has a resource group with a given tag (only evals against resource groups in this org)
+      "group:resource:<tag name>!==<tag value>"
+    ]
+  }
+}
+```
+
+Notes on the strawman:
+
+- `cn|compute_node` is intended to suggest users can use either `cn` or `compute_node`
+- This demonstrates colon-separated/joined naming scheme, as in `group:resource:<tag name>`, but `group.resource.<tag name>` makes about equal sense to the author.
 
 
 
@@ -614,12 +731,18 @@ This doesn't mean virtual or persistent IPs are not valuable, however. They are 
 
 ### Docker features we should add to CloudAPI and node-triton
 
-*NEEDS A REWRITE*
+Triton implements a Docker API-compatible interface to manage infrastructure in each data center. This Docker API interface (provided by [sdc-docker](https://github.com/joyent/sdc-docker)) operates in parallel to [CloudAPI](https://apidocs.joyent.com/cloudapi/). Users can accomplish some operations using either API, but others are specific to a single API. Consider the following:
 
-- Starting instances with Docker images using CloudAPI
-- Setting stop timeout, including no timeout
-- `docker exec`
-- Mapping volumes from another container via `--volumes-from`
+![Docker API and CloudAPI side-by-side on Triton](./_assets/docker-api-and-cloudapi-side-by-side)
+
+The Triton CLI tool (node-triton) allows users convenient CLI control over Triton infrastructure via CloudAPI. It's actually very similar to what Docker users would expect from using the Docker CLI, especially since [Docker restructured the syntax in version 1.13](https://blog.docker.com/2017/01/whats-new-in-docker-1-13/#h.yuluxi90h1om). However, there are a few features that Docker users expect that also would be hugely valuable to implement in CloudAPI and the Triton CLI.
+
+Some common and useful Docker API/CLI operations not supported via CloudAPI and the Triton CLI include:
+
+- [Starting Docker instances](https://docs.docker.com/engine/reference/commandline/run/) via CloudAPI and the Triton CLI; this implies support for [pulling Docker images](https://docs.docker.com/engine/reference/commandline/pull/), including [logging in to private registries](https://docs.docker.com/engine/reference/commandline/login/) 
+- [`docker exec...`](https://docs.docker.com/engine/reference/commandline/exec/)
+- Setting a timeout when stopping an instance via CloudAPI, as in [`docker stop <container name> --time <seconds>`](https://docs.docker.com/engine/reference/commandline/stop/), including an indefinite timeout
+- Mapping volumes from another container, as in [`--volumes-from`](https://docs.docker.com/engine/reference/commandline/run/), as well as mapping [RFD26 volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) via `-v` or `--volume`
 
 
 
