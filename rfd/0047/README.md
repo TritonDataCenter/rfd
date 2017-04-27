@@ -262,9 +262,9 @@ manually as needed to implement the following policy:
 
 * keep shard 1 backups forever.  These are relatively small, and it's
   occasionally useful to debug old Marlin jobs from these dumps.
-* for the rest of the shards, for backups older than 1 year, we keep two backups
-  per calendar month.
-* for the rest of the shards, for backups within the last year, we keep all
+* for the rest of the shards, for backups older than 6 months, we keep two
+  backups per calendar month.  (This used to be a full year.)
+* for the rest of the shards, for backups within the last 6 months, we keep all
   backups.
 
 See MANTA-2961 and MANTA-3033 for examples.
