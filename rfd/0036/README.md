@@ -501,13 +501,13 @@ That example closely links the questions in this section about rescheduling and 
 
 Kubernetes also distinguishes between restarting an instance and rescheduling it. [The `restartPolicy` for a pod](https://kubernetes.io/docs/concepts/workloads/pods/pod-lifecycle/#restart-policy) "only refers to restarts of the containers by the kubelet on the same node." Confusingly, Kubernetes has two different abstractions for rescheduling on containers to different nodes: [ReplicationControllers](https://kubernetes.io/docs/concepts/workloads/controllers/replicationcontroller/#rescheduling) and [ReplicaSets](https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/#when-to-use-a-replicaset), which are managed via [Deployments](https://kubernetes.io/docs/concepts/workloads/controllers/deployment/). Both promise to do much the same thing:
 
-> [W]hether you have 1 pod you want to keep running, or 1000, a ReplicationController will ensure that the specified number of pods exists, even in the event of node failure or pod termination
+> [W]hether you have 1 pod you want to keep running, or 1000, a ReplicationController will ensure that the specified number of pods exists, even in the event of node failure or pod termination.
 
-In Docker, [rescheduling policies are set in Swarm](https://docs.docker.com/swarm/scheduler/rescheduling/), though it's not clear how that policy is set in the Docker Engine's new [Swarm Mode](https://docs.docker.com/engine/swarm/). Nonetheless, [Docker Services](https://docs.docker.com/engine/swarm/services/) are expected to be rescheduled:
+In Docker, [rescheduling policies are set in Swarm](https://docs.docker.com/swarm/scheduler/rescheduling/) (though it's not clear how that policy is set in the Docker Engine's new [Swarm Mode](https://docs.docker.com/engine/swarm/)), and [Docker Services](https://docs.docker.com/engine/swarm/services/) are expected to be rescheduled:
 
 > The Docker swarm mode scheduler may reschedule your running service containers at any time if they become unhealthy or unreachable
 
-...even though rescheduling appears independent from [restart policy](https://docs.docker.com/compose/compose-file/#restartpolicy).
+Like Kubernetes, Docker distinguishes rescheduling from [restart policy](https://docs.docker.com/compose/compose-file/#restartpolicy).
 
 *Needs revision*
 
@@ -545,6 +545,8 @@ Application operators need some control over placement of their resources for a 
 - To control fault domains
 - To take advantage of performance domains
 - To comply with regulatory requirements
+
+
 
 #### Fault domains
 
@@ -633,6 +635,11 @@ Notes on the strawman:
 
 - `cn|compute_node` is intended to suggest users can use either `cn` or `compute_node`
 - This demonstrates colon-separated/joined naming scheme, as in `group:resource:<tag name>`, but `group.resource.<tag name>` makes about equal sense to the author.
+
+
+### Auditing
+
+Automation without auditability is dangerous. [RFD50](https://github.com/joyent/rfd/blob/master/rfd/0050/README.md) focuses on improving audit logs for individual instances, but we must recognize the need to audit the resources and automation proposed in this RFD. These logs will be critical for both data center operators and end users. Events that must be auditable include create, update, and delete operations on a service, the automatic scheduling and rescheduling of instances, as well as failed health checks and other events.
 
 
 
