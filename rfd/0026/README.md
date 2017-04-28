@@ -267,14 +267,12 @@ works and makes sense to him.
 
 ### Requirements
 
-1. The solution must work for both Triton Cloud and Triton Enterprise users (public cloud and on-prem).
+1. The solution must work for both Triton Cloud and Triton Enterprise users
+   (public cloud and on-prem).
 
-2. A shared volume size must be expandable (i.e. not a fixed quota size at
-creation time).
+2. Support a maximum shared file system size of 1TB.
 
-3. Support a maximum shared file system size of 1TB.
-
-4. Although initially targeted toward Docker volume support, the solution should
+3. Although initially targeted toward Docker volume support, the solution should
 be applicable to non-Docker containers as well.
 
 ### Non-requirements
@@ -402,6 +400,20 @@ volumes](https://docs.docker.com/engine/reference/commandline/volume_create/).
 This section describes what commands and command line options will be used by
 Triton users to manage their shared volumes on Triton.
 
+#### Interaction with local volumes
+
+Local volumes, created with e.g `docker run -v /foo...` are already supported by
+Triton. A container will be able to mount both local and NFS shared volumes.
+When mounting local and shared NFS volumes on the same mountpoint, e.g with:
+
+````
+docker run -v /bar -v foo:/bar...
+````
+
+the command will result in an error. Otherwise, the NFS volume would be
+implicitly mounted over the `lofs` filesystem created with `-v /bar`, which is
+likely not what the user expects.
+
 #### Overview
 
 ```
@@ -474,16 +486,16 @@ docker run -d -v wp-uploads:/var/wp-uploads:ro wp-server
 
 ## Shared storage implementation
 
-For reliability reasons, compute nodes never use network block storage and Triton
-zones are rarely configured with any additional devices. Thus, shared block
-storage is not an option.
+For reliability reasons, compute nodes never use network block storage and
+Triton zones are rarely configured with any additional devices. Thus, shared
+block storage is not an option.
 
-Shared file systems are a natural fit for zones and SmartOS has good support
-for network file systems. A network file system also aligns with the semantics
-for a Docker volume. Thus, this is the chosen approach. NFS is used as the
+Shared file systems are a natural fit for zones and SmartOS has good support for
+network file systems. A network file system also aligns with the semantics for a
+Docker volume. Thus, this is the chosen approach. NFSv3 is used as the
 underlying protocol. This provides excellent interoperability among various
-client and server configurations. Using NFS even provides for the possibility
-of sharing volumes between zones and kvm-based services.
+client and server configurations. Using NFS even provides for the possibility of
+sharing volumes between zones and kvm-based services.
 
 ### Non-Requirements
 
@@ -513,8 +525,8 @@ deployed without the need for a new platform or a CN reboot.
 The NFS server will serve files out of a ZFS delegated dataset, which allow
 for the following use cases:
 
-1. Upgrading the NFS server zone (e.g to upgrade the NFS server software) without
-needing to throw away users' data.
+1. Upgrading the NFS server zone (e.g to upgrade the NFS server software)
+without needing to throw away users' data.
 
 2. Snapshotting.
 
@@ -576,15 +588,38 @@ concurrency ones (such as database storage) is not critical.
 
 ### Packages for volume containers
 
-NFS shared volumes packages are similar to those used by NAT zones. NFS shared
-volumes will have separate packages used when provisioning their underlying
-storage VMs. These packages will be owned by the administrator, and thus won't
-be available to end users when provisioning compute instances.
+NFS shared volumes will have separate packages used when provisioning their
+underlying storage VMs. These packages will be owned by the administrator, and
+thus won't be available to end users when provisioning compute instances.
+
+#### General characteristics of storage VMs packages
+
+```
+{
+    cpu_cap: 100,
+    max_lwps: 1000,
+    max_physical_memory: 256,
+    max_swap: 256,
+    version: '1.0.0',
+    zfs_io_priority: 1,
+    default: false
+}
+```
+
+#### Package names
+
+NFS volumes' storage VM packages will have names of the following form:
+
+```
+sdc_volume_nfs_$size
+```
+
+where `$size` represents the quota of the package in GiB.
 
 #### Packages sizes
 
-Each volume would have a minimum size of 10 GiB, and support resizing in units
-of 10 GiB and then 100 GiB as the volume size increases:
+Each volume would have a minimum size of 10 GiB, and support sizing in units of
+10 GiB and then 100 GiB as the volume size increases:
 
 * 10 GiB
 * 20 GiB
@@ -608,27 +643,56 @@ of 10 GiB and then 100 GiB as the volume size increases:
 
 ### Placement of volume containers
 
-The placement of the NFS server zone during provisioning is a complicated
-decision. There is no requirement for dedicated hardware that is optimized as
-file servers. The server zones could be interspersed with other zones to soak
-up unused storage space on compute nodes. However, care must be taken so that
-the server zones have enough free local storage space to expand into.
+The placement of NFS server zones during provisioning is a complicated decision
+which depends, among other things, on:
 
-Provisioning of regular zones should also take into account the presence
-storage zones and any future growth they might incur. It is likely we'll have
-to experiment with various approaches to provisioning in order to come up with
-an acceptable solution. The provisioning design is TBD.
+* hardware resources available
+* operation practices
+* use cases
 
-A challenge facing the placement of NFS server zones is whether to place them
-greedily (like DAPI currently does), or to spread them out. Greedy placement
-fills up servers faster, leaving more servers free for larger allocations; this
-improves density in the datacenter. However, greedy placement also directly
-conflicts with the ability to resize NFS server zones; resizing a storage volume
-up is a relativey common operation, but is a dodgy operation on a server which
-has already used up its reserved RAM and disk. Giving NFS server zones a fixed
-upper limit (i.e. 1TiB) helps mitigate this problem.
+For instance, dedicating specific hardware resources to NFS volumes' storage VMs
+could make rebooting CNs due to platform updates less frequent, as these are
+typically driven by LX and other OS fixes.
+
+However, mixing NFS volumes' storage VMs and compute VMs would have the benefits
+of soaking up unused storage space on compute nodes and improving availability
+of NFS volumes when CNs go down,
+
+As a result, the system should allow for either using dedicated hardware or for
+server zones to be interspersed with other zones.
+
+#### Using dedicated hardware
+
+Using dedicated hardware will be achieved by setting traits on NFS shared
+volumes' storage VMs packages that match the traits of CNs where these storage
+VMs should be provisioned.
+
+In practice, this can be done by sending [`UpdatePackage` requests](https://github.com/joyent/sdc-papi/blob/master/docs/index.md#updatepackage-put-packagesuuid)
+to PAPI to set the desired traits on NFS volume packages, and sending
+[`ServerUpdate` requests](https://github.com/joyent/sdc-cnapi/blob/master/docs/index.md#serverupdate-post-serversserver_uuid) to set those traits on the CNs that should act as dedicated
+hardware for NFS volumes.
+
+Using dedicated hardware has disadvantages:
+
+1. CN reboots are potentially more disruptive since a lot of volumes would be
+   affected
+
+2. it requires a larger upfront equipment purchase
+
+3. utilization can be low if demand is low
+
+4. affinity constraints that express the requirement for two volumes to be on
+   different CNs can be harder to fulfill, unless there's a large number of
+   storage CNs
+
+5. affinity constraints that express the requirement for a volume to be
+   colocated with a compute VM are impossible to fulfill
 
 #### Mixing compute containers and volume containers
+
+Mixing compute VMs and volume storage VMs is the default behavior, and doesn't
+require operators to do anything. When volume storage VMs' packages do not have
+any trait set, placement will be done as if storage VMs were compute VMs.
 
 Mixing compute and volume containers has some advantages: since the server fleet
 does not need to be split, there is more potential to spread volumes across the
@@ -691,6 +755,16 @@ and the following operators:
 * `==`:
 * `!=`:
 * `~=`:
+
+### Resizing volume containers
+
+Volume containers will not be resizable in place. Resizing VMs presents a lot of
+challenges that usually end up breaking users' expectations. See
+https://mo.joyent.com/docs/engdoc/master/resize/index.html for more information
+about challenges in resizing compute VMs that can be applied to storage VMs.
+
+The recommended way to resize NFS volumes is to create a new volume with the
+desired size and copy the data from the original volume to the new volume.
 
 ## REST APIs
 
@@ -1071,6 +1145,11 @@ endpoints](https://apidocs.joyent.com/cloudapi/#machines) will need to fail with
 an appropriate error message when used on shared volumes zones.
 
 ### Changes to VMAPI
+
+#### New `nfserver` `smartdc_role`
+
+Machines acting as shared volumes' storage zones will have the value `nfsserver`
+for their `smartdc_role` property. To know of this new `smartdc_role` value is used by CloudAPI to prevent users from performing operations on these storage VMs, refer to
 
 #### New internal `required_nfs_volumes` property on VM objects
 
@@ -1679,33 +1758,44 @@ Volumes are be represented as objects that share a common set of properties:
 ```
 
 * `uuid`: the UUID of the volume itself.
+
 * `owner_uuid`: the UUID of the volume's owner. In the example of a NFS shared
   volume, the owner is the user who created the volume using the `docker volume
   create` command.
+
 * `billing_id`: the UUID of the [volume
   package](#introduction-of-volume-packages) used when creating the volume.
+
 * `name`: the volume's name. It must be unique for a given user. This is similar
-  to the `alias` property of VMAPI's VM objects.
+  to the `alias` property of VMAPI's VM objects. It must match the regular
+  expression `/^[a-zA-Z0-9][a-zA-Z0-9_\.\-]+$/`. There is no limit on the length of a volume's name.
+
 * `type`: identifies the volume's type. There is currently one possible value
   for this property: `tritonnfs`. Additional types can be added in the future,
   and they can all have different sets of [type specific
   properties](#type-specific-properties).
+
 * `create_timestamp`: a timestamp that indicates the time at which the volume
   was created.
+
 * `state`: `creating`, `ready`, `deleting`, `deleted`, `failed` or
   `rolling_back`. Indicates in which state the volume currently is. `deleted`
   and `failed` volumes are still persisted to Moray for
   troubleshooting/debugging purposes. See the section [Volumes state
   machine](#volumes-state-machine) for a diagram and further details about the
   volumes' state machine.
+
 * `networks`: a list of network UUIDs that represents the networks on which this
   volume can be reached.
+
 * `error`: an optional property present when the `state` property is `failed`.
   It allows users to get further details on why a volume is in the `failed`
   state. Its value is an object with the following properties:
     * `message`: a string that describes the cause for the failure
     * `code`: a string code that identifies classes of errors
+
 * `snapshots`: a list of [snapshot objects](#snapshot-objects).
+
 * `tags`: a map of key/value pairs that represent volume tags. Docker volumes'
   labels are implemented with tags.
 
@@ -1934,134 +2024,18 @@ uuids so that the operator knows which containers are still using them.
 
 ## Open questions
 
-### Resizing volumes
+### Allocation/placement
 
-VMs _can_ be resized, and thus NFS shared volumes could be resized too, as their
-storage is provided by a VM running a NFS server. However, the ability to resize
-NFS shared volumes would have an impact on allocation, among other things. I'm
-not familiar with the issues of VMs resizing, but I'd imagine they would apply
-similarly here.
+* Does DAPI need to handle over-provisioning differently for volume packages
+  (e.g less aggressive about over-provisioning disk)?
 
-### Ownership of NFS shared volumes' storage VMs
-
-In general, for any given object in Triton, being the owner of an object
-means:
-
-1. being billed for its usage. For instance, VM owners are billed for their CPU
-time.
-
-2. being able to perform operations such as listing, getting info, deleting,
-updating, etc. on it.
-
-The creation of NFS shared volumes objects implies the creation of an associated
-VM object that represents a zone that runs the NFS server and provides the
-storage capacity.
-
-Setting ownership of these storage VMs to the same user as the associated
-volume's owner would mean end users (as opposed to operators of Triton) would
-be billed for their usage, which matches point 1 above, and is the expected
-behavior.
-
-However, it would also mean that end users would be able to list and perform any
-operation, including destructive ones, on storage VMs. This exposes
-implementation details to end users, which is not desirable, at least as the
-default behavior.
-
-#### Potential solutions
-
-Provided that the section above accurately represents the requirements for NFS
-shared volumes, there are several different potential solutions that solve this
-problem, each with their pros and cons.
-
-In the previous sections, this document [recommends the second
-solution](#filtering-shared-volumes-zones-from-the-listmachines-endpoint), but
-this is not yet set in stone. This section presents all the potential solutions
-that have been considered so far, and future discussions may lead to changes in
-this document to recommend a different solution.
-
-##### Owner is admin, internal metadata for representing actual ownership
-
-This solution is similar to the one implemented for NAT zones, which are another
-form of "internal" VMs. NAT zones are transparently created by Triton when a VM
-on a fabric network needs to have access to external networks, in the same way
-that storage VMs are transparently created when a NFS shared volume is created.
-
-NAT zones have their owner set to the administrator, but a
-`com.joyent:ipnat_owner` property in the VM's `internal_metadata` property
-stores the actual owner's UUID.
-
-###### Pros
-
-The main argument for this solution seems to be that it transparently handles
-access restriction, without having to write any additional code. Since storage
-VMs would be owned by the administrator, the owner of the volume whose creation
-triggered the storage VM creation wouldn't be able to perform any operation on
-that VM. Back to the NAT zones analogy, the owner of VMs whose creation trigger
-NAT zones' creation cannot perform any operation on these NAT zones.
-
-###### Cons
-
-The main disadvantages of this solution seems to be that other components of
-Triton are not equipped to deal with it appropriatly.
-
-For instance, billing processes have to special cases NAT zones in order to
-properly bill NAT zones' bandwidth usage to the right user. Using the same
-solution for NFS shared volumes would add another special case to the billing
-process, instead of having it "just work".
-
-Other components of Triton, such as operator tools that gather data about usage per
-user, would need to handle this special ownership representation.
-
-##### Adding an additional property on VM objects
-
-Another solution would be to store the "internal" nature of storage VMs in the
-VM objects. This could take various forms, such as:
-
-1. An `internal` boolean property. This property would be true for NAT zones and
-NFS shared volumes' storage VMs, false for any other VM.
-
-2. An `internal_role` string property representing a set of roles, with only two
-possible values for now: `nfs_volume_storage` and `nat`.
-
-###### Pros
-
-The main advantage of such a solution would be that components of Triton relying
-on VMs' ownership would work transparently. For instance, billing and operators
-tools would not have to be modified to match storage VMs with actual volumes'
-owners.
-
-In general, any tool or internal Triton component would be able to rely on an
-internal stable interface when dealing with these internal VMs.
-
-###### Cons
-
-The implementation of some core Triton components, such as VMAPI's ListVms endpoint
-would need to be modified to filter VMs on the newly added property. The
-`vmapi_vms` moray bucket's schema would need to be changed to add an index on
-this new property and existing objects would need to be backfilled if NAT zones
-were considered as "internal" VMs. In other words, these changes would require
-some additional work that could potentially impact almost every Triton component.
-Depending on the perspective, this is not a problem, but it certainly is very
-much different than the first potential solution mentioned above in that
-respect.
-
-### Interaction with local volumes
-
-> Do we support local volumes? If so, is there any chance of conflicts between
-local and shared volumes?
+* Do volume packages have to be sized in multiples of disk quota in compute
+  packages, assuming that bin-packing will be more efficient?
 
 #### What happens when mounting of a volume fails?
 
 The current recommendation is to fail the provisioning request with an error
 message that is as clear as possible.
-
-### What NFS versions need to be supported?
-
-NFSv3 and NFSv4 are both supported in LX containers, and it may be desirable
-to support NFSv3 for mounting shared volumes from the command line in non-
-Docker containers.
-
-What are the differences between these two versions?
 
 ### Security
 
@@ -2075,11 +2049,6 @@ to the container. Is this a acceptable?
 
 If so: how many?
 
-### Volume name limitations
-
-Can we limit to `[a-zA-Z0-9\-\_]`? If not, what characters do we need? How long
-should these names be allowed to be?
-
 ### Granularity of available volume sizes
 
 Currently, NFS shared volumes packages are available in sizes from 10 GiB to
@@ -2089,11 +2058,13 @@ to 1000 GiB.
 Is the current list of available volume sizes granular enough to cover most use
 cases?
 
-### CPU and memory requirements
+### NFS volume packages' settings
 
 In order to allow for both optimal utilization of hardware and good performance
-for I/O operations on shared volumes, the CPU and memory capacity of NFS server
-zones must be chosen carefully.
+for I/O operations on shared volumes, package settings of NFS server zones must
+be chosen carefully.
+
+#### CPU and RAM
 
 The current prototype makes NFS server zones have a `cpu_cap` of `100`, and
 memory and swap of `256`. Running ad-hoc, manual perfomance tests, CPU
@@ -2112,10 +2083,59 @@ client performing I/O. Thus, the packages setting used by the current prototype
 seem to be the minimal settings that still give some room for small unexpected
 memory footprint growth without degrading performance too much.
 
+It is also unclear whether it is desirable to have different CPU and RAM
+settings for different volume sizes. It seems that the CPU and RAM values should
+be chosen based on two different criterions:
+
+1. the expected load on a given volume (number of concurrent clients, rate of
+   I/O, etc.), which is not possible to predict
+
+2. the ability to perform optimal placement
+
+
+#### ZFS I/O priority
+
+The current prototype makes NFS server zones have a `zfs_io_priority` of `1`,
+which seems to be the default value. However, there is a wide spectrum of values
+for this property in TPC, ranging from `1` to `16383`.
+
+If we consider only 4th generation packages (g4, k4 and t4), we can run the
+following command:
+
+```
+sdc-papi /packages | json -Ha zfs_io_priority name | egrep (g4-|k4-|t4-) | awk '{pkgs[$1]=pkgs[$1]" "$2} END{for (pkg_size in pkgs) print pkg_size","pkgs[pkg_size]}' | sort -n -k1,1`
+```
+
+in east1 to obtain the following distribution:
+
+|zfs_io_priority|package names|
+|------|---|
+| 8    | t4-standard-128M |
+| 16   | t4-standard-256M g4-highcpu-128M |
+| 32   | t4-standard-512M g4-highcpu-256M |
+| 64   | t4-standard-1G g4-highcpu-512M k4-highcpu-kvm-250M |
+| 128  | t4-standard-2G g4-highcpu-1G k4-highcpu-kvm-750M |
+| 256  | t4-standard-4G g4-general-4G g4-highcpu-2G k4-general-kvm-3.75G k4-highcpu-kvm-1.75G |
+| 512  | t4-standard-8G g4-bigdisk-16G g4-general-8G g4-highcpu-4G g4-highram-16G k4-general-kvm-7.75G k4-highcpu-kvm-3.75G k4-highram-kvm-15.75G k4-bigdisk-kvm-15.75G |
+| 1024 | t4-standard-16G g4-bigdisk-32G g4-fastdisk-32G g4-general-16G g4-highcpu-8G g4-highram-32G k4-bigdisk-kvm-31.75G k4-fastdisk-kvm-31.75G k4-general-kvm-15.75G k4-highcpu-kvm-7.75G k4-highram-kvm-31.75G |
+| 2048 | t4-standard-32G g4-bigdisk-64G g4-fastdisk-64G g4-general-32G g4-highcpu-16G g4-highram-64G k4-bigdisk-kvm-63.75G k4-fastdisk-kvm-63.75G k4-general-kvm-31.75G k4-highcpu-kvm-15.75G k4-highram-kvm-63.75G |
+| 4096 | t4-standard-64G g4-bigdisk-110G g4-fastdisk-110G g4-highcpu-32G g4-highram-110G |
+| 6144 | t4-standard-96G |
+| 8192 | t4-standard-128G g4-highcpu-110G g4-highcpu-160G g4-highcpu-192G g4-highcpu-64G g4-highcpu-96G g4-highram-222G g4-fastdisk-222G |
+| 10240 | t4-standard-160G |
+| 12288 | t4-standard-192G g4-highcpu-222G |
+| 14336 | t4-standard-224G |
+
+It seems that for compute VMs, the `zfs_io_priority` value is proportional to at
+least the `max_physical_memory` value.
+
+It's not clear then whether NFS volume packages, which currently have a constant
+`max_physical_memory` value, should have different `zfs_io_priority` values.
+
 ### Monitoring NFS server zones
 
 When NFS server zones or the services they run become severely degraded, usage
-of asociated shared volumes is directly impacted. NFS server zones and their
+of associated shared volumes is directly impacted. NFS server zones and their
 services are considered to be an implementation detail of the infrastructure
 that is not exposed to end users. As a result, end users have no way to react to
 such problems and can't bring the service to a working state.
@@ -2163,5 +2183,6 @@ zone reboot, and thus will make the shared volume unavailable for some time.
 I'm not sure if there's anything we can do to make network changes not impact
 shared volumes' availability. If there's nothing we can do, we should probably
 communicate it in some way (e.g in the API documentation or by making changes to
-the API so that the impact on shared volumes is more obvious).
+the API/command line tools so that the impact on shared volumes is more
+obvious).
 
