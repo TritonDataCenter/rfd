@@ -76,12 +76,9 @@ This document was written while implementing a new feature in VMAPI needed to
 support [NFS shared
 volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md).
 
-As described in the corresponding
-[RFD](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md), [new
-indexes need to be added to one of VMAPI's moray buckets' schema](https://github
-.com/joyent/rfd/blob/master/rfd/0026/README.md#new-internal_role-property-on-vm-
-objects). A [ticket was created](https://smartos.org/bugview/ZAPI-747) to
-describe and track the work needed to be able to add these new indexes.
+As described in the corresponding [RFD](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md)
+, [new indexes need to be added to one of VMAPI's moray buckets' schema](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#new-internal_role-property-on-vm-objects). A [ticket was created](https://smartos.org/bugview/ZAPI-747)
+to describe and track the work needed to be able to add these new indexes.
 
 While working on implementing the changes needed to support the addition of
 these indexes and the migration process, it seemed that moray's implementation
@@ -297,8 +294,7 @@ searching for objects in this bucket with the filter
 The reason this `findobjects` request doesn't only return the object that
 matches the filter is that, when the database table's column that is storing the
 values for the newly indexed property _does not_ contain any value for that
-property, [the values on which the filter is applied have that property deleted]
-(https://github.com/joyent/moray/blob/master/lib/objects/common.js#L843-L857).
+property, [the values on which the filter is applied have that property deleted](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L843-L857).
 
 Thus, [the filter that is applied after all records are filtered from the
 database](https://github.com/joyent/moray/blob/master/lib/objects/find.js#L147)
