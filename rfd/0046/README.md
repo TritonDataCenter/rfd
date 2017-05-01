@@ -302,40 +302,88 @@ used the 'nodejs' packages in pkgsrc? Some questions there:
 Jonathan Perkin answered "no" to the #1. That means we should continue to
 provide sdcnode builds for now.
 
+Note, however, that we can just use the sdcnode builds for the origin image
+on which a triton-origin image is based. E.g. a `triton-origin-multiarch-15.4.1`
+image based on `minimal-multiarch-lts@15.4.1` can use sdcnode builds for the
+latter. This is because the triton-origin images do not add an custom binary
+libraries on which a sdcnode build would depend.
+
+
+### Naming and versioning
+
+Say I have the following 3 active triton-origin image flavours:
+
+1. based on minimal-multiarch-lts@15.4.x
+2. based on minimal-multiarch-lts@16.4.x
+3. Based on base-64@16.3.x.  If need be, we can argue against ever officially
+   using a ".3" (which isn't LTS). If need be, we can argue against ever
+   officially supporting "base" instead of always minimal.
+   I think it is fair to potentially have a desire for "-64"-based origins.
+   (Aside: I'm talking about portal, which currently deploys on base-64@16.3.1).
+
+What should the triton-origin image names and versions be?
+
+Recent prio art:
+
+```
+$ updates-imgadm -C '*' list name=~jenkins-agent -H -o name | sort | uniq
+jenkins-agent-ia32-1.6.3
+jenkins-agent-ia32-14.2.0
+jenkins-agent-multiarch-13.3.1
+jenkins-agent-multiarch-15.4.1
+```
+
+Full discussion at
+https://jabber.joyent.com/logs/mib@conference.joyent.com/2017/04/28.html#19:23:08.951660
+
+Conclusion: `name = "triton-origin-$pkgsrcArch-$originImageVersion"`, e.g.:
+
+    NAME                                VERSION     NOTES
+    triton-origin-multiarch-15.4.1      1.2.3
+    triton-origin-multiarch-16.4.1      1.2.3
+    triton-origin-x86_64-15.4.1         1.2.3       theoretical, hope we don't have to bother
+    triton-origin-i386-15.4.1           1.2.3       theoretical, hope we don't have to bother
+
+Because:
+
+- This copies the pattern used by jenkins-agent, which is a nice commonality.
+- As with `jenkins-agent-*` images, the `triton-origin-*` images are meant to
+  primarily be compatible with the underlying arch and generation of
+  minimal/base images
+  (https://docs.joyent.com/public-cloud/instances/infrastructure/images/smartos/minimal).
+  Hence, calling out the underlying image's arch and version in the name
+  makes this clear.
+
+
 
 ### Plan
 
-- open tickets for the following
-
-- build a starter 'triton-origin-multiarch' image (we can debate the name)
-
-    ```
-    originOrigin=minimal-multiarch-lts@15.4.1
-    whateverPkg=g4-highcpu-1G
-    pkgs='coreutils'
-    protoAlias=proto  # add uniqueness to this
-    triton create $originOrigin $whateverPkg -n $protoAlias -w \
-        -m 'user-script=pkgin update; pkgin -y in $pkgs'
-
-    # Is user-script done after '-w'? Or do we need to verify? Or run as
-    # ssh seperately?
-
-    imgName=triton-origin-multiarch
-    imgVersion=1.0.0
-    imgJson=$(triton image create $protoAlias $imgName $imgVersion \
-        -d "Origin for Triton and Manta images" \
-        --tag '{"smartdc_service": true}' \
-        --homepage=https://github.com/joyent/triton-origin -w --json)
-
-    triton rm -w $protoAlias
-
-    # Now what? Export and push this to updates.jo?
-    # - XXX see prep_dataset for manifest tweaks
-    # - XXX impl 'triton image export'!
-    ```
-
-- NAPI ticket on Cody to move NAPI to using this base image, if he is
-  still game
+- [TOOLS-1752](https://smartos.org/bugview/TOOLS-1752) is the main ticket
+  for implementing building triton-origin images.
+    - Finish 'make publish' task.
+    - Get 'triton-origin-image' jenkins job going.
+    - Get a triton-origin-multiarch-15.4.1 build into 'experimental' channel.
+      Q: What happens if the origin isn't in that channel yet?
+    - (Note: for IMGAPI usage we'd need the blessed ones published to *images.jo*
+      and in TPC. We want that anyway for triton dev guide usage.)
+    - sdcnode builds: We can use sdcnode builds for the equivalent
+      origin image. However we probably won't be able to make the match
+      programatically because (a) the base vs minimal prefix and (b) the
+      unfortunate "sdc-"-prefixed versions of the origin images that are
+      currently in use and for which sdcnode builds are made.
+    - Guinea pig: cloudapi or vmapi or papi or docker. I like 'docker' and
+      'vmapi' for now b/c there are number of people comfortable with these zones.
+      Not just docker, because it isn't on the USB key and isn't in initial headnode
+      setup. Need to test that it handles multi-level incremental images.
+    - Switch vmapi over in MG and get branch builds (in 'experimental' branch).
+        - sdc-vmapi.git and mg.git changes for this
+    - Ensure 'sdcadm up -C experimental vmapi' works.
+    - Build a COAL with this vmapi and ensure headnode setup works.
+        - sdc-headnode.git changes will be required for this for origin images.
+          It would be nice to change that code and config to not require explicit
+          mention of the origin images.
+    - Build a headnode-joyent with this and run it through nightly-1.
+    - Switch 'docker' over to this and test it in coal/nightly-1,2.
 
 - roll out to other components
 

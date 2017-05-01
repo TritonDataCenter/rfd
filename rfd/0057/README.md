@@ -378,7 +378,7 @@ Some terminology for the new "schema 2" (a.k.a. v2.2) world:
   Its content-type is defined in the image manifest.
 
 When identifying an image, the "config digest" is often referred to as the
-image "id" and the "manifest digest" is often referred to as just the "digest".
+image "id" and the "manifest digest" is often referred to as just the *digest*.
 
 
 ## docker pull
