@@ -470,7 +470,7 @@ The failure of PID 1 in a Docker instance will cause the instance transition to 
 
 From an infrastructure level, the best definition of health is that the application operator knows a healthy or unhealthy instance when they see it (apologies to [justice Potter Stewart](https://en.wikipedia.org/wiki/Jacobellis_v._Ohio)), and for that reason this RFD leaves it to the application operator to define the test that determines the health of an instance.
 
-Though health has traditionally been a binary state, [Kubernetes differentiates between an instance's "liveliness" and it's application's "readiness"](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) and [Consul allows applications to declare themselves degraded](https://www.consul.io/docs/agent/checks.html) (a "warning" state via an HTTP 429 response). Because this RFD covers both the provisioning of infrastructure—compute instances providing a service—and the health of the service that infrastructure serves, it needs to consider the distinction Kubernetes makes between an instance that has successfully started vs. the health of the application within it. To accommodate that, the strawman config for this RFD proposes that instances be given a window during which they can become healthy after the instance is started.
+Though health has traditionally been a binary state, [Kubernetes differentiates between an instance's "liveliness" and it's application's "readiness"](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) and [Consul allows applications to declare themselves degraded](https://www.consul.io/docs/agent/checks.html) (a "warning" state via an HTTP 429 response). Because this RFD covers both the provisioning of infrastructure—compute instances providing a service—and the health of the service that infrastructure serves, it needs to consider the distinction Kubernetes makes between an instance that has successfully started vs. the health of the application within it. To accommodate that, the strawperson config for this RFD proposes that instances be given a window during which they can become healthy after the instance is started.
 
 Though this RFD refuses to attempt a universal definition of "health" for a service, it does attempt to define what should happen if an instance of a service is determined to be unhealthy, within some user configurable space. In broad strokes, unhealthy instances of a service should not be discoverable (with implications for CNS, the only Triton-provided discovery mechanism as this time), and the infrastructure should attempt to schedule replacement instances of that service (rescheduling).
 
@@ -634,7 +634,7 @@ Finally, the comparison operators:
 - `==~`: The new container should be on the same node as the container(s) identified by `<value>`. I.e. this is a best effort or "soft" rule.
 - `!=~`: The new container should be on a different node as the container(s) identified by `<value>`. I.e. this is a best effort or "soft" rule.
 
-Strawman examples, formatted in JSON5:
+Strawperson examples, formatted in JSON5:
 
 ```json5
 {
@@ -657,7 +657,7 @@ Strawman examples, formatted in JSON5:
 }
 ```
 
-Notes on the strawman:
+Notes on the strawperson:
 
 - `cn|compute_node` is intended to suggest users can use either `cn` or `compute_node`
 - This demonstrates colon-separated/joined naming scheme, as in `group:resource:<tag name>`, but `group.resource.<tag name>` makes about equal sense to the author
@@ -671,11 +671,9 @@ Automation without auditability is dangerous. [RFD50](https://github.com/joyent/
 
 
 
-## Strawman examples
+## Strawperson examples
 
 These are being rewritten from examples of the service manifest and Triton CLI commands offered in previous versions of the RFD.
-
-Also, if anybody can offer a non-gendered replacement for "straman" that has sufficiently similar meaning, I'd very much appreciate it.
 
 Previous examples:
 
