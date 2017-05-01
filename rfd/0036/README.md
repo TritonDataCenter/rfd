@@ -13,11 +13,11 @@ state: draft
     Copyright 2016 Casey Bisson, Joyent
 -->
 
-# RFD 36 Triton Service Manager (TSM, code named Mariposa)
+# RFD 36 Triton Service Manager (code name: Mariposa)
 
 Cloud infrastructure (IaaS) providers offer compute, network, and storage resources on which applications can be built and operated. However, those solutions leave it to the customer to assemble those infrastructure components to meet their needs. A given application might require several compute instances for a given component, but the customer is typically responsible for maintaining a mental model of their application, provisioning each instance, and then recognizing the compute instances that support a given software component within a larger list of instances.
 
-Template-driven provisioning tools like Terraform, CloudFormation and many others, along with judicious tagging of instances provide some help to infrastructure customers, but even then there remains a significant gap between raw infrastructure and the applications cloud customers wish to build and run.
+Template-driven provisioning tools like Terraform, CloudFormation, and many others, along with judicious tagging of instances provide some help to infrastructure customers, but even then there remains a significant gap between raw infrastructure and the applications cloud customers wish to build and run.
 
 The market demonstrates this gap with its investment in Mesos, Kubernetes, and other open source solutions for container scheduling and orchestration. Sadly, those tools have built-in assumptions about running on Linux guests, as well as generally poor support for multi-tenancy and control-plane security that make them unusable in a multi-tenant cloud and require running within VMs on that cloud.
 
@@ -65,7 +65,7 @@ CloudFormation can make it easy to provision a set of resources, but it does not
 
 ### Auto Scaling Groups
 
-AWS' [Auto Scaling Groups](https://aws.amazon.com/autoscaling/) represent a very basic example of service definition with supervision. Though most people thing of Auto Scaling as a way to respond to performance metrics, the first mode of operation is actually just as a supervisor with health checks:
+AWS' [Auto Scaling Groups](https://aws.amazon.com/autoscaling/) (ASGs) represent a very basic example of service definition with supervision. Though most people think of ASGs as a way to respond to performance metrics, the first mode of operation is actually just as a supervisor with health checks:
 
 > Whether you are running one Amazon EC2 instance or thousands, you can use Auto Scaling to detect impaired Amazon EC2 instances and unhealthy applications, and replace the instances without your intervention. This ensures that your application is getting the compute capacity that you expect.
 
@@ -77,7 +77,7 @@ CloudFormation and Auto Scaling Groups represent some of the most important base
 
 ### Compose
 
-Most every early Docker user has experienced a moment of great joy when discovering Docker Compose and using it to run a composed set of containers via a single manifest. Sadly, that joy was often later followed by the realization that running Docker Compose in production across multiple VMs required substantially more work, including the use of Docker Swarm (or Swarm Mode on more recent versions of Docker). On Triton, however, because the Docker API is exposed via sdc-docker and users can address an entire data center without needing Docker Swarm or creating any VMs, Docker Compose has proven incredibly powerful.
+Most early Docker users experienced a moment of great joy when discovering Docker Compose and using it to run a composed set of containers via a single manifest. Sadly, that joy was often later followed by the realization that running Docker Compose in production across multiple VMs required substantially more work, including the use of Docker Swarm (or Swarm Mode on more recent versions of Docker). On Triton, however, because the Docker API is exposed via sdc-docker and users can address an entire data center without needing Docker Swarm or creating any VMs, Docker Compose has proven incredibly powerful.
 
 The critical feature Docker Compose offers over the Docker client itself is the ability to define [one or more services in a manifest, typically named `docker-compose.yaml`](https://docs.docker.com/compose/compose-file/). The [service definition](https://docs.docker.com/compose/compose-file/#compose-file-structure-and-examples) includes features that are common to other examples here, including Kubernetes, Mesos+Marathon, and others. When combined with the [Autopilot Pattern](http://autopilotpattern.io), it is possible to [automate the operations of stateful applications](https://www.joyent.com/blog/persistent-storage-patterns#databases) so that [they operate statelessly from the perspective of the scheduler](https://www.joyent.com/blog/app-centric-micro-orchestration#handling-persistent-data). We've even demonstrated this with [MySQL on Autopilot](https://github.com/autopilotpattern/mysql). For example:
 
@@ -287,8 +287,10 @@ Recreating tritonmysql_mysql_4
 Recreating tritonmysql_mysql_2
 ```
 
-That example demonstrates Docker Compose's features to turn a a manifest—the `docker-compose.yml` file—into running containers and use it to manage the lifecycle of those containers. The MySQL containers, in turn, demonstrate how even traditionally stateful applications that expect persistent filesystems can be operated in ways that automate their management and make them as easy to operate as stateless applications (see also [stateful, with internal state management
+That example demonstrates Docker Compose's features to turn a manifest—the `docker-compose.yml` file—into running containers and use it to manage the lifecycle of those containers. The MySQL containers, in turn, demonstrate how even traditionally stateful applications that expect persistent filesystems can be operated in ways that automate their management and make them as easy to operate as stateless applications (see also [stateful, with internal state management
 ](#stateful-with-internal-state-management), below.
+
+What Compose lacks, however, is any features to supervise the instances of a service and to reschedule them if they become unhealthy or if their compute node fails. That's a key feature of Auto Scaling Groups, and other comparators here, but compose on its own can't do it.
 
 
 
@@ -374,7 +376,7 @@ For the most part, however, instances are provisioned and left running indefinit
 
 A pattern that can be found in organizations of any size, but is especially common among larger organizations, is for responsibility over different components of an application to be split among multiple teams. A team of DBAs might be responsible for the database(s) while another team is responsible for the application layer. Yet another team might be responsible for all the ecommerce components.
 
-This RFD will discuss the permissions model that might support that only briefly (see RFDs 13 and 48 for more), but will focus on the workflow details and features necessary to support this use.
+This RFD will briefly discuss the permissions model that might support that (see RFDs 13 and 48 for more), but will focus on the workflow details and features necessary to support this use.
 
 These applications may fit any of the categories of statefulness described above, with some additional characteristics about how consumers of those applications expect to access them.
 
@@ -414,7 +416,7 @@ Though many of the examples of prior art above focus on Docker containers, this 
 - Docker containers
 - Manta jobs
 
-The prior art examples given above focus on services that run continuously, and that is the priority, but nothing in this RFD should be taken to exclude support for services that run on demand or on a schedule defined by the service operator. Fo
+The prior art examples given above focus on services that run continuously, and that is the priority, but nothing in this RFD should be taken to exclude support for services that run on demand or on a schedule defined by the service operator.
 
 
 
@@ -432,7 +434,7 @@ In addition to [services](#service), other Triton resources that might be includ
 
 ### Deployment meta (including secrets)
 
-Many applications require configuration values which are undesirable or unsafe to set in the application image or stored in a repo with the service definition. Additionally, these details are often shred among multiple services that are deployed together. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
+Many applications require configuration values which are undesirable or unsafe to set in the application image or stored in a repo with the service definition. Additionally, these details are often shared among multiple services that are deployed together. These can include license keys, a flag setting whether it's a staging or production environment, usernames and passwords, and other details.
 
 Additionally, there are often details about a deployment that are known at the orchestration level that are useful within applications. An example might include the number of instances the user has defined for a service. That number can then be used by the service to manage its sharding behavior, if so configured.
 
@@ -468,7 +470,7 @@ The failure of PID 1 in a Docker instance will cause the instance transition to 
 
 From an infrastructure level, the best definition of health is that the application operator knows a healthy or unhealthy instance when they see it (apologies to [justice Potter Stewart](https://en.wikipedia.org/wiki/Jacobellis_v._Ohio)), and for that reason this RFD leaves it to the application operator to define the test that determines the health of an instance.
 
-Though health has traditionally been a binary state, [Kubernetes differentiates between an instance's "liveliness" and it's application's "readiness"](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) and [Consul allows applications to declare themselves degraded](https://www.consul.io/docs/agent/checks.html) (a "warning" state via an HTTP 429 response). Because this RFD covers both the provisioning of infrastructure—compute instances providing a service—and the health of the service that infrastructure serves, it needs to consider the distinction Kubernetes makes between an instance that has successfully started vs. the health of the application within it. To accommodate that, the strawman config for this RFD proposes that instances be given a window during which that can become healthy after the instance is started.
+Though health has traditionally been a binary state, [Kubernetes differentiates between an instance's "liveliness" and it's application's "readiness"](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) and [Consul allows applications to declare themselves degraded](https://www.consul.io/docs/agent/checks.html) (a "warning" state via an HTTP 429 response). Because this RFD covers both the provisioning of infrastructure—compute instances providing a service—and the health of the service that infrastructure serves, it needs to consider the distinction Kubernetes makes between an instance that has successfully started vs. the health of the application within it. To accommodate that, the strawman config for this RFD proposes that instances be given a window during which they can become healthy after the instance is started.
 
 Though this RFD refuses to attempt a universal definition of "health" for a service, it does attempt to define what should happen if an instance of a service is determined to be unhealthy, within some user configurable space. In broad strokes, unhealthy instances of a service should not be discoverable (with implications for CNS, the only Triton-provided discovery mechanism as this time), and the infrastructure should attempt to schedule replacement instances of that service (rescheduling).
 
@@ -489,6 +491,7 @@ Though it may not be appropriate for every application, many cloud customers—i
 Clearly, meeting customer expectations regarding rescheduling while also avoiding self-inflicted disaster that may spiral out of control from transient conditions including network interruptions or even a single compute node failure may be challenging. Given the target of 2,000 instances per CN, and assuming every instance on the CN is a managed service, a single CN failure could trigger a substantial amount of rescheduling activity. It's easy to understand how a netsplit that affects even a small portion of a DC could be overwhelming. That challenge, however, demands solutions.
 
 This RFD does not attempt to provide answers to the questions raised by by this challenge, just to acknowledge it. It's possible that the solution may include rate limiting, or other approaches, but that remains an open question to be solved. This RFD also recognizes that rescheduling must not be required for a service, as there are some applications for which it would be harmful. This RFD does not take on those application concerns; instead, it intends to expose a mechanism for application operators to control Triton's behavior to meet their needs.
+
 
 
 #### Rescheduling vs. restarting vs. starting vs. garbage collection
@@ -530,13 +533,21 @@ The scheduler may also need configuration options for how it should garbage coll
 
 
 
+### Updating services
+
+Keyword: lifecycle management
+
+*NEEDS REVISION*
+
+
+
 ### Relationship between these resources and RBACv2
 
 Though this document does not define any aspect of RBACv2 ([see RFD48 for that](https://github.com/joyent/rfd/blob/master/rfd/0048/README.md)), the abstractions defined here need to be considered in that context. Certainly, users will expect to be able to control permissions on [services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets).
 
 Deployment groups are just one of a number of different logical groupings of resources. As with billing groups, a single object, be it a service, network, volume, or any other, may only be a member of a single deployment group. This differs from more general resource groups that may be used for security purposes or to arrange resources in terms that match the org structure.
 
-For some types of groupings, resources can be in exactly one or zero or one group. For other types of groupings, objects may be in any number of groups.
+For some types of groupings, resources can be in exactly one, or zero or one group. For other types of groupings, objects may be in any number of groups.
 
 - Billing groups
 An object must be in exactly one group
@@ -577,13 +588,13 @@ For many users, a "rack" implies power and network domains, but that assumption 
 
 #### Performance domains
 
-While application operators will often be very carful to scale across different fault domains, they may also need want to place components within the same performance domain. In many cases, the domains are the same, just used for different reasons. It's easy to imagine users wishing to scale applications across many racks, but keeping a full set of services for each application within the same rack. Some users may wish to refine their discovery
+While application operators will often be very carful to scale across different fault domains, they may also need want to place components within the same performance domain. In many cases, the domains are the same, just used for different reasons. It's easy to imagine users wishing to scale applications across many racks, but distributing a full set of services for each application on each rack. Some users may wish to optimize their discovery to prefer connecting to instances rather are "closer" on the network, [as is supported in Consul](https://www.hashicorp.com/blog/consul-0-6/#network-tomography).
 
 
 
 #### Regulatory domains
 
-Joyent is familiar with regulatory requirements that require single-tenant hardware for certain applications, or that some applications be guaranteed not to operate on the some hardware with others. Here again
+Joyent is familiar with regulatory requirements that require single-tenant hardware for certain applications, or that some applications be guaranteed not to operate on the some hardware with others. Here again, the names of the domains are probably the same as used for availability and performance, but their purpose is different.
 
 
 
@@ -649,12 +660,30 @@ Strawman examples, formatted in JSON5:
 Notes on the strawman:
 
 - `cn|compute_node` is intended to suggest users can use either `cn` or `compute_node`
-- This demonstrates colon-separated/joined naming scheme, as in `group:resource:<tag name>`, but `group.resource.<tag name>` makes about equal sense to the author.
+- This demonstrates colon-separated/joined naming scheme, as in `group:resource:<tag name>`, but `group.resource.<tag name>` makes about equal sense to the author
+- Actually, this example begs for uniform resource naming within Triton
+
 
 
 ### Auditing
 
 Automation without auditability is dangerous. [RFD50](https://github.com/joyent/rfd/blob/master/rfd/0050/README.md) focuses on improving audit logs for individual instances, but we must recognize the need to audit the resources and automation proposed in this RFD. These logs will be critical for both data center operators and end users. Events that must be auditable include create, update, and delete operations on a service, the automatic scheduling and rescheduling of instances, as well as failed health checks and other events.
+
+
+
+## Strawman examples
+
+These are being rewritten from examples of the service manifest and Triton CLI commands offered in previous versions of the RFD.
+
+Also, if anybody can offer a non-gendered replacement for "straman" that has sufficiently similar meaning, I'd very much appreciate it.
+
+Previous examples:
+
+- [Service manifest](https://github.com/joyent/rfd/blob/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/services/manifest.md)
+- [Managing services (via projects) in Triton CLI](https://github.com/joyent/rfd/blob/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/projects/triton-projects-cli.md)
+- [Metadata and variable interpolation in the service manifest](https://github.com/joyent/rfd/tree/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/meta)
+
+*NEEDS REVISION*
 
 
 
@@ -668,7 +697,7 @@ Also, because this RFD assumes the ability to define services running Docker ima
 
 ### Reprovisioning via public APIs
 
-Though [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, the feature is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141). Triton and Manta upgrades are done via this private reprovisioning feature. The instance's primary volume is over written with a new image while stateful data in the instance is preserved on another volume in the dataset. This process depends on privileged access, either with a delegated dataset in the instance or with privileges in the global zone.
+Though [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, the feature is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141). Triton and Manta upgrades are done via this private reprovisioning feature. The instance's primary volume is overwritten with a new image while stateful data in the instance is preserved on another volume in the dataset. This process depends on privileged access, either with a delegated dataset in the instance or with privileges in the global zone.
 
 Though many customers would [happily enjoy the benefits of a delegated ZFS dataset](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md), offering support for reprovisioning depends instead on API mechanisms to manage volumes. Users need to be able to specify what volumes to preserve while the others are overwritten with the new image. CloudAPI provides no mechanism to manage volumes in an instance. AWS' API provides only crude support for mapping EBS block devices to instances, but managing the volumes must be done within the instance itself. Interestingly, [Dockerfiles](https://docs.docker.com/engine/reference/builder/#volume) and the [Docker client](https://docs.docker.com/engine/tutorials/dockervolumes/#adding-a-data-volume) provide straightforward means to define and mount volumes in an instance.
 
@@ -676,7 +705,7 @@ This feature would be one solution to separating the lifecycle of an instance's 
 
 
 
-### Public API support for cloning volumes
+### Public API support for cloning and snapshotting volumes
 
 While support for [reprovisioning via public APIs](#reprovisioning-via-public-apis) would make normal lifecycle management of applications and their data easier, other features are needed to protect against data loss with [stateful applications that require external state management](#stateful-with-external-state-management).
 
@@ -723,11 +752,12 @@ Using containers as a wrapper for data volumes and mapping them  into other cont
 Host volumes aren't supported on Triton because the customer doesn't own the underlying host—the bare metal compute node. That relationship adds more complexity: while it's possible to create a data container as shown above, Triton provides no mechanism to reserve space on that CN for your later use. Without that, customers have no guarantee that space will be available for them to run their applications attached to their data at a later time (the concept of "reservations" has previously been discussed to address this problem, though I can find no written record of it at this time).
 
 
+
 ### Remote block stores
 
 Though Joyent has deep experience with remote storage and its limitations (see [one](https://www.joyent.com/blog/magical-block-store-when-abstractions-fail-us), [two](https://www.joyent.com/blog/network-storage-in-the-cloud-delicious-but-deadly), [three](https://ops.faithlife.com/?p=6), it's an expected abstraction in clouds. This is different from [RFD26's shared NFS volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) in that they're single-tenant (though [Google's offering](https://cloud.google.com/compute/docs/disks/) in [this space](https://cloud.google.com/docs/compare/aws/storage#block_storage) offers [read+write access for a single host and read-only access for many hosts](https://cloud.google.com/compute/docs/disks/add-persistent-disk#use_multi_instances)), demonstrate reasonably high performance, and are tolerable as the backing store for many database applications.
 
-Remote block stores are the most broadly used solution to the critical problem that application operators face of separating the life cycle of compute instances from the data they create and consume in a way that fits the needs of [stateful applications that require external state management](#stateful-with-external-state-management). It should be emphasized that this does not eliminate the risk of data loss due to equipment failures (centralization of data increases that risk in many ways). Joyent has demonstrated alternatives that include [adding internal state management to application images](#stateful-with-internal-state-management). It should be said that state management that goes beyond remote block storage, such as is [demonstrated above](#compose), is absolutely required in any truly resilient and scalable application, but not offering a solution in this space has critical implications to market acceptance.
+Remote block stores are the most broadly used solution to the critical problem that application operators face of separating the lifecycle of compute instances from the data they create and consume in a way that fits the needs of [stateful applications that require external state management](#stateful-with-external-state-management). It should be emphasized that this does not eliminate the risk of data loss due to equipment failures (centralization of data increases that risk in many ways). Joyent has demonstrated alternatives that include [adding internal state management to application images](#stateful-with-internal-state-management). It should be said that state management that goes beyond remote block storage, such as is [demonstrated above](#compose), is absolutely required in any truly resilient and scalable application. But, not offering a solution in this space has critical implications to market acceptance.
 
 
 
@@ -755,7 +785,7 @@ This doesn't mean virtual or persistent IPs are not valuable, however. They are 
 
 Triton implements a Docker API-compatible interface to manage infrastructure in each data center. This Docker API interface (provided by [sdc-docker](https://github.com/joyent/sdc-docker)) operates in parallel to [CloudAPI](https://apidocs.joyent.com/cloudapi/). Users can accomplish some operations using either API, but others are specific to a single API. Consider the following:
 
-![Docker API and CloudAPI side-by-side on Triton](./_assets/docker-api-and-cloudapi-side-by-side)
+![Docker API and CloudAPI side-by-side on Triton](./_assets/docker-api-and-cloudapi-side-by-side.jpg)
 
 The Triton CLI tool (node-triton) allows users convenient CLI control over Triton infrastructure via CloudAPI. It's actually very similar to what Docker users would expect from using the Docker CLI, especially since [Docker restructured the syntax in version 1.13](https://blog.docker.com/2017/01/whats-new-in-docker-1-13/#h.yuluxi90h1om). However, there are a few features that Docker users expect that also would be hugely valuable to implement in CloudAPI and the Triton CLI.
 
@@ -772,6 +802,7 @@ Some common and useful Docker API/CLI operations not supported via CloudAPI and 
 
 The highest priority item in this RFD is the service abstraction (the competitor to AWS' Auto Scaling Groups). Other abstractions and resources proposed here can be delivered independently, at a later date.
 
+This section shall be updated as the development roadmap is determined.
 
 
 ## Revision history
