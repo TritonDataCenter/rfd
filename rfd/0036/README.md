@@ -146,33 +146,33 @@ $ docker exec -it tritonmysql_mysql_2 mysql -urepluser -p<password> -e "SHOW SLA
         Relay_Master_Log_File: mysql-bin.000004
              Slave_IO_Running: Yes
             Slave_SQL_Running: Yes
-              Replicate_Do_DB: 
-          Replicate_Ignore_DB: 
-           Replicate_Do_Table: 
-       Replicate_Ignore_Table: 
-      Replicate_Wild_Do_Table: 
-  Replicate_Wild_Ignore_Table: 
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
                    Last_Errno: 0
-                   Last_Error: 
+                   Last_Error:
                  Skip_Counter: 0
           Exec_Master_Log_Pos: 6876776
               Relay_Log_Space: 6877191
               Until_Condition: None
-               Until_Log_File: 
+               Until_Log_File:
                 Until_Log_Pos: 0
            Master_SSL_Allowed: No
-           Master_SSL_CA_File: 
-           Master_SSL_CA_Path: 
-              Master_SSL_Cert: 
-            Master_SSL_Cipher: 
-               Master_SSL_Key: 
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
         Seconds_Behind_Master: 0
 Master_SSL_Verify_Server_Cert: No
                 Last_IO_Errno: 0
-                Last_IO_Error: 
+                Last_IO_Error:
                Last_SQL_Errno: 0
-               Last_SQL_Error: 
-  Replicate_Ignore_Server_Ids: 
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
              Master_Server_Id: 27178
                   Master_UUID: c5f9870b-1fae-11e7-a6c9-90b8d0b39d83
              Master_Info_File: /var/lib/mysql/master.info
@@ -180,11 +180,11 @@ Master_SSL_Verify_Server_Cert: No
           SQL_Remaining_Delay: NULL
       Slave_SQL_Running_State: Slave has read all relay log; waiting for the slave I/O thread to update it
            Master_Retry_Count: 86400
-                  Master_Bind: 
-      Last_IO_Error_Timestamp: 
-     Last_SQL_Error_Timestamp: 
-               Master_SSL_Crl: 
-           Master_SSL_Crlpath: 
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
            Retrieved_Gtid_Set: c5f9870b-1fae-11e7-a6c9-90b8d0b39d83:1-12
             Executed_Gtid_Set: c5f9870b-1fae-11e7-a6c9-90b8d0b39d83:1-12
                 Auto_Position: 1
@@ -215,33 +215,33 @@ $ docker exec -it tritonmysql_mysql_3 mysql -urepluser -p<password> -e "SHOW SLA
         Relay_Master_Log_File: mysql-bin.000001
              Slave_IO_Running: Yes
             Slave_SQL_Running: Yes
-              Replicate_Do_DB: 
-          Replicate_Ignore_DB: 
-           Replicate_Do_Table: 
-       Replicate_Ignore_Table: 
-      Replicate_Wild_Do_Table: 
-  Replicate_Wild_Ignore_Table: 
+              Replicate_Do_DB:
+          Replicate_Ignore_DB:
+           Replicate_Do_Table:
+       Replicate_Ignore_Table:
+      Replicate_Wild_Do_Table:
+  Replicate_Wild_Ignore_Table:
                    Last_Errno: 0
-                   Last_Error: 
+                   Last_Error:
                  Skip_Counter: 0
           Exec_Master_Log_Pos: 6877002
               Relay_Log_Space: 839
               Until_Condition: None
-               Until_Log_File: 
+               Until_Log_File:
                 Until_Log_Pos: 0
            Master_SSL_Allowed: No
-           Master_SSL_CA_File: 
-           Master_SSL_CA_Path: 
-              Master_SSL_Cert: 
-            Master_SSL_Cipher: 
-               Master_SSL_Key: 
+           Master_SSL_CA_File:
+           Master_SSL_CA_Path:
+              Master_SSL_Cert:
+            Master_SSL_Cipher:
+               Master_SSL_Key:
         Seconds_Behind_Master: 0
 Master_SSL_Verify_Server_Cert: No
                 Last_IO_Errno: 0
-                Last_IO_Error: 
+                Last_IO_Error:
                Last_SQL_Errno: 0
-               Last_SQL_Error: 
-  Replicate_Ignore_Server_Ids: 
+               Last_SQL_Error:
+  Replicate_Ignore_Server_Ids:
              Master_Server_Id: 23347
                   Master_UUID: a7accd33-1faf-11e7-a6cf-90b8d080d1c5
              Master_Info_File: /var/lib/mysql/master.info
@@ -249,11 +249,11 @@ Master_SSL_Verify_Server_Cert: No
           SQL_Remaining_Delay: NULL
       Slave_SQL_Running_State: Slave has read all relay log; waiting for the slave I/O thread to update it
            Master_Retry_Count: 86400
-                  Master_Bind: 
-      Last_IO_Error_Timestamp: 
-     Last_SQL_Error_Timestamp: 
-               Master_SSL_Crl: 
-           Master_SSL_Crlpath: 
+                  Master_Bind:
+      Last_IO_Error_Timestamp:
+     Last_SQL_Error_Timestamp:
+               Master_SSL_Crl:
+           Master_SSL_Crlpath:
            Retrieved_Gtid_Set: a7accd33-1faf-11e7-a6cf-90b8d080d1c5:1
             Executed_Gtid_Set: a7accd33-1faf-11e7-a6cf-90b8d080d1c5:1,
 c5f9870b-1fae-11e7-a6c9-90b8d0b39d83:1-12
@@ -442,7 +442,7 @@ This document proposes a simple method of storing those details and injecting th
 
 ## Significant questions and relationship to other work
 
-The addition of these new abstractions raises some questions that are not yet fully defined in this RFD. Additionally, this RFD proposes things that need to be put in context with other RFDs. 
+The addition of these new abstractions raises some questions that are not yet fully defined in this RFD. Additionally, this RFD proposes things that need to be put in context with other RFDs.
 
 
 
@@ -466,7 +466,7 @@ The failure of PID 1 in a Docker instance will cause the instance transition to 
 
 #### What is health?
 
-From an infrastructure level, the best definition of health is that the application operator knows a healthy or unhealthy instance when they see it (apologies to [justice Potter Stewart](https://en.wikipedia.org/wiki/Jacobellis_v._Ohio)), and for that reason this RFD leaves it to the application operator to define the test that determines the health of an instance. 
+From an infrastructure level, the best definition of health is that the application operator knows a healthy or unhealthy instance when they see it (apologies to [justice Potter Stewart](https://en.wikipedia.org/wiki/Jacobellis_v._Ohio)), and for that reason this RFD leaves it to the application operator to define the test that determines the health of an instance.
 
 Though health has traditionally been a binary state, [Kubernetes differentiates between an instance's "liveliness" and it's application's "readiness"](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/) and [Consul allows applications to declare themselves degraded](https://www.consul.io/docs/agent/checks.html) (a "warning" state via an HTTP 429 response). Because this RFD covers both the provisioning of infrastructure—compute instances providing a service—and the health of the service that infrastructure serves, it needs to consider the distinction Kubernetes makes between an instance that has successfully started vs. the health of the application within it. To accommodate that, the strawman config for this RFD proposes that instances be given a window during which that can become healthy after the instance is started.
 
@@ -491,11 +491,11 @@ Clearly, meeting customer expectations regarding rescheduling while also avoidin
 This RFD does not attempt to provide answers to the questions raised by by this challenge, just to acknowledge it. It's possible that the solution may include rate limiting, or other approaches, but that remains an open question to be solved. This RFD also recognizes that rescheduling must not be required for a service, as there are some applications for which it would be harmful. This RFD does not take on those application concerns; instead, it intends to expose a mechanism for application operators to control Triton's behavior to meet their needs.
 
 
-#### Rescheduling vs. restarting vs. starting
+#### Rescheduling vs. restarting vs. starting vs. garbage collection
 
 [Kubernetes' distinction](https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-probes/#defining-readiness-probes) between "liveliness" (whether or not the container is running) and "readiness" (whether or not the container is healthy and ready to receive requests) is particularly important as the container is starting, as noted in the given example:
 
-> [A]n application might need to load large data or configuration files during startup. In such cases, you don’t want to kill the application, but you don’t want to send it requests either. 
+> [A]n application might need to load large data or configuration files during startup. In such cases, you don’t want to kill the application, but you don’t want to send it requests either.
 
 That example closely links the questions in this section about rescheduling and discovery, as well as recognizes the difference between the health of an application in an instance vs. the running state of the instance. To accommodate that difference, Kubernetes recognizes an `initialDelaySeconds` in the configuration of health checks, defined as the "number of seconds after the container has started before liveness probes are initiated."
 
@@ -509,15 +509,30 @@ In Docker, [rescheduling policies are set in Swarm](https://docs.docker.com/swar
 
 Like Kubernetes, Docker distinguishes rescheduling from [restart policy](https://docs.docker.com/compose/compose-file/#restartpolicy).
 
-*Needs revision*
+Our own experience with CN reboots does not appear to be reflected in the examples discussed above. In most cases on Triton, if a CN reboots, it will be back online with instances running within 60 seconds. That time period might be faster than makes sense to attempt to reschedule all the instances on it (our goal is to expect 2,000 instances per CN). This is especially important in cases where data is persisted to storage resident in the CN. Though application operators should expect and plan for irrecoverable storage and CN failures, it may be desirable to ride out a temporary loss due to a CN failure and let an application node restart and rejoin its peers.
 
+Given these details, the following restart conditions may be appropriate:
 
+- If the instance is determined to be unhealthy by the health checking mechanism
+- If PID1 in the instance fails with a non-zero exit
+- If the CN reboots
+- Always, regardless of reason, even if PID1 exited zero
+- Never
+
+Additionally, the examples given above suggest other some other restart criteria to consider:
+
+- The maximum number of attempts before giving up
+- The window after a restart (or a normal start) before which the scheduler will attempt health checks
+
+These configuration options assume and imply that the scheduler will be biased toward restarting instances on the same CN, rather than rescheduling them to other CNs. However, rescheduling becomes more likely as application operators restrict the conditions under which an instance restart on the same CN will be attempted. Example: if the service is set **not** to restart instances on CN reboots, the scheduler is expected to start attempting to reschedule the instance as soon as it detects the CN has failed.
+
+The scheduler may also need configuration options for how it should garbage collect stopped instances. Application operators might wish to preserve instances that rescheduled due to an failure (non-zero exit or failed health checks), but do they want to keep old instances after a CN reboot if they've already been rescheduled elsewhere?
 
 
 
 ### Relationship between these resources and RBACv2
 
-Though this document does not define any aspect of RBACv2, the abstractions defined here need to be considered in that context.   Certainly, users will expect to be able to control permissions on [services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets).
+Though this document does not define any aspect of RBACv2 ([see RFD48 for that](https://github.com/joyent/rfd/blob/master/rfd/0048/README.md)), the abstractions defined here need to be considered in that context. Certainly, users will expect to be able to control permissions on [services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets).
 
 Deployment groups are just one of a number of different logical groupings of resources. As with billing groups, a single object, be it a service, network, volume, or any other, may only be a member of a single deployment group. This differs from more general resource groups that may be used for security purposes or to arrange resources in terms that match the org structure.
 
@@ -562,7 +577,7 @@ For many users, a "rack" implies power and network domains, but that assumption 
 
 #### Performance domains
 
-While application operators will often be very carful to scale across different fault domains, they may also need want to place components within the same performance domain. In many cases, the domains are the same, just used for different reasons. It's easy to imagine users wishing to scale applications across many racks, but keeping a full set of services for each application within the same rack. Some users may wish to refine their discovery 
+While application operators will often be very carful to scale across different fault domains, they may also need want to place components within the same performance domain. In many cases, the domains are the same, just used for different reasons. It's easy to imagine users wishing to scale applications across many racks, but keeping a full set of services for each application within the same rack. Some users may wish to refine their discovery
 
 
 
@@ -580,7 +595,7 @@ The above discusses the fault, performance, and regulatory domains that operator
 - The volumes to which an instance may be connected
 - Hardware that can host the instance (SSD drives)
 
-Those factors need to be acknowledged, though users interact with them in ways very different from the placement requirements for fault, performance, and regulatory domains discussed here. 
+Those factors need to be acknowledged, though users interact with them in ways very different from the placement requirements for fault, performance, and regulatory domains discussed here.
 
 Though the reasons a person may choose to target a domain may vary, the names of the domains appear to remain the same:
 
@@ -746,7 +761,7 @@ The Triton CLI tool (node-triton) allows users convenient CLI control over Trito
 
 Some common and useful Docker API/CLI operations not supported via CloudAPI and the Triton CLI include:
 
-- [Starting Docker instances](https://docs.docker.com/engine/reference/commandline/run/) via CloudAPI and the Triton CLI; this implies support for [pulling Docker images](https://docs.docker.com/engine/reference/commandline/pull/), including [logging in to private registries](https://docs.docker.com/engine/reference/commandline/login/) 
+- [Starting Docker instances](https://docs.docker.com/engine/reference/commandline/run/) via CloudAPI and the Triton CLI; this implies support for [pulling Docker images](https://docs.docker.com/engine/reference/commandline/pull/), including [logging in to private registries](https://docs.docker.com/engine/reference/commandline/login/)
 - [`docker exec...`](https://docs.docker.com/engine/reference/commandline/exec/)
 - Setting a timeout when stopping an instance via CloudAPI, as in [`docker stop <container name> --time <seconds>`](https://docs.docker.com/engine/reference/commandline/stop/), including an indefinite timeout
 - Mapping volumes from another container, as in [`--volumes-from`](https://docs.docker.com/engine/reference/commandline/run/), as well as mapping [RFD26 volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) via `-v` or `--volume`
@@ -755,13 +770,13 @@ Some common and useful Docker API/CLI operations not supported via CloudAPI and 
 
 ## Priorities and roadmap
 
-*NEEDS REVISION*
+The highest priority item in this RFD is the service abstraction (the competitor to AWS' Auto Scaling Groups). Other abstractions and resources proposed here can be delivered independently, at a later date.
 
 
 
 ## Revision history
 
-- [current](./)
+- [Current version: rewritten post-meetup](./)
 - [27 March, 2017: kick-off content](https://github.com/joyent/rfd/tree/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036)
 - [9 March, 2017: reorganized and added implementation straw man](https://github.com/joyent/rfd/tree/e38e0b02776a286db47c9fccea1e90646b5f31ef/rfd/0036)
 - [13 December, 2016: added user stories](https://github.com/joyent/rfd/tree/e1b4b05a236e084de065b0765510ec5069210f30/rfd/0036)
