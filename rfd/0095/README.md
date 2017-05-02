@@ -69,13 +69,14 @@ listening and complete any in flight requests.  Once there are no more requests
 in flight, the old process terminates gracefully and the reconfiguration is
 complete.
 
-Unfortunately, the reconfiguration procedure described above depends on
-operating system support for the `SO_REUSEPORT` socket option.  This option
+Unfortunately, the reconfiguration procedure described above partially depends
+on operating system support for the `SO_REUSEPORT` socket option.  This option
 allows for a process to take over a listen socket from another, unrelated
 process.  This option has slightly different semantics on at least Linux and
 the BSDs, and there is presently no native support for it in illumos.  Without
 `SO_REUSEPORT`, the old and the new `haproxy` processes cannot concurrently
-drain old requests and service new ones.
+listen on the same port; the short period of refused connections during the
+handover remains.
 
 Instead of `SO_REUSEPORT`, we can use another HAProxy feature: binding to an
 already established listen socket inherited from a parent process.  The HAProxy
