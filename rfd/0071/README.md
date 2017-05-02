@@ -1,6 +1,6 @@
 ---
 authors: Elijah Zupancic <elijah.zupancic@joyent.com>, Wyatt Preul <wyatt.preul@joyent.com>
-state: draft
+state: publish
 ---
 
 <!--
