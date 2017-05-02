@@ -98,16 +98,52 @@ part of ensuring a flurry of configuration events does not result in an
 unbounded number of concurrent restarts.
 
 In this model, the _supervisor_ manages the long term life cycle of all listen
-sockets.  Each new `haproxy` process will be a direct child, and can therefore
-use the inherited file descriptor `bind` directives in the HAProxy
-configuration file.  The supervisor can provide the file descriptors to the
-child via symbolic names, using environment variables.  This set of listen
-ports is generally relatively static, and that configuration could be provided
-to the supervisor by `config-agent`.
+sockets.  Each new `haproxy` process will be a direct child of the supervisor,
+and can therefore use the inherited file descriptor `bind` directives in the
+HAProxy configuration file.  This obviates the need for `haproxy` to close and
+reopen the listen sockets, closing the active refusal window.  The supervisor
+can provide the file descriptors to the child via symbolic names using
+environment variables.
+
+Since [MANTA-3110][MANTA-3110] was integrated, the set of listen ports is more
+complicated than a single internal and a single public interface, but it is
+still generally static through the life of a particular load balancer instance.
+The configuration does not come from SAPI, but rather from the `sdc:nics`
+property available via [the SmartOS metadata interface][sdcnics].  Muppet uses
+this metadata key to generate `bind` directives in the HAProxy configuration
+today, and can be adjusted to generate a table of listen sockets for the
+supervisor; e.g., the supervisor configuration might look like:
+
+```
+FD_HTTPS		127.0.0.1	8443
+FD_HTTP_INTERNAL	172.27.3.22	80
+FD_HTTP_EXTERNAL_0	172.26.3.44	80
+FD_HTTP_EXTERNAL_1	192.168.0.1	80
+```
+
+The supervisor would open three listen sockets, and pass the file descriptor
+number to each `haproxy` child through the environment, using the provided
+variable name.  The front end portion of the HAProxy configuration generated
+by muppet would then look like this:
+
+```
+frontend https
+	bind fd@${FD_HTTPS} accept-proxy
+	default_backend secure_api
+
+frontend http_internal
+	bind fd@${FD_HTTP_INTERNAL}
+	default_backend secure_api
+
+frontend http_external
+	bind fd@${FD_HTTP_EXTERNAL_0}
+	bind fd@${FD_HTTP_EXTERNAL_1}
+	default_backend insecure_api
+```
 
 Muppet does not run HAProxy directly as a child process.  Instead, it
 manipulates the `svc:/manta/haproxy:default` [SMF][smf] service via
-[svcadm(1M)][svcadm] commands.  We can introduce the new HAProxy manager
+[svcadm(1M)][svcadm] commands.  We can introduce the new HAProxy supervisor
 program into the existing `haproxy` SMF service, adding a `refresh` method
 which sends the appropriate signal for seamless reconfiguration.  Whereas today
 Muppet does a hard `svcadm restart` of the service, in the future it would
@@ -140,3 +176,5 @@ traditional, disruptive restart.
 [accept]: https://illumos.org/man/3SOCKET/accept
 [smf]: https://illumos.org/man/5/smf
 [svcadm]: https://illumos.org/man/1M/svcadm
+[MANTA-3110]: https://smartos.org/bugview/MANTA-3110
+[sdcnics]: https://eng.joyent.com/mdata/datadict.html#sdcnics
