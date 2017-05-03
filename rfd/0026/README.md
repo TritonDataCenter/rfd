@@ -1003,8 +1003,11 @@ send a `GetVolume` request.
 
 ##### AttachVolumeToNetwork POST /volumes/id/attachtonetwork
 
+_This functionality is not required for the MVP._
+
 `AttachVolumeToNetwork` can be used to make a volume reachable on a given
-network.
+_fabric_ network. Non-fabric networks are not supported, and passing a
+`network_id` that doesn't represent a fabric network will result in an error.
 
 ###### Input
 
@@ -1019,7 +1022,9 @@ A [volume object](#volume-objects) representing the volume with ID `id`.
 
 ##### DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork
 
-`DetachVolumeFromNetwork` can be used to make a volume that used ot be reachable
+_This functionality is not required for the MVP._
+
+`DetachVolumeFromNetwork` can be used to make a volume that used to be reachable
 on a given network not reachable on that network anymore.
 
 ###### Input
