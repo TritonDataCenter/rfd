@@ -51,6 +51,8 @@ state: draft
       - [Mixing compute containers and volume containers](#mixing-compute-containers-and-volume-containers)
       - [Expressing locality with affinity filters](#expressing-locality-with-affinity-filters)
     - [Resizing volume containers](#resizing-volume-containers)
+  - [Networking](#networking)
+    - [NFS volumes reachable only on fabric networks](#nfs-volumes-reachable-only-on-fabric-networks)
   - [REST APIs](#rest-apis)
     - [Changes to CloudAPI](#changes-to-cloudapi)
       - [Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
@@ -151,7 +153,7 @@ state: draft
       - [CPU and RAM](#cpu-and-ram)
       - [ZFS I/O priority](#zfs-io-priority)
     - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
-    - [Networking](#networking)
+    - [Networking](#networking-1)
       - [Impact of networking changes](#impact-of-networking-changes)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
@@ -775,6 +777,20 @@ about challenges in resizing compute VMs that can be applied to storage VMs.
 
 The recommended way to resize NFS volumes is to create a new volume with the
 desired size and copy the data from the original volume to the new volume.
+
+## Networking
+
+### NFS volumes reachable only on fabric networks
+
+__NFS volumes will be reachable only on fabric networks__. The rationale is that
+only the network provides isolation for NFS volumes, and that it makes using and
+managing NFS volumes simpler.
+
+Users should not be able to set firewall rules on NFS volumes and should instead
+make their NFS volumes available on selected _fabric_ networks.
+
+Making NFS volumes available on non-fabric networks would, without the ability
+for users to set firewall rules, potentially make them reachable by other users.
 
 ## REST APIs
 
