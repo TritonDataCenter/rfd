@@ -619,8 +619,12 @@ where `$size` represents the quota of the package in GiB.
 
 #### Packages sizes
 
-Each volume would have a minimum size of 10 GiB, and support sizing in units of
-10 GiB and then 100 GiB as the volume size increases:
+A first set of NFS volumes packages will be introduced. They will have a minimum
+size of 10 GiB, and support sizing in units of 10 GiB and then 100 GiB as the
+volume size increases.
+
+The list of all available NFS volumes packages sizes initially available will
+be:
 
 * 10 GiB
 * 20 GiB
@@ -641,6 +645,11 @@ Each volume would have a minimum size of 10 GiB, and support sizing in units of
 * 800 GiB
 * 900 GiB
 * 1,000 GiB
+
+As users provide feedback regarding package sizes during the first phase of
+deployment and testing, new packages may be created to better suit their needs,
+and previous packages will be retired (not necessarily deleted, but they won't
+be used to create storage VMs anymore).
 
 ### Placement of volume containers
 
