@@ -48,6 +48,7 @@ That brief list of features is intended as a guide for what this RFD will explor
   - [Service](#service)
   - [Deployment group](#deployment-group)
   - [Deployment meta (including secrets)](#deployment-meta-including-secrets)
+- [Significant questions and relationship to other work](#significant-questions-and-relationship-to-other-work)
   - [Task queue](#task-queue)
   - [Health](#health)
     - [What is health?](#what-is-health)
