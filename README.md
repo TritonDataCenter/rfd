@@ -121,9 +121,9 @@ formal writing that it has come to represent.)
 | draft    | [RFD 76 Improving Manta Networking Setup](./rfd/0076/README.md) |
 | predraft | [RFD 77 Hardware-backed per-zone crypto tokens](./rfd/0077/README.md) |
 | draft | [RFD 78 Making Moray's findobjects requests robust with regards to unindexed fields](./rfd/0078/README.md) |
-| predraft | [RFD 79 Projects API](./rfd/0079/README.md) (part of Mariposa) |
-| predraft | [RFD 80 ProjectsConvergence API](./rfd/0080/README.md) (part of Mariposa) |
-| predraft | [RFD 81 ServicesHealth agent](./rfd/0081/README.md) (part of Mariposa) |
+| predraft | [RFD 79 Reserved for Mariposa](./rfd/0079/README.md) |
+| predraft | [RFD 80 Reserved for Mariposa](./rfd/0080/README.md) |
+| predraft | [RFD 81 Reserved for Mariposa](./rfd/0081/README.md) |
 | predraft | [RFD 82 Triton agents install and update](./rfd/0082/README.md) |
 | publish | [RFD 83 Triton `http_proxy` support](./rfd/0083/README.md) |
 | predraft | [RFD 84 Providing Manta access on multiple networks](./rfd/0084/README.md) |

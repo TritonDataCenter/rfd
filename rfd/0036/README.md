@@ -31,6 +31,46 @@ This RFD proposes features that would bring application management tools into ou
 
 That brief list of features is intended as a guide for what this RFD will explore, not as an exhaustive or fully defined list. Additionally, the resource groupings that are described in this RFD may be a target of RBACv2 (described in RFD13 and 48), but they do not replace RBACv2.
 
+## Contents
+
+- [Core principles](#core-principles)
+- [Prior art](#prior-art)
+  - [CloudFormation, Terraform, and other templated deployment tools](#cloudformation-terraform-and-other-templated-deployment-tools)
+  - [Auto Scaling Groups](#auto-scaling-groups)
+  - [Compose](#compose)
+  - [Mesos+Marathon and Kubernetes](#mesosmarathon-and-kubernetes)
+- [What types of applications is Mariposa intended for?](#what-types-of-applications-is-mariposa-intended-for)
+  - [Stateless](#stateless)
+  - [Stateful, with internal state management](#stateful-with-internal-state-management)
+  - [Stateful, with external state management](#stateful-with-external-state-management)
+  - [Applications presented as services to others](#applications-presented-as-services-to-others)
+- [Key objects proposed in this RFD](#key-objects-proposed-in-this-rfd)
+  - [Service](#service)
+  - [Deployment group](#deployment-group)
+  - [Deployment meta (including secrets)](#deployment-meta-including-secrets)
+  - [Task queue](#task-queue)
+  - [Health](#health)
+    - [What is health?](#what-is-health)
+    - [Health vs. discovery](#health-vs-discovery)
+    - [Health vs. rescheduling](#health-vs-rescheduling)
+    - [Rescheduling vs. restarting vs. starting vs. garbage collection](#rescheduling-vs-restarting-vs-starting-vs-garbage-collection)
+  - [Updating services](#updating-services)
+  - [Relationship between these resources and RBACv2](#relationship-between-these-resources-and-rbacv2)
+  - [Placement and affinity](#placement-and-affinity)
+    - [Fault domains](#fault-domains)
+    - [Regulatory domains](#regulatory-domains)
+    - [Domains, criteria, operators](#domains-criteria-operators)
+  - [Auditing](#auditing)
+- [Strawperson examples](#strawperson-examples)
+- [Desirable features not addressed in this RFD](#desirable-features-not-addressed-in-this-rfd)
+  - [Public API support for cloning and snapshotting volumes](#public-api-support-for-cloning-and-snapshotting-volumes)
+  - [Volume objects (non-NFS)](#volume-objects-non-nfs)
+  - [Remote block stores](#remote-block-stores)
+  - [Virtual IPs](#virtual-ips)
+  - [Docker features we should add to CloudAPI and node-triton](#docker-features-we-should-add-to-cloudapi-and-node-triton)
+- [Priorities and roadmap](#priorities-and-roadmap)
+- [Revision history](#revision-history)
+
 
 
 ## Core principles
