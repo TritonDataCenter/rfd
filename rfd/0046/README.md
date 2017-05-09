@@ -360,32 +360,50 @@ Because:
 
 - [TOOLS-1752](https://smartos.org/bugview/TOOLS-1752) is the main ticket
   for implementing building triton-origin images.
-    - Finish 'make publish' task.
-    - Get 'triton-origin-image' jenkins job going.
+    - Finish 'make publish' task. DONE.
+    - Get 'triton-origin-image' jenkins job going. DONE.
+        - add the commit hook... and for this branch. DONE.
     - Get a triton-origin-multiarch-15.4.1 build into 'experimental' channel.
-      Q: What happens if the origin isn't in that channel yet?
-    - (Note: for IMGAPI usage we'd need the blessed ones published to *images.jo*
-      and in TPC. We want that anyway for triton dev guide usage.)
-    - sdcnode builds: We can use sdcnode builds for the equivalent
-      origin image. However we probably won't be able to make the match
-      programatically because (a) the base vs minimal prefix and (b) the
-      unfortunate "sdc-"-prefixed versions of the origin images that are
-      currently in use and for which sdcnode builds are made.
-    - Guinea pig: cloudapi or vmapi or papi or docker. I like 'docker' and
-      'vmapi' for now b/c there are number of people comfortable with these zones.
-      Not just docker, because it isn't on the USB key and isn't in initial headnode
-      setup. Need to test that it handles multi-level incremental images.
-    - Switch vmapi over in MG and get branch builds (in 'experimental' branch).
-        - sdc-vmapi.git and mg.git changes for this
-    - Ensure 'sdcadm up -C experimental vmapi' works.
+      DONE.
+        Q: What happens if the origin isn't in that channel yet?
+        A: It blows up. I think for now we just leave it or document it.
+    - For IMGAPI usage we'd need the blessed ones published to *images.jo*
+      and in TPC. Doc this in "releasing" section of triton-origin README. DONE.
+    - Usage docs in triton-origin-image/README.md. DONE.
+    - Guinea pigs: vmapi and docker.  TRITON-2
+        - Switch vmapi over in MG and get branch builds (in 'experimental' branch).
+            - sdc-vmapi.git and mg.git changes for this
+        - Ensure 'sdcadm up -C experimental vmapi' works.
+            DONE
+                ...
+                download 1 image (56 MiB):
+                    image ea9f516a-2f6f-11e7-826f-678a368f05b7
+                        (vmapi@master-20170502T193901Z-g590a4e0)
+            That doesn't mention the origin images. I think it should.
+            It doesn't show the origin image pulls in the workign output either.
+            Boo.
+        - Ensure 'sdcadm up -C experimental vmapi docker' works.
+          This is about testing that parallel pull of images with a common and
+          locally missing origin is handled properly. It wasn't for a while, and
+          this is an additional level.
+            DONE (TOOLS-1634, TOOLS-1634 also TOOLS-1767 for an improvement)
+    - Test that pulling this works if a *public* version of
+      minimal-multiarch-lts@15.4.1 is already pulled from images.jo. DONE.
     - Build a COAL with this vmapi and ensure headnode setup works.
-        - sdc-headnode.git changes will be required for this for origin images.
-          It would be nice to change that code and config to not require explicit
-          mention of the origin images.
+      DONE (HEAD-2361, in review)
     - Build a headnode-joyent with this and run it through nightly-1.
     - Switch 'docker' over to this and test it in coal/nightly-1,2.
 
 - roll out to other components
+
+Issues:
+
+- [TOOLS-1752](https://smartos.org/bugview/TOOLS-1752) Create tool for creating Triton origin images
+- [TOOLS-1634](https://smartos.org/bugview/TOOLS-1634) 'sdcadm up' parallel import of images can break when multiple images share a new origin image
+- [TOOLS-1763](https://smartos.org/bugview/TOOLS-1763) sdcadm: TOOLS-1634 change to DownloadImages procedure mishandles theoretical custom-source-with-image-origins case
+- [TOOLS-1767](https://smartos.org/bugview/TOOLS-1767) sdcadm's DownloadImages procedure could fail faster and use a refactor
+- [TRITON-2](https://smartos.org/bugview/TRITON-2) switch VMAPI and docker to use a triton-origin image
+- [HEAD-2361](https://smartos.org/bugview/HEAD-2361) support multi-level incremental core images for sdc-headnode build and headnode setup
 
 
 ## State as of July 2016
