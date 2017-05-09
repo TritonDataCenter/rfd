@@ -1,6 +1,6 @@
 ---
-authors: Trent Mick <trent.mick@joyent.com>
-state: draft
+authors: Trent Mick <trent.mick@joyent.com>, Jason King <jason.king@joyent.com>
+state: publish
 ---
 
 # RFD 46 Origin images for Triton and Manta core images
@@ -21,8 +21,24 @@ by Triton and Manta.
 
 ## Current Status
 
-(As of July 2016) This RFD is still being finalized. Tickets will be created
-to implement the plan described in the "Modernization 2016" section.
+Triton-origin images are now being created from the [triton-origin-image
+repo](https://github.com/joyent/triton-origin-image) (done as
+[TOOLS-1752](https://smartos.org/bugview/TOOLS-1752)). The README there
+describes how authors of Triton and Manta components should use the
+`triton-origin-*` images, and to triton-origin image authors how to build and
+(manually) release new triton-origin images.
+
+Remaining work:
+- [TRITON-2](https://smartos.org/bugview/TRITON-2) to test guinea pig first
+  components using the triton-origin image: vmapi and docker.
+- A number of sdc-headnode and sdcadm issues are in progress to support the new
+  origin images:
+    - [TOOLS-1634](https://smartos.org/bugview/TOOLS-1634) 'sdcadm up' parallel import of images can break when multiple images share a new origin image
+    - [TOOLS-1763](https://smartos.org/bugview/TOOLS-1763) sdcadm: TOOLS-1634 change to DownloadImages procedure mishandles theoretical custom-source-with-image-origins case
+    - [TOOLS-1767](https://smartos.org/bugview/TOOLS-1767) sdcadm's DownloadImages procedure could fail faster and use a refactor
+    - [HEAD-2361](https://smartos.org/bugview/HEAD-2361) support multi-level incremental core images for sdc-headnode build and headnode setup
+- Moving other Triton and Manta components to the triton-origin image.
+- Deprecating and dropping the obsolete sdcnode flavours.
 
 
 ## The problem
@@ -33,9 +49,11 @@ customers. This ties us to very old pkgsrc which, besides bitrot, can
 make coping with updates for security issues more difficult.
 
 
-## Modernization 2016
+## Modernization 2016-2017
 
 ### tl;dr
+
+What should the primary origin image be?
 
 - **Q1:** "-multiarch" for all?
   **A1:** Yup, for now using "-multiarch" sounds sufficient. May add "-64"
@@ -353,57 +371,6 @@ Because:
   (https://docs.joyent.com/public-cloud/instances/infrastructure/images/smartos/minimal).
   Hence, calling out the underlying image's arch and version in the name
   makes this clear.
-
-
-
-### Plan
-
-- [TOOLS-1752](https://smartos.org/bugview/TOOLS-1752) is the main ticket
-  for implementing building triton-origin images.
-    - Finish 'make publish' task. DONE.
-    - Get 'triton-origin-image' jenkins job going. DONE.
-        - add the commit hook... and for this branch. DONE.
-    - Get a triton-origin-multiarch-15.4.1 build into 'experimental' channel.
-      DONE.
-        Q: What happens if the origin isn't in that channel yet?
-        A: It blows up. I think for now we just leave it or document it.
-    - For IMGAPI usage we'd need the blessed ones published to *images.jo*
-      and in TPC. Doc this in "releasing" section of triton-origin README. DONE.
-    - Usage docs in triton-origin-image/README.md. DONE.
-    - Guinea pigs: vmapi and docker.  TRITON-2
-        - Switch vmapi over in MG and get branch builds (in 'experimental' branch).
-            - sdc-vmapi.git and mg.git changes for this
-        - Ensure 'sdcadm up -C experimental vmapi' works.
-            DONE
-                ...
-                download 1 image (56 MiB):
-                    image ea9f516a-2f6f-11e7-826f-678a368f05b7
-                        (vmapi@master-20170502T193901Z-g590a4e0)
-            That doesn't mention the origin images. I think it should.
-            It doesn't show the origin image pulls in the workign output either.
-            Boo.
-        - Ensure 'sdcadm up -C experimental vmapi docker' works.
-          This is about testing that parallel pull of images with a common and
-          locally missing origin is handled properly. It wasn't for a while, and
-          this is an additional level.
-            DONE (TOOLS-1634, TOOLS-1634 also TOOLS-1767 for an improvement)
-    - Test that pulling this works if a *public* version of
-      minimal-multiarch-lts@15.4.1 is already pulled from images.jo. DONE.
-    - Build a COAL with this vmapi and ensure headnode setup works.
-      DONE (HEAD-2361, in review)
-    - Build a headnode-joyent with this and run it through nightly-1.
-    - Switch 'docker' over to this and test it in coal/nightly-1,2.
-
-- roll out to other components
-
-Issues:
-
-- [TOOLS-1752](https://smartos.org/bugview/TOOLS-1752) Create tool for creating Triton origin images
-- [TOOLS-1634](https://smartos.org/bugview/TOOLS-1634) 'sdcadm up' parallel import of images can break when multiple images share a new origin image
-- [TOOLS-1763](https://smartos.org/bugview/TOOLS-1763) sdcadm: TOOLS-1634 change to DownloadImages procedure mishandles theoretical custom-source-with-image-origins case
-- [TOOLS-1767](https://smartos.org/bugview/TOOLS-1767) sdcadm's DownloadImages procedure could fail faster and use a refactor
-- [TRITON-2](https://smartos.org/bugview/TRITON-2) switch VMAPI and docker to use a triton-origin image
-- [HEAD-2361](https://smartos.org/bugview/HEAD-2361) support multi-level incremental core images for sdc-headnode build and headnode setup
 
 
 ## State as of July 2016
