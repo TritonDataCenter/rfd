@@ -340,7 +340,9 @@ for `10M`.
 
 The network to which this shared volume will be attached.
 
-###### Affinity (not necessarily in MVP)
+###### Affinity
+
+_This functionality is not required for the MVP._
 
 See [Expressing locality with affinity
 filters](#expressing-locality-with-affinity-filters) below.
@@ -1144,6 +1146,8 @@ and the error contains a list of resources that are using the volume.
 
 ##### ListVolumePackages GET /volumepackages
 
+_This functionality is not required for the MVP._
+
 ###### Input
 
 | Param           | Type        | Description                             |
@@ -1156,6 +1160,8 @@ An array of objects representing [volume packages](#volume-packages) with the
 type set to `type`.
 
 ##### GetVolumePackage GET /volumepackages/volume-package-uuid
+
+_This functionality is not required for the MVP._
 
 ###### Output
 
@@ -1242,6 +1248,8 @@ alias='volume-$volumename-$volumeuuid'
 
 #### Introduction of volume packages
 
+_This functionality is not required for the MVP._
+
 Storage volumes sharing the same traits will be grouped into _volume types_. For
 instance, NFS shared volumes will have the volume type "tritonnfs". Potential
 future "types" of volumes are "tritonebs" for "Triton Elastic Block Storage" or
@@ -1303,13 +1311,14 @@ volume packages objects have only one specific property:
 * `compute_package_uuid`: the UUID of the compute package to use to provision
   the storage VMs when a new volume using this package is created.
 
-Note that __volume packages are not used by DAPI to provision any VM__. Instead,
-when creating a volume requires provisioning a storage VM, a _compute_ package
-that matches the volume package used when creating the volume is used.
+Note that , when introduced, __volume packages will not be used by DAPI to
+provision any VM__. Instead, when creating a volume requires provisioning a
+storage VM, a _compute_ package that matches the volume package used when
+creating the volume will be used.
 
-__However, volume packages' UUIDs are used for billing purposes.__ This means
-that in the case of `tritonnfs` volume packages, their corresponding storage VMs
-packages are not used for billing.
+__However, volume packages' UUIDs will be used for billing purposes.__ This
+means that in the case of `tritonnfs` volume packages, their corresponding
+storage VMs packages will not be used for billing.
 
 ##### Storage of volume packages
 
@@ -1993,6 +2002,8 @@ sdc-pkgadm volume activate|deactivate $volume-pkg-uuid
 ```
 
 ### New `sdc-voladm` command
+
+_This functionality is not required for the MVP._
 
 Triton operators need to be able to perform new operations using a new `sdc-voladm`
 command
