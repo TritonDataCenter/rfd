@@ -57,6 +57,21 @@ The minimum change to achieve the intended goal is to remove `EECDH+3DES`,
 
     ciphers = "EECDH+CHACHA20:EECDH+AES128:RSA+AES128:EECDH+AES256:RSA+AES256:HIGH:!MD5:!aNULL:!PSK"
 
+## Configuration Comparison
+
+Using SSL Labs' handshake simulation, the only client that cannot connect with
+the *existing* ciphers is **IE6 / XP**. The grade is B due to the use of RC4.
+
+Removing only RC4, makes no difference in the handshake simulation. The grade
+is A.
+
+Removing 3DES as well as RC4, handshake simulation reports that **IE6 / XP**
+and **IE8 / XP** cannot connect. The grade is A.
+
+Using the recomended ciphers from cipherli.st, handshake simulation reports
+that **IE6 / XP**, **IE8 / XP**, **Java6u45**, and **Java7u25** cannot connect.
+The grade is A.
+
 # Compatibility Matrix
 
 For compatibility, we've chosen to test with a set of "ancient" and "modern"
