@@ -1,6 +1,6 @@
 ---
 authors: David Pacheco <dap@joyent.com>
-state: draft
+state: publish
 ---
 
 <!--
@@ -592,10 +592,7 @@ Done:
   listing alarms, faults, and probe groups; and enabling and disabling alarm
   notifications.
 - prototype knowledge article content for all probes today
-
-To do:
-- finish the above prototype work: add documentation, tests, and test scaling,
-  multi-datacenter configurations, etc.
+- proposed changes: https://cr.joyent.us/#/q/topic:MANTA-3195
 
 Tickets:
 - [MANTA-3195 manta amon configuration could use work](http://smartos.org/bugview/MANTA-3195)
@@ -891,23 +888,28 @@ repositories for this are still TBD.
 
 ## Upgrade impact
 
-Generally, when updating across this change, old probes should continue to work,
-but options for configuration are limited until operators explicitly update to
-the new organization scheme.  Operators will not be able to add new probes until
-they've removed all of the old probe groups.  The tool will refuse to add probes
-while there are old probe groups around.
+When updating across this change, old probes continue to work, and the new tools
+for viewing alarms work fine with existing alarms, probes, and probe groups.
+The tools will not be able to match older alarms with the new knowledge article
+content.
+
+The new tools include `manta-adm alarm config update`, which will remove all of
+the old probes and probe groups and replace them with new ones that will be
+linked to the local knowledge article content.  This command does not touch
+operator-created probes or probe groups (or anything else that it does not
+recognize).
 
 The expected workflow will be to update the tooling (by updating the "manta"
-zone), drop all probes, then re-add all probes.  The only downside to doing this
-is that open alarms will need to be closed, but we consider this impact minimal.
+zone) and run `manta-adm alarm config update`.  It's likely an operator will not
+realize they need to do this until some time later when they try to update probe
+configuration, but they can just update the probes at that point.  The old
+probes will continue to function in the meantime.
 
-It's likely an operator will not realize they need to do this until some time
-later when they try to update probe configuration or list open alarms, but they
-can just update the probes at that point.  The old probes will continue to
-function in the meantime.
-
-If the operator later chooses to roll back, they will need to first remove all
-probes, then rollback, then re-add probes with the old tools.
+If the operator later chooses to roll back, they will need to roll back the
+"manta" zone.  They will likely need to remove all of the new probes and probe
+groups and replace them with the old ones in order to use `mantamon` to view
+open alarms.  The "mantamon drop" command works to remove all of the new probes
+and probe groups, subject to all of its known issues.
 
 
 ## Security implications and interfaces changed
