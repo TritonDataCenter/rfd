@@ -135,7 +135,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 90 Handling CPU Caps in Triton](./rfd/0090/README.md)
 | predraft | [RFD 91 Application level metrics in CMON](./rfd/0091/README.md)
 | predraft | [RFD 92 Triton Services High Availability](./rfd/0092/README.md)
-| draft    | [RFD 93 Modernize TLS Options](./rfd/0093/README.md)
+| publish  | [RFD 93 Modernize TLS Options](./rfd/0093/README.md)
 | predraft | [RFD 94 Global Zone metrics in CMON](./rfd/0094/README.md)
 | predraft | [RFD 95 Seamless Muppet Reconfiguration](./rfd/0095/README.md) |
 
