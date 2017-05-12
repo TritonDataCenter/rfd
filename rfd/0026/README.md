@@ -229,7 +229,7 @@ Danica can’t use an object store for the UGC because there’s no plugin for i
 in her app, or no plugin that supports Manta, or she depends on features that
 are incompatible with object storage plugins, or she’s running the app on-prem
 and can’t send the data to an off-site object store (and she doesn’t have the
-interest or budget to run Manta on prem).
+interest or budget to run Manta on-prem).
 
 Danica does not yet run her application across multiple data centers, but
 she’d love to do so as a way to ensure availability of her site in the case of
@@ -332,9 +332,11 @@ and outputs the list of available sizes. The available volume sizes can also be
 listed with [CloudAPI's ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
 
 Specifying a unit in the size parameter is required. Available unit suffixes are
-`m`, `M`, `g` and `G`. Units are are assumed to be expressed in ibibytes. That
-is: `10g` means `10 Gibibytes`, same for `10G`. `10m` means `10 Mebibytes`, same
-for `10M`.
+`m`, `M`, `g` and `G`. These suffixes are assumed to be expressed in terms of
+[ISO/IEC
+80000](https://en.wikipedia.org/wiki/ISO/IEC_80000#Units_of_ISO.2FIEC_80000)
+"power of two" units. That is: `10g` and `10G` both mean `10 Gibibytes` (2^30
+bytes). `10m` and `10M` both mean `10 Mebibytes` (2^20 bytes).
 
 ###### Network
 
@@ -452,7 +454,7 @@ The size of the shared volume. This option is passed using docker's CLI's
 `--opt` command line switch:
 
 ```
-docker volume create --name --opt size=100g
+docker volume create --name wp-uploads --opt size=100g
 ```
 
 If the size provided is not one of those made available by `tritonnfs` [volume
@@ -461,9 +463,11 @@ available sizes. The available volume sizes can also be listed with [CloudAPI's
 ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
 
 Specifying a unit in the size parameter is required. Available unit suffixes are
-`m`, `M`, `g` and `G`. Units are are assumed to be expressed in ibibytes. That
-is: `10g` means `10 Gibibytes`, same for `10G`. `10m` means `10 Mebibytes`, same
-for `10M`.
+`m`, `M`, `g` and `G`. These suffixes are assumed to be expressed in terms of
+[ISO/IEC
+80000](https://en.wikipedia.org/wiki/ISO/IEC_80000#Units_of_ISO.2FIEC_80000)
+"power of two" units. That is: `10g` and `10G` both mean `10 Gibibytes` (2^30
+bytes). `10m` and `10M` both mean `10 Mebibytes` (2^20 bytes).
 
 ###### Network
 
@@ -471,7 +475,7 @@ The network to which this shared volume will be attached. This option is
 passed using docker's CLI's `--opt` command line switch:
 
 ```
-docker volume create --name --opt network=mynetwork
+docker volume create --name wp-uploads --opt network=mynetwork
 ```
 
 ###### Driver
@@ -827,7 +831,7 @@ Volume objects are represented in CloudAPI the same way as their internal
 representation in VOLAPI for both their [common properties](#common-layout) as
 well as their [type specific ones](#type-specific-properties). The only
 exception is that the `uuid` field is named `id` to adhere to current
-conventions between the representation of Triton objects in CLoudAPI and
+conventions between the representation of Triton objects in CloudAPI and
 internal APIs.
 
 #### New `/volumes` endpoints
@@ -852,7 +856,7 @@ parameter that corresponds to the user making the request.
 ####### Searching by name
 
 `name` is a pattern where the character `*` has a special meaning of matching
-any character any number of time. For instance, `*foo*` will match `foo`,
+any character any number of times. For instance, `*foo*` will match `foo`,
 `foobar`, `barfoo` and `barfoobar`.
 
 ####### Searching by predicate
@@ -943,7 +947,7 @@ A list of volume objects of the following form:
 | Param         | Type         | Mandatory | Description                             |
 | ------------- | ------------ |-----------|---------------------------------------- |
 | name          | String       | Yes       | The desired name for the volume. If missing, a unique name for the current user will be generated |
-| size          | Number       | No        | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes. |
+| size          | Number       | No        | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes (10 gibibytes). |
 | type          | String       | Yes       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | Yes       | A list of UUIDs representing networks on which the volume is reachable. These networks must be fabric networks owned by the user sending the request. |
 | labels        | Object       | No        | An object representing key/value pairs that correspond to label names/values. |
@@ -1050,7 +1054,7 @@ on a given network not reachable on that network anymore.
 | Param         | Type         | Description                     |
 | ------------- | ------------ | --------------------------------|
 | id            | String       | The id of the volume object   |
-| network_id  | String       | The id of the network from which the volume with id `id` should be dettached |
+| network_id  | String       | The id of the network from which the volume with id `id` should be detached |
 
 ###### Output
 
@@ -1136,7 +1140,7 @@ for more information.
 ###### Output
 
 The output is empty and the status code is 204 if the deletion was scheduled
-successfuly.
+successfully.
 
 A volume is always deleted asynchronously. In order to determine when the volume
 is actually deleted, users need to poll the volume's `state` property.
@@ -1214,7 +1218,7 @@ VMs that mount a given volume.
 
 | Param           | Type         | Description                              |
 | --------------- | ------------ | ---------------------------------------- |
-| mounting_volume | String       | A string representing _one_ volume UUID for wich to list _active_ VMs that reference it. |
+| mounting_volume | String       | A string representing _one_ volume UUID for which to list _active_ VMs that reference it. |
 
 ##### Output
 
@@ -1330,17 +1334,17 @@ both compute and volume packages objects in Moray simpler.
 It implies some potential limitations, such as making listing all packages
 (compute and volume packages) and ordering them by e.g creation time cumbersome
 and not perform as well as a single indexed search. However that use case
-doesn't seem to be common enought to be a concern.
+doesn't seem to be common enough to be a concern.
 
 ##### Naming conventions
 
 Volume packages will have the following naming conventions:
 
 ```
-$type$generation-$property1-$property2-$propertyn
+$type$generation-$property1-$property2-$propertyN
 ```
 
-where `$type` is a volume type such as `nfs`, $generation is a monotically
+where `$type` is a volume type such as `nfs`, $generation is a monotonically
 increasing integer starting at `1`, and `$propertyX` are values for
 differentiating properties of the volume type `$type`, such as the size.
 
@@ -1463,7 +1467,7 @@ or "VOLAPI".
 ###### Searching by name
 
 `name` is a pattern where the character `*` has a special meaning of matching
-any character any number of time. For instance, `*foo*` will match `foo`,
+any character any number of times. For instance, `*foo*` will match `foo`,
 `foobar`, `barfoo` and `barfoobar`.
 
 ###### Searching by predicate
@@ -1555,7 +1559,7 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
 | owner_uuid    | String       | The UUID of the volume's owner. |
-| size          | Number       | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes. |
+| size          | Number       | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes (10 gibibytes). |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | A list of UUIDs representing networks on which the volume will be reachable. These networks must be owned by the user with UUID `owner_uuid`. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
@@ -1592,7 +1596,7 @@ for more information.
 ##### Output
 
 The output is empty and the status code is 204 if the deletion was scheduled
-successfuly.
+successfully.
 
 A volume is always deleted asynchronously. In order to determine when the volume
 is actually deleted, users need to poll the volume's `state` property.
@@ -1644,7 +1648,7 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
 #### DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork
 
-`DetachVolumeFromNetwork` can be used to make a volume that used ot be reachable
+`DetachVolumeFromNetwork` can be used to make a volume that used to be reachable
 on a given network not reachable on that network anymore.
 
 ##### Input
@@ -1653,7 +1657,7 @@ on a given network not reachable on that network anymore.
 | --------------- | ------------ | --------------------------------|
 | owner_uuid    | String       | The UUID of the volume's owner. |
 | uuid            | String       | The uuid of the volume object   |
-| network_uuid    | String       | The uuid of the network from which the volume with uuid `uuid` should be dettached |
+| network_uuid    | String       | The uuid of the network from which the volume with uuid `uuid` should be detached |
 
 ##### Output
 
@@ -1669,7 +1673,7 @@ object is deleted, its associated snapshots are irrelevant and are also deleted.
 
 ##### Snapshot objects
 
-A snpashot object has the following properties:
+A snapshot object has the following properties:
 
 * `name`: a human readable name.
 * `create_timestamp`: a number that can be converted to the timestamp at which
@@ -2053,7 +2057,7 @@ uuids so that the operator knows which containers are still using them.
 #### Deleting shared volume zones
 
 Shared volume zones owned by a specific user, or with a specific uuid, can be
-deleted by an operator. Specifiying both an owner and a volume uuid checks
+deleted by an operator. Specifying both an owner and a volume uuid checks
 that the shared volume is actually owned by the owner:
 
 ```
@@ -2084,7 +2088,7 @@ message that is as clear as possible.
 What are the NFS security requirements?
 
 At this point sdc-nfs does not support anything other than restricting to a
-specfic list of IPs, so we're planning to leave it open to any networks assigned
+specific list of IPs, so we're planning to leave it open to any networks assigned
 to the container. Is this a acceptable?
 
 ### Can we limit the number of NFS volumes a single container can mount?
@@ -2109,10 +2113,10 @@ be chosen carefully.
 #### CPU and RAM
 
 The current prototype makes NFS server zones have a `cpu_cap` of `100`, and
-memory and swap of `256`. Running ad-hoc, manual perfomance tests, CPU
+memory and swap of `256`. Running ad-hoc, manual performance tests, CPU
 utilization and memory footprint while writing a 4 GiB file from one Docker
 container to a shared volume while 9 other containers read the same file did not
-go over 40% and 115 MBs respectively.
+go over 40% and 115 MiB respectively.
 
 There is definitely a need for an automated way to run benchmarks that
 characterize a much wider variety of workloads to determine optimal capacity
@@ -2120,14 +2124,14 @@ depending on planned usage.
 
 However, it doesn't seem likely that, at least in the short term, we'll be able
 to use packages with a smaller memory capacity, since the node process that acts
-as the user-mode nfs server uses around 100 MBs of memory even with one NFS
+as the user-mode nfs server uses around 100 MiB of memory even with one NFS
 client performing I/O. Thus, the packages setting used by the current prototype
 seem to be the minimal settings that still give some room for small unexpected
 memory footprint growth without degrading performance too much.
 
 It is also unclear whether it is desirable to have different CPU and RAM
 settings for different volume sizes. It seems that the CPU and RAM values should
-be chosen based on two different criterions:
+be chosen based on two different criteria:
 
 1. the expected load on a given volume (number of concurrent clients, rate of
    I/O, etc.), which is not possible to predict
