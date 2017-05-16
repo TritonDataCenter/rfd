@@ -10,7 +10,7 @@ The proposal is in two parts. A read-only endpoint exposing the state of all ser
 
 ##### `GetStatus GET /status`
 
-This API will expose the state of all services associated with this ContainerPilot instance as seen by ContainerPilot. The API endpoint also reports the dependencies of each service.
+This API will expose the state of all Consul-advertised services associated with this ContainerPilot instance as seen by ContainerPilot. The API endpoint also reports the services that ContainerPilot is watching in Consul.
 
 *Example Response*
 
@@ -25,14 +25,11 @@ Content-Length: 328
       "address": "192.168.1.100",
       "port": 80,
       "status": "healthy"
-      "depends_on": ["backend1", "backend2"]
-    },
-    {
-      "name": "consul_agent",
-      "address": "localhost",
-      "port": 8500,
-      "status": "nonadvertised"
     }
+  ],
+  "watches": [
+    "backend1",
+    "backend2"
   ]
 }
 ```
