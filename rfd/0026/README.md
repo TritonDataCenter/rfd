@@ -946,7 +946,7 @@ A list of volume objects of the following form:
 
 | Param         | Type         | Mandatory | Description                             |
 | ------------- | ------------ |-----------|---------------------------------------- |
-| name          | String       | Yes       | The desired name for the volume. If missing, a unique name for the current user will be generated |
+| name          | String       | No        | The desired name for the volume. If missing, a unique name for the current user will be generated. |
 | size          | Number       | No        | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes (10 gibibytes). |
 | type          | String       | Yes       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | Yes       | A list of UUIDs representing networks on which the volume is reachable. These networks must be fabric networks owned by the user sending the request. |
