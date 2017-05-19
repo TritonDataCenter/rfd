@@ -66,7 +66,7 @@ If feasible, this RFD will attempt to clean out these obsolete tools.
 # Operator Guide
 
 This section details how operators are expected to setup and work with
-secondary headnodes. It should be used at the basis for operator docs
+secondary headnodes. It should be used as the basis for operator docs
 at <https://docs.joyent.com> for DC setup and headnode recovery and maintenance.
 
 ## Secondary headnode setup process
@@ -77,26 +77,26 @@ suggests that two CNs are used for HA instances of the core binder, manatee, and
 moray instances. This RFD suggests the following process to convert those
 CNs over to being "secondary headnodes":
 
-    sdcadm post-setup headnode headnode # convert current HN to 'headnode0'
-    sdcadm post-setup headnode $CN1     # convert CN1 to 'headnode1'
-    sdcadm post-setup headnode $CN2     # convert CN2 to 'headnode2'
+    sdcadm post-setup headnode headnode # prepare current HN for multi-HNs, it is marked as primary
+    sdcadm post-setup headnode $CN1     # convert CN1 to being a headnode
+    sdcadm post-setup headnode $CN2     # convert CN2 to being a headnode
 
-The first step will convert the current 'headnode' to (a) hostname "headnode0"
-and (b) mark it as the "primary" headnode.
+The first step will prepare the headnode for multiple-headnodes (which does
+mean some minimum versions of some components that needed work to support
+multiple headnodes. This headnode is marked as the "primary".
 
 The latter two steps will convert the given compute nodes (CNs) over to being
-secondary headnodes. This process will involve: rebooting the CN and renaming
-its hostname to 'headnode<number>'. The reboot could mean temporary service
-disruptions on the order of what a manatee or binder instance upgrade can
-entail.
+secondary headnodes. This process will involve a reboot (at least, to use the
+fs-joyent script that is involved in creating the zones/usbkey dataset).
+The reboot could mean temporary service disruptions on the order of what a
+manatee or binder instance upgrade can entail.
 
-Note that this same command can be used to setup a new unsetup compute node
+Eventually this same command may support setting up a new unsetup server
 as a secondary headnode:
 
     sdcadm post-setup headnode $UNSETUP_CN
 
-
-TODO: Discuss with joshw whether makes sense to have 'headnode_primary' in
+TODO: Discuss with joshw whether makes sense to have 'headnode_is_primary' in
 sysinfo somehow (also in usbkey/config) and in CNAPI server record.
 
 
@@ -105,7 +105,7 @@ sysinfo somehow (also in usbkey/config) and in CNAPI server record.
 The recovery process on a secondary HN will be as follows. The operator should
 login to the secondary HN and run:
 
-    sdcadm headnode recover             # run on a secondary HN to recover a failed primary HN
+    sdcadm headnode recover     # run on a secondary HN to recover a failed primary HN
 
 This will mark the server as the primary headnode and walk through recovering
 all required Triton DataCenter core instances on this server. On success,
@@ -129,7 +129,16 @@ comes back up? Can we explicitly ensure at least that services on all other
 servers don't start talking to the "deposed" primary again? Should a booting
 primary headnode go "deposed" if it sees another primary? Should cn-agent do
 that? What is the mechanism for seeing other primaries? Presumably from
-CNAPI talking to manatee (because manatee is the authority).
+CNAPI talking to manatee (because manatee is the authority). The "authority"
+coudl be in the config (the 'sdc' application metadata.headnode_primary)
+and retrieved via config-agent or not.  Basically I think this should be
+at the service level: if a service FOO doesn't support multiple instances...
+then perhaps it should be required to only operate on the primary headnode.
+It should check that config var and not start if it isn't on the primary.
+Does this work? HA services should behave fine if the deposed primary comes
+back to life. Requiring a new version of all services for this is quite a bit.
+I suppose the sdcadm service could stop VMs on a deposed headnode if it can
+detect.
 
 
 ## Controlled headnode takeover process
@@ -174,9 +183,10 @@ the existing secondary headnodes alone:
 
 ## How things work differently with secondary headnodes
 
-- "usbkey" writes are too all the headnodes (platform install, etc.)
+- "usbkey" writes are to all the headnodes (platform install, etc.)
 - non-manatee data is backed up periodically to secondary headnodes, e.g.
-  the imgapi delegate dataset, the dhcpd delegate dataset?
+  the imgapi delegate dataset, the dhcpd delegate dataset? others?
+- `sdcadm self-update` needs to update on all headnodes.
 - TODO: fill this out
 
 
@@ -189,8 +199,9 @@ Minimum versions of components that support multi-headnode TritonDC:
 
 | Component | Version | Notes |
 | --------- | ------- | ----- |
-| cnapi     | ???     | CNAPI-686 |
 | gz-tools  | ???     | Note that 'gz-tools' includes "[/mnt]/usbkey/scripts" updates. |
+
+TODO: update from working notes
 
 
 ## imgapi
@@ -239,8 +250,9 @@ subset of image file data.
 
 ## sdcadm status
 
-I'm consider implementing a `sdcadm status` as part of this work that will
-give a report on current faults with the Triton setup:
+I'm consider implementing a `sdcadm status` or `sdcadm post-setup status` as
+part of this work that will give a report on current faults with the Triton
+setup:
 
 - Is it in a blessed state with HA manatee, moray, etc.?
 - Perhaps listing 'sdcadm check-health' faults.
@@ -255,7 +267,7 @@ while the headnode is dead.
 ## usbkey and assets
 
 The usbkey holds the platforms that CNs use for netboot. Those are served
-via the 'assets' zone. We will need to change the processing that add data
+via the 'assets' zone. We will need to change the processing that adds data
 to the usbkey to update the keys on the "core" CNs (or some concept of
 a backup target if don't have other "core" CNs). We will also need tooling
 to check and sync. Some examples:
@@ -272,7 +284,7 @@ The milestones on the way to completing the work for this RFD.
 Issues: ["rfd67 labelled issues"](https://devhub.joyent.com/jira/issues/?jql=labels%20%3D%20rfd67)
 
 
-# M0: seconary headnodes
+# M0: secondary headnodes
 
 This milestone is about providing the tooling and support for having multiple
 headnodes in a DC. Secondary headnodes will be where we backup data for services
@@ -301,13 +313,9 @@ The eventual suggested/blessed DC setup will then be:
 - Ensure the system can handle multiple headnodes.
 - Ensure the system isn't dependent on the headnode hostname being exactly
   "headnode".
-- Tooling and docs to update the "headnode" hostname to "headnode0".
-- Tooling and docs to convert a CN to a headnode (assigning hostname "headnode1"
-  and "headnode2").
+- Tooling and docs to convert a CN to a secondary headnode
 - Change default headnode setup to use "headnode0" as the hostname.
-  Note: Using this "headnodeN" host naming shouldn't be a requirement, but will
-  be the default used by provided tooling.
-- CNAPI ServerUpdate support to change a headnode's hostname. CNAPI-686
+- Whatever syncing or data backup between headnodes that is required.
 
 
 # M1: secondary headnode recovery
@@ -326,10 +334,6 @@ TODO
 
 ## Open Questions
 
-- That 'sdcadm post-setup headnode headnode' requires a reboot of the primary
-  headnode, *just* to udpate the hostname to 'headnode0' is unfortunate.
-  Can we avoid or skip that? Perhaps offer option for that:
-        sdcadm post-setup headnode --skip-rename headnode
 - What about an easier case that just snapshots all the core zones and zfs sends
   those to external storage?
 - Any "Q:" and "TODO:" notes above.
@@ -338,8 +342,6 @@ TODO
 ## TODOs
 
 Quick TODOs to not forget about:
-
-- GZ PS1 update to differentiate primary vs secondary headnode
 
 - Wildcard: how does being a UFDS master or slave affect things here?
 
@@ -358,7 +360,6 @@ restored:
 - data in any core zone with a delegate dataset:
     - cloudapi: plugin docs suggest putting them here
     - amonredis: meh, only live alarms are stored here
-    - redis: Q: Is anything still using this?
     - ca: ???
     - imgapi: Q: fully handled above?
     - manatee: Q: fully handled above?
