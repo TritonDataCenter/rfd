@@ -325,15 +325,19 @@ triton volume create --opt network=mynetwork --name wp-uploads --size 100g -e af
 
 ###### Name
 
-The name of the shared volume. If not specified, the command results in an
-error.
+The name of the shared volume. If not specified, a unique name is automatically
+generated.
 
 ###### Size
 
-The size of the shared volume. If the size provided is not one of those listed
-as available by sending a request to [CloudAPI's ListVolumeSizes
-endpoints](#listvolumesizes-get-volumessizes), the creation fails and outputs
-the list of available sizes.
+The size of the shared volume. If no size is provided, the volume will be
+created with the smallest size available as specified by [CloudAPI's
+ListVolumeSizes endpoint](#listvolumesizes-get-volumessizes).
+
+If a size is provided and it is not one of those listed as available by sending
+a request to [CloudAPI's ListVolumeSizes
+endpoint](#listvolumesizes-get-volumessizes), the creation fails and outputs the
+list of available sizes.
 
 Specifying a unit in the size parameter is required. Available unit suffixes are
 `m`, `M`, `g` and `G`. These suffixes are assumed to be expressed in terms of
@@ -465,10 +469,14 @@ The size of the shared volume. This option is passed using docker's CLI's
 docker volume create --name wp-uploads --opt size=100g
 ```
 
-The size of the shared volume. If the size provided is not one of those listed
-as available by sending a request to [CloudAPI's ListVolumeSizes
-endpoints](#listvolumesizes-get-volumessizes), the creation fails and outputs
-the list of available sizes.
+The size of the shared volume. If no size is provided, the volume will be
+created with the smallest size available as specified by [CloudAPI's
+ListVolumeSizes endpoint](#listvolumesizes-get-volumessizes).
+
+If a size is provided and it is not one of those listed as available by sending
+a request to [CloudAPI's ListVolumeSizes
+endpoint](#listvolumesizes-get-volumessizes), the creation fails and outputs the
+list of available sizes.
 
 Specifying a unit in the size parameter is required. Available unit suffixes are
 `m`, `M`, `g` and `G`. These suffixes are assumed to be expressed in terms of
