@@ -62,7 +62,9 @@ state: draft
         - [CreateVolume](#createvolume)
         - [GetVolume GET /volumes/id](#getvolume-get-volumesid)
         - [GetVolumeReferences GET /volumes/id/references](#getvolumereferences-get-volumesidreferences)
+        - [DeleteVolume DELETE /volumes/id](#deletevolume-delete-volumesid)
         - [UpdateVolume POST /volumes/id](#updatevolume-post-volumesid)
+        - [ListVolumeSizes GET /volumes/sizes](#listvolumesizes-get-volumessizes)
         - [AttachVolumeToNetwork POST /volumes/id/attachtonetwork](#attachvolumetonetwork-post-volumesidattachtonetwork)
         - [DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork](#detachvolumefromnetwork-post-volumesiddetachfromnetwork)
         - [CreateVolumeSnapshot POST /volumes/id/snapshot](#createvolumesnapshot-post-volumesidsnapshot)
@@ -70,7 +72,6 @@ state: draft
         - [RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesidrollbacktosnapshot)
         - [ListVolumeSnapshots GET /volume/id/snapshots](#listvolumesnapshots-get-volumeidsnapshots)
         - [DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesidsnapshotssnapshot-name)
-        - [DeleteVolume DELETE /volumes/id](#deletevolume-delete-volumesid)
         - [ListVolumePackages GET /volumepackages](#listvolumepackages-get-volumepackages)
         - [GetVolumePackage GET /volumepackages/volume-package-uuid](#getvolumepackage-get-volumepackagesvolume-package-uuid)
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
@@ -108,12 +109,15 @@ state: draft
       - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid)
         - [Input](#input-6)
         - [Output](#output-7)
-      - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork)
+      - [ListVolumeSizes GET /volumes/sizes](#listvolumesizes-get-volumessizes-1)
         - [Input](#input-7)
         - [Output](#output-8)
-      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork)
+      - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork)
         - [Input](#input-8)
         - [Output](#output-9)
+      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork)
+        - [Input](#input-9)
+        - [Output](#output-10)
       - [Snapshots](#snapshots)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
@@ -326,10 +330,10 @@ error.
 
 ###### Size
 
-The size of the shared volume. If the size provided is not one of those made
-available by `tritonnfs` [volume packages](#volume-packages), the creation fails
-and outputs the list of available sizes. The available volume sizes can also be
-listed with [CloudAPI's ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
+The size of the shared volume. If the size provided is not one of those listed
+as available by sending a request to [CloudAPI's ListVolumeSizes
+endpoints](#listvolumesizes-get-volumessizes), the creation fails and outputs
+the list of available sizes.
 
 Specifying a unit in the size parameter is required. Available unit suffixes are
 `m`, `M`, `g` and `G`. These suffixes are assumed to be expressed in terms of
@@ -337,6 +341,10 @@ Specifying a unit in the size parameter is required. Available unit suffixes are
 80000](https://en.wikipedia.org/wiki/ISO/IEC_80000#Units_of_ISO.2FIEC_80000)
 "power of two" units. That is: `10g` and `10G` both mean `10 Gibibytes` (2^30
 bytes). `10m` and `10M` both mean `10 Mebibytes` (2^20 bytes).
+
+Later, users will also be able to specify volume sizes via [volume packages](#introduction-of-volume-packages)'
+UUIDs and list available volume sizes with [CloudAPI's ListVolumePackages
+endpoint](#listvolumepackages-get-volumepackages).
 
 ###### Network
 
@@ -457,10 +465,10 @@ The size of the shared volume. This option is passed using docker's CLI's
 docker volume create --name wp-uploads --opt size=100g
 ```
 
-If the size provided is not one of those made available by `tritonnfs` [volume
-packages](#volume-packages), the creation fails and outputs the list of
-available sizes. The available volume sizes can also be listed with [CloudAPI's
-ListVolumePackages endpoint](#listvolumepackages-get-volumepackages).
+The size of the shared volume. If the size provided is not one of those listed
+as available by sending a request to [CloudAPI's ListVolumeSizes
+endpoints](#listvolumesizes-get-volumessizes), the creation fails and outputs
+the list of available sizes.
 
 Specifying a unit in the size parameter is required. Available unit suffixes are
 `m`, `M`, `g` and `G`. These suffixes are assumed to be expressed in terms of
@@ -468,6 +476,10 @@ Specifying a unit in the size parameter is required. Available unit suffixes are
 80000](https://en.wikipedia.org/wiki/ISO/IEC_80000#Units_of_ISO.2FIEC_80000)
 "power of two" units. That is: `10g` and `10G` both mean `10 Gibibytes` (2^30
 bytes). `10m` and `10M` both mean `10 Mebibytes` (2^20 bytes).
+
+Later, users will also be able to specify volume sizes via [volume packages](#introduction-of-volume-packages)'
+UUIDs and list available volume sizes with [CloudAPI's ListVolumePackages
+endpoint](#listvolumepackages-get-volumepackages).
 
 ###### Network
 
@@ -995,6 +1007,33 @@ volume with UUID `volume-uuid`:
 ]
 ```
 
+##### DeleteVolume DELETE /volumes/id
+
+###### Input
+
+| Param         | Type        | Description                     |
+| ------------- | ----------- | --------------------------------|
+| id            | String      | The id of the volume object   |
+| force         | Boolean     | If true, the volume can be deleted even if there are still non-deleted containers that reference it .   |
+
+If `force` is not specified or `false`, deletion of a shared volume is not
+allowed if it has at least one "active user". If `force` is true, the constraint
+on having no active user of that volume doesn't apply.
+
+See the section ["Deletion and usage semantics"](#deletion-and-usage-semantics)
+for more information.
+
+###### Output
+
+The output is empty and the status code is 204 if the deletion was scheduled
+successfuly.
+
+A volume is always deleted asynchronously. In order to determine when the volume
+is actually deleted, users need to poll the volume's `state` property.
+
+If resources are using the volume to be deleted, the request results in an error
+and the error contains a list of resources that are using the volume.
+
 ##### UpdateVolume POST /volumes/id
 
 The `UpdateVolume` endpoint can be used to update the following properties of a
@@ -1016,12 +1055,29 @@ Sending any other input parameter will result in an error. Updating other
 properties of a volume, such as the networks it's attached to, must be performed
 by using other separate endpoints.
 
+##### ListVolumeSizes GET /volumes/sizes
+
+The `ListVolumeSizes` endpoint can be used to determine in what sizes volumes of
+a certain type are available.
+
+###### Input
+
+| Param    | Type         | Description                     |
+| -------- | ------------ | --------------------------------|
+| type     | String       | the type of the volume (e.g `tritonnfs`). Default value is `tritonnfs` |
+
+Sending any other input parameter will result in an error.
+
 ###### Output
 
-The response is empty, and the HTTP status code is 204. This allows the
-implementation to not have to reload the updated volume, and thus minimizes
-latency. If users need to get an updated representation of the volume, they can
-send a `GetVolume` request.
+The response is an array of objects having two properties:
+
+* `size`: a number in mebibytes that represents the size of a volume
+
+* `description`: another representation of the value `size` that would be
+  clearer for a human to understand. For instance, for a `size` value of
+  `10240`, which would mean `10240 mebibytes`, the value of the `description`
+  property would be `10GiB`
 
 ##### AttachVolumeToNetwork POST /volumes/id/attachtonetwork
 
@@ -1121,33 +1177,6 @@ This volume object can be polled to determine when the snapshot with name
 `snapshot-name` is not present in the `snapshots` list anymore, which means the
 snapshot was deleted successfully.
 
-##### DeleteVolume DELETE /volumes/id
-
-###### Input
-
-| Param         | Type        | Description                     |
-| ------------- | ----------- | --------------------------------|
-| id            | String      | The id of the volume object   |
-| force         | Boolean     | If true, the volume can be deleted even if there are still non-deleted containers that reference it .   |
-
-If `force` is not specified or `false`, deletion of a shared volume is not
-allowed if it has at least one "active user". If `force` is true, the constraint
-on users of  doesn't apply.
-
-See the section ["Deletion and usage semantics"](#deletion-and-usage-semantics)
-for more information.
-
-###### Output
-
-The output is empty and the status code is 204 if the deletion was scheduled
-successfully.
-
-A volume is always deleted asynchronously. In order to determine when the volume
-is actually deleted, users need to poll the volume's `state` property.
-
-If resources are using the volume to be deleted, the request results in an error
-and the error contains a list of resources that are using the volume.
-
 ##### ListVolumePackages GET /volumepackages
 
 _This functionality is not required for the MVP._
@@ -1160,7 +1189,7 @@ _This functionality is not required for the MVP._
 
 ###### Output
 
-An array of objects representing [volume packages](#volume-packages) with the
+An array of objects representing [volume packages](#introduction-of-volume-packages) with the
 type set to `type`.
 
 ##### GetVolumePackage GET /volumepackages/volume-package-uuid
@@ -1169,7 +1198,7 @@ _This functionality is not required for the MVP._
 
 ###### Output
 
-An object representing the [volume package](#volume-packages) with UUID
+An object representing the [volume package](#introduction-of-volume-packages) with UUID
 `volume-package-uuid`.
 
 #### Filtering shared volumes zones from the ListMachines endpoint
@@ -1628,6 +1657,30 @@ The response is empty, and the HTTP status code is 204. This allows the
 implementation to not have to reload the updated volume, and thus minimizes
 latency. If users need to get an updated representation of the volume, they can
 send a `GetVolume` request.
+
+#### ListVolumeSizes GET /volumes/sizes
+
+The `ListVolumeSizes` endpoint can be used to determine in what sizes volumes of
+a certain type are available.
+
+##### Input
+
+| Param    | Type         | Description                     |
+| -------- | ------------ | --------------------------------|
+| type     | String       | the type of the volume (e.g `tritonnfs`). Default value is `tritonnfs` |
+
+Sending any other input parameter will result in an error.
+
+##### Output
+
+The response is an array of objects having two properties:
+
+* `size`: a number in mebibytes that represents the size of a volume
+
+* `description`: another representation of the value `size` that would be
+  clearer for a human to understand. For instance, for a `size` value of
+  `10240`, which would mean `10240 mebibytes`, the value of the `description`
+  property would be `10GiB`
 
 #### AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork
 
