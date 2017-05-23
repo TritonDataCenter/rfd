@@ -980,9 +980,6 @@ state is `creating`. Users need to poll the newly created volume with the
 `GetVolume` API to determine when it's ready to use (its state transitions to
 `ready`).
 
-If the creation process fails, the volume object has its state set to `failed`
-and an `error` property that documents what the cause for the failure was.
-
 ##### GetVolume GET /volumes/id
 
 GetVolume can be used to get data from an already created volume, or to
@@ -1034,7 +1031,7 @@ for more information.
 ###### Output
 
 The output is empty and the status code is 204 if the deletion was scheduled
-successfuly.
+successfully.
 
 A volume is always deleted asynchronously. In order to determine when the volume
 is actually deleted, users need to poll the volume's `state` property.
@@ -1892,12 +1889,6 @@ Volumes are be represented as objects that share a common set of properties:
 
 * `networks`: a list of network UUIDs that represents the networks on which this
   volume can be reached.
-
-* `error`: an optional property present when the `state` property is `failed`.
-  It allows users to get further details on why a volume is in the `failed`
-  state. Its value is an object with the following properties:
-    * `message`: a string that describes the cause for the failure
-    * `code`: a string code that identifies classes of errors
 
 * `snapshots`: a list of [snapshot objects](#snapshot-objects).
 
