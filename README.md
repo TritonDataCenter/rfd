@@ -138,6 +138,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 93 Modernize TLS Options](./rfd/0093/README.md)
 | predraft | [RFD 94 Global Zone metrics in CMON](./rfd/0094/README.md)
 | predraft | [RFD 95 Seamless Muppet Reconfiguration](./rfd/0095/README.md) |
+| draft | [RFD 96 Named thread API](./rfd/0096/README.md) |
 
 ## Contents of an RFD
 
