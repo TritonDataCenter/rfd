@@ -980,6 +980,8 @@ state is `creating`. Users need to poll the newly created volume with the
 `GetVolume` API to determine when it's ready to use (its state transitions to
 `ready`).
 
+If the creation process fails, the volume object has its state set to `failed`.
+
 ##### GetVolume GET /volumes/id
 
 GetVolume can be used to get data from an already created volume, or to
