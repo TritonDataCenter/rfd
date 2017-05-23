@@ -1982,11 +1982,11 @@ Indexes are setup for the following searchable properties:
 
 ##### Reaping failed and deleted volumes
 
-Volumes in state `failed` and `deleted` do not need to be present in persistent
-storage forever. Not deleting these entries has an impact on performance. For
-instance, searches take longer and responses are larger, which tends to increase
-response latency. Maintenance is also impacted. For instance, migrations take
-longer as there are more objects to handle.
+Volumes in state `failed` are stored in Moray, but they do not need to be
+present in persistent storage forever. Not deleting these entries has an impact
+on performance. For instance, searches take longer and responses are larger,
+which tends to increase response latency. Maintenance is also impacted. For
+instance, migrations take longer as there are more objects to handle.
 
 A separate process running in the VOLAPI service's zone will delete these
 entries from persistent storage after some time. This period will need to be
