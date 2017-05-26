@@ -426,10 +426,8 @@ an FM topology node:
 
 ### Topo Nodes
 
-As a part of this, we should expose this information as a child node of
-any NICs that are present in the system with a 'transceiver' type. This
-can also be used by other devices as drivers end up adding support for
-it, for example, FC and IB.
+See the `New Topo Nodes` section for more information on the proposed
+scheme.
 
 ### Transceiver Types
 
@@ -610,13 +608,8 @@ USB key-based device unless it is plugged into an internal slot.
 
 ### Topo Nodes
 
-This would introduce a new set of nodes that are not dissimilar to the
-existing `bay` nodes that have disk drive names. The exact name is still
-to be determined.
-
-Under this, we would have a USB topology that was not dissimilar to
-cfgadm. This would allow us to see all the devices that are under one
-another, likely including the io property groups or binding nodes.
+See the `New Topo Nodes` section for more information on the proposed
+scheme.
 
 ### Implementation Details
 
@@ -751,6 +744,92 @@ show up in here. Perhaps it mirror /devices, but then doesn't have some
 of the chassis specific information, such as labels, etc. For the
 interim we're calling this the general device scheme, with the fmri
 (gd://).
+
+## New Topo Nodes
+
+We'd like to propose a few new topology nodes to fit into the existing
+tree. While these are focused for the moment on the hardware chassis
+tree, these should also work for other schemes.
+
+### Port
+
+We'd like to add a new item called a port. The port represents any kind
+of port on the system. For example, it could represent any of the
+following items:
+
+* A USB port on the chassis, motherboard, or an external card
+* A port on a NIC that could be used for a transceiver
+* A SATA port on the motherboard for a device
+
+The port should have the following `protocol` properties always set:
+
+* `resource`: The full FMRI of this entry.
+* `FRU`: The FRU should point to the parent device, when applicable.
+* `Label`: Set to a string identifier of the device when available.
+
+The port object should also have a `port` property group. The port
+property group should have the following fields:
+
+* `type`: A string which indicate what kind of port this device is for.
+Today, that would be one of `sff` and `usb`.
+
+Various types may have more information in an additional property group
+of the titled group. This group should be named as `%type-port`. When
+we're a bit further along with the USB efforts, we'll come back with a
+scheme for the `usb-port` property group. At this time, there is no
+plans for an sff specific property group.
+
+### Transceiver
+
+The transceiver entry is designed to represent a physical transceiver of
+some kind. At the moment this is being used for the SFF based
+transceivers that are talked about for NICs as discussed earlier.
+However, there is no reason that this couldn't be used for other kinds
+of transceivers, such as those used to connect JBODs, etc.
+
+The transceiver node should fill out the `protocol` group with the
+following information:
+
+* `resource`: The full fmri of this entry
+* `FRU`: The full fmri of this entry, assuming it is not an integrated
+component, in which case it should likely be a parent device and no
+`port` entry should be present.
+
+As most NICs do not have labels for the different transceivers and
+ports, we're not going to place one, though if one is available, then we
+should.
+
+The transceiver group should have a general property group `transceiver`
+which has two different properties at this time:
+
+* `type`: The type indicates a specific kind of transceiver and additional
+property groups that may be present. In this case, the type we'll use is
+called `sff`.
+
+* `usable`: A boolean which indicates whether or not the device can use
+this at a high-level. This is intended to account for cases where someone
+plugs a FC transceiver into an Ethernet device or explicit vendor blacklists
+that are in hardware.
+
+Transceivers with type `sff` whould have a property group
+`sff-transceiver`. The `sff-transceiver` property group should have the
+following properties:
+
+* `vendor`: The name of the transceiver vendor. If one is not available,
+then the string form of the OUI should be used.
+* `part-number`: The part number for this transceiver.
+* `revision`: The revision for this transceiver.
+* `serial-number`: The serial number for this transceiver.
+
+If the transceiver does not provide this information, then the property
+should be left out.
+
+### NIC Transeceiver Model
+
+A NIC transceiver would have a number of `port` nodes under the normal
+PCI device that represents the device. The number of ports would be
+based on the number of transceivers. If the transceiver is present, then
+we would enumerate a `transceiver` node under it.
 
 ## Impacted Repositories
 
