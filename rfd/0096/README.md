@@ -201,11 +201,11 @@ Currently for each thread, `pstack(1)` prints the lwpid.  This can be supplement
 ### Doors (maybe)
 
 Door servers implement a thread pool to service door client requests.
-Typically, door servers let `door\_create(3C)` handle the creation of the
-thread pool, though a server can optionally use `door\_server\_create(3C)` to
+Typically, door servers let `door_create(3C)` handle the creation of the
+thread pool, though a server can optionally use `door_server_create(3C)` to
 specify a custom thread creation routine.  The latter function would allow door
 servers to set the thread name if they desire, but does add additional
-complexity.  It is proposed that `door\_create(3C)` be extended in the
+complexity.  It is proposed that `door_create(3C)` be extended in the
 following compatible manner:
 
 ```
@@ -214,8 +214,8 @@ following compatible manner:
         uint_t attributes, ...);
 ```
 
-In addition, a new attribute is proposed: `DOOR\_NAME`.  When present, it
-indicates that included at the end of the arguments is a `const char \*` value
+In addition, a new attribute is proposed: `DOOR_NAME`.  When present, it
+indicates that included at the end of the arguments is a `const char *` value
 pointing to the name to use when creating the door server threads.  Otherwise,
 any additional arguments after attributes is ignored.
 
@@ -326,7 +326,7 @@ This also strongly suggests that the information should reside within the
 kernel (though doesn't preclude libc from caching values in userland).  For
 lx-brand, it is suggested that we match the existing Linux behavior and allow
 the reading/setting of thread names via the lx-brand proc (via
-/proc/\<pid\>/task/\<tid\>/comm) as well as `prctl()`.
+`/proc/<pid>/task/<tid>/comm`) as well as `prctl()`.
 
 Within the kernel, a strong candidate for the holding the thread name is
 the `kthread_t` struct.  Every user and kernel thread has a corresponding
@@ -379,15 +379,15 @@ regardless of this RFD).
 
 An open question that remains is around the interaction of these features and
 `chroot(2)`.  As /proc is typically unavailable within a `chroot(2)`
-environment, any part of the implementation dependent on /proc will not work.
+environment, any part of the implementation dependent on `/proc` will not work.
 Should there be a second mechanism for retrieving a thread name that does
-not require the use of /proc?  Related to that, should setting a thread's name
-be done through a mechanism other than /proc to allow thread names to be set
+not require the use of `/proc`?  Related to that, should setting a thread's name
+be done through a mechanism other than `/proc` to allow thread names to be set
 within a `chroot(2)` environment, or do we simply document that they do not
 work in such instances.  How critical is it that this work with `chroot(2)`?
 Linux is interesting in it half-works -- despite what the man pages claim,
 a thread can set/get it's own name via prctl (and in the glibc functions do
-just that) and only use /proc for other threads.  If not /proc, how do we
+just that) and only use `/proc` for other threads.  If not `/proc`, how do we
 set the thread name?  Should it be a new syscall?  Is there an existing
 system call that can be sensibly extended to support it?
 
@@ -396,14 +396,13 @@ system call that can be sensibly extended to support it?
 ### pthread\_attr\_getname\_np
 
 ```
-pthread_attr_getname_np(3c)           3c           pthread_attr_getname_np(3c)
+PTHREAD_ATTR_GETNAME_NP(3C)                       Standard C Library Functions
 
 NAME
      pthread_attr_getname_np, pthread_attr_setname_np - get or set thread name
      attribute
 
 SYNOPSIS
-     library ``libpthread''
      #include <pthread.h>
 
      int
@@ -453,13 +452,12 @@ illumos                          May 18, 2017                          illumos
 ### pthread\_getname\_np
 
 ```
-pthread_getname_np(3c)                3c                pthread_getname_np(3c)
+PTHREAD_GETNAME_NP(3C)   Standard C Library Functions   PTHREAD_GETNAME_NP(3C)
 
 NAME
      pthread_getname_np, pthread_setname_np - get or set the name of a thread
 
 SYNOPSIS
-     library ``libpthread''
      #include <pthread.h>
 
      int
