@@ -45,6 +45,16 @@ authentication, but also for the protection of data at rest. As a result,
 this proposal also includes provisions for supporting this use case (though
 implementing the on-disk data encryption is delegated to ZFS).
 
+## Definitions
+
+CN:: A "CN" here is any physical node in the Triton system.
+Trusted CN:: A "trusted" CN is one that is trusted to run components of the
+Triton system itself (e.g. VMAPI, NAPI, CloudAPI etc)
+Self-booting CN:: A "self-booting" CN is one that can boot entirely standalone,
+without any other machine in the datacenter or network access being available.
+Headnode:: A "headnode" is a term for a CN that is both trusted and
+self-booting. Any Triton datacenter needs to have at least one such node.
+
 ## Threat models and goals
 
 ### Authentication
@@ -61,18 +71,19 @@ no special credentials, but no more. They may be able to carry out denial of
 service attacks on the admin VLAN, but these are out of scope for this design.
 
 Threat 2:: An intruder has escalated their network access into the admin VLAN, by
-compromise of a compute node (privilege escalation and zone escape).
+compromise of an ordinary (not "trusted") compute node (privilege escalation and
+zone escape).
 Goal 2:: The goal is to give this attacker only the minimum access required for
 the normal operation of the CN. They will be able to control other zones on that
 CN, as well as the information reported about them back to the rest of Triton.
-They will under no circumstances be able to gain control of a headnode from this
-position. Their access to the system can be terminated by revoking the
+They will under no circumstances be able to gain control of a trusted CN from
+this position. Their access to the system can be terminated by revoking the
 credentials of the CN, they cannot extract any long-lived key material, and
 cannot take any actions that would escalate or allow sideways movement into
 other CNs.
 
-Threat 3:: An intruder has taken control of a public-facing headnode service (e.g.
-CloudAPI), by making use of a vulnerability in that service.
+Threat 3:: An intruder has taken control of a public-facing headnode service
+(e.g. CloudAPI), by making use of a vulnerability in that service.
 Goal 3:: The goal is to give this attacker only the minimum access required by
 the normal operation of that service. This means, for example, that CloudAPI
 would not be able to run arbitrary commands on CNs or directly interface with
@@ -136,7 +147,7 @@ The concept for at-rest encryption is to generate a master key for ZFS crypto
 by combining 3 pieces of data:
 
  * A secret key written to the Yubikey (which it will not reveal);
- * A secret key stored on a headnode in the datacenter; and
+ * A secret key stored on a trusted node in the datacenter; and
  * A randomly generated "challenge" value, kept on disk unencrypted with the
    data.
 
@@ -145,12 +156,15 @@ challenge value is read in from the disk and passed to the token. The token
 will compute the HMAC of the challenge data with its secret key (without
 revealing that secret key to the host).
 
-Then, a secret key stored on the headnode will be retrieved over a TLS-protected
-authenticated channel and used as the secret key for another HMAC operation on
-the output of the first one.
+Then, a secret key stored in a headnode service will be retrieved over a
+TLS-protected authenticated channel and used as the secret key for another HMAC
+operation on the output of the first one.
 
 The final output is the master key to unlock the ZFS crypto framework for the
-pool.
+pool. A single master key will be used for the whole pool, rather than a key
+per zone or per customer: in the current Triton design, CNs are the source of
+truth about what zones run on them (and changing that here is out of scope), so
+there is no real benefit in using a finer-grained scheme.
 
 We incorporate the 3 pieces of data into the key so that the only sufficient
 condition to successfully decrypt the data on the disks is to have all 3 of:
@@ -163,15 +177,15 @@ If any one of these 3 is missing, the key cannot be recomputed, and the data
 cannot be decrypted.
 
 This approach has one major issue, however, which is the case of a headnode. A
-Triton headnode must be able to boot from its own media, without requiring
-the rest of the surrounding DC to be running (as it may be hosting the PXE DHCP
-server that allows other non-headnode CNs to boot).
+Triton headnode, as defined earlier, must be able to boot from its own media,
+without requiring the rest of the surrounding DC to be running (as it may be
+hosting the PXE DHCP server that allows other non-self-booting CNs to boot).
 
-As a result, headnodes will not use a remotely stored part in their key. They
-will use a challenge value, and the secret key in their token, but make no
-remote request to get a third piece. This also means that headnodes do not
-meet the full goal discussed above -- the theft of an entire working headnode
-will allow that headnode's disks to be read.
+As a result, self-booting nodes will not use a remotely stored part in their
+key. They will use a challenge value, and the secret key in their token, but
+make no remote request to get a third piece. This also means that self-booting
+nodes do not meet the full goal discussed above -- the theft of an entire
+working headnode will allow that headnode's disks to be read.
 
 This is a difficult compromise between fault tolerance, ability to boot the
 whole DC up after power loss, and security. It may be worthwhile to examine
@@ -222,37 +236,31 @@ validate the identity of one zone to another arbitrary zone on the system -- the
 other zone needs to also be able to validate the key of the host CN. To achieve
 this requires a chain of trust.
 
-### Headnodes and chain of trust
-
-First, some terminology:
-
-CN:: A "CN" here is any physical node in the Triton system.
-Headnode:: A "headnode" is any CN that has been authorized to host internal
-Triton service zones (e.g. VMAPI, CloudAPI etc).
+### Trusted CNs and chain of trust
 
 As is typical with any chain of trust, we must begin with a set of keys known
 as "root keys", which are ultimately trusted. What we propose here is to use
 a single root key which is only ever stored offline, broken into pieces.
 
 This root key will sign an initial statement stating that certain nodes in the
-cluster are to be headnodes, detailing their public keys, as well as a
+cluster are to be Trusted CNs, detailing their public keys, as well as a
 timestamp and serial number. It will then (barring exceptional circumstances)
 never be used again.
 
-To this statement, the headnodes of the datacenter may append additional
+To this statement, the Trusted CNs of the datacenter may append additional
 statements, with certain restrictions:
 
  * Any appended statement must include a signature both over the new statement
    and all previous statements in the chain; and
- * The appended statement must be signed by the keys of all headnodes in the
+ * The appended statement must be signed by the keys of all Trusted CNs in the
    datacenter at the time of appending, except one (N-1 out of N, unless there
-   is only one headnode at the time, in which case its signature is required).
+   is only one Trusted CN at the time, in which case its signature is required).
 
 The statement may declare that a new node (with corresponding key etc) is now
-a headnode, or it may declare that an existing headnode is no longer such.
+a Trusted CN, or it may declare that an existing Trusted CN is no longer such.
 
-All CNs in the system (both non-headnode CNs and headnodes) periodically gossip
-their current version of the headnode chain out over the network, to a multicast
+All CNs in the system (both regular and trusted) periodically gossip their
+current version of the Trusted CN chain out over the network, to a multicast
 address on the admin VLAN.
 
 If a CN receives a new chain, it will accept it as the new canonical version
@@ -266,19 +274,19 @@ of the chain if and only if:
    newer timestamp on the very first statement.
 
 In this way, in an emergency situation, the chain can be restarted by using the
-offine master key to sign a new statement about the headnodes for the
+offine master key to sign a new statement about the Trusted CNs for the
 installation.
 
-This design allows headnodes to be added and removed from the installation at
+This design allows Trusted CNs to be added and removed from the installation at
 a later date without requiring that the root of the chain of trust be available
 in online storage for signing.
 
 Once the gossip process has stabilized, all CNs in the system are aware of the
-identities and keys of nodes that are authorized to act as headnodes (hosting
+identities and keys of nodes that are authorized to act as Trusted CNs (hosting
 core Triton services). This means that zone certificates presented by zones on
 these CNs can be validated, authenticating headnode services to each other.
 
-It is important to note that changes to the set of headnodes are expected to be
+It is important to note that changes to the set of Trusted CNs are expected to be
 infrequent, so it is not important to use a distributed system here that offers
 fast convergence. The simplicity of implementation of a gossip design is also
 an advantage.
@@ -311,7 +319,7 @@ containing the registered public key they supplied.
 Traffic between binder and clients will be secured using DNS Transaction
 Signatures (TSIG), signed using the binder instance's zone key. The client must
 validate the binder instance's key against its certificate and the gossiped list
-of headnodes, but thereafter it can trust signed responses from that binder
+of Trusted CNs, but thereafter it can trust signed responses from that binder
 about other services in lieu of performing full validation itself.
 
 Binder will also have to transition away from using the raw ZooKeeper direct
@@ -344,7 +352,7 @@ pieces being held).
 The scheme we propose is as follows:
 
  * Generation and preparation of the root key and token for the initial set of
-   headnodes will take place in an environment away from the data center, and
+   Trusted CNs will take place in an environment away from the data center, and
    will be done in advance by administrators.
 
  * At the same time, the administrators must initialize backup media that have
@@ -494,7 +502,7 @@ packet (depending on protocol) sent to the server.
 
 ### CloudAPI
 
- . The (headnode) CN hosting the CloudAPI instance boots up (see <<cn-boot>>
+ . The Trusted CN hosting the CloudAPI instance boots up (see <<cn-boot>>
    for more details)
  .. It starts up the zone soft token manager daemon, which will LoFS mount
     sockets into all zones (see <<soft-token>>). The daemon does not unlock the
@@ -513,10 +521,10 @@ packet (depending on protocol) sent to the server.
     signed statement about the CloudAPI zone's IP address and keys, including
     the GZ certificate.
  .. Binder receives and validates the registration
- ... First, binder retrieves the list of valid headnodes from the gossip service
+ ... First, binder retrieves the list of valid Trusted CNs from the gossip service
      on its host CN (via the soft token socket?)
  ... Then, it compares the signature on the certificate given by the registrant
-     to this list and finds it was signed by a valid headnode
+     to this list and finds it was signed by a valid Trusted CN
  ... The certificate presented includes metadata about the zone, including any
      values of `sdc_role` or `manta_role` tags. Binder validates that such
      values should be allowed to register under the given DNS name.
@@ -527,7 +535,7 @@ packet (depending on protocol) sent to the server.
     resolver to connect to binder
  ... The bootstrap requests each binder's certificate by looking up the binder
      service hostname with rrtype CERT (see RFC4398)
- ... The bootstrap resolver then retrieves the list of valid headnodes from the
+ ... The bootstrap resolver then retrieves the list of valid Trusted CNs from the
      gossip service on its host CN, and uses this list to validate the binder
      instances' certificates. It also checks that the `sdc_role`/`manta_role`
      value matches up.
@@ -599,6 +607,19 @@ Once a CN has been set up and is operating normally, it will periodically
 mount its boot flash media and update the set of headnode CA certificates stored
 there.
 
+Some Triton installations do not boot iPXE from flash media, and instead use the
+built-in PXE ROM in their system. Unfortunately, the only known way to build an
+authenticated system around the firmware PXE is to leverage the EFI Secure Boot
+and TPM features of a modern system, and support for using these with PXE is
+difficult (due to lack of general EFI support) and somewhat inconsistent between
+server vendors. It would require the ability to modify the certificates stored
+in firmware for boot signing, at runtime, which currently is a deeply
+proprietary procedure.
+
+For this reason, installations which depend on system PXE firmware will not have
+a fully secured boot procedure, and will not meet all of the stated goals of the
+system.
+
 [[green-field]]
 ## Green-field deployment step-by-step
 
@@ -606,10 +627,10 @@ there.
    all CNs up and running
 
  . Before beginning to set up hardware, run tools (on laptop) to generate root
-   key and program Yubikey for initial set of headnodes. Set up 3 DVD-Rs as
-   backup media (as multi-track UDF), burn media key and initial metadata to
-   first track, followed by backups of root key and disk encryption secrets for
-   the headnodes.
+   key and program Yubikey for initial set of Trusted CNs, including at least
+   one headnode. Set up 3 DVD-Rs as backup media (as multi-track UDF), burn
+   media key and initial metadata to first track, followed by backups of root
+   key and disk encryption secrets for the initial nodes.
  . Run tool to update the USB flash drive image for booting headnodes. Copies
    the root public key into it, as well as the top-level certificates for the
    initial set of headnodes (edits the .img file in one step).
@@ -648,7 +669,7 @@ there.
 
  * The road to validating everything in the admin vlan, what intermediate states
    will look like while upgrading.
- * What things will look like if you never add any Yubikeys (TLS with just 
+ * What things will look like if you never add any Yubikeys (TLS with just
    self-signed certs, open trust).
 
 ## PostgreSQL and Moray
