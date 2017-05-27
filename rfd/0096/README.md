@@ -67,7 +67,7 @@ implementations impose a maximum size on the name of a thread:
 On Linux, the man page\[[1]\] explicitly states the thread name is modified and
 read by reading the value out of `/proc/self/task/<tid>/comm`.  Consultation
 with the glibc source indicates that this is only partially true.  If a thread
-is setting or reading it's own name (i.e. `tid == pthread_self()`),
+is setting or reading its own name (i.e. `tid == pthread_self()`),
 `prctl(PR_{GET,SET}_NAME, name)` is used.  Only when the tid of another thread
 is specified is `/proc` accessed.  The functions can return `ERANGE` if the
 name is too long (set) or the buffer to hold the name is too small (get), as
@@ -308,7 +308,7 @@ for lx-branded zones.  Solaris also returns `EINVAL` from
 `pthread_getname_np()` if passed a NULL buffer.  This is somewhat inconsistent
 with other functions, for example `read(2)` is documented as returning `EFAULT`
 if given an invalid address (which NULL presumably is).  Solaris also silently
-truncates names greater than it's max (32), while Linux returns `ERANGE`.  The
+truncates names greater than its max (32), while Linux returns `ERANGE`.  The
 Linux approach seems better here.
 
 None of the implementations place any apparent restrictions on reading this
@@ -386,7 +386,7 @@ be done through a mechanism other than `/proc` to allow thread names to be set
 within a `chroot(2)` environment, or do we simply document that they do not
 work in such instances.  How critical is it that this work with `chroot(2)`?
 Linux is interesting in it half-works -- despite what the man pages claim,
-a thread can set/get it's own name via prctl (and in the glibc functions do
+a thread can set/get its own name via prctl (and in the glibc functions do
 just that) and only use `/proc` for other threads.  If not `/proc`, how do we
 set the thread name?  Should it be a new syscall?  Is there an existing
 system call that can be sensibly extended to support it?
