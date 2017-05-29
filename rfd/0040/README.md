@@ -437,6 +437,32 @@ Moray/Manatee cluster.
       just start a huge download? Also useful for monitoring. Kang.
     - rotate logs and put logs for upload on delegate dataset. are there
       space concerns there?
+
+- quiesce notes: It would be nice to have imgapi-standalone-quiesce to run before
+  destroying it. Short downtime update process would be:
+
+    - create inst1 (CNS disabled)
+    - run imgapi-standalone-quiesce on inst0:
+        - wait for current write requests (reporting status on them)
+        - put IMGAPI in read-only mode (ideally without a restart)
+        - do an archive run
+        - disable crontab entries
+        - do a backup run
+        - do a log rotation and log upload run
+        - put a marker that this inst is quiesced: imgapi should refuse
+          to come back if quiesced (perhaps -restore could bring it back)
+    - run imgapi-standalone-restore on inst1
+        - NOTE: part of restore should be to enable CNS
+        - NOTE: part of restore should be to enable the crontab entries
+        - NOTE: part of restore should be a first run of log rot (if can)
+          and backup and log upload (i.e. get to clean *-status run)
+    - take inst0 out of CNS
+    - wait for inst0 to drop out of CNS
+    - should now be able to delete inst0 whenever
+
+    This is all too complex. If we could get an alternative to the 'local'
+    database, then we could simplify it a lot.
+
 - restify (to v4)
 - manta-sync's bunyan to newer to get latest dtrace-provider
 - imgapi.git: drop nopt, used in main.js. Move main.js over to lib/ dir.
