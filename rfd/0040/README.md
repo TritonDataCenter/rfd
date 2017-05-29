@@ -11,6 +11,18 @@ The primary standalone IMGAPI deployments are <https://images.joyent.com>
 core services for a Triton DataCenter.
 
 
+## Current Status
+
+M0 is implemented and updates.jo and images.jo are deployed using the
+newer images and process. An [Operator
+Guide](https://github.com/joyent/sdc-imgapi/blob/master/docs/operator-guide.md#standalone-setup)
+documents setup/reprovision/backup/restore processes for a standalone IMGAPI.
+
+Remaining milestones are incomplete and not currently scheduled. M0 implements a
+significant part of M1 (backup, deploy, restore) and M3 (log file rotation and
+upload). Good enough for now.
+
+
 ## The problem
 
 Updates.jo and images.jo are pets: manually setup, updated in-place, it isn't
@@ -89,14 +101,6 @@ Eventually these may be promoted to requirements.
 Hopes and dreams: It would be lovely to expose delegate datasets and reprovision
 via cloudapi so theoretically those could be used for easier/quicker standalone
 IMGAPI instance updates/deployments.
-
-
-## Current Status
-
-IMGAPI-567/IMGAPI-571 will implement milestone 0 (M0). Remaining milestones are
-incomplete and not currently scheduled. M0 implements a significant part of M1
-(backup, deploy, restore) and M3 (log file rotation and upload). Good enough for
-now.
 
 
 ## M0: a better and documented deploy/update/backup/restore
