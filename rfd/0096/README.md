@@ -299,7 +299,7 @@ be a somewhere under `/proc/<pid>/lwp/<lwpid>`.
 There is some apparent differences in error handling as noted above.  Our
 existing `pthreads(5)` implementation often uses `ESRCH` when commands that
 take a `pthread_t` argument are given an non-existent thread id.  For
-consistency, it is recommend we do the same for out
+consistency, it is recommend we do the same for our
 `pthread_{get,set}name_np()`.  This is also compatible with the documented
 Solaris behavior, however it should be noted that this differs from the
 documented Linux behavior.  On Linux, it should appear that the return value is
@@ -328,14 +328,30 @@ lx-brand, it is suggested that we match the existing Linux behavior and allow
 the reading/setting of thread names via the lx-brand proc (via
 `/proc/<pid>/task/<tid>/comm`) as well as `prctl()`.
 
-Within the kernel, a strong candidate for the holding the thread name is
-the `kthread_t` struct.  Every user and kernel thread has a corresponding
-`kthread_t` struct (kernel threads only have a `kthread_t` while user threads
-have both a `kthread_t` and `klwp_t`).  Using this allows for the potential
-naming of kernel threads as well.  TBD is if the name should be stored as
-part of the struct itself, or merely a pointer (i.e. `char t_name[SIZE]` vs.
-`char *t_name`).  The main area of concern is whether the use of a pointer
-would complicate the support within `dtrace(1m)` or not.
+As magic numbers are generally frowned upon, we will follow what NetBSD does
+and define `PTHREAD_MAX_NAMELEN_NP` and set it's value to 32 (though this may
+be set in terms of a kernel specific macro).  This size will include a
+terminating `\0` character.  Since most software still detects illumos based
+distributions as Solaris, it seems prudent to match it's sizing to limit
+gratuitous incompatibility.  We can optionally limit this for lx-branded zones
+to the expected 16 characters (including trailing `\0`).  It should be noted
+that glibc currently (as of 2.25) performs this length check as well.
+
+Initially, we believe that adding a pointer in `kthread_t` (tentatively
+named `t_name`) should work.  The pointer will be initialized to `NULL` when
+a `kthread_t` is first allocated.  When a thread name is set for the first
+time, a `PTHREAD_MASX_NAMELEN_NP` sized buffer will be allocated and the
+`t_name` field will be set to point to this buffer.  This buffer will persist
+for the lifetime of the `kthread_t` structure.  Any subsequent modifications
+to the thread name will re-use the existing buffer.  This should allow for
+safe reading and writing of the value within the context of DTrace.  Using
+`kthread_t` vs. `kwlp_t` also allows for extending the ability to kernel
+threads (as there's a `kthread_t` for each `klwp_t`, but kernel threads only
+have a `kthread_t` structure allocated).   Allocating the buffer for the name
+will add 8 bytes of overhead for each buffer, however it seems unlikely that
+every thread on a system will have a name set (e.g. single threaded processes
+are unlikely to set a name on their thread), so that overall this should
+minimize the additional memory footprint.
 
 For native processes, given the large number of planned consumers that currently make heavy use of `proc(4)`, it seems reasonable to expose the thread names
 via `/proc` for reading.  The privileges required should match those currently
@@ -389,7 +405,10 @@ Linux is interesting in it half-works -- despite what the man pages claim,
 a thread can set/get its own name via prctl (and in the glibc functions do
 just that) and only use `/proc` for other threads.  If not `/proc`, how do we
 set the thread name?  Should it be a new syscall?  Is there an existing
-system call that can be sensibly extended to support it?
+system call that can be sensibly extended to support it?  `/proc` can be mounted into a a `chroot(2)` environment, and processes require the `PRIV_PROC_CHROOT`
+privilege in order to perform a `chroot(2)` call (which is not part of the 
+basic privilege set--only root owned processes have it).  This might mitigate
+any concerns surrounding a `/proc` only solution.
 
 ## Man Pages
 
