@@ -531,9 +531,10 @@ This section presents a solution to all of the `findobjects` limitations
 described earlier in this document.
 
 This solution solves both the VMAPI specific use case presented in this document
-(tracked by ZAPI-747), the more general Triton core API moray buckets migration
-use case, and any other use case described in this document, such as the one
-tracked by MORAY-104.
+(tracked by [ZAPI-747](https://smartos.org/bugview/ZAPI-747)), the more general
+Triton core API moray buckets migration use case, and any other use case
+described in this document, such as the ones tracked by
+[MORAY-104](https://smartos.org/bugview/MORAY-104).
 
 Different solutions for each of the limitations presented in the
 section entitled "Current problems with findobjects requests using unindexed
@@ -599,8 +600,9 @@ changed if the `requireIndexes` option is set to true.
 When the `requireIndexes` parameter is set, the first `data` event received by
 moray clients will be considered to be a `metadata` record. A metadata record is
 a record that has a property named `_handledOptions`. The value of this property
-will be an array of strings containing the name of all options passed to the
-`findObjects` requests that were handled by the server.
+will be an array of strings containing the name of all options that can be
+handled by the server (not restricted to just the options that were passed with
+the request).
 
 Including the `requireIndexes` option, these options names are:
 
@@ -616,8 +618,10 @@ Including the `requireIndexes` option, these options names are:
 * `requireIndexes`
 
 If the first `'data'` event received by the moray client is not a metadata
-record, and if the `requireIndexes` option is set to true, the client will emit
-an `error` event on the request.
+record (possibly because the client sent the request to a Moray server that does
+not support handling the `requireIndexes` option), and if the `requireIndexes`
+option is set to true, the client will emit an `error` event on the request with
+an `UnhandledOptionsError` Error instance.
 
 If the `requireIndexes` option is not set to true, the moray client will not
 enforce the presence of a metadata record.
@@ -694,14 +698,19 @@ first `data` record of the response if the property
 set to true.
 
 This record will have only one property named `_handledOptions`, and will
-include all the `findObjects` options that were handled by the server.
+include all the `findObjects` options that can be handled by the server.
 
-These options names are:
+Including the `requireIndexes` option, these options names are:
 
 * `req_id`
 * `limit`
 * `offset`
 * `sort`
+* `noLimit`
+* `no_count`
+* `sql_only`
+* `noBucketCache`
+* `timeout`
 * `requireIndexes`
 
 #### Performance impact
