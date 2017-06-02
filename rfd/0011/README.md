@@ -125,12 +125,12 @@ NAPI will need to be modified to support the following:
 
 - Accept and validate new IPv6 networks (see [NAPI-308]); a new field,
   **subnet\_type**, will need to be stored in Moray so people will be able to
-  search for specific network types
+  search for specific network types (see [NAPI-414])
 - Manage and search IPv6 addresses
 - Ensure that a NIC only has networks placed on it with the same NIC tag and
   VLAN ID
 - Manage IPv6 network pools, and ensure that they are validated (a network pool
-  is either IPv4 or IPv6)
+  is either IPv4 or IPv6); see [NAPI-395]
 
 Further details on some of this work can be found in [RFD 32].
 
@@ -287,6 +287,8 @@ how to properly boot.
 [FWAPI-212]: https://smartos.org/bugview/FWAPI-212
 [FWAPI-225]: https://smartos.org/bugview/FWAPI-225
 [NAPI-308]: https://devhub.joyent.com/jira/browse/NAPI-308
+[NAPI-395]: https://devhub.joyent.com/jira/browse/NAPI-395
+[NAPI-414]: https://devhub.joyent.com/jira/browse/NAPI-414
 [ZAPI-598]: https://smartos.org/bugview/ZAPI-598
 
 <!-- RFCs -->
