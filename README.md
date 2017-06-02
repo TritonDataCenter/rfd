@@ -73,7 +73,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 28 Improving syncing between Compute Nodes and NAPI](./rfd/0028/README.md) |
 | draft    | [RFD 29 Nothing in Triton should rely on ur outside bootstrapping and emergencies](./rfd/0029/README.md) |
 | predraft | [RFD 30 Handling "lastexited" for zones when CN is rebooted or crashes](./rfd/0030/README.md) |
-| draft    | [RFD 31 libscsi and uscsi(7I) Improvements for Firmware Upgrade](./rfd/0031/README.md)
+| draft    | [RFD 31 libscsi and uscsi(7I) Improvements for Firmware Upgrade](./rfd/0031/README.md) |
 | draft    | [RFD 32 Multiple IP Addresses in NAPI](./rfd/0032/README.md) |
 | publish  | [RFD 33 Moray client v2](./rfd/0033/README.md) |
 | predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
@@ -130,17 +130,18 @@ formal writing that it has come to represent.)
 | publish  | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |
 | draft | [RFD 86 ContainerPilot 3](./rfd/0086/README.md) |
 | predraft | [RFD 87 Docker Events for Triton](./rfd/0087/README.md) |
-| draft    | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md)
-| draft    | [RFD 89 Project Tiresias](./rfd/0089/README.md)
-| predraft | [RFD 90 Handling CPU Caps in Triton](./rfd/0090/README.md)
-| predraft | [RFD 91 Application level metrics in CMON](./rfd/0091/README.md)
-| predraft | [RFD 92 Triton Services High Availability](./rfd/0092/README.md)
-| publish  | [RFD 93 Modernize TLS Options](./rfd/0093/README.md)
-| predraft | [RFD 94 Global Zone metrics in CMON](./rfd/0094/README.md)
+| draft    | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md) |
+| draft    | [RFD 89 Project Tiresias](./rfd/0089/README.md) |
+| predraft | [RFD 90 Handling CPU Caps in Triton](./rfd/0090/README.md) |
+| predraft | [RFD 91 Application level metrics in CMON](./rfd/0091/README.md) |
+| predraft | [RFD 92 Triton Services High Availability](./rfd/0092/README.md) |
+| publish  | [RFD 93 Modernize TLS Options](./rfd/0093/README.md) |
+| predraft | [RFD 94 Global Zone metrics in CMON](./rfd/0094/README.md) |
 | predraft | [RFD 95 Seamless Muppet Reconfiguration](./rfd/0095/README.md) |
 | draft | [RFD 96 Named thread API](./rfd/0096/README.md) |
-| predraft | [RFD 97 Project Hookshot - Improved VLAN Handling](./rfd/0097/README.md)
+| predraft | [RFD 97 Project Hookshot - Improved VLAN Handling](./rfd/0097/README.md) |
 | predraft | [RFD 98 Issue Prioritisation Guidelines](./rfd/0098/README.md) |
+| draft    | [RFD 99 Client Library for Collection Application Metrics](./rfd/0099/README.md) |
 
 
 ## Contents of an RFD
