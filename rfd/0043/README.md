@@ -1,6 +1,6 @@
 ---
 authors: Robert Mustacchi <rm@joyent.com>, Cody Mello <cody.mello@joyent.com>
-state: draft
+state: publish
 ---
 
 <!--
@@ -99,7 +99,7 @@ one.
 This work will require changes to both DAPI and NAPI, and changes to
 VMAPI's workflows to take advantage of their new behaviour.
 
-NAPI will need to return a `nic_tags` array on network pools to
+NAPI will need to return a `nic_tags_present` array on network pools to
 indicate the union of all contained networks' tags. Using this
 information, DAPI's server selection logic will need to determine which
 servers provide all of the NIC tags needed to satisfy at least one of
@@ -128,7 +128,7 @@ different network pool:
     "ede0ebea-5288-4d16-a405-da86c21a6547"
   ],
   "nic_tag": "r1external",
-  "nic_tags": [
+  "nic_tags_present": [
     "r1external",
     "r2external",
     "r3external"
@@ -146,7 +146,7 @@ different network pool:
     "25a2969e-02ba-4dc3-aeec-28f1884ee66d"
   ],
   "nic_tag": "r1internal",
-  "nic_tags": [
+  "nic_tags_present": [
     "r1internal",
     "r2internal",
     "r3internal"
@@ -174,6 +174,9 @@ NIC provision will fail, and an operator will need to either create
 additional networks for that NIC tag and add them to the pool or remove
 the full networks to stop attempts to provision on them.
 
+See [DAPI-340], [NAPI-403], and [ZAPI-781] for the work done to implement
+the logic described above.
+
 ### Handling Partial Upgrades
 
 If VMAPI and CNAPI are upgraded ahead of NAPI, then network pools with
@@ -185,3 +188,8 @@ receive the `nic_tags_available` array, and would not be able to safely
 select which networks can be used on the destination CN. NAPI would then
 fail NIC provisions on this pool until VMAPI and CNAPI are upgraded to
 new enough versions.
+
+<!-- Issue links -->
+[DAPI-340]: https://smartos.org/bugview/DAPI-340
+[NAPI-403]: https://smartos.org/bugview/NAPI-403
+[ZAPI-781]: https://smartos.org/bugview/ZAPI-781
