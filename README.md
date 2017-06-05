@@ -141,7 +141,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 96 Named thread API](./rfd/0096/README.md) |
 | predraft | [RFD 97 Project Hookshot - Improved VLAN Handling](./rfd/0097/README.md) |
 | predraft | [RFD 98 Issue Prioritisation Guidelines](./rfd/0098/README.md) |
-| draft    | [RFD 99 Client Library for Collection Application Metrics](./rfd/0099/README.md) |
+| draft    | [RFD 99 Client Library for Collecting Application Metrics](./rfd/0099/README.md) |
 
 
 ## Contents of an RFD
