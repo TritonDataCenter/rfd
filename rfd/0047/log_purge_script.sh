@@ -16,7 +16,7 @@
 #       purge-system-logs -h                              # help output
 #       purge-system-logs /admin/stor/logs                # dry-run by default
 #       purge-system-logs -f /admin/stor/logs             # '-f' to actually del
-#       purge-system-logs -f /admin/stor/logs/$datacenter # specific Triton DC
+#       purge-system-logs -f /admin/stor/logs $datacenter # specific Triton DC
 #
 # Log files build up in Manta. They need to eventually be purged so they don't
 # take up ever increasing space. This script knows how to remove old
@@ -99,6 +99,7 @@ export PATH=$TOP/node_modules/.bin:$PATH
 #
 TTL_DAYS_FROM_NAME_TRITON='{
     "adminui": 365,
+    "amon-agent": 365,
     "amon-master": 365,
     "amon-updater": 365,
     "binder": 365,
@@ -110,6 +111,16 @@ TTL_DAYS_FROM_NAME_TRITON='{
     "caaggsvc-auto13": 365,
     "caaggsvc-auto14": 365,
     "caaggsvc-auto15": 365,
+    "caaggsvc-auto16": 365,
+    "caaggsvc-auto17": 365,
+    "caaggsvc-auto18": 365,
+    "caaggsvc-auto19": 365,
+    "caaggsvc-auto20": 365,
+    "caaggsvc-auto21": 365,
+    "caaggsvc-auto22": 365,
+    "caaggsvc-auto23": 365,
+    "caaggsvc-auto24": 365,
+    "caaggsvc-auto25": 365,
     "caaggsvc-auto2": 365,
     "caaggsvc-auto3": 365,
     "caaggsvc-auto4": 365,
@@ -135,7 +146,7 @@ TTL_DAYS_FROM_NAME_TRITON='{
     "docker": 9999,
     "dockerlogger": 365,
     "firewaller": 730,
-    "fmadm": 730,
+    "fwadm": 730,
     "fwapi": 730,
     "hermes": 365,
     "hermes-proxy": 365,
@@ -193,7 +204,7 @@ function usage() {
         echo ""
     fi
     echo 'Usage:'
-    echo '  purge-system-logs [<options>] MANTA-LOGS-DIR [NAMES...]'
+    echo '  purge-system-logs [<options>] MANTA-LOGS-DIR [DATACENTER]'
     echo ''
     echo 'Options:'
     echo '  -h          Print this help and exit.'
@@ -204,7 +215,7 @@ function usage() {
     echo 'Examples:'
     echo '  purge-system-logs /admin/stor/logs               # dry-run by default'
     echo '  purge-system-logs -f /admin/stor/logs            # -f to actually rm'
-    echo '  purge-system-logs -f /admin/stor/logs/datacenter # prune a certain DC'
+    echo '  purge-system-logs -f /admin/stor/logs datacenter # prune a certain DC'
     if [[ -n "$1" ]]; then
         exit 1
     else
@@ -246,7 +257,7 @@ function ttl_days_from_name
     fi
 }
 
-function purge_dir
+function purge_dir_all
 {
     local dir
     dir="$1"
@@ -256,6 +267,20 @@ function purge_dir
             mrm -rv "$dir"
         else
             mrm -r "$dir"
+        fi
+    fi
+}
+
+function purge_dir
+{
+    local dir
+    dir="$1"
+    log "mrmdir $dir"
+    if [[ "$opt_dryrun" == "no" ]]; then
+        if [[ -n "$TRACE" ]]; then
+            mrmdir -v "$dir"
+        else
+            mrmdir "$dir"
         fi
     fi
 }
@@ -341,21 +366,9 @@ function purge_system_logs
                     if [[ $dir > $cutoff ]]; then
                         continue
                     fi
-                    hours=$(mls $top_dir/$service/$year/$month/$day \
-                        | sed -e 's#/$##' | xargs)
-                    for hour in $hours; do
-                        lognames=$(mls $top_dir/$service/$year/$month/$day/$hour \
-                            | sed -e 's#/$##' | xargs)
-                        for logname in $lognames; do
-                            purge_file $top_dir/$service/$year/$month/$day/$hour/$logname
-                        done
-                        purge_dir $top_dir/$service/$year/$month/$day/$hour
-                    done
-                    purge_dir $top_dir/$service/$year/$month/$day
+                    purge_dir_all $top_dir/$service/$year/$month/$day
                 done
-                purge_dir $top_dir/$service/$year/$month
             done
-            purge_dir $top_dir/$service/$year
         done
     done
 
@@ -388,11 +401,12 @@ done
 shift $((OPTIND - 1))
 
 LOGS_DIR=$1
+DATACENTERS=$2
 [[ -n "$LOGS_DIR" ]] || fatal "MANTA-LOGS-DIR argument not given"
 shift
 NAMES="$*"
 
-if [[ $LOGS_DIR == "/admin/stor/logs" ]]; then
+if [[ $LOGS_DIR == "/admin/stor/logs"* ]]; then
     log "# Pruning Triton log archive"
 
     if [[ -z "$DATACENTERS" ]]; then
