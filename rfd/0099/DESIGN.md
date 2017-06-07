@@ -94,8 +94,8 @@ are built on top of MetricVectors.
 |getWithLabels|object  |searches metrics map for Metrics with the provided labels|a Metric object, or null if not found|
 |createWithLabels|object|creates a new Metric with the given labels, adds it to the metric map|the newly created Metric object|
 |createOrGetWithLabels|object|calls `getWithLabels()` to determine if a Metric with the given labels is already created. If so, returns it. Otherwise, calls `createWithLabels()` and returns the created Metric|Metric object|
-|prometheus|callback|iterates through the metric map, serializing each Metric into a prometheus-parseable string|None (string via callback)|
-|json      |callback|same as `prometheus()`, but in JSON format|None (string via callback)|
+|prometheus|callback|iterates through the metric map, serializing each Metric into a prometheus-parseable string|None (string and error via callback)|
+|json      |callback|same as `prometheus()`, but in JSON format|None (string and error via callback)|
 
 Simply put, MetricVectors keep track of multiple Metrics. Counters and
 Gauges directly wrap MetricVectors (which we'll explain later).
@@ -145,7 +145,7 @@ The results are concatenated and returned to the user.
 |counter|opts|creates a new Counter object with the given options (incl. labels). This call is idempotent|a Counter object|
 |gauge|opts|creates a new Gauge object with the given options (incl. labels). This call is idempotent|a Gauge object|
 |histogram|opts|creates a new Histogram object with the given options (incl. labels). This call is idempotent|a Histogram object|
-|collect|callback|iterates through `registry`, calling the serialization method on each collector|None (string via callback)|
+|collect|callback|iterates through `registry`, calling the serialization method on each collector|None (string and error via callback)|
 
 `collect()` should also take a serialization format (json, Prometheus, etc.),
 but it currently assumes Prometheus.
@@ -181,7 +181,7 @@ see the section on **Metric Cardinality** in README.md.
 |increment |labels|adds 1 to the metric represented by `labels` (calls `add(1, metric)`)|None|
 |add       |value, labels|adds `value` to the metric represented by `labels`, `value` must be > 0|None|
 |labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
-|prometheus|callback   |returns all of the Counter's metrics in prometheus format as a string|None (string via callback)|
+|prometheus|callback   |returns all of the Counter's metrics in prometheus format as a string|None (string and error via callback)|
 
 Counters internally use the `add()` function from the Metric object, and
 additionally enforce that values are > 0. The Counter's `labels()`
@@ -219,7 +219,7 @@ a gauge that can be set to arbitrary values, look at [AbsoluteGauge](#absolutega
 |add       |value, labels|adds `value` to the metric represented by `labels`|None|
 |subtract  |value, labels|subtracts `value` from the metric represented by `labels`|None|
 |labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
-|prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string via callback)|
+|prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string and error via callback)|
 
 `subtract()` has not been implemented yet. It will wrap the
 Metric's `subtract()` function. There will be a `json()` function,
@@ -252,7 +252,7 @@ instead.
 |----------|-----------|--------|-------------|
 |set|value, labels|sets the metric represented by `labels` to `value`|None|
 |labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
-|prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string via callback)|
+|prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string and error via callback)|
 
 The `AbsoluteGauge` object has not yet been implemented.
 
@@ -288,7 +288,7 @@ outlined in README.md.
 #### External API
 |observe|value, counter|iterates through buckets. If bucket's value >= `value`, that bucket and all subsequent buckets are incremented. The Gauge is also moved to track the running sum of values associated with the Counter|None|
 |labels|object|checks if a Counter with the given labels already exists. If yes, returns it, otherwise creates a new Counter, and initializes another Gauge|None|
-|prometheus|callback|iterates through the Counters, calling `prometheus()` on their `MetricVector` object. The results are stitched together and added to the result of calling `prometheus()` on the Gauge's MetricVector|None (string via callback)|
+|prometheus|callback|iterates through the Counters, calling `prometheus()` on their `MetricVector` object. The results are stitched together and added to the result of calling `prometheus()` on the Gauge's MetricVector|None (string and error via callback)|
 
 There are helper functions in the global `artedi` namespace to create linear
 and exponential buckets. See [Other Public Functions](#other-public-functions).

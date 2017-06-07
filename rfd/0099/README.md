@@ -310,6 +310,35 @@ Merits of dynamic label declaration:
 In the end, I decided to implement dynamic declaration due to the
 increase in flexibility.
 
+### Triggered Metrics
+Traditionally, metrics are collected continuously and synchronously. For
+example, whenever a user makes a GET request, a counter to track HTTP requests
+is incremented. This makes sense for lightweight things, like counting HTTP
+requests, but doesn't work well for remote instrumentation. Remote
+instrumentation might mean that we are trying to collect metrics from a Postgres
+instance running on another machine, for instance. Instrumenting something like
+Postgres would require us to make a network request, and may involve some heavy
+lifting on the Postgres side as well depending on what type of information we're
+trying to retrieve.
+
+To provide for this use case, we'll introduce the notion of 'triggered metrics.'
+A triggered metric can take two forms:
+1. A metric that is observed only once metrics are scraped
+2. A metric that is observed once in a while
+
+An example of 1) could be a Gauge for the amount of free RAM on a system. The
+amount of RAM that was free 10 seconds ago doesn't matter. The amount of RAM
+that is free when we make our collection is what we want.
+
+An example of 2) could be a Counter for the total number of records stored in a
+Postgres table. Something like that may involve a SQL query being run, and we
+may only want coarse time granularity for such an operation (i.e. every couple
+minutes). Note that this could also be implemented as an example of 1).
+
+To accomplish this, the `collect()` function will be asynchronous. An API will
+be provided that allows a user to register a metric with a scheduled collection
+period. Further implementation details have to be worked out.
+
 ### Children are leaf collectors
 Children cannot be created from children. That is, a user can't call
 .gauge() on a Counter to create a child Gauge.
