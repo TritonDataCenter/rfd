@@ -20,11 +20,18 @@ state: draft
 * [Example Usage](#example-usage)
 * [Unique Design Elements](#unique-design-elements)
     * [Parent/Child Relationship](#parentchild-relationship)
+    * [Log/Linear Buckets](#loglinear-buckets)
     * [Dynamic Labelling](#dynamic-labelling)
+    * [Triggered Metrics](#triggered-metrics)
     * [Children are leaf collectors](#children-are-leaf-collectors)
 * [Problems](#problems)
     * [Metric Cardinality](#metric-cardinality)
-* [Seeking Review](#seeking-review)
+* [Other Thoughts and Ideas](#other-thoughts-and-ideas)
+    * [Instrumenting Libraries](#instrumenting-libraries)
+    * [Scrape Endpoint and Push Gateway Support](#scrape-endpoint-and-push-gateway-support)
+    * [Retention Period](#retention-period)
+    * [Naming Conventions](#naming-conventions)
+    * [CLI Usage](#cli-usage)
 
 ## About
 `artedi` is a Node.js library for measuring fish -- specifically, the fish
@@ -42,34 +49,32 @@ would help to find issues before they arise, and help to discover where
 Before we can start collecting metrics from our applications (Manta in
 particular), as will be stated in
 [RFD-91](https://github.com/joyent/rfd/blob/master/rfd/0091/README.md), we need
-a metric library that fulfills our requirements. RFD-91 will be a proposal for
-how we integrate application-level metrics into CMON itself. This document isn't
-intended to be an RFD, but it could be mentioned in the RFD-91 writeup as a
-means to an end.
-
-This document is an explanation of the high-level design choices made during
-the development of this metric client library. This is here so that we can
-review the design of the library before we start integrating it into our
-applications.
+a metric library that fulfills our requirements. This document is an explanation
+of the high-level design choices made during the development of this metric
+client library. This is here so that we can review the design of the library
+before we start integrating it into our applications.
 
 CMON is beginning to address metric reporting from an
 infrastructure level. Application level metrics are also important. It
 would be great we could view the latency of requests,
 number of jobs running, number and rate of DNS queries, and error counts
 (and more) occurring in Manta at a glance. In order to provide application level
-metrics, we need our applications to broadcast metrics for a metric collector
+metrics, we need our applications to expose metrics for a metric collector
 (Prometheus, telegraf) to collect.
 
-To begin with, we'll be exposing metrics from Manta. Manta is
-written in Node.js. There is an existing Prometheus-style metric client
-called [prom-client](https://github.com/siimon/prom-client). prom-client
-works, but there are some features missing. We would like to be able to
-pass an instance of a collector into imported libraries so that they can
-also report their metrics. The use case for this is primarily for
-node-cueball. We would like to pass a child of a metric collector into
-cueball so that it can report detailed information about any network
-errors that are occurring. prom-client doesn't support the notion of
-child clients.
+To begin with, we'll be retrieving metrics from Manta as a form of telemetry.
+The metrics could be rolled into a separate higher-level construct, like a
+monitoring system. This RFD is only focused on the generation of metrics, and
+not the monitoring system as a whole, although some discussion of monitoring
+systems is necessary. Manta is written in Node.js. There is an existing
+Prometheus-style metric client called
+[prom-client](https://github.com/siimon/prom-client). prom-client works, but
+there are some features missing. We would like to be able to pass an instance of
+a collector into imported libraries so that they can also report their metrics.
+The use case for this is primarily for node-cueball. We would like to pass a
+child of a metric collector into cueball so that it can report detailed
+information about any network errors that are occurring. prom-client doesn't
+support the notion of child clients.
 
 Another key factor is that the metric client be relatively agnostic to
 the recipient of metrics. prom-client can output metrics in either json
@@ -80,13 +85,11 @@ metric scrapers (Prometheus server, telegraf, etc.) have plugins that accept
 the Prometheus format. In the future it should be possible to add metric formats
 as needed.
 
-Most metric reporting formats are pretty similar. They all have a particular
-format for metric names, and include numbers and timestamps. This library only
-does conversion to Prometheus when metrics are requested. The metrics are stored
-in memory in a format that is not specific to Prometheus. When the time comes,
-it should be relatively easy to add support for another metric format. If all
-else fails, we can convert everything to json, and then convert from json to
-the target format in question.
+This library only does conversion to Prometheus when metrics are requested. The
+metrics are stored in memory in a format that is not specific to Prometheus.
+When the time comes, it should be relatively easy to add support for another
+metric format. If all else fails, we can convert everything to json, and then
+convert from json to the target format in question.
 
 Due to our desire for a parent/child metric client, we have decided to
 create our own metric client library to use in Node.js. This is a
@@ -99,14 +102,12 @@ Here is a simple example usage of counters and histograms.
 var artedi = require('artedi');
 
 // collectors are the 'parent' collector.
-var collector = artedi.createCollector({
-    namespace: 'http'
-});
+var collector = artedi.createCollector();
 
 // counters are a 'child' collector.
 // This call is idempotent.
 var counter = collector.counter({
-    name: 'requests_completed',
+    name: 'http_requests_completed',
     help: 'count of muskie http requests completed',
     labels: {
         zone: ZONENAME
@@ -126,9 +127,8 @@ collector.collect(function (metrics) {
 });
 
 var histogram = collector.histogram({
-    name: 'request_latency',
-    help: 'latency of muskie http requests',
-    buckets: [100, 1000, 10000] // Measure <= 100ms, 1000ms, or 10000ms.
+    name: 'http_request_latency_ms',
+    help: 'latency of muskie http requests'
 });
 
 // Observe a latency of 998ms for a 'putobjectdir' request.
@@ -139,20 +139,25 @@ histogram.observe(998, {
 // For each bucket, we get a count of the number of requests that fall
 // below or at the latency upper-bound of the bucket.
 // This output is defined by Prometheus.
-collector.collect(function (metrics) {
+collector.collect(function (metrics, err) {
+    if (err) {
+        throw new VError(err, 'could not collect metrics');
+    }
     console.log(metrics);
     // Prints:
     // # HELP http_requests_completed count of muskie http requests completed
     // # TYPE http_requests_completed counter
     // http_requests_completed{zone="e5d3",method="getobject",code="200"} 1
-    // # HELP http_request_latency latency of muskie http requests
-    // # TYPE http_request_latency histogram
-    // http_request_latency{le="100"}zone="e5d3",method="putobjectdir"} 0
-    // http_request_latency{le="1000",zone="e5d3",method="putobjectdir"} 1
-    // http_request_latency{le="10000",zone="e5d3",method="putobjectdir"} 1
-    // http_request_latency{le="+Inf",zone="e5d3",method="putobjectdir"} 1
-    // http_request_latency_count{zone="e5d3",method="putobjectdir"} 1
-    // http_request_latency_sum{zone="e5d3",method="putobjectdir"} 998
+    // # HELP http_request_latency_ms latency of muskie http requests
+    // # TYPE http_request_latency_ms histogram
+    // http_request_latency_ms{le="729"} 0
+    // http_request_latency_ms{le="2187"} 1
+    // http_request_latency_ms{le="3645"} 0
+    // http_request_latency_ms{le="5103"} 0
+    // http_request_latency_ms{le="6561"} 0
+    // http_request_latency_ms{le="+Inf"} 1
+    // http_request_latency_ms_count{} 1
+    // http_request_latency_ms_sum{} 998
 });
 ```
 
@@ -168,7 +173,6 @@ and a set of labels. Labels are key/value pairs that can be used to
 
 ```
 var collector = artedi.createCollector({
-    namespace: 'marlin',
     labels: {
         zone: ZONENAME
     }
@@ -177,8 +181,7 @@ var collector = artedi.createCollector({
 And to create a child collector:
 ```
 var gauge = collector.gauge({
-    subsystem: 'agent',
-    name: 'jobs_running',
+    name: 'marlin_agent_jobs_running',
     labels: {
         key: 'value'
     }
@@ -199,13 +202,13 @@ that we take will include these two labels in addition to any labels
 provided at the time of measurement. For example:
 
 ```
-gauge.subtract(1, {
+gauge.set(1, {
     owner: 'kkantor'
 });
 ```
 The reported metric from that operation will look something like this:
 ```
-marlin_agent_jobs_running{zone="e5d03bc",key="value",owner="kkantor"} 4
+marlin_agent_jobs_running{zone="e5d03bc",key="value",owner="kkantor"} 1
 ```
 
 ### Log/Linear Buckets
@@ -226,7 +229,7 @@ This sounds good if we know that we'll have a normal distribution of inputs and
 we know the approximate values that we should be receiving. This makes a lot of
 sense for simple use cases, like a webserver that serves text files. The latency
 of something simple like that should be relatively consistent. The usefulness of
-tatic buckets degrades quickly when workloads become much more varied.
+static buckets degrades quickly when workloads become much more varied.
 
 In Muskie, for example, we have some operations that finish quickly
 (`putdirectory`), and some that can take a long time (`putobject`). The latency
@@ -235,11 +238,9 @@ of `putdirectory` will be relatively stable and low when compared to
 object being uploaded is. We would like fine granularity when monitoring the
 latency of `putdirectory`, and a coarse granularity when monitoring `putobject`.
 
-We could solve this problem by maintaining separate histograms for each request
-type. That's not a good idea for many reasons. One is that we still won't know
-our exact latencies ahead of time, so we can't properly configure buckets with
-accurate values. Another is that creating a separate histogram collector for
-each request type would make the code look horrendous.
+With current metric clients, we have to either know the
+expected behavior of our application, or sacrifice either fine or coarse
+granularity in order to get accurate measurements from histograms.
 
 Luckily, this problem has been solved in-house already! DTrace has support
 for log/linear quantization. In short, it gives us the ability to represent
@@ -247,10 +248,79 @@ both fine and coarse granularity in the same histogram. For more information on
 log/linear quantization, see
 [this DTrace blog post](http://dtrace.org/blogs/bmc/2011/02/08/llquantize/).
 
+Rather than requiring the user to provide a static list of buckets, log/linear
+buckets can be automatically generated. They are still static buckets in that
+the value of the bucket itself doesn't change. They are, however, dynamic in that
+the number of buckets can expand out as needed by the client's observations.
+
+Let's take an example. If my application observes a latency of 6ms, this is what
+a set of log/linear buckets would produce:
+```
+# HELP muskie_request_latency_ms latency of requests completed
+# TYPE muskie_request_latency_ms histogram
+http_request_latency_ms{le="1"} 0
+http_request_latency_ms{le="3"} 0
+http_request_latency_ms{le="5"} 0
+http_request_latency_ms{le="7"} 1
+http_request_latency_ms{le="9"} 1
+http_request_latency_ms{le="+Inf"} 1
+http_request_latency_ms_count{} 1
+http_request_latency_ms_sum{} 6
+```
+
+Now if my application observes a latency of 600ms, this is what we receive:
+```
+# HELP http_request_latency_ms latency of requests completed
+# TYPE http_request_latency_ms histogram
+http_request_latency_ms{le="1"} 0
+http_request_latency_ms{le="3"} 0
+http_request_latency_ms{le="5"} 0
+http_request_latency_ms{le="7"} 1
+http_request_latency_ms{le="9"} 1
+http_request_latency_ms{le="81"} 1
+http_request_latency_ms{le="243"} 1
+http_request_latency_ms{le="405"} 1
+http_request_latency_ms{le="567"} 1
+http_request_latency_ms{le="729"} 2
+http_request_latency_ms{le="+Inf"} 2
+http_request_latency_ms_count{} 2
+http_request_latency_ms_sum{} 606
+```
+
+And then maybe we observe a latency of 60000ms!
+```
+# HELP http_request_latency_ms latency of requests completed
+# TYPE http_request_latency_ms histogram
+http_request_latency_ms{le="1"} 0
+http_request_latency_ms{le="3"} 0
+http_request_latency_ms{le="5"} 0
+http_request_latency_ms{le="7"} 1
+http_request_latency_ms{le="9"} 1
+http_request_latency_ms{le="81"} 1
+http_request_latency_ms{le="243"} 1
+http_request_latency_ms{le="405"} 1
+http_request_latency_ms{le="567"} 1
+http_request_latency_ms{le="729"} 2
+http_request_latency_ms{le="59049"} 2
+http_request_latency_ms{le="177147"} 3
+http_request_latency_ms{le="295245"} 3
+http_request_latency_ms{le="413343"} 3
+http_request_latency_ms{le="531441"} 3
+http_request_latency_ms{le="+Inf"} 3
+http_request_latency_ms_count{} 3
+http_request_latency_ms_sum{} 60606
+```
+
+We can see that log/linear buckets give us a lot of flexibility while only
+removing a slight bit of precision.
+
+Prometheus is fine with this way of adding additional buckets between
+scrape periods as long as we don't modify the bucket values themselves.
+
 ### Dynamic Labelling
 We can see in the last example that the metric inherited two labels, and
 we additionally crated a third label (`owner="kkantor"`) on the fly.
-Existing metric clients (prom-client, the golang Prometheus client)
+Existing metric clients (prom-client, the Golang Prometheus client)
 don't allow for dynamic creation of labels. We allow that in this
 library. It is also unique for this library to allow for 'static'
 key/value pairings of labels. Existing clients only allow users to
@@ -264,7 +334,7 @@ a user to mess up labeling. For example, a user could do something like
 this:
 ```
 var counter = collector.counter({
-    name: 'requests_completed',
+    name: 'http_requests_completed',
     help: 'count of requests completed'
 });
 
@@ -280,17 +350,17 @@ if (res.statusCode >= 500 && res.err) {
 }
 
 // Elsewhere in the code...
-collector.collect(function (str) {
+collector.collect(function (str, err) {
     console.log(str);
 });
 
 /*
  * If both of the counter.increment() statements are hit once each,
  * the output might look something like this:
- * HELP: muskie_requests_completed count of requests completed
- * TYPE: muskie_requests_completed counter
- * muskie_requests_completed{method="putobject"} 1
- * muskie_requests_completed{method="putobject",err="Service Unavailable"} 1
+ * HELP: http_requests_completed count of requests completed
+ * TYPE: http_requests_completed counter
+ * http_requests_completed{method="putobject"} 1
+ * http_requests_completed{method="putobject",err="Service Unavailable"} 1
  */
 ```
 The above example shows that two different metrics were created. This is
@@ -307,7 +377,7 @@ Merits of up-front label declaration:
 Merits of dynamic label declaration:
 * Flexibility, ease of use
 
-In the end, I decided to implement dynamic declaration due to the
+In the end, we decided to implement dynamic declaration due to the
 increase in flexibility.
 
 ### Triggered Metrics
@@ -326,18 +396,22 @@ A triggered metric can take two forms:
 1. A metric that is observed only once metrics are scraped
 2. A metric that is observed once in a while
 
-An example of 1) could be a Gauge for the amount of free RAM on a system. The
-amount of RAM that was free 10 seconds ago doesn't matter. The amount of RAM
+An example of 1) could be a Gauge tracking the amount of free RAM on a system.
+The amount of RAM that was free 10 seconds ago doesn't matter. The amount of RAM
 that is free when we make our collection is what we want.
 
-An example of 2) could be a Counter for the total number of records stored in a
+An example of 2) could be a Gauge for the total number of records stored in a
 Postgres table. Something like that may involve a SQL query being run, and we
 may only want coarse time granularity for such an operation (i.e. every couple
 minutes). Note that this could also be implemented as an example of 1).
 
 To accomplish this, the `collect()` function will be asynchronous. An API will
 be provided that allows a user to register a metric with a scheduled collection
-period. Further implementation details have to be worked out.
+period. At collection time, the each of the metrics in the 'trigger registry'
+could be invoked. This is similar to existing solutions, like
+[boolean health checks](http://metrics.dropwizard.io/3.2.2/getting-started.html#health-checks).
+
+Further implementation details have to be worked out.
 
 ### Children are leaf collectors
 Children cannot be created from children. That is, a user can't call
@@ -373,28 +447,78 @@ manageable amount of data (as well as conserving memory in the metric
 client and server). This is called the problem of **metric
 cardinality**.
 
-## Seeking Review
+## Other Thoughts and Ideas
 
-Please let me know your thoughts especially on the design decisions
-listed above (parent/child relationship, dynamic labelling, children are
-leaf collectors). All other feedback is also very much appreciated!
+### Instrumenting Libraries
+One cool thing that we might think about doing is instrumenting common
+libraries. We are already planning on doing something like this for Cueball. We
+could conceivably instrument something like Restify so we wouldn't need to
+specifically track counts and latency of http requests in our applications. The
+downside of doing something like this (specifically with Restify) is that the
+library may not know all of the information that we may like to convey in our
+metrics. Examples of those things would be usernames, request IDs, etc.
 
-Biggish TODOs:
-* The way that we create children is kind of hackey - we directly read
-traits from the parent object passed in
+### Scrape Endpoint and Push Gateway Support
+Some other metric client libraries provide a built-in server that can make it
+more convenient to expose metrics. In our applications, we may be required to
+stand up another server to expose metrics as a way to ensure metrics don't fall
+into the wrong hands. We could design this in such a way that it is pluggable
+so a user could choose to expose metrics via Restify, node-fast, a flat file,
+or something else. Disadvantages to this approach is that it is potentially
+quite a bit of extra code to maintain, and we may not be able to efficiently
+write this in a way that gives us the flexibility we require. We will have to
+revisit if this is needed or helpful.
+
+Separately, it may make sense for us to add support of push gateways to this
+library. For applications that are only behind private networks the pull model
+will sometimes not work. Prometheus suggests placing a Prometheus server within
+the boundaries of the private network, but that won't work well for our case
+when application owners may create an arbitrary number of private networks. Push
+gateways are one way to solve this, and would require client library support.
+
+We'll have to revisit this topic when we have thought more about how we will
+discover applications (and processes within applications) providing metrics.
+
+### Retention Period
+For now, the amount of time we retain metrics will be up to the operators of the
+metric server. Retention periods are in the scope of RFD 91, so when we start
+working on an end-to-end solution for instrumentation we will have to revisit
+the question of how long to retain scraped metrics.
+
+### Naming Conventions
+We should try to maintain standard naming conventions for our metrics. For
+Prometheus, they are outlined
+[here](https://prometheus.io/docs/practices/naming/). As a summary, metrics
+should have generic names when it makes sense (`http_requests_completed`), and
+specific names when needed (`marlin_agent_jobs_running`). Labels should be used to
+break generic metrics into specific measurements. These two things allow for
+more powerful queries to be made at the monitoring dashboard.
+
+### CLI Usage
+It may be useful to provide a CLI wrapper around this library to dynamically
+instrument arbitrary applications. Dave Pacheco's
+[statblast](https://github.com/davepacheco/node-statblast) is an example of
+what we're would be going for. Imagine being able to instrument your favorite
+system monitoring tools directly from the CLI! Further, we could use DTrace to
+inspect a running system and instrument pieces of the application that are not
+normally instrumented. An example of this could be counting Restify entry/exits
+by pairing the already existing DTrace probes with this library to tie DTrace
+output into the power of monitoring systems.
+
+It may also separately be useful for applications to provide CLI tooling for
+scraping their metrics. For instance, if my application exposes metrics via
+node-fast, my application could provide a simple tool to allow CLI users
+to call the proper fast RPC endpoint to access the metrics and print them to the
+terminal. This portion is out of the scope of this document, but it is good to
+keep in mind, and is related to the previous idea.
+
+### Biggish TODOs
 * Our hash function is taken from prom-client, and is pretty bad (but it works)
     * Do we need to change it?
 * Performance fixes:
     * Histogram: Change from map of Counters to a single Counter
     * A lot of nested for-in loops
     * Actually do performance measurements
-* Consider possible CLI integrations
-    * It could be useful to provide a convenient way to access application-level
-        metrics. It's probably more in the scope of the individual application,
-        but it's something to write down and consider
-* How do we come up with values for Histogram buckets?
-    * SOLVED: We're going to automatically do log/linear buckets, like dtrace.
-    * More info is in [DESIGN.md](./DESIGN.md).
 * We can potentially use DTrace to do some cool things here, like to help
     determine what values are really coming in through Histograms so we can
     make more intelligent decisions when creating buckets (thanks, Chris!).

@@ -286,6 +286,8 @@ Buckets will be created using the log/linear method, similar to how it's done in
 outlined in README.md.
 
 #### External API
+| Function | Arguments | Result | Return Value|
+|----------|-----------|--------|-------------|
 |observe|value, counter|iterates through buckets. If bucket's value >= `value`, that bucket and all subsequent buckets are incremented. The Gauge is also moved to track the running sum of values associated with the Counter|None|
 |labels|object|checks if a Counter with the given labels already exists. If yes, returns it, otherwise creates a new Counter, and initializes another Gauge|None|
 |prometheus|callback|iterates through the Counters, calling `prometheus()` on their `MetricVector` object. The results are stitched together and added to the result of calling `prometheus()` on the Gauge's MetricVector|None (string and error via callback)|
@@ -300,24 +302,33 @@ Counters (if you want to measure multiple unique labels).
 
 Here is some sample output from calling `prometheus()` on a Histogram:
 ```
-http_request_latency{le="0",method="getjobsstorage",code="200"} 0
-http_request_latency{le="100",method="getjobsstorage",code="200"} 427
-http_request_latency{le="500",method="getjobsstorage",code="200"} 428
-http_request_latency{le="1000",method="getjobsstorage",code="200"} 428
-http_request_latency{le="5000",method="getjobsstorage",code="200"} 428
-http_request_latency{le="+Inf",method="getjobsstorage",code="200"} 428
-http_request_latency_count{method="getjobsstorage",code="200"} 428
-http_request_latency_sum{method="getjobsstorage",code="200"} 5604
+http_request_latency_ms{le="1",method="getjobsstorage",code="200"} 0
+http_request_latency_ms{le="3",method="getjobsstorage",code="200"} 0
+http_request_latency_ms{le="5",method="getjobsstorage",code="200"} 0
+http_request_latency_ms{le="7",method="getjobsstorage",code="200"} 10
+http_request_latency_ms{le="9",method="getjobsstorage",code="200"} 37
+http_request_latency_ms{le="27",method="getjobsstorage",code="200"} 56
+http_request_latency_ms{le="45",method="getjobsstorage",code="200"} 56
+http_request_latency_ms{le="63",method="getjobsstorage",code="200"} 56
+http_request_latency_ms{le="81",method="getjobsstorage",code="200"} 56
+http_request_latency_ms{le="243",method="getjobsstorage",code="200"} 56
+http_request_latency_ms{le="405",method="getjobsstorage",code="200"} 58
+http_request_latency_ms{le="567",method="getjobsstorage",code="200"} 58
+http_request_latency_ms{le="729",method="getjobsstorage",code="200"} 58
+http_request_latency_ms{le="+Inf",method="getjobsstorage",code="200"} 58
+http_request_latency_ms_count{method="getjobsstorage",code="200"} 58
+http_request_latency_ms_sum{method="getjobsstorage",code="200"} 1183
 ```
 This output measure request latency (in milliseconds) of Muskie
-requests. Our buckets are [0, 100, 500, 1000, 5000, +Inf]. The bucket
-values are in milliseconds, with +Inf meaning 'infinity.' The specific
-operations that this is measuring are 'getjobsstorage' that responded
-with an HTTP 200 code.
+requests. The bucket values are in milliseconds, with +Inf meaning 'infinity.'
+The specific operations that this is measuring are 'getjobsstorage' that
+responded with an HTTP 200 code. Note that we didn't need to specify which
+buckets to use. They were generated for us as part of our log/linear bucket
+scheme. More details about log/linear buckets can be found in README.md.
 
-From this output, we can see that 427 of the 428 requests took between 0
-and 100 milliseconds. 1 request took between 100 and 500 milliseconds.
-The average latency is `_sum / _count`, which is 13 milliseconds.
+From this output, we can see that 47 of the 58 requests took between 0
+and 27 milliseconds. 9 requests took between 10 and 27 milliseconds.
+The average latency is `_sum / _count`, which is 20 milliseconds.
 
 Although at first glance, Histograms look confusing, they are very
 powerful!
