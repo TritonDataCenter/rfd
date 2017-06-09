@@ -142,6 +142,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 97 Project Hookshot - Improved VLAN Handling](./rfd/0097/README.md) |
 | predraft | [RFD 98 Issue Prioritisation Guidelines](./rfd/0098/README.md) |
 | draft    | [RFD 99 Client Library for Collecting Application Metrics](./rfd/0099/README.md) |
+| predraft | [RFD 100 Improving lint and style checks in JavaScript](./rfd/0100/README.md) |
 
 
 ## Contents of an RFD
