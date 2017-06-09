@@ -64,7 +64,7 @@ state: draft
         - [GetVolumeReferences GET /volumes/id/references](#getvolumereferences-get-volumesidreferences)
         - [DeleteVolume DELETE /volumes/id](#deletevolume-delete-volumesid)
         - [UpdateVolume POST /volumes/id](#updatevolume-post-volumesid)
-        - [ListVolumeSizes GET /volumes/sizes](#listvolumesizes-get-volumessizes)
+        - [ListVolumeSizes GET /volumesizes](#listvolumesizes-get-volumessizes)
         - [AttachVolumeToNetwork POST /volumes/id/attachtonetwork](#attachvolumetonetwork-post-volumesidattachtonetwork)
         - [DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork](#detachvolumefromnetwork-post-volumesiddetachfromnetwork)
         - [CreateVolumeSnapshot POST /volumes/id/snapshot](#createvolumesnapshot-post-volumesidsnapshot)
@@ -109,7 +109,7 @@ state: draft
       - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid)
         - [Input](#input-6)
         - [Output](#output-7)
-      - [ListVolumeSizes GET /volumes/sizes](#listvolumesizes-get-volumessizes-1)
+      - [ListVolumeSizes GET /volumesizes](#listvolumesizes-get-volumessizes-1)
         - [Input](#input-7)
         - [Output](#output-8)
       - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork)
@@ -1062,7 +1062,7 @@ Sending any other input parameter will result in an error. Updating other
 properties of a volume, such as the networks it's attached to, must be performed
 by using other separate endpoints.
 
-##### ListVolumeSizes GET /volumes/sizes
+##### ListVolumeSizes GET /volumesizes
 
 The `ListVolumeSizes` endpoint can be used to determine in what sizes volumes of
 a certain type are available.
@@ -1665,7 +1665,7 @@ implementation to not have to reload the updated volume, and thus minimizes
 latency. If users need to get an updated representation of the volume, they can
 send a `GetVolume` request.
 
-#### ListVolumeSizes GET /volumes/sizes
+#### ListVolumeSizes GET /volumesizes
 
 The `ListVolumeSizes` endpoint can be used to determine in what sizes volumes of
 a certain type are available.
