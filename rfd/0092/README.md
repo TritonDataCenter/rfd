@@ -40,7 +40,8 @@ At this time, Triton components are at different levels of readiness for HA.
 ### Already support HA-deployment
 - binder
 - cmon
-- mahi
+- mahi (note: [MANTA-3307](https://smartos.org/bugview/MANTA-3307) might be
+  relevant for large installations)
 - manatee
 - moray*
 
@@ -120,7 +121,7 @@ Feature not in scope (existing `binder` gaps)
 
 Related tickets:
 [TOOLS-1644](https://devhub.joyent.com/jira/browse/TOOLS-1644),
-[TOOLS-1682](https://devhub.joyent.com/jira/browse/TOOLS-1682) 
+[TOOLS-1682](https://devhub.joyent.com/jira/browse/TOOLS-1682)
 
 ### Cueball changes for better connection management
 
