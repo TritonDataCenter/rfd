@@ -201,7 +201,7 @@ Minimum versions of components that support multi-headnode TritonDC:
 | --------- | ------- | ----- |
 | gz-tools  | ???     | Note that 'gz-tools' includes "[/mnt]/usbkey/scripts" updates. |
 
-TODO: update from working notes
+TODO: sdcadm.git:lib/headnode.js will be the authority
 
 
 ## imgapi
@@ -331,6 +331,16 @@ TODO
 
 
 # Appendices
+
+## Relates Issues
+
+This section is a dump of issues related to this RFD.
+
+- NET-371: updated hn-netfile in dhcpd (aka booter) zone
+- HEAD-2343: Update to headnode.sh (part of gz-tools package) for first boot
+  of a setup CN to becoming an HN.
+- OS-6160: filesystem/smartdc (fs-joyent) support for booting a setup CN
+  into an HN
 
 ## Open Questions
 
