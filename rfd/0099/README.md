@@ -26,6 +26,7 @@ state: draft
     * [Children are leaf collectors](#children-are-leaf-collectors)
 * [Problems](#problems)
     * [Metric Cardinality](#metric-cardinality)
+    * [Javascript Numbers](#javascript-numbers)
 * [Other Thoughts and Ideas](#other-thoughts-and-ideas)
     * [Instrumenting Libraries](#instrumenting-libraries)
     * [Scrape Endpoint and Push Gateway Support](#scrape-endpoint-and-push-gateway-support)
@@ -85,6 +86,26 @@ metric scrapers (Prometheus server, telegraf, etc.) have plugins that accept
 the Prometheus format. In the future it should be possible to add metric formats
 as needed.
 
+[ContainerPilot](https://www.joyent.com/containerpilot) also ships with metric
+collection functionality. That is outlined
+[here](https://www.joyent.com/containerpilot/docs/telemetry). ContainerPilot's
+telemetry architecture is focused around retrieving metrics from applications to
+influence scaling decisions. In the ContainerPilot architecture, a Prometheus
+server scrapes an endpoint exposed by a ContainerPilot process within the
+container. That process then calls a user-provided script or binary within the
+container. The user-provided script or binary programmed to retrieve metrics
+from the running process that is the target of instrumentation. This script or
+binary then return the information via `stdout` to the ContainerPilot process,
+which in turn returns the information directly to the Prometheus server.
+
+The main architectural difference between `artedi` and ContainerPilot is that
+`artedi` is designed to be used in-process, as opposed to the ContainerPilot
+out-of-process metric collector. `artedi` is also specifically made for Node.js
+applications, while ContainerPilot is agnostic of programming language. Although
+`artedi` is a library designed for in-process instrumentation, it could be
+wrapped by a Node.js process to enable out-of-process instrumentation. This
+would enable us to instrument applications like Postgres using `artedi`.
+
 This library only does conversion to Prometheus when metrics are requested. The
 metrics are stored in memory in a format that is not specific to Prometheus.
 When the time comes, it should be relatively easy to add support for another
@@ -98,7 +119,7 @@ overview of some things to watch out for in using the library.
 
 ## Example Usage
 Here is a simple example usage of counters and histograms.
-```
+```javascript
 var artedi = require('artedi');
 
 // collectors are the 'parent' collector.
@@ -120,7 +141,7 @@ counter.increment({
     code: '200'
 });
 
-collector.collect(function (metrics) {
+collector.collect(function (err, metrics) {
     console.log(metrics);
     // Prints:
     // http_requests_completed{zone="e5d3",method="getobject",code="200"} 1
@@ -139,7 +160,7 @@ histogram.observe(998, {
 // For each bucket, we get a count of the number of requests that fall
 // below or at the latency upper-bound of the bucket.
 // This output is defined by Prometheus.
-collector.collect(function (metrics, err) {
+collector.collect(function (err, metrics) {
     if (err) {
         throw new VError(err, 'could not collect metrics');
     }
@@ -171,7 +192,7 @@ A parent collector is created with a set of properties including a name,
 and a set of labels. Labels are key/value pairs that can be used to
 'drill down' metrics. For example, to create a new parent collector:
 
-```
+```javascript
 var collector = artedi.createCollector({
     labels: {
         zone: ZONENAME
@@ -179,7 +200,7 @@ var collector = artedi.createCollector({
 });
 ```
 And to create a child collector:
-```
+```javascript
 var gauge = collector.gauge({
     name: 'marlin_agent_jobs_running',
     labels: {
@@ -201,7 +222,7 @@ It inherited the 'zone' label from its parent. Any metric measurement
 that we take will include these two labels in addition to any labels
 provided at the time of measurement. For example:
 
-```
+```javascript
 gauge.set(1, {
     owner: 'kkantor'
 });
@@ -332,7 +353,7 @@ By allowing on the fly creation of labels, we gain a lot of flexibility,
 but lose the ability to strictly control labels. This makes it easier for
 a user to mess up labeling. For example, a user could do something like
 this:
-```
+```javascript
 var counter = collector.counter({
     name: 'http_requests_completed',
     help: 'count of requests completed'
@@ -350,7 +371,7 @@ if (res.statusCode >= 500 && res.err) {
 }
 
 // Elsewhere in the code...
-collector.collect(function (str, err) {
+collector.collect(function (err, str) {
     console.log(str);
 });
 
@@ -434,7 +455,6 @@ example) already has been registered.
 
 ## Problems
 ### Metric Cardinality
-
 To illustrate this problem, let's say that we have the label keys
 `method`, `code`, and `username`. `method` can take the values `get`,
 and `post`. `code` can take the values `200`, `500`, and `404`.
@@ -447,7 +467,53 @@ manageable amount of data (as well as conserving memory in the metric
 client and server). This is called the problem of **metric
 cardinality**.
 
+### Javascript Numbers
+Numbers in Javascript are 64-bit floats. The maximum value for a number in
+Javascript is `(2^53)-1`. There is a possible danger here because of the way
+Counters function. A Counter counts up, and is unbounded. We could theoretically
+overflow the number value. If we instrument a process that performs one thousand
+requests per second, and we were incrementing a counter for each request, it
+would take us many years to reach the overflow point.
+
 ## Other Thoughts and Ideas
+
+### Histograms, Summaries, and Dropwizard Comparison
+Dropwizard is a Java framework that (among other things) provides a popular Java
+library used to instrument applications. The instrumentation library is similar
+in scope to `artedi`. There are a couple fundamental differences in the way that
+Dropwizard's library and `artedi` function, especially with respect to
+histograms.
+
+Dropwizard histograms have a pretty complex implementation on the client-side.
+As metrics are observed, they are added to a `reservoir`. Quantiles are
+calculated each time a metric is observed. If a user wants to know, for example,
+what the 90th percentile of a given metric is, it would be a simple lookup due
+to the functionality of `reservoirs` and histograms. A `reservoir` is a type of
+in-memory database that can have a number of different rules for eviction of
+records. For example, a `reservoir` could be configured to use a `sliding
+window`, which retains a user-defined `N` metrics in memory. When `N+1` metrics
+have been observed, the first observed metric is evicted from memory. Dropwizard
+places the burden of calculating quantiles on the client library.
+
+Prometheus histograms have a relatively simple implementation. Prometheus places
+the burden of calculating histogram quantiles on the server. When a metric is
+observed, the Prometheus client simply increments a set of `buckets`. Metrics
+are retained indefinitely on the client-side because they carry next to no cost
+to retain.
+
+Server-side histogram quantile calculation has benefits and drawbacks. One major
+benefit is that a quantile based on any percentile can be calculated at any
+time. With Dropwizard histograms, only a set number of quantiles can be
+calculated, and they have to be defined when the client begins collecting
+metrics. The major drawback to server-side quantile calculation is that the
+server may have to iterate through an enormous amount of historical data to
+produce a result. This can cause lead to slow server performance.
+
+Prometheus clients may implement a metric type called a 'summary'. Summaries
+more closely resemble Dropwizard-style histograms. Quantile calculation is done
+on the client side, and there are sets of rules for how metrics are retained and
+evicted. At this point Prometheus-style summaries are not implemented in
+`artedi`, though we could add them at a later point if we find it necessary.
 
 ### Instrumenting Libraries
 One cool thing that we might think about doing is instrumenting common
@@ -485,7 +551,7 @@ metric server. Retention periods are in the scope of RFD 91, so when we start
 working on an end-to-end solution for instrumentation we will have to revisit
 the question of how long to retain scraped metrics.
 
-### Naming Conventions
+### Naming
 We should try to maintain standard naming conventions for our metrics. For
 Prometheus, they are outlined
 [here](https://prometheus.io/docs/practices/naming/). As a summary, metrics
@@ -493,6 +559,16 @@ should have generic names when it makes sense (`http_requests_completed`), and
 specific names when needed (`marlin_agent_jobs_running`). Labels should be used to
 break generic metrics into specific measurements. These two things allow for
 more powerful queries to be made at the monitoring dashboard.
+
+Names chosen for metrics are deceptively important. Changing names of metrics
+after they have been running in the wild should be considered a breaking change.
+Changing names of metrics results in a couple possibly unforeseen consequences.
+The first is that dashboards and queries have to be recreated to use the new
+metric name. The second, and more deceptive reason, is that changing names make
+historical metric queries much more difficult, if not impossible.
+
+This will be covered more in-depth in RFD 91, as this applies specifically to
+the instrumentation of applications.
 
 ### CLI Usage
 It may be useful to provide a CLI wrapper around this library to dynamically
