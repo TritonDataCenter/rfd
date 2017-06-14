@@ -28,6 +28,7 @@ state: draft
     * [Metric Cardinality](#metric-cardinality)
     * [Javascript Numbers](#javascript-numbers)
 * [Other Thoughts and Ideas](#other-thoughts-and-ideas)
+    * [Dropwizard and Prometheus Histograms](#dropwizard-and-prometheus-histograms)
     * [Instrumenting Libraries](#instrumenting-libraries)
     * [Scrape Endpoint and Push Gateway Support](#scrape-endpoint-and-push-gateway-support)
     * [Retention Period](#retention-period)
@@ -477,7 +478,7 @@ would take us many years to reach the overflow point.
 
 ## Other Thoughts and Ideas
 
-### Histograms, Summaries, and Dropwizard Comparison
+### Dropwizard and Prometheus Histograms
 Dropwizard is a Java framework that (among other things) provides a popular Java
 library used to instrument applications. The instrumentation library is similar
 in scope to `artedi`. There are a couple fundamental differences in the way that
@@ -514,6 +515,9 @@ more closely resemble Dropwizard-style histograms. Quantile calculation is done
 on the client side, and there are sets of rules for how metrics are retained and
 evicted. At this point Prometheus-style summaries are not implemented in
 `artedi`, though we could add them at a later point if we find it necessary.
+
+For more information on Prometheus histograms and summaries, see this page:
+https://prometheus.io/docs/practices/histograms/ .
 
 ### Instrumenting Libraries
 One cool thing that we might think about doing is instrumenting common
