@@ -65,23 +65,23 @@ support v2 images.
 
 Similar to docker-images, the bucket key will be '${DIGEST}-${ACCOUNT_UUID}', so
 that each individual account holder will get their own copy of the docker image
-metadata, containing these key fields::
+metadata, containing these key fields.
 
-    {
-        digest
-        created
-        head
-        image
-        image_uuid
-        manifest_str
-        manifest_digest
-        parent
-        owner_uuid
-        size
-    }
+* `config_digest` the sha256 of the 'image JSON' (aka metadata).
+* `head` false if it's an intermediate (non referencable) build layer
+* `created` date the image was built
+* `image` docker image JSON (contains config, author, os, etc...)
+* `image_uuid` reference to the underlying IMGAPI layer (bits)
+* `manifest_str` the docker manifest (JSON) string, schemaVersion == 2
+* `manifest_digest` the sha256 of the 'manifest_str' above.
+* `parent` reference to the parent docker config_digest
+* `owner_uuid` user uuid for who created/pulled this image
+* `size` complete size of the image (including all parent layers)
 
 The underlying image file layers (blobs) will be stored in IMGAPI and will be
 shared across the whole DC.
+
+See Appendix for an example docker_images_v2 instance.
 
 # IMGAPI
 
@@ -97,12 +97,15 @@ For example, given the manifest with layers containing these digests::
     var uuid = createHash('sha256').update(digests.join(' ')).digest('hex'));
 
 For v2.1 manifests (which don't contain all of the v2.2 manifest information),
-an `uncompressedSha256` will be generated during download (docker pull) and once
-fully downloaded this uncompressed digest will be saved onto the manifest.files
-object. This uncompressedSha256 will be used in the up-converted image manifest.
+an `uncompressedDigest` will be generated during download (docker pull) and
+once fully downloaded this uncompressed digest will be saved onto the IMGAPI
+manifest.files object. The uncompressedDigest is needed by the docker image
+manifest upconvert process to generate a v2.2 docker image manifest, to
+populatate the docker image config rootfs.diff_ids array. When we drop
+support for v2.1 manifests, we can drop the uncompressedDigest field as well.
 
-There should be no conflict with imgapi uuid's, as both the v1 and v2 image
-methods use differeing image uuid obfuscation techniques.
+Note that there should be no conflict with imgapi uuid's, as both the v1 and
+v2 image methods use differeing image uuid obfuscation techniques.
 
 ## IMGAPI uuid reasoning
 
@@ -119,14 +122,23 @@ images.
 
 # Docker build/commit
 
-Docker build will need to generate/store the uncompressedSha256 - currently
+Docker build will need to generate/store the uncompressedDigest - currently
 docker build streams the image data (so it doesn't know the final sha256), so an
 IMGAPI renameUuid step is required so that the image uuid can uses the final
 compressed sha256 layer digest, this rename would occur after upload, but before
 the image is activated.
 
+# Unhandled v2.2 manifest items
 
+Note: These items are mentioned in the v2.2 manifest documentation, but I've
+yet to encounter them in the wild, so these are not implemented.
 
+* `layers.*.urls` - Provides a list of URLs from which the content may be
+  fetched. This field is optional and uncommon. This is not handled by Triton.
+
+* `application/vnd.docker.image.rootfs.foreign.diff.tar.gzip` - may be pulled
+  from a remote location but they should never be pushed. This is not handled
+  by Triton.
 
 
 
@@ -341,6 +353,83 @@ $ curl -k -X GET https://192.168.99.100:5000/v2/bbox/blobs/sha256:b97bf8f0407939
         },
         "WorkingDir": "/home/alice",
     }
+}
+```
+
+## A docker_images_v2 example
+
+This is docker_images_v2 model instance for alpine:
+```
+{
+    "config_digest": "sha256:a41a7446062d197dd4b21b38122dcc7b2399deb0750c4110925a7dd37c80f118",
+    "created": 1495755202,
+    "head": true,
+    "image": {
+        "architecture": "amd64",
+        "config": {
+            "Hostname": "9ac68176ac52",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],
+            "Cmd": ["/bin/sh"],
+            "ArgsEscaped": true,
+            "Image": "sha256:a96393421091145abdc0ce8f02691166ed0fe7f769b4dfc7f700b4b11d4a80df",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": null,
+            "OnBuild": null,
+            "Labels": {}
+        },
+        "container": "19ee1cd90c07eb7b3c359aaec3706e269a871064cca47801122444cef51c5038",
+        "container_config": {
+            "Hostname": "9ac68176ac52",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": false,
+            "AttachStderr": false,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": ["PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"],
+            "Cmd": ["/bin/sh", "-c", "#(nop) ", "CMD [\"/bin/sh\"]"],
+            "ArgsEscaped": true,
+            "Image": "sha256:a96393421091145abdc0ce8f02691166ed0fe7f769b4dfc7f700b4b11d4a80df",
+            "Volumes": null,
+            "WorkingDir": "",
+            "Entrypoint": null,
+            "OnBuild": null,
+            "Labels": {}
+        },
+        "created": "2017-05-25T23:33:22.029729271Z",
+        "docker_version": "17.03.1-ce",
+        "history": [{
+            "created": "2017-05-25T23:33:21.294948657Z",
+            "created_by": "/bin/sh -c #(nop) ADD file:ce33aabbc5f370e58ebe911e081ce093e3df18d689c2d5a5d092c77973f62a54 in / "
+        }, {
+            "created": "2017-05-25T23:33:22.029729271Z",
+            "created_by": "/bin/sh -c #(nop)  CMD [\"/bin/sh\"]",
+            "empty_layer": true
+        }],
+        "os": "linux",
+        "rootfs": {
+            "type": "layers",
+            "diff_ids": ["sha256:3fb66f713c9fa9debcdaa58bb9858bd04c17350d9614b7a250ec0ee527319e59"]
+        }
+    },
+    "image_uuid": "af538a6a-5ca3-04cc-fd2e-9c0064fe5a63",
+    "manifest_str": "{\n   \"schemaVersion\": 2,\n   \"mediaType\": \"application/vnd.docker.distribution.manifest.v2+json\",\n   \"config\": {\n      \"mediaType\": \"application/vnd.docker.container.image.v1+json\",\n      \"size\": 1522,\n      \"digest\": \"sha256:a41a7446062d197dd4b21b38122dcc7b2399deb0750c4110925a7dd37c80f118\"\n   },\n   \"layers\": [\n      {\n         \"mediaType\": \"application/vnd.docker.image.rootfs.diff.tar.gzip\",\n         \"size\": 1990101,\n         \"digest\": \"sha256:2aecc7e1714b6fad58d13aedb0639011b37b86f743ba7b6a52d82bd03014b78e\"\n      }\n   ]\n}",
+    "manifest_digest": "sha256:0b94d1d1b5eb130dd0253374552445b39470653fb1a1ec2d81490948876e462c",
+    "parent": "",
+    "owner_uuid": "f64c0e9c-bb71-42e7-a95b-091d1282ca0f",
+    "size": 1990101,
+    "dockerImageVersion": "2.2"
 }
 ```
 
