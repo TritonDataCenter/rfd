@@ -28,16 +28,17 @@ state: draft
     * [Metric Cardinality](#metric-cardinality)
     * [Javascript Numbers](#javascript-numbers)
 * [Other Thoughts and Ideas](#other-thoughts-and-ideas)
+    * [Aggregated Metrics](#aggregated-metrics)
     * [Dropwizard and Prometheus Histograms](#dropwizard-and-prometheus-histograms)
     * [Instrumenting Libraries](#instrumenting-libraries)
     * [Scrape Endpoint and Push Gateway Support](#scrape-endpoint-and-push-gateway-support)
     * [Retention Period](#retention-period)
-    * [Naming Conventions](#naming-conventions)
+    * [Naming](#naming)
     * [CLI Usage](#cli-usage)
 
 ## About
-`artedi` is a Node.js library for measuring fish -- specifically, the fish
-being the services involved in Manta, the Triton Object Store.
+`artedi` is a Node.js library for measuring applications -- specifically, the
+services composing Triton and Manta.
 
 This document will be a general overview of how this library is different
 from other metric client libraries. To learn how the code is organized,
@@ -49,27 +50,25 @@ would help to find issues before they arise, and help to discover where
 (and in what cases) issues are occurring.
 
 Before we can start collecting metrics from our applications (Manta in
-particular), as will be stated in
-[RFD-91](https://github.com/joyent/rfd/blob/master/rfd/0091/README.md), we need
-a metric library that fulfills our requirements. This document is an explanation
-of the high-level design choices made during the development of this metric
-client library. This is here so that we can review the design of the library
-before we start integrating it into our applications.
+particular), we need a metric library that fulfills our requirements. This
+document is an explanation of the high-level design choices made during the
+development of this metric client library. This is here so that we can review
+the design of the library before we start integrating it into our applications.
 
 CMON is beginning to address metric reporting from an
 infrastructure level. Application level metrics are also important. It
 would be great we could view the latency of requests,
 number of jobs running, number and rate of DNS queries, and error counts
-(and more) occurring in Manta at a glance. In order to provide application level
-metrics, we need our applications to expose metrics for a metric collector
-(Prometheus, telegraf) to collect.
+(and more) occurring in Manta and Triton at a glance. In order to provide
+application level metrics, we need our applications to expose metrics for a
+metric collector (Prometheus, telegraf) to collect.
 
 To begin with, we'll be retrieving metrics from Manta as a form of telemetry.
 The metrics could be rolled into a separate higher-level construct, like a
 monitoring system. This RFD is only focused on the generation of metrics, and
 not the monitoring system as a whole, although some discussion of monitoring
-systems is necessary. Manta is written in Node.js. There is an existing
-Prometheus-style metric client called
+systems is necessary. Manta and Triton are written in Node.js. There is an
+existing Prometheus-style metric client called
 [prom-client](https://github.com/siimon/prom-client). prom-client works, but
 there are some features missing. We would like to be able to pass an instance of
 a collector into imported libraries so that they can also report their metrics.
@@ -188,7 +187,7 @@ collector.collect(function (err, metrics) {
 
 The parent/child relationship is very important for our use case. This
 concept is taken from [bunyan](https://github.com/trentm/bunyan).
-This is a description of how it is implemented (or will be) in this library.
+This is a description of how it is implemented in this library.
 A parent collector is created with a set of properties including a name,
 and a set of labels. Labels are key/value pairs that can be used to
 'drill down' metrics. For example, to create a new parent collector:
@@ -213,7 +212,9 @@ var gauge = collector.gauge({
 All of the child collectors created from the parent collector will have
 the label `zone=ZONENAME`. The child that we created is a gauge in this
 case. A user could also call `.counter()`, `.histogram()`, or
-`.summary()` (summary not implemented yet).
+`.gauge()`. Note that when we refer to histograms, we're referring to the
+Prometheus-style histograms. There are currently no plans to implement
+the Prometheus 'Summary' collector.
 
 In the Prometheus nomenclature, gauges, counters, histograms, and
 summaries are all called 'collectors.' For this library, we're also
@@ -433,7 +434,9 @@ period. At collection time, the each of the metrics in the 'trigger registry'
 could be invoked. This is similar to existing solutions, like
 [boolean health checks](http://metrics.dropwizard.io/3.2.2/getting-started.html#health-checks).
 
-Further implementation details have to be worked out.
+Further implementation details have to be worked out when we implement Triggered
+Metrics. Triggered Metrics will be implemented soon after the initial release,
+as they're a necessary feature to efficiently gather some types of metrics.
 
 ### Children are leaf collectors
 Children cannot be created from children. That is, a user can't call
@@ -477,6 +480,28 @@ requests per second, and we were incrementing a counter for each request, it
 would take us many years to reach the overflow point.
 
 ## Other Thoughts and Ideas
+
+### Aggregated Metrics
+Rather than making a programmer choose which fields to collect at the time of
+observation, the programmer could observe all of the possible fields, and then
+choose which fields to keep.
+
+Take Muskie as an example. Currently we collect only a subset of fields
+(latency, request method, response code, etc.). We could change that to collect
+all of the information about a request (user, local/remote IP, metadata shard,
+sharks, etc.). When we initially create the collector, we specify which of the
+metrics we want to keep. The metrics that we don't want to keep are aggregated
+away at observation time.
+
+This is especially useful when we go to instrument things like Cueball, where
+different fields will be relevant (and efficient to collect) for each
+application component. For example, it may be efficient (in terms of
+cardinality) for Muskie to collect a 'remoteIP' field, but not efficient for
+CloudAPI to do so.
+
+This makes it easier for application developers to know which fields will be
+collected, and stops them from accidentally adding fields that may make querying
+difficult.
 
 ### Dropwizard and Prometheus Histograms
 Dropwizard is a Java framework that (among other things) provides a popular Java
@@ -551,9 +576,9 @@ discover applications (and processes within applications) providing metrics.
 
 ### Retention Period
 For now, the amount of time we retain metrics will be up to the operators of the
-metric server. Retention periods are in the scope of RFD 91, so when we start
-working on an end-to-end solution for instrumentation we will have to revisit
-the question of how long to retain scraped metrics.
+metric server. Retention periods are in the scope of a not-yet-created RFD, so
+when we start working on an end-to-end solution for instrumentation we will have
+to revisit the question of how long to retain scraped metrics.
 
 ### Naming
 We should try to maintain standard naming conventions for our metrics. For
@@ -571,8 +596,8 @@ The first is that dashboards and queries have to be recreated to use the new
 metric name. The second, and more deceptive reason, is that changing names make
 historical metric queries much more difficult, if not impossible.
 
-This will be covered more in-depth in RFD 91, as this applies specifically to
-the instrumentation of applications.
+This will be covered more in-depth in a future RFD, as this applies specifically
+to the instrumentation of applications.
 
 ### CLI Usage
 It may be useful to provide a CLI wrapper around this library to dynamically
@@ -593,8 +618,6 @@ terminal. This portion is out of the scope of this document, but it is good to
 keep in mind, and is related to the previous idea.
 
 ### Biggish TODOs
-* Our hash function is taken from prom-client, and is pretty bad (but it works)
-    * Do we need to change it?
 * Performance fixes:
     * Histogram: Change from map of Counters to a single Counter
     * A lot of nested for-in loops

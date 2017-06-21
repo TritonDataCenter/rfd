@@ -48,27 +48,22 @@ value, a timestamp, and associated labels.
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |add       |num     |Adds `num` to the `value` field of the metric. No positive/negative check is done on `num`|None|
-|subtract  |num     |Subtracts `num` from the `value` field of the metric. No positive/negative check is done on `num`|None|
 
 The `labels` that belong to each Metric are key/value pairs. There can
 be two Metrics that have the exact same key/value pairs, but they cannot
 belong to the same collector. For example, a Counter and a Gauge may
-both have the labels {method="getObject",code="200"}. The Gauge and
+both have the labels `{method="getObject",code="200"}`. The Gauge and
 Counter will be tracking different things though. In this case, the
 Counter may be tracking requests completed, while the Gauge is tracking
 request latency.
 
-All collector functions (`add()`, `subtract()`, `observe()`, etc.) are
-all built on top of the Metric's `add()` and `subtract()` functions. To
-accomplish subtraction, `add()` is called with a negative number, or
-`subtract()` can be called directly. A collector can call `subtract()`
-with a negative number to do addition.
+All collector functions (`add()`, `observe()`, etc.) are
+all built on top of the Metric's `add()` function. To
+accomplish subtraction, `add()` is called with a negative number.
 
 The user should never directly perform operations on Metrics, but
 instead use collectors (which build on top of Metrics by way of
 MetricVectors).
-
-`subtract()` is not yet implemented.
 
 ### MetricVector
 MetricVectors are built on top of Metrics and give them much more
@@ -103,7 +98,8 @@ Histograms use Counters and Gauges in their implementation, so they also
 use MetricVectors. MetricVectors do the vast majority of the heavy
 lifting for collectors.
 
-`json()` is not yet implemented.
+`json()` will be implemented when the need arises. No implementation is
+currently required.
 
 Users should not directly interact with MetricVectors. They should use
 things like collectors, which use MetricVectors internally.
@@ -118,7 +114,7 @@ user will create 'child' collectors from their Collector instance.
 
 All of the labels passed to a Collector will be inherited by child collectors.
 
-#### Private Fields
+#### Private API
 | Variable | Type | Value |
 |----------|------|-----------------|
 |namespace | string | top-level namespace provided by the user to identify all metrics registered to this Collector|
@@ -147,8 +143,7 @@ The results are concatenated and returned to the user.
 |histogram|opts|creates a new Histogram object with the given options (incl. labels). This call is idempotent|a Histogram object|
 |collect|callback|iterates through `registry`, calling the serialization method on each collector|None (string and error via callback)|
 
-`collect()` should also take a serialization format (json, Prometheus, etc.),
-but it currently assumes Prometheus.
+`collect()` currently returns only Prometheus formatted metrics.
 
 
 ### Counter
@@ -160,7 +155,7 @@ Metric being created. For this reason, it is very important to limit the
 number of unique values that are placed in labels. For more information,
 see the section on **Metric Cardinality** in README.md.
 
-#### Private Fields
+#### Private API
 | Variable | Type | Value |
 |----------|------|-----------------|
 |fullName|string|full name of what is being tracked, resulting from concatenation of namespace, subsystem, and collector name|
@@ -190,15 +185,12 @@ create Metrics. `prometheus()` wraps the MetricVector function of the
 same name, and adds Counter-specific information, like the `# HELP` and `#
 TYPE` strings.
 
-There will be a `json()` function, but it is not yet implemented. It
-will wrap the MetricVector's `json()` function.
-
 ### Gauge
 Gauges are similar to counters. Gauges can count up, or count down relative
 to their current value. Gauges start with an initial value of `0`. If you want
 a gauge that can be set to arbitrary values, look at [AbsoluteGauge](#absolutegauge).
 
-#### Private Fields
+#### Private API
 | Variable | Type | Value |
 |----------|------|-----------------|
 |fullName|string|full name of what is being tracked, resulting from concatenation of namespace, subsystem, and collector name|
@@ -217,14 +209,8 @@ a gauge that can be set to arbitrary values, look at [AbsoluteGauge](#absolutega
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |add       |value, labels|adds `value` to the metric represented by `labels`|None|
-|subtract  |value, labels|subtracts `value` from the metric represented by `labels`|None|
 |labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
 |prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string and error via callback)|
-
-`subtract()` has not been implemented yet. It will wrap the
-Metric's `subtract()` function. There will be a `json()` function,
-but it is not yet implemented. It will wrap the MetricVector's `json()`
-function.
 
 ### AbsoluteGauge
 AbsoluteGauges are metrics that can only be set to an arbitrary value. These are
@@ -254,14 +240,15 @@ instead.
 |labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
 |prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string and error via callback)|
 
-The `AbsoluteGauge` object has not yet been implemented.
+The `AbsoluteGauge` object has not yet been implemented. `AbsoluteGauge` is
+going to be implemented in one of the first post-1.0 releases.
 
 ### Histogram
 Histograms are internally made up of Counters and Gauges. Once you
 understand that, Histograms are much easier to understand. Histograms
 count values that fall between a number of user-provided buckets.
 
-#### Private Fields
+#### Private API
 | Variable | Type | Value |
 |----------|------|-----------------|
 |fullName|string|full name of what is being tracked, resulting from concatenation of namespace, subsystem, and collector name|
@@ -337,7 +324,3 @@ With respect to the metric cardinality problem, we can see that for this
 single method/code Histogram we've created eight metrics. You can
 probably imagine the immense number of metrics that get created for all
 of the different method/code combinations.
-
-`exponentialBuckets()` and `linearBuckets()` are not implemented yet.
-There will be a `json()` function, but it is not yet implemented. It
-will wrap the MetricVector's `json()` function.
