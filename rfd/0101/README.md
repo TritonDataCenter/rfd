@@ -13,7 +13,7 @@ state: draft
     Copyright 2017 Joyent
 -->
 
-# RFD 101 Models for operational escalating into engineering
+# RFD 101 Models for operational escalation into engineering
 
 ## Overview
 
