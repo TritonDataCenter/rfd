@@ -144,7 +144,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 99 Client Library for Collecting Application Metrics](./rfd/0099/README.md) |
 | predraft | [RFD 100 Improving lint and style checks in JavaScript](./rfd/0100/README.md) |
 | draft | [RFD 101 Models for operational escalation into engineering](./rfd/0101/README.md) |
-| draft | [RFD 102 Requests for Enhancement](./rfd/0101/README.md) |
+| draft | [RFD 102 Requests for Enhancement](./rfd/0102/README.md) |
 
 
 ## Contents of an RFD
