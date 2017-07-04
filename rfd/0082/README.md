@@ -263,10 +263,8 @@ to handle agent updates, which are a common sore point in Triton updates.
   This will enable TOOLS-1631 for 'cmon-agent'.
 - [TOOLS-1651](https://smartos.org/bugview/TOOLS-1651): 'sdcadm create should support agent instances'.
 - [TOOLS-1770](https://smartos.org/bugview/TOOLS-1770): for multiple-server support for 'sdcadm create'
-- [TOOLS-1771](https://smartos.org/bugview/TOOLS-1771): consider ticket for 'sdcadm ex update-agents' to be able to skip the
-  'latest' linking
-- [TOOLS-1772](https://smartos.org/bugview/TOOLS-1772): consider ticket to update the latest link with an agentsshar without
-  updating the agents.
+- [TOOLS-1771](https://smartos.org/bugview/TOOLS-1771): Add "--skip-latest-symlink" option to `sdcadm experimental update-agents` 
+- [TOOLS-1772](https://smartos.org/bugview/TOOLS-1772): Add "--just-update-symlink" option to `sdcadm experimental update-agents`
 
 
 ## M2: Improved agent instance tracking
@@ -279,6 +277,8 @@ necessarily having to have fully moved off the agentsshar.
   that can be used to check this and will provide steps for correcting it if
   wrong.
 - Include `params.server_uuid` in all SAPI agent instances.
+- Include `params.image_uuid` in all SAPI instances (since we can have more than one instance for a given service and
+  these could be using different images).
 - [SAPI-285](https://smartos.org/bugview/SAPI-285): 'Create Service should not validate presence of provide image_uuid
   into local IMGAPI'
 - Update SAPI to index and provide search options for instances image_uuid and
