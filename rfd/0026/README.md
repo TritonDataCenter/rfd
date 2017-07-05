@@ -865,19 +865,30 @@ parameter that corresponds to the user making the request.
 
 ###### Input
 
-| Param           | Type         | Description                              |
-| --------------- | ------------ | ---------------------------------------- |
-| name            | String       | Allows to filter volumes by name. |
-| type            | String       | Allows to filter volumes by type, e.g `tritonnfs`. |
-| state           | String       | Allows to filter volumes by state, e.g `state=failed`. |
-| predicate       | String       | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
-| tag.key         | String       | A string representing the value for the tag with key `key` to match. More details below. |
+| Param           | Type         | Milestone          | Description                              |
+| --------------- | ------------ | ------------------ | ---------------------------------------- |
+| name            | String       | master-integration | Allows to filter volumes by name. |
+| type            | String       | master-integration | Allows to filter volumes by type, e.g `tritonnfs`. |
+| state           | String       | master-integration | Allows to filter volumes by state, e.g `state=failed`. |
+| predicate       | String       | master-integration | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
+| tag.key         | String       | mvp                | A string representing the value for the tag with key `key` to match. More details below. |
 
 ####### Searching by name
 
-`name` is a pattern where the character `*` has a special meaning of matching
-any character any number of times. For instance, `*foo*` will match `foo`,
-`foobar`, `barfoo` and `barfoobar`.
+`name` is a string containing either a full volume name or a partial volume name
+prefixed and/or suffixed with a `*` character. For example:
+
+ * foo
+ * foo\*
+ * \*foo
+ * \*foo\*
+
+are all valid `name=` searches which will match respectively:
+
+ * the exact name `foo`
+ * any name that starts with `foo` such as `foobar`
+ * any name that ends with `foo` such as `barfoo`
+ * any name that contains `foo` such as `barfoobar`
 
 ####### Searching by predicate
 
@@ -885,12 +896,19 @@ The `predicate` parameter is a JSON string that can be used to build a LDAP
 filter to search on the following indexed properties:
 
 * `name`
-* `billing_id`
+* `billing_id` (mvp milestone)
 * `type`
 * `state`
-* `tags`
+* `tags` (mvp milestone)
+
+Important: when using a predicate, you cannot include the same parameter in both
+the predicate and the non-predicate query parameters. For example, if your
+predicate includes any checks on the `name` field, passing the `name=` query
+paramter is an error.
 
 ####### Searching by tags
+
+Note: searching for tags is to be implemented as part of the mvp milestone.
 
 It is also possible to search for volumes matching one tag by using the `tag`
 parameter as following:
@@ -1490,21 +1508,33 @@ or "VOLAPI".
 
 ##### Input
 
-| Param           | Type         | Description                              |
-| --------------- | ------------ | ---------------------------------------- |
-| name            | String       | Allows to filter volumes by name. |
-| owner_uuid      | String       | When not empty, only volume objects with an owner whose UUID is `owner_uuid` will be included in the output |
-| billing_id      | String       | When not empty, only volume objects with a billing\_id whose UUID is `billing_id` will be included in the output |
-| type            | String       | Allows to filter volumes by type, e.g `type=tritonnfs`. |
-| state           | String       | Allows to filter volumes by state, e.g `state=failed`. |
-| predicate       | String       | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
-| tag.key         | String       | A string representing the value for the tag with key `key` to match. More details below. |
+| Param           | Type               | Milestone          | Description                              |
+| --------------- | ------------------ | ------------------ | ---------------------------------------- |
+| name            | String             | master-integration | Allows to filter volumes by name. |
+| size            | Stringified Number | master-integration | Allows to filter volumes by size. |
+| owner_uuid      | String             | master-integration | When not empty, only volume objects with an owner whose UUID is `owner_uuid` will be included in the output |
+| billing_id      | String             | mvp                | When not empty, only volume objects with a billing\_id whose UUID is `billing_id` will be included in the output |
+| type            | String             | master-integration | Allows to filter volumes by type, e.g `type=tritonnfs`. |
+| state           | String             | master-integration | Allows to filter volumes by state, e.g `state=failed`. |
+| predicate       | String             | master-integration | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
+| tag.key         | String             | mvp                | A string representing the value for the tag with key `key` to match. More details below. |
 
 ###### Searching by name
 
-`name` is a pattern where the character `*` has a special meaning of matching
-any character any number of times. For instance, `*foo*` will match `foo`,
-`foobar`, `barfoo` and `barfoobar`.
+`name` is a string containing either a full volume name or a partial volume name
+prefixed and/or suffixed with a `*` character. For example:
+
+ * foo
+ * foo\*
+ * \*foo
+ * \*foo\*
+
+are all valid `name=` searches which will match respectively:
+
+ * the exact name `foo`
+ * any name that starts with `foo` such as `foobar`
+ * any name that ends with `foo` such as `barfoo`
+ * any name that contains `foo` such as `barfoobar`
 
 ###### Searching by predicate
 
@@ -1513,12 +1543,20 @@ on the following indexed properties:
 
 * `name`
 * `owner_uuid`
-* `billing_id`
+* `billing_id` (mvp milestone)
 * `type`
+* `size`
 * `state`
-* `tags`
+* `tags` (mvp milestone)
+
+Important: when using a predicate, you cannot include the same parameter in both
+the predicate and the non-predicate query parameters. For example, if your
+predicate includes any checks on the `name` field, passing the `name=` query
+paramter is an error.
 
 ###### Searching by tags
+
+Note: searching for tags is to be implemented as part of the mvp milestone.
 
 ##### Output
 
