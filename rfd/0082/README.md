@@ -275,8 +275,8 @@ necessarily having to have fully moved off the agentsshar.
 - CNAPI and/or cn-agent changes so that 'server.agents' is kept up to date, and
   it is clear how that is done. Also add a 'sdcadm check cnapi-server-agents'
   that can be used to check this and will provide steps for correcting it if
-  wrong.
-- Include `params.server_uuid` in all SAPI agent instances.
+  wrong. (See below)
+- Include `params.server_uuid` in all SAPI agent instances. (AGENT-XXXX)
 - Include `params.image_uuid` in all SAPI instances (since we can have more than one instance for a given service and
   these could be using different images).
 - [SAPI-285](https://smartos.org/bugview/SAPI-285): 'Create Service should not validate presence of provide image_uuid
@@ -287,6 +287,44 @@ necessarily having to have fully moved off the agentsshar.
   every agent instance existing into that server from SAPI.
 - SAPI CreateInstance, UpgradeInstance and DeleteInstance should work for agent
   instances.
+  
+### CNAPI server.agents
+
+Server's installed agents will change only when we initially setup the server
+or when we update them either using update-agents from agentsshar or individually.
+
+- Changes associated with individual updates are already being published to CNAPI
+  as part of the `update_agent` CN task.
+- Changes associated with server setup are published to CNAPI by sdc-cn-agent itself
+  on each boot of the agent itself.
+
+It's pending to handle the update of information associated with agents when we
+update them using the agentsshar, or when we detect that the agents information
+on a given server is not correct b/c it lacks of some pieces.
+
+Additionally, having a custom method/end-point dedicated to update this information
+will make easier to include additional information about CN agents in the future.
+
+The following issues are required:
+
+- sdc-cn-agent: Create independent `refresh_agents` task (AGENT-XXXX). This will require
+  some refactoring of current `update_agent` task, in order to do not enter code
+  duplication.
+- sdc-cnapi: Create end-point to call refreshAgents task, which should return the taskId (CNAPI-XXX)
+- sdcadm: Create `sdcadm check server-agents` subcommand, which should be able to go
+  through the available information for the given server(s) - or all of them if nothing
+  else has been specified - and provide feedback about the status of agents property fo
+  these servers. (TOOLS-XXXX)
+- sdcadm: This `sdcadm check server-agents` subcommand could provide an option to fix
+  any problems it may detect, waiting for interactive user input or just proceeding
+  by itself if the usual `--yes` option is given. (TOOLS-XXXX)
+- Implementation note:
+  Can use CNAPI client methods `getTask`, `waitTask` or `pollTask` in order to
+  know about task completion and lookup again at server's agents using CNAPI's `getServer`.
+  Note that while `waitTask` takes a timeout as argument and let the work to be done
+  by CNAPI, `pollTask` didn't take such timeout, and the work is done by whatever
+  is running the CNAPI client (sdcadm on this case).
+
 
 ## M3: Accurate VM instance tracking in SAPI (bonus points)
 
