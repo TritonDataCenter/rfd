@@ -128,7 +128,7 @@ formal writing that it has come to represent.)
 | publish | [RFD 83 Triton `http_proxy` support](./rfd/0083/README.md) |
 | predraft | [RFD 84 Providing Manta access on multiple networks](./rfd/0084/README.md) |
 | publish  | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |
-| draft | [RFD 86 ContainerPilot 3](./rfd/0086/README.md) |
+| publish | [RFD 86 ContainerPilot 3](./rfd/0086/README.md) |
 | predraft | [RFD 87 Docker Events for Triton](./rfd/0087/README.md) |
 | draft    | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md) |
 | draft    | [RFD 89 Project Tiresias](./rfd/0089/README.md) |

@@ -1,6 +1,6 @@
 ----
 authors: Tim Gross <tim.gross@joyent.com>
-state: predraft
+state: publish
 ----
 <!--
 This Source Code Form is subject to the terms of the Mozilla Public
