@@ -410,6 +410,9 @@ privilege in order to perform a `chroot(2)` call (which is not part of the
 basic privilege set--only root owned processes have it).  This might mitigate
 any concerns surrounding a `/proc` only solution.
 
+Searching on https://grok.pkgsrc.pub for both pthread\_setname\_np and chroot
+showed that only ruby contained both.  These appear to just be autoconf checks.
+
 ## Man Pages
 
 ### pthread\_attr\_getname\_np
