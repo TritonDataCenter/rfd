@@ -10,26 +10,21 @@ state: draft
 -->
 
 <!--
-    Copyright 2016 Joyent
+    Copyright 2017 Joyent
 -->
 
-# RFD 55 LX Support for Namespaces
+# RFD 55 LX Support for Mount Namespaces
 
 ## Introduction
 
 We already have namespace isolation within illumos, but this is done at the
 zone level and does not nest beyond the two level hierarchy that zones offer.
-For the lx brand we need a per-process namespace abstraction which can then
+For the LX brand we need a per-process namespace abstraction which can then
 be inherited or modified by children.
-
-This RFD does not provide a detailed design for each type of Linux namespace.
-Instead, it outlines a framework for how any namespace can be plugged into lx.
-It also provides examples for how some of the different Linux namespaces could
-be implemented within the framework.
 
 The Linux `namespaces(7)` man page provides details, but to summarize the
 support, there are three system calls which can involve namespaces; `clone`,
-`setns`, and `unshare`. There are six primary namespaces:
+`setns`, and `unshare`. There are six types of namespaces:
  1. IPC         CLONE\_NEWIPC    System V IPC, etc.
  2. Mount       CLONE\_NEWNS     Mount points
  3. Network     CLONE\_NEWNET    Network devices, stacks, ports, etc.
@@ -49,51 +44,6 @@ The `mount` syscall can be used to `bind` mount any of these `proc` files
 elsewhere in the directory hierarchy. Bind mounting is discussed further
 below.
 
-## Design
-
-At a high level, this is a fairly straigtforward enhancment to our per-process
-lx process brand data (`lx_proc_data_t`).
-
-We will define a new lx namespace structure (hereafter abbreviated as LNS) with
-at least these members:
-```
-    type (ipc, mnt, etc)
-    cnt (reference counter)
-    inode (for `/proc` support)
-    data (type specific data pointer - similar to vnode data element)
-```
-
-We will eventually add 6 pointers to the `lx_proc_data_t` struct, one for each
-namespace. These point to an associated LNS. Adding these pointers can be done
-incrementally, as we add support for each namespace. When we `fork` a new
-process, the newly constructed `lx_proc_data_t` will reference the same
-LNS objects as the parent.
-
-We will always start `init` with a full set of LNS objects. These pointers
-will be inherited on `fork/clone` so that children get that LNS definition
-by default. The LNS is reference counted so we know when it can be cleaned up.
-
-We will modify the relevant code (either in lx itself or we will add new brand
-hooks if in generic code) as we support each new type of namespace, so that the
-code properly handles the LNS type-specific data.
-
-The `clone` and `unshare` syscalls will create a new LNS of the proper type
-and associate the process with that object via the proper LNS pointer in
-`lx_proc_data_t`. Each type-specific namespace will also create a structure of
-the appropriate type and associate it with the LNS object via the `data`
-pointer.
-
-The `/proc` file associated with each namespace will need to reference the
-associated LNS object. When the file is open, the LNS object must be held,
-via the reference count, so that the object persists even if all processes
-referencing the object exit. The LNS `inode` member is used for the
-`stat.st_ino` value on the `/proc` file.
-
-The `setns` syscall must take a file descriptor for one of the `/proc/{pid}/ns`
-files and associate the correct `lx_proc_data_t` LNS pointer to that object.
-
-## Mount Namespace Requirements
-
 One of the pressing reasons to support namespaces, particularly the mount
 namespace, is the proliferation of the `PrivateTmp` functionality offered by
 systemd. An excerpt of the `systemd.exec(5)` man page describes the behavior:
@@ -106,9 +56,36 @@ Use of this option is proliferating as package maintainers add it to service
 manifests and systemd-enabled distributions see more use in production.  It
 must be a workflow which the LX emulation is capable of handling.
 
-In order to gain insight into the mechanisms in play, systemd was straced on a
-Linux machine while it started a PrivateTmp-enabled service.  These are the
-relevant actions which were recorded:
+Because of the need to support `PrivateTmp`, this RFD focuses on the LX
+design for `mount` namespaces. 
+
+## Mount Namespace Overview
+
+There are three mount operations that interact with a mount namespace.
+- `MS_SHARED` - The mount point is shared between the parent and child
+namespace. Any new mount or unmount under the shared mount point is visible to
+both namespaces, no matter which side initiated the action. That is, mount
+changes propagate both ways.
+- `MS_SLAVE` - Any new mount or unmount initiated by the child under the slave
+mountpoint is only visible to the child namespace, but any mount or unmount
+initiated by the parent is visible to the child. That is, mount changes
+propagate into the child, but not out to the parent.
+- `MS_PRIVATE` - Any new mount or unmount initiated under the private
+mountpoint is only visible within the namespace. That is, mount changes do not
+propagate.
+
+In addition, Linux supports another type of mount; `MS_BIND`. This is similar
+to our native `lofs` mount which is used to mount an existing directory
+someplace else in the filsystem. One key difference is that under a `MS_BIND`
+mount, filesystems mounted under the source directory will not be visible under
+the bind mounted directory, unless the recursive option (`MS_REC`) was used.
+See the `mount(2)` man page for more details on the `MS_BIND` mount option.
+
+## Mount Namespace Example
+
+In order to gain insight into the `PrivateTmp` mechanisms in play, systemd was
+straced on a Linux machine while it started a PrivateTmp-enabled service.
+These are the relevant actions which were recorded:
 
 ```
 unshare(CLONE_NEWNS)
@@ -123,62 +100,98 @@ mount(NULL, "/", NULL, MS_REC|MS_SHARED, NULL)
 ```
 
 Which roughly corresponds to:
- 1. Create a new mount namespace for the process.
- 2. Recursively set `/` to `MS_SLAVE` mode.  This means that mounts in the parent namespace will appear in this one, but changes here will not propagate backwards.
+ 1. Create a new mount namespace for the process. Because the parent is sharing all of its mounts, every mount remains visible in the new child namespace.
+ 2. Recursively set `/` to `MS_SLAVE` mode.  This means that mount changes in the parent namespace will appear in this child, but any mount changes here will not propagate up.
  3. Bind-mount custom directories for `/tmp` and `/var/tmp`
  4. Check and re-apply mount flags for `/tmp` and `/var/tmp`.  This apparent no-op seems to be a consequence of code generalization in systemd.
- 5. Recursively set the `MS_SHARED` mount flag on `/` and its children.  This does not "reattach" it to the parent namespace.
+ 5. Recursively set the `MS_SHARED` mount flag on `/` and its children.  This does not "reattach" it to the parent namespace, but does mean that any new namespaces created by children of this process would share the same initial mount view.
 
+## High-Level Design Alternatives
 
+A high-level observation is that mount and unmount are rare operations compared
+to lookup, so it is preferable to favor any expensive work within the
+mount/umount path and avoid complicating the lookup path.
 
-## Mount Namespace Example
+### Leverage a filesystem similar to `lofs` for `tmp MS_SLAVE` behavior
 
-Since the mount namespace is likely going to be the first one we implement,
-lets walk through a proposed implementation of this at a high level.
+We can observe that a new mount namespace usually sees all of the same
+filesystems as the parent. Any mounts that change in the parent will be visible
+in the child. Thus we get the `MS_SHARE` visibility from parent to child for
+free. If we focus on the `PrivateTmp` behavior, we could do something
+like a `lofs` mount onto `/tmp` and `/var/tmp`. This would only be applicable to
+the child namespace. We could create a filesystem similar to `lofs` that
+could direct vfs traversal to the top filesystem or the underlying filesystem,
+depending on which namespace the process doing the lookup was in.
 
-Our existing mount namespace behavior is built around the zone's `zone_vfslist`
-to provide a per-zone mount list. We now want that behavior to be associated
-with a mount namespace instead.
+Implementing this approach to address the `PrivateTmp` use case might be
+fairly straightforward, but it seems to have a lot of limitations.
+Any unmount of an existing filesystem which occurs in the child under a
+`MS_SLAVE` tree (all of the tree for the `PrivateTmp` case), would incorrectly
+impact the parent. Maintaining the correct per-process view of
+`/proc/self/mounts` would be tricky (although this is also presumably a rare
+operation). We can assume that there could be many mounts on top of `/tmp` and
+`/var/tmp`, so that might cause complications. Finally, while this approach
+might work for `PrivateTmp`, it doesn't generalize to all of the mount
+namespace behavior.
 
-The `unshare` syscall will create a new LNS of type `mount` and associate the
-process with that object via the new mount LNS pointer in `lx_proc_data_t`.
-Because this is an LNS object of type `mount` we also create a structure with a
-`vfslist` member and the associated locks, etc. This structure will be
-referenced by the LNS `data` pointer.
+### Use an approach similar to the way we setup a zone
 
-New brand hooks will be defined and the `vfs_list_add` and `vfs_list_remove`
-kernel functions will be enhanced to call the new brand hooks. The lx
-implementation of these hooks will manipulate the LNS object vfs list in
-addition to the zone's vfs list. Similarly, the code that walks the zone's
-vfs list will need modification so that the calling process will walk the LNS
-`mount` vfs list instead of the zone's vfs list.
+When a process creates a new mount namespace we could `chroot` the process
+someplace out of the way within the zone. We could use a filesystem like
+`lofs` to recreate all of the shared mounts in the child that are visible in
+the parent.
 
-There are a few `/proc` changes also required to handle the correct behavior
-for `mounts` and the new `mountstats` file.
+Because of the way our current `lofs` works, mount changes for a shared portion
+of the tree in the parent would cause the proper visibility in the child, but
+the child `/proc/self/mounts` view would still somehow need to be updated.
+Likewise, with our current `lofs` behavior, mount changes in the child for a
+slave or private portion of the tree won't propagate into the parent.
 
-The `user` namespace has some interaction the the `mount` namespace. See the
-`user_namespaces` man page for details. The `mount` namespace code may need
-enhancement when implementing the `user` namespace support.
+However, the existing `lofs` would not properly handle propagating visibility
+for shared mount changes made in the child. It also would not properly mask
+parent visibiltiy of `/proc/self/mounts` entries for mounts under a child's
+`MS_SLAVE` or `MS_PRIVATE` tree. A new filesystem, similar to `lofs`, would
+need to be written which would handle all of these issues. In addition, it
+would have to handle the differences in `MS_BIND` behavior at mountpoint
+boundaries. We would need some way to track which mountpoints are shared,
+slave, or private.
 
-## Bind Mounts
+Because the child is chrooted someplace within the zone, the new filesystem
+would need to mask the entire tree from visibility in the parent (even though
+shared mount changes must still propagate correctly).
 
-See the `mount(2)` man page for more details on the `MS_BIND` mount option.
-Bind mounts are conceptually similar to an illumos `lofs` mount and we
-should be able to emulate at least some of the functionality in this way.
-However, as the man page states, there is some complexity here which may
-need further design:
-```
-Bind mounts may cross filesystem boundaries and span chroot(2) jails.
-```
+The advantage of this approach is that mountpoint traversal would work as
+expected withn the chroot-ed process (and its children) with no changes to the
+lookup code.
 
-Bind mounts interact with namespaces in that the `/proc`/{pid}/ns` file
-can be bind mounted someplace else in the filesystem and this will keep
-the associated LNS object alive even if all processes referencing the object
-have exited.
+One difficult aspect of this approach is handling shared mount changes from the
+parent side and getting those propagated into any child namespaces.
 
-In order to support this kind of functionality, instead of having simple
-support in `/proc`, we will most likely have to implement a new, in-memory,
-pseudo filesytem which will maintain all of the LNS object instances. It
-may not be necessary to get this complex unless we want to fully run
-Linux containers within lx zones. We should start with a simpler implementation
-and only add full bind mount support if necessary.
+### Have a process-oriented view of mounts
+
+In addition to (or instead of) the per-zone mount view, the mount view would
+be associated with a process. Child processes would normally share the same
+view.
+
+When a new namespace is created, the current mount view is duplicated into
+a new structure associated with the process. Any child processes will share
+this same structure until they create their own namespace. All mount operations
+operate on the structure associated with the process. This approach involves
+changing the lookup code so that vfs traversal is specific to the the mount
+structure associated with the calling process. This per-process structure
+pointer might be similar to the per-zone `zone_vfslist` pointer.
+
+Conceptually, during lookup, every mount point traversal (or perhaps this could
+be limited to only those impacted by a mount namespace) would have to reference
+the processes associated mount structure list to determine how to proceed (i.e.
+which vnode to traverse to next).
+
+As with the previous alternative, mount operations which are shared would need
+to propagate into all of the effected process-related mount lists.
+Perhaps some form of chaining could be used to manage these relations.
+Slave and private mount operations within the child would only effect that
+process's mount list.
+
+### XXX Any other high level alternative?
+
+## XXX Detailed design for the selected approach
