@@ -5,6 +5,7 @@
 :showtitle:
 :toc: left
 :numbered:
+:icons: font
 
 ////
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -103,11 +104,32 @@ credentials of the CN to gain access to Triton resources. If a stolen CN is
 powered up at the time of theft, it is possible that customer data can be read,
 but if powered down, no data access will be possible.
 
+[[customer-features]]
 ### Customer-facing features
 
-This design also seeks to provide a key customer-facing feature: the ability to
-use a provisioned instance/zone/VM in a customer account as an authentication
-principal to Triton services.
+This design also seeks to provide 3 key customer-facing features:
+
+Feature 1:: The ability to use a provisioned instance/zone/VM in a customer
+account as an authentication principal to Triton (and other Triton-aware)
+services.
+Goal 1:: The credentials of this principal should not be able to be permanently
+compromised by an attacker who has full control of a customer zone (i.e. they
+must not be able to access key material).
+
+Feature 2:: The ability to have customer-provisioned instances authenticate
+to each other (both within a datacentre and between them) using credentials
+provided by Triton itself.
+Goal 2:: The credentials used for this authentication should not be able to be
+permanently compromised by an attacker who has full control of a customer zone.
+
+Feature 3:: The ability to implement a secure data store protected by hardware
+symmetric keys within a zone.
+Goal 3:: If an attacker compromises a customer zone storing N items of data
+protected by this mechanism, they should have no choice but to make N individual
+round trips through a (rate-limited) hardware module in order to decrypt them.
+If the attacker compromises an entire live Triton CN (including the contents of
+RAM) with M zones on it, they should have no choice but to make at least M round
+trips through a hardware module in order to access customer data so protected.
 
 ## Design
 
@@ -129,11 +151,17 @@ only implement asymmetric cryptography are suitable for storing authentication
 credentials, but do not fit as well in a design that wants to store credentials
 for at-rest encryption.
 
-One device that is suited for both is the Yubikey (manufactured by Yubico). It
-implements a number of features aimed at the 2-factor Authentication market
-(based on hash chains and HMAC) which are also ideal for securely deriving
-encryption keys. Alongside these features, it features RSA and ECDSA asymmetric
-cryptography.
+In hardware there are always difficult trade-offs between price, features, and
+performance. What is implicit in the above list of goals is that the
+cryptographic performance of the device is likely to be low (as it is both
+cheap and well-featured). As a result, the rate at which hardware operations
+need to take place must to be limited in the system design.
+
+One device that is suited for these goals is the Yubikey (manufactured by
+Yubico). It implements a number of features aimed at the 2-factor Authentication
+market (based on hash chains and HMAC) which are also ideal for securely
+deriving encryption keys. Alongside these features, it features RSA and ECDSA
+asymmetric cryptography.
 
 The Yubikey is relatively inexpensive (at $40 US it is a very small line item in
 the typical cost of a new CN), and since it uses the ubiquitious USB interface
@@ -141,20 +169,28 @@ it can easily be added to existing server hardware (in fact, many servers
 include USB connectors that are located inside the server casing which are
 ideal locations for this use).
 
+Alternatives to the Yubikey that are also well suited include a few models of
+USB JavaCard tokens, such as the Feitian eJava token (also sold as the PIVKey
+T800). These tokens can be written with appropriate JavaCard Applets to become a
+drop-in replacement for the Yubikey (exposing the same commands to the server).
+
+The hardware details of these devices and the interfaces they expose is
+discussed further in the section <<hardware>>.
+
 ### Overview: at-rest encryption
 
 The concept for at-rest encryption is to generate a master key for ZFS crypto
 by combining 3 pieces of data:
 
- * A secret key written to the Yubikey (which it will not reveal);
+ * A secret key written to the hardware token (which it will not reveal);
  * A secret key stored on a trusted node in the datacenter; and
  * A randomly generated "challenge" value, kept on disk unencrypted with the
    data.
 
-The primitive used to combine these pieces of data is the HMAC. First, the
-challenge value is read in from the disk and passed to the token. The token
-will compute the HMAC of the challenge data with its secret key (without
-revealing that secret key to the host).
+The primitive used to combine these pieces of data is the HMAC (see also
+<<crypto-algos>>). First, the challenge value is read in from the disk and
+passed to the token. The token will compute the HMAC of the challenge data with
+its secret key (without revealing that secret key to the host).
 
 Then, a secret key stored in a headnode service will be retrieved over a
 TLS-protected authenticated channel and used as the secret key for another HMAC
@@ -227,14 +263,14 @@ match for this use case.
 The SSH agent also features support for SSH certificates, which can be used to
 attest about an identity associated with a given key. The CN's global zone will
 generate one such certificate for each zone and sign it using the same key it
-uses for authentication. In this way, zones each have access to a signed
-statement from their host CN about their identity, which they can use as part of
-authentication.
+uses for HTTP signature authentication. In this way, zones each have access to a
+signed statement from their host CN about their identity, which they can use as
+part of authentication.
 
-The signed statement and matching key is not enough on its own, however, to
-validate the identity of one zone to another arbitrary zone on the system -- the
-other zone needs to also be able to validate the key of the host CN. To achieve
-this requires a chain of trust.
+A signed statement or certificate and a matching key is not enough on its own,
+however, to validate the identity of one zone to another arbitrary zone on the
+system -- the other zone needs to also be able to validate the key of the host
+CN. To achieve this requires a chain of trust.
 
 ### Trusted CNs and chain of trust
 
@@ -291,13 +327,62 @@ infrequent, so it is not important to use a distributed system here that offers
 fast convergence. The simplicity of implementation of a gossip design is also
 an advantage.
 
+### TLS keys and Soft HSM
+
+Aside from the main zone authentication key and its matching certificate, the
+soft token stores two more keys on behalf of the non-global zone: a TLS
+certificate signing key, and a symmetric key.
+
+The TLS certificate signing key can only be used to sign X.509 certificates
+about keys generated locally within the zone. A Triton-specific extension to the
+SSH agent protocol allows for this, as well as the ability to request a
+certificate chain.
+
+The certificate chain consists of a set of X.509 certificates describing,
+in order:
+
+ 1. A trusted head node in the datacentre (self-signed)
+ 2. The host CN of the zone (its hardware key, signed by the head node)
+ 3. The soft-token TLS signing key for the zone (signed by the host CN)
+
+These certificates (both the TLS signing key for the zone and the chain
+certificates, other than the head node) are limited to a very short window of
+validity (60 seconds). The intention is that this chain can be obtained and used
+only during an authentication process, and a fresh certificate obtained
+regularly to repeat the operation as neeeded. There is no need to check with a
+separate revocation list or manage one, as the short lifetime ensures that the
+key in question is vouched for by the system: all that clients are required to
+do is to keep their list of head node CA certificates up to date with the state
+of the gossip engine.
+
+The symmetric key stored in the soft token is treated differently to other keys
+in token storage. It is not kept decrypted in memory in the soft token when not
+in use; instead, a round trip through the system's hardware module must be made
+for every use of this key. This also implies that access to this key is
+rate-limited by the system to avoid users overburdening the hardware module.
+
+Rather than encrypting material directly with this key, a data key scheme is
+used. This means that each "encrypt" or "decrypt" request made to use this key
+must be accompanied by an encrypted subkey. Inside the soft token, the subkey is
+decrypted using the master key, which is then used to encrypt or decrypt the
+actual data. This further limits the burden users may impose directly upon the
+system's hardware module (by limiting the maximum amount of data that must be
+transferred through the token itself).
+
+An encrypted subkey ready for use may be obtained using a third operation
+through the token interface. All 3 of these operations (encrypt, decrypt, and
+generate subkey) are Triton-specific extensions to the SSH agent protocol.
+
+The intention of the symmetric key capability is to enable the implementation
+of systems that achieve the 3rd customer goal in <<customer-features>>.
+
 ### Binder and service registration
 
-Having to make use of and validate certificates for all traffic is, however,
-somewhat difficult to work into some existing systems (e.g. authentication to
-Moray or PostgreSQL). A simpler proposition is to include only some form of key
-signature in these types of traffic (e.g. by embedding it in the username
-and password for PostgreSQL auth) rather than a full certificate.
+Having to make use of and validate full certificate chains for all traffic is
+somewhat difficult to work into some existing systems within Triton. A simpler
+proposition is to include only some form of key signature in these types of
+traffic (e.g. by embedding it a legacy username and password) rather than a full
+certificate.
 
 To this end, `binder` (the Triton service discovery mechanism) will be altered,
 such that clients can establish a trusted relationship with binder, and binder
@@ -306,10 +391,10 @@ can then take over the role of validating certificates on clients' behalf.
 As the client half this relationship can be maintained from within a library
 such as `cueball`, this will ease integration for headnode services -- they will
 merely need to use the `cueball` library to manage their connections and will
-then get identity validation on their outgoing connections for free.
+then get identity validation on their outgoing connections "for free".
 
 On the registration side of binder, registrants will be required to supply their
-CN certificate and public key along with the information they supply to binder
+SSH certificate and public key along with the information they supply to binder
 today (which will be signed with the key).
 
 Binder will validate the signature and certificate provided, and then serve
@@ -385,7 +470,7 @@ choice of a backup option by the administrator will not be optional (as not
 doing so may lead to data loss in the case of a single Yubikey malfunction).
 
 A recommended outline of the full deployment procedure is included in the
-sections [[green-field]] and [[brown-field]], which include examples for both
+sections <<green-field>> and <<brown-field>>, which include examples for both
 a "small setup" deployment not using a pre-flight environment, and a larger
 deployment using one.
 
@@ -442,9 +527,10 @@ Quite aside from the internal use of zone keys and certificates within Triton's
 components, they are also expected to be used by customers.
 
 In conjunction with the RBACv2 work (RFD 48), signing requests to Triton
-services (such as CloudAPI) using a zone key will grant authentication as a
-"machine principal". This principal may be added to roles by a customer, in
-order to grant it authorization to manage resources under the account.
+services (such as CloudAPI) using a zone authentication key will grant
+authentication as a "machine principal". This principal may be added to roles by
+a customer, in order to grant it authorization to manage resources under the
+account.
 
 The `keyId` string used is expected to include the full UUID of the zone in
 question, and the UUID of the CN which hosts it. This mechanism will not
@@ -453,11 +539,13 @@ require the use of the zone certificate.
 Since the existing `triton` tools and libraries already support the use of the
 SSH agent for key storage, it is expected that they can be used with the
 zone soft token without significant modification (they may require some in
-order to generate the `keyId` correctly, but it is as yet unclear).
+order to generate the `keyId` correctly, but this is as yet unclear).
 
 The existing support for account-key-signed certificates for Docker and CMON
 will be extended to support the use of those interfaces as a machine principal,
-as well.
+as well. This mechanism is preferred for customer end-use here rather than the
+TLS certificate signing key, as it matches the interface already used elsewhere,
+reducing the amount of code needed to be specific to machine authentication.
 
 Though it is somewhat out of scope here, it is expected that mechanisms for
 grouping machines as access control targets (e.g. RFD 48 style projects) may
@@ -465,11 +553,17 @@ also be useful for grouping machines as principals. In this way it should be
 possible to grant some group of machines access to account resources and have
 this apply to newly provisioned members of that group automatically.
 
-While zone certificates are not used for Triton authentication, endpoints on
-CloudAPI will be added to assist in the validation of zone certificates by
-customer code or services. This should allow zone keys and certificates to be
-used for other purposes as well (such as bootstrapping a chain of trust for
-customer systems).
+While zone SSH certificates and certificates signed by the TLS certificate
+signing key are not used for Triton authentication, endpoints on CloudAPI will
+be added to assist in the validation of zone certificates by customer code or
+services. These include fetching the current full set of headnode CA
+certificates for the X.509 chain. This should allow zone keys and certificates
+to be used for other purposes as well (such as bootstrapping a chain of trust
+for customer systems).
+
+In particular, it is expected that full support for this mechanism will be
+developed to assist with the bringup of the Hashicorp Vault product. Vault
+should hopefully also be able to take advantage of the Soft HSM key system.
 
 ## Relationship with TLS
 
@@ -478,25 +572,19 @@ rogue network hardware, it will be necessary to begin protecting all connections
 with TLS. Part of establishing a TLS connection is verifying the identity of
 both parties to the connection, using X.509 certificates.
 
-The proposed zone certificate design above does not make any provision for
-supplying X.509 certificates for TLS, however, and many TLS implementations
-require having the private key for the certificate in memory or available on
-disk (they do not support keys held in tokens).
+The zone TLS certificate signing key is set aside for this purpose. Headnode
+services will generate local keys for use by TLS servers, protected at rest by
+the Soft HSM key. A signed certificate and chain will be obtained through the
+soft token interface to allow these to be validated to others.
 
-As a result, headnode services will generate separate keys for TLS use which
-are kept on the zone itself. They will produce certificates for these keys which
-are signed by the zone's soft token key.
+It is the responsibility of any Triton service to ensure that it obtains a
+new certificate chain for its TLS server endpoints before the expiry of a
+previous chain.
 
-These certificates will have an enforced short lifetime of 60 seconds. Clients
-connecting to headnode services will verify that the certificate presented
-expires no more than 60 seconds into the future. This mitigates issues around
-certificate revocation (since the zone soft token can easily be revoked by the
-system simply by removing access to the socket).
-
-Clients when connecting will verify the server certificate either by checking
-its signature against the zone token key registered in binder, or by obtaining
-the SSH certificate signed by the CN by use of a well-known URL or request
-packet (depending on protocol) sent to the server.
+As these certificates have an enforced short lifetime of 60 seconds, no
+specific provision for certificate revocation is needed: only a requirement that
+the list of valid CA certificates be kept up to date by clients to match the
+output of the headnode gossip system.
 
 ## Service startup step-by-step
 
@@ -519,10 +607,10 @@ packet (depending on protocol) sent to the server.
      child then decrypts the keystore and loads it into memory.
  .. Registrar connects to binder zones and begins registration by writing a
     signed statement about the CloudAPI zone's IP address and keys, including
-    the GZ certificate.
+    the SSH certificate signed by its CN.
  .. Binder receives and validates the registration
  ... First, binder retrieves the list of valid Trusted CNs from the gossip service
-     on its host CN (via the soft token socket?)
+     on its host CN (via the soft token socket)
  ... Then, it compares the signature on the certificate given by the registrant
      to this list and finds it was signed by a valid Trusted CN
  ... The certificate presented includes metadata about the zone, including any
@@ -544,15 +632,12 @@ packet (depending on protocol) sent to the server.
      keys) to be used as resolvers.
  .. Cueball begins service resolution for VMAPI
  ... It uses the resolvers from the bootstrap stage to contact binder and
-     request both SRV and CERT records for VMAPI (and validates the response's
-     TSIG using the keys from the bootstrap). (These CERT records are signed
-     by the binder instance instead of the CN.)
- ... Validated records are emitted as backends (with keys from CERT records
-     attached)
+     request SRV records for VMAPI (and validates the response's TSIG using the
+     keys from the bootstrap).
+ ... Validated records are emitted as backends
  .. Cueball connects to VMAPI
- ... TLS is established, and the VMAPI's certificate is validated as being
-     signed by the CERT registrant key from DNS, and the expiry and issuance
-     dates are checked.
+ ... TLS is established, and the VMAPI's certificate and chain is validated
+     against the known CA certificates (obtained by querying the soft token).
  . Now CloudAPI is registered and connected to VMAPI. It repeats these steps
    (without bootstrap, since that's already done) for other services.
  . When CloudAPI wants to make a request to VMAPI, it takes a pre-validated
@@ -612,19 +697,188 @@ built-in PXE ROM in their system. Unfortunately, the only known way to build an
 authenticated system around the firmware PXE is to leverage the EFI Secure Boot
 and TPM features of a modern system, and support for using these with PXE is
 difficult (due to lack of general EFI support) and somewhat inconsistent between
-server vendors. It would require the ability to modify the certificates stored
-in firmware for boot signing, at runtime, which currently is a deeply
-proprietary procedure.
+server vendors. It would also require the ability to modify at runtime the
+certificates stored in firmware for boot signing, which currently is not a
+well-supported procedure, regularly subject to vendor firmware bugs and
+exclusion.
 
 For this reason, installations which depend on system PXE firmware will not have
 a fully secured boot procedure, and will not meet all of the stated goals of the
-system.
+system. This may be revisited at a later date.
+
+### EFI Secure Boot
+
+No provision is made in this document for the implementation or management of
+EFI Secure Boot in Triton. EFI support in illumos is not yet complete, and
+several unresolved problems remain before a design can be proposed here.
+
+This will likely be the subject of a future RFD.
 
 [[green-field]]
 ## Green-field deployment step-by-step
 
- * Run through steps required to deploy the whole system from root key to
-   all CNs up and running
+This section will run through the full set of steps needed to deploy Triton
+with full RFD 77 security enabled.
+
+We begin the process by setting up the root key on an administrator workstation.
+On this workstation, we will begin by burning 3 DVD-Rs on which to store key
+backups.
+
+After inserting the first blank DVD-R:
+
+[source,shell]
+----
+alex@mbp:~$ triton-keymaster init-media dvd <1>
+Found blank DVD media in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0) <2>
+Initialize? [Y/n]
+Generating media key... done
+Writing session... 10% 25% 50% 75% 100% done
+Backup media identity: VEJLTSFMx9IR+nWC7FFnUC8pCTMEZL5iloLlU/xjG8x+z1jax6Xb5dvWOMzerJmkiwaK54GnNeoOLH7++R9BlGHzTAQSDMR35qW60+0PLqNEpRhtDg== <3>
+Short name to refer to this media? [214cc7d2] sfo-001 <4>
+----
+<1> We want to initialize a new DVD type backup media. The name we give here
+    refers to the storage plugin to be used.
+<2> The plugin detects that we have a blank unused DVD-R in one of our drives.
+<3> This string must be kept in order to use this media in future. The
+    `triton-keymaster` tool will automatically record it in the current user's
+    `~/.triton` directory, as well.
+<4> This name will be used with later `triton-keymaster` commands. If we want
+    to use this same media from a different machine, we can copy the file
+    `~/.triton/keymaster.json` or use `triton-keymaster add-media` and
+    the full media identity string.
+
+We perform these same steps for the subsequent 2 DVD-Rs, naming them `ord-001`
+and `nyc-001`.
+
+[source,shell]
+----
+alex@mbp:~$ triton-keymaster init-media dvd -y -n ord-001 <1>
+Found blank DVD media in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Generating media key... done
+Writing session... 10% 25% 50% 75% 100% done
+Backup media identity: VEJLTWcqNLRmhEMG5ip91j9UzbQEakCyrLl4SJdv/D+FJo3C+uGhEwapnn7Yf+E+PB7ZiwhUcc1N8xOBDI/z5oc52wG+juwhxwj+tGgUR64N1XUCgg==
+alex@mbp:~$ triton-keymaster init-media dvd -y -n nyc-001
+Found blank DVD media in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Generating media key... done
+Writing session... 10% 25% 50% 75% 100% done
+Backup media identity: VEJLTTVyDUe4yKRTRY4iZzrEnAgEH4p5yyaqC2jMmNIy8x4lPl3jmbX7fEUxNSNkROAulT25fTJcfDMM/b0dPaXf+u6D4/LnyoQXRNdbNjFSMyjrXQ==
+----
+<1> `-y` means "don't prompt me for confirmation", and `-n` is used to give the
+    media short name.
+
+Now we insert a blank Yubikey into the system and proceed:
+
+[source,shell]
+----
+alex@mbp:~$ triton-keymaster init-dc us-west-1 -m sfo-001,ord-001,nyc-001 <1>
+Generating root key... done
+Generating first headnode keys... done
+Found Yubikey (Yubikey 4 OTP), serial 4a6f94, v4.3.1
+Setting Yubikey to OTP+CCID mode... done
+Remove Yubikey from USB port and re-plug now... ok <2>
+Found Yubikey (Yubikey 4 OTP+CCID), serial 4a6f94, v4.3.1
+Writing first headnode keys to Yubikey... done
+Ready to write piece for backup media sfo-001.
+Attach where? [LOCAL/remote/file] <3>
+Found sfo-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Writing session... 10% 25% 50% 75% 100% done
+Ready to write piece for backup media ord-001.
+Attach where? [LOCAL/remote/file]
+Found ord-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Writing session... 10% 25% 50% 75% 100% done
+Ready to write piece for backup media nyc-001.
+Attach where? [LOCAL/remote/file]
+Found nyc-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Writing session... 10% 25% 50% 75% 100% done
+----
+<1> The `-m` option allows you to supply the names of the backup media keys to
+    use for this datacenter. If not supplied, you will be prompted.
+<2> The Yubikey has to be physically removed from the USB port at this point to
+    change its mode. When this step is done by a pre-flight environment, it
+    uses a full system cold reboot instead.
+<3> After the initial media setup, backup media can be accessed in multiple
+    different ways by the `keymaster` tool. They can be attached locally to
+    the machine it is being run on (as shown here), or attached to a remote
+    machine (with `keymaster` also installed), or written to a file to be
+    transferred later. The key backups are encrypted in transit and cannot be
+    read without the backup media itself.
+
+In our initial visit to the datacenter, we have decided we would like to deploy
+our single headnode and 3 ordinary CNs. We've already written the Yubikey for
+the headnode (during the `init-dc` step above), so now we need to write 3
+ordinary CN Yubikeys.
+
+[source,shell]
+----
+alex@mbp:~$ triton-keymaster init-cn -d us-west-1 -N 3 <1>
+Generating compute node keys... done
+Ready for Yubikey or Token for CN 1... ok
+Found Yubikey (Yubikey 4 OTP), serial 4a701a, v4.3.1
+Setting Yubikey to OTP+CCID mode... done
+Remove Yubikey from USB port and re-plug now... ok
+Found Yubikey (Yubikey 4 OTP+CCID), serial 4a701a, v4.3.1
+Writing keys to Yubikey... done
+Ready for Yubikey or Token for CN 2... ok
+Found Yubikey (Yubikey 4 OTP), serial 4a701d, v4.3.1
+Setting Yubikey to OTP+CCID mode... done
+Remove Yubikey from USB port and re-plug now... ok
+Found Yubikey (Yubikey 4 OTP+CCID), serial 4a701d, v4.3.1
+Writing keys to Yubikey... done
+Ready for Yubikey or Token for CN 3... ok
+Found Yubikey (Yubikey 4 OTP), serial 4a701e, v4.3.1
+Setting Yubikey to OTP+CCID mode... done
+Remove Yubikey from USB port and re-plug now... ok
+Found Yubikey (Yubikey 4 OTP+CCID), serial 4a701e, v4.3.1
+Writing keys to Yubikey... done
+Ready to write pieces for backup media sfo-001.
+Attach where? [LOCAL/remote/file]
+Found sfo-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Writing session... 10% 25% 50% 75% 100% done
+Ready to write pieces for backup media ord-001.
+Attach where? [LOCAL/remote/file]
+Found ord-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Writing session... 10% 25% 50% 75% 100% done
+Ready to write pieces for backup media nyc-001.
+Attach where? [LOCAL/remote/file]
+Found nyc-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Writing session... 10% 25% 50% 75% 100% done
+<2>
+f120cdf4-9f7d-960d-8f0a-3846ca55accb,VENOSfEgzfSffZYNjwo4RspVrMsE0U4hsV4QUpHornAU6kOAOrxVUwmVtxKVaLNPr6Gakh8izEUUmYSyW5/D9M9wG/JpdyfUcVAUHYUXttNSzht9mA==
+08270f43-28c2-57a1-e216c9d68f56af97e,VENOSYJw9DKMJXoeIWydaPVq+X4EEgLBD3PynNYI7XpQnqjmHdx63SrAalcC2vUZY7QJMwWqmIy6LGL4zyC5wlQRs0C8v4ADfVvaFInrAnwQxqNxnA==
+0e3bccd9-a92f-f26d-3c4b5ea00042cbfd2,VENOSeO8zZqS/ybTxLXqAAQsv9IE9pfHIlDIFFq2ubEOUjyPmDTWWv4dfkU+FfvEM6/1BMiY8wZB9N8QGDz7mDxsaQcLQWACuN1blZFOW3tdgPgitg==
+----
+<1> `-d` here is used to supply the short name of a datacenter we set up
+    earlier (this automatically chooses the correct backup media and root public
+    key for the operation as necessary). The `-N` option is used to generate 3
+    compute node keys in one step.
+<2> When used in `-N` mode, this command outputs CSV format entries which can
+    be copy-pasted either into `cnapi-adm` on the headnode, or into the
+    "Paste new CN identities" page in Triton AdminUI.
+
+To place in the new systems, we have also prepared 4 USB flash disks. These have
+already been written using `dd` with the USB image. We can insert the root key
+and secure boot config into them as follows:
+
+[source,shell]
+----
+alex@mbp:~$ triton-keymaster update-usb -d us-west-1 -s <1>
+Ready for USB flash disk... [CONTINUE/exit]
+Found Triton boot image on /dev/disk0 (DTR30G2)
+Updating root key and setting secure mode... done
+Ready for USB flash disk... [CONTINUE/exit]
+Found Triton boot image on /dev/disk0 (DTR30G2)
+Updating root key and setting secure mode... done
+...
+Ready for USB flash disk... [CONTINUE/exit] exit
+----
+<1> The `-s` option here is used to set the boot configuration to require a
+    secured boot process. Fallback to traditional PXE+TFTP with no
+    authentication will not be allowed.
+
+notes...
+
+Run through steps required to deploy the whole system from root key to
+all CNs up and running
 
  . Before beginning to set up hardware, run tools (on laptop) to generate root
    key and program Yubikey for initial set of Trusted CNs, including at least
@@ -665,7 +919,19 @@ system.
 
  * Deploying this on an existing DC
 
-## Intermediate states of security
+## Implementation and intermediate states
+
+So far, we have described the eventual state of affairs that Triton will be in
+after a full implementation of this document. However, the process of
+implementation will necessarily involve some intermediate states of development,
+which will likely also be deployed to some installations along the way.
+
+Additionally, not all administrators of Triton installations will see fit to
+deploy with hardware tokens -- and it may be prohibitively difficult to do so in
+some cases -- e.g. deployments within virtual machines for development.
+
+ * Do the USB key and token support stuff first
+ * Then soft-token (well, at the same time really)
 
  * The road to validating everything in the admin vlan, what intermediate states
    will look like while upgrading.
@@ -679,8 +945,256 @@ system.
 [[soft-token]]
 ## Zone soft token details
 
- * Paths, permissions, operations, privs?
+The soft token consists of a number of key components:
 
-## Hardware support for CCID/Yubikeys
+ * The dedicated HMAC secret for soft token protection, stored in the CN's
+   hardware token
+ * The soft token key data files, stored encrypted on ZFS within the zone's
+   dataset
+ * The SSH agent protocol socket, placed as a UNIX socket within the zone's
+   filesystem
+ * The soft token daemon itself, running within the global zone, and listening
+   on the UNIX socket
 
- * Layout the options -- using PC/SC, daemon, having our own driver and framework
+### Soft token key data
+
+Soft token key data will be stored in the `/zones/$uuid/softhsm` directory.
+Each key stored on behalf of the zone will be stored in a separate file,
+encrypted (and authenticated) using ChaCha20-Poly1305. The file format will
+include the challenge value that must be sent to the hardware token to derive
+the symmetric key to decrypt the file, followed by the encrypted data and MAC.
+
+### SSH agent socket
+
+The SSH agent socket for communicating with the soft token will be placed in
+the `/.zonesec` directory. This will be a lofs-mounted directory in the same
+style as `/.zonecontrol`.
+
+The existing `/.zonecontrol` directory cannot be used, because the filesystem
+permissions on the top-level directory are currently used to control access to
+the metadata socket today (which itself has no authentication). The `/.zonesec`
+directory will be world-readable and world-traversable, and will use privileges
+rather than filesystem permission to control access.
+
+The socket file itself within `/.zonesec` will be named `soft-token-agent` (i.e.
+its full path will be `/.zonesec/soft-token-agent`). The socket file will be
+world-writable and world-readable.
+
+Upon a connection being made by a client process, the soft token daemon will
+examine the `cred_t` of the connecting process. A new system-wide privilege
+bit, `PRIV_SMARTOS_SOFT_TOKEN` will be added, and any connecting process in
+possession of this privilege bit will be allowed to use the soft token.
+
+This privilege will be part of the default zone-wide limit set, but not part of
+`basic` or the ordinary user privilege sets. This means that by default, only
+root will be able to use the soft token, but end-users can configure their zones
+to give this privilege to ordinary users or single processes, and processes can
+give up the ability to use the soft-token if they no longer require it (enabling
+privilege separation models to be used).
+
+### Soft token daemon
+
+The soft token daemon is started in the global zone as a child of the soft token
+manager process. The manager itself is started by SMF.
+
+The top-level manager process' role is to manage the lifecycle of socket files
+and lofs-mounting them into zones. Each time it creates a new socket for a
+given zone, it forks into a child which handles that zone.
+
+The zone child of the manager is a privileged process whose role centers around
+management of key material. It maps dedicated areas of memory (with `MAP_SHARED`
+supplied to `mmap()`) for the placement of keys, fills them with the encrypted
+key data, and then forks.
+
+This final child is the process which is responsible for speaking the SSH
+agent protocol and performing cryptographic operations. It drops all privileges
+(including those in the `basic` set) before accepting any connections. To unlock
+keys, it sends a single byte request on a pipe back to the key manager process,
+which decrypts the keys in-place in the shared memory segment.
+
+#### Performance and accounting
+
+Unlike a regular SSH agent, the soft token daemon final process (serving the
+real workload of the zone) will be multi-threaded. Operations will be carried
+out by worker threads in a thread pool of limited size. This enables both
+pipelining of operations within a single agent connection, and also concurrency
+across multiple connections.
+
+Eventually, a mechanism will be used to place the final child process into the
+non-global zone for CPU accounting purposes, without making it able to be
+traced or debugged by the zone (this will be analogous to a system process in
+the global zone).
+
+#### Hardware memory protection
+
+Pending hardware and operating system support, the soft token will support the
+use of Intel SGX enclaves (and the analogous features on AMD platforms) to
+protect the key data and operating state of the soft token in memory.
+
+This will defend against a variety of attacks on the soft token from other parts
+of the system, as well as cold-boot attacks on system memory.
+
+#### Cache side-channel mitigation
+
+On modern Intel CPUs, the soft token will (pending OS support) make use of the
+Intel CAT feature to mitigate CPU cache timing side-channel attacks. This will
+be done along the lines of the
+http://palms.ee.princeton.edu/system/files/CATalyst_vfinal_correct.pdf["CATalyst" paper]
+where a special subset of the L3 cache capacity on the system is set aside for
+transient use in cryptography, and dedicated pages for this purpose pinned into
+cache so they cannot be flushed out.
+
+This prevents known mechanisms of memory timing side-channel leakage from the
+cryptographic algorithms run in the soft-token, including Flush+Reload and other
+related attacks. We are also aided here by the fact that KSM (kernel same-page
+merging) is not implemented or supported by illumos (and will not be).
+
+As well as this direct mitigation, the algorithms chosen (see the
+<<crypto-algos>> section) for soft-token usage are chosen with side-channel
+leak prevention in mind.
+
+[[hardware]]
+## Hardware implementation
+
+Both the Yubikey and JavaCard USB tokens present a common interface -- the USB
+CCID (Chip Card Interface Device) device class. As this (unlike the HID
+interfaces on Yubikeys and other devices) is an open interface, with readily
+available specifications, this is the interface that is used for the purposes
+of this design.
+
+The CCID interface was originally intended for communication between hosts and
+smartcards that speak the ISO 7816-4 protocol stack. Even though the USB
+devices discussed here are not a smartcard in a card reader, they present
+themselves to the host as if they were one. This means that the ISO 7816-4
+protocol must be used to communicate with them, just as for a real smartcard.
+
+While the ISO 7816 family of specifications specifies the commands and protocol
+used for this communication, as well as some aspects of the data model on
+compliant cards, it does not fully specify the structure and organisation of
+key material storage.
+
+As a result, additional specifications have arisen to describe the "directory
+structure" and missing details of data model for particular applications using
+cryptographic smartcards. One of the most commonly known and implemented of
+these is the NIST Personal Identity Verification (PIV) standard. This standard
+is implemented by both Yubikeys and other JavaCard token manufacturers.
+
+As a result, for asymmetric crypto operations, the interface that the RFD77
+implementation uses is PIV over ISO 7816-4 over CCID over USB. We specifically
+use the PIV Card Authentication (`0x9E`) key slot, as it does not require a
+PIN to perform signing operations.
+
+For the symmetric crypto operation we require from the token (an HMAC), we use
+the Yubikey proprietary interface. We also provide open-source code to implement
+this interface on regular JavaCards. The Yubikey proprietary interface uses its
+own ISO 7816 AID (`a0:00:00:05:27:20:01`), and has a very simple command set
+for performing the HMAC operation against a choice of 2 pre-configured keys.
+
+### Operating system infrastructure
+
+Most other open-source operating systems (e.g. GNU/Linux distributions) use a
+userland-only suite of software for interacting with CCID smartcards. These are
+usually backed by `libusb` or similar (the leading example of such a suite
+would probably be OpenSC and pcsclite).
+
+Proprietary operating systems such as Microsoft Windows and the Apple Mac OS
+have instead opted to implement fairly deeply integrated smartcard suites
+in the operating system base, in order to fully support integration with other
+operating system features (e.g. using smartcards seamlessly for user login,
+or Windows domain machine authentication etc).
+
+For SmartOS, we propose to implement a hybrid approach similar to the Apple
+Mac OS. There will be a deeply integrated operating system component for card
+identification and operational use, but card administration and deployment
+operations will be handled by software running entirely in userland.
+
+This will allow us to integrate deeply with operating system features such as
+the fine-grained privilege model and RBAC, as well as zones. We will provide
+a public interface specific to SmartOS (working title `libchipcard`), as well
+as implementations of the PCSC API (compatible with `pcsclite` and Mac OS) and
+a subset of PKCS#11.
+
+Components built as part of this design (e.g. the soft token, and key provider
+for ZFS) are expected to exclusively use the `libchipcard` interface, with the
+exception of the deployment and administration tools, which will be largely
+based on the PCSC interface (which will also make them largely cross-platform).
+
+The OS infrastructure to be built out here, including the `libchipcard`
+interface, will be the subject of a forthcoming RFD specific to their
+implementation.
+
+[[crypto-algos]]
+## Cryptographic algorithms
+
+One important part of any design involving crytographic primitives is the choice
+of algorithms in use. This section is devoted to discussion about options and
+trade-offs made in algorithm choice above.
+
+### At-rest encryption
+
+The algorithm to be used for at-rest encryption key derivation is HMAC-SHA1.
+This is chosen because:
+
+ * HMAC is well-studied in the context of combining key pieces together in the
+   way proposed (combining a key piece from the headnode into a composite key).
+   HMAC with a strong hash function has a variety of properties (including
+   high diffusion) that make it a good fit for this process.
+ * HMAC with SHA-family algorithms is easier to implement in a side-channel
+   resistant fashion than other symmetric algorithms such as AES, which is
+   important for long-lived hardware keys that are very difficult to change
+   (to prevent recovery of the key from a device)
+ * The Yubikey already supports HMAC-SHA1 as part of its regular
+   challenge-response design. It does not support any SHA2 family algorithms.
+
+### Public-private encryption
+
+The algorithm used for hardware authentication keys is RSA at 2048-bit key
+lengths. This is chosen because:
+
+ * RSA is a widely used and well-studied cryptographic algorithm for signing
+   and authentication.
+ * The 2048-bit key length is chosen as a trade-off between security level and
+   performance -- Yubikeys and JavaCards are very slow at computing 4096-bit
+   RSA signatures (on the order of hundreds of milliseconds).
+ * Alternatives are not well-supported:
+   - Ed25519 is not supported in either Yubikeys or JavaCard hardware.
+   - ECDSA on NIST P-curves is supported by Yubikeys but not most JavaCard
+     hardware options at this time.
+
+RSA in Smartcard devices has a mixed history of side-channel attacks, but modern
+hardware has extensive mitigations to lower their impact. The lack of widespread
+support for alternatives at the present time is the main limiting factor here.
+
+### Soft token
+
+Soft tokens will support Ed25519 and RSA-4096 for public/private cryptography.
+They will also support ChaCha20-Poly1305 for symmetric key operations (with the
+key protected on the Yubikey by the same HMAC-SHA1 above).
+
+Ed25519 and RSA-4096 are chosen because:
+
+ * Ed25519's reference implementation is of excellent code quality and readily
+   useable for the soft token.
+ * Ed25519 is highly side-channel resistant, particularly to CPU cache timing
+   side-channels. The soft token must run on the same hardware as customer
+   workload, and possibly the workloads of other customers, meaning that
+   resistance to side-channel attacks is paramount.
+ * RSA is available in addition to Ed25519, as Ed25519 is not yet widely
+   supported in TLS and X.509 certificates. The RSA key can only be used for
+   signing X.509 certificates as outlined above, and not for general
+   authentication.
+ * ECDSA has a questionable history with respect to side-channel attacks,
+   with many more successful attacks documented than on the other algorithms
+   considered, so it was eliminated.
+
+ChaCha20-Poly1305 is chosen because:
+
+ * It is a strong AEAD cipher + MAC combination that has been quite well-studied
+   despite being younger than AES.
+ * Its implementation is simpler and built from the beginning to support
+   authenticated operation, when compared with AES and other families.
+ * It is explicitly designed for side-channel resistance. While AES could have
+   been chosen, assuming that AES-NI or SSE3 are available, it is desirable to
+   not have to require these CPU features for the system to operate safely.
+
+
