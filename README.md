@@ -157,8 +157,18 @@ occasions where it usually is appropriate:
 * Adding new endpoints to an API or creating an entirely new API
 * Adding new commands or adding new options
 * Changing the behaviour of endpoints, commands, APIs
+* Otherwise changing the implementation of a component in a significant way
 * Something that changes how users and operators interact with the
   overall system.
+* Changing the way that software is developed or deployed
+* Changing the way that software is packaged or operated
+* Otherwise changing the way that software is built
+
+This is deliberately broad; the most important common strain across RFDs
+is that they are technical documents describing implementation considerations
+of some flavor or another.  Note that this does not include high-level
+descriptions of desired functionality; such requests should instead phrased
+as [Requests for Enhancement](./rfd/0102/README.md).
 
 RFDs start as a simple markdown file that use a bit of additional metadata
 to describe its current state. Every RFD needs a title that serves as a
