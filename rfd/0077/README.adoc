@@ -967,23 +967,23 @@ the symmetric key to decrypt the file, followed by the encrypted data and MAC.
 ### SSH agent socket
 
 The SSH agent socket for communicating with the soft token will be placed in
-the `/.zonesec` directory. This will be a lofs-mounted directory in the same
-style as `/.zonecontrol`.
+the `/.zonecontrol` directory.
 
-The existing `/.zonecontrol` directory cannot be used, because the filesystem
-permissions on the top-level directory are currently used to control access to
-the metadata socket today (which itself has no authentication). The `/.zonesec`
-directory will be world-readable and world-traversable, and will use privileges
-rather than filesystem permission to control access.
+The existing `metadata.sock` inside the `zonecontrol` directory currently relies
+on the permissions of the enclosing directory to manage access to the metadata
+socket. These permissions will be moved to the socket itself, and the
+`/.zonecontrol` directory will be world-readable and world-traversable. The
+agent socket will use privileges, not filesystem permissions, to manage access.
 
-The socket file itself within `/.zonesec` will be named `soft-token-agent` (i.e.
-its full path will be `/.zonesec/soft-token-agent`). The socket file will be
+The socket file itself within `/.zonecontrol` will be named `token.sock` (i.e.
+its full path will be `/.zonecontrol/token.sock`). The socket file will be
 world-writable and world-readable.
 
 Upon a connection being made by a client process, the soft token daemon will
-examine the `cred_t` of the connecting process. A new system-wide privilege
-bit, `PRIV_SMARTOS_SOFT_TOKEN` will be added, and any connecting process in
-possession of this privilege bit will be allowed to use the soft token.
+examine the `cred_t` of the connecting process. Either a new system-wide
+privilege bit, `PRIV_ZONE_TOKEN` will be added, or a parametrized privilege will
+be implemented, and any connecting process in possession of this privilege will
+be allowed to use the soft token.
 
 This privilege will be part of the default zone-wide limit set, but not part of
 `basic` or the ordinary user privilege sets. This means that by default, only
