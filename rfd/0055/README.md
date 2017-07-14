@@ -299,7 +299,7 @@ namespace would be inherited by all child processes within the zone.
 
 As a performance optimization, when this namespace is created, there is no
 need to duplicate any of the global zone mounts since the zone mounts, as
-expressed in the `zsched` namespace` are completely built up for the new
+expressed in the `zsched` namespace, are completely built up for the new
 zone. In terms of namespaces, the zone ready process creates an entirely
 new mount tree that behaves approximately like `MS_SHARED`, but because
 the zone is in a chroot-ed environment, all in-zone mount operations are always
@@ -466,8 +466,8 @@ The following example shows how the `nsm_flags` and `nsm_gen` members
 are handled during the setup of a new `PrivateTmp` namespace
 
  1. The original namespace has all mounts `MS_SHARED`; the `nsm_flags` on each
-entry is marked as `shared`, the generation number (`nsm_gen`) on each entry is
-0.
+entry is marked as `shared`, the generation number (`nsm_gen`) on each entry
+is 0.
  2. A new namespace is created, all current mount entries are duplicated for the
 process. On the duplicated entries the `nsm_flags` and `nsm_gen` members are
 the same as the original (i.e. `shared` and 0).
