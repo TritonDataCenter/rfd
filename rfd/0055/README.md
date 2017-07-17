@@ -244,7 +244,7 @@ The `mnse_flags` and `mnse_gen` members are described in section
 
 The namespace structure referenced by the `proc_t` will look like this:
 
-    typedef structure ns {
+    typedef structure mntns {
         uint_t       mntns_cnt;        /* reference count */
         krwlock_t    mntns_lock;       /* lock protecting members */
         list_t       *mntns_mntlist;   /* list of mounts visible to proc. */
@@ -607,7 +607,34 @@ changing the `mnse_flags` on a mount entry must take the write lock.
 A write lock must also be take when a child namespace is being created or
 destroyed, since the `mntns_children` member is being updated.
 
-XXX TBD show data for number of calls in production to lookuppnvp vs. traverse.
+For reference, the following counts were collected on `traverse` vs.
+`lookuppnvp` calls for 60 seconds on the compute nodes in `east-3b`.
+The percentage ranges from ~50% to over 100%.
+```
+traverse   64292
+lookuppnvp 70406
+
+traverse   60917
+lookuppnvp 72152
+
+traverse   79490
+lookuppnvp 60526
+
+traverse   18211
+lookuppnvp 21363
+
+traverse   38085
+lookuppnvp 53405
+
+traverse   7002
+lookuppnvp 9226
+
+traverse   62691
+lookuppnvp 56240
+
+traverse    57357
+lookuppnvp 127795
+```
 
 ### Debugging support
 
