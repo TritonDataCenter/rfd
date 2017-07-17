@@ -232,45 +232,45 @@ vfs list structure which would point to a single vfs entry. This structure
 will also contain information about how the vfs is being used by this specific
 namespace.
 
-    typedef structure ns_mnt {
-        list_node_t    nsm_link;
-        uint_t         nsm_flags; /* mointpoint flags - described below */
-        uint_t         nsm_gen;   /* generation number */
-        struct vfs     *nsm_vfsp; /* pointer to the vfs visible to the NS */
-    } ns_mnt_t;
+    typedef structure mntns_ent {
+        list_node_t    mnse_link;
+        uint_t         mnse_flags; /* mointpoint flags - described below */
+        uint_t         mnse_gen;   /* generation number */
+        struct vfs     *mnse_vfsp; /* pointer to the vfs visible to the NS */
+    } mntns_ent_t;
 
-The `nsm_flags` and `nsm_gen` members are described in section
+The `mnse_flags` and `mnse_gen` members are described in section
 "Tracking MS\_SHARE, MS\_SLAVE and MS\_PRIVATE per namespace and mount".
 
 The namespace structure referenced by the `proc_t` will look like this:
 
     typedef structure ns {
-        uint_t       ns_cnt;        /* reference count */
-        krwlock_t    ns_lock;       /* lock protecting members */
-        list_t       *ns_mntlist;   /* list of mounts visible to proc. */
-        ns_t         *ns_parent;    /* pointer to parent namespace */
-        list_t       *ns_children;  /* list of direct child namespaces */
-        list_node_t  ns_link;
-    } ns_t;
+        uint_t       mntns_cnt;        /* reference count */
+        krwlock_t    mntns_lock;       /* lock protecting members */
+        list_t       *mntns_mntlist;   /* list of mounts visible to proc. */
+        mntns_t      *mntns_parent;    /* pointer to parent namespace */
+        list_t       *mntns_children;  /* list of direct child namespaces */
+        list_node_t  mntns_link;
+    } mntns_t;
 
 For mount operation propagation across namespaces, each namespace must
 maintain a pointer to it's parent namespace in the hierarchy and a list
-of direct children of the namespace. The `ns_parent` and `ns_children`
+of direct children of the namespace. The `mntns_parent` and `mntns_children`
 members are used for this.
 
-When a process creates a new `mount` namespace, a new `ns_t` will be created
+When a process creates a new `mount` namespace, a new `mntns_t` will be created
 and all of the `shared` mount entries will be duplicated into the new
 namespace. The reference count on the namespace that the process was previously
-associated with must be decremented. The `ns_parent` for the new
+associated with must be decremented. The `mntns_parent` for the new
 namespace should point to the previous namespace the process belonged to.
-The new namespace should be added to the `ns_children` list of the original
+The new namespace should be added to the `mntns_children` list of the original
 namespace as well.
 
-When the last process referencing a namespace exits, the `ns_parent` and
-`ns_children` may need to be updated if the process is in the middle of a
+When the last process referencing a namespace exits, the `mntns_parent` and
+`mntns_children` may need to be updated if the process is in the middle of a
 chain of namespaces. All children now need to point at the parent namespace
 of the exiting process. That namespace should also inherit all of the
-children in the exiting process's `ns_children` list.
+children in the exiting process's `mntns_children` list.
 
 ### Maintaining the mount list
 
@@ -328,9 +328,10 @@ longer added to the per-zone list `zone_vfslist`, but is instead added to the
 process's namespace.
 
 `vfs_list_add` will continue to use `vfs_list_lock` to lock access to the
-master list. It will also need to use the `ns_lock` to lock the namespace list.
+master list. It will also need to use the `mntns_lock` to lock the namespace
+list.
 
-The `nsm_flags` member in `ns_mnt_t` is used to track information about
+The `mnse_flags` member in `mntns_ent_t` is used to track information about
 this mountpoint for this namespace. This is discussed further in section
 "Tracking MS\_SHARE, MS\_SLAVE and MS\_PRIVATE per namespace and mount".
 
@@ -391,8 +392,8 @@ filesystem mounted on a vnode, we will continue to reference it directly in the
 a namespace has locally unmounted the filesystem, this pointer will be set
 to 0xffffffff. This distinguishes it from NULL, and indicates that we must use
 the proccess's namespace mount list to determine which vfs to use. We must take
-a read lock on the `ns_lock` while traversing the `ns_mntlist`. We will match
-on the `vfs_vnodecovered` member to determine if our vfs is mounted on the
+a read lock on the `mntns_lock` while traversing the `mntns_mntlist`. We will
+match on the `vfs_vnodecovered` member to determine if our vfs is mounted on the
 given vnode. The `vfs_vnodecovered` must always be set to the base vnode, no
 matter how many per-process mounts are there.
 
@@ -412,7 +413,7 @@ For the namespace which unmounted `/tmp`, there will be no matching entry in
 its mount list, so there is no vfs transition and NULL is returned. The lookup
 will stay in the vfs in which `T` resides.
 
-Note that within `vn_mountedvfs` we do not have to check the `nsm_flags` to
+Note that within `vn_mountedvfs` we do not have to check the `mnse_flags` to
 determine how to traverse a mount. If the mount is in our list, we follow it.
 Otherwise it will not be in our list and we stay on the underlying vfs.
 
@@ -438,9 +439,9 @@ which use `vn_ismntpt` and `traverse`, so these should work as-is.
 
 ### Tracking MS\_SHARED, MS\_SLAVE and MS\_PRIVATE per namespace and mount
 
-The `nsm_flags` member tracks if the mountpoint is `MS_SHARED`, `MS_SLAVE`
+The `mnse_flags` member tracks if the mountpoint is `MS_SHARED`, `MS_SLAVE`
 or `MS_PRIVATE` private within the namespace. This, along with the generation
-number (`nsm_gen`), impacts propagation for future mount operations within the
+number (`mnse_gen`), impacts propagation for future mount operations within the
 namespace.
 
 In addition to tracking the flag value, the key behavior here is that whenever
@@ -449,7 +450,7 @@ a mountpoint within a namespace is changed from `MS_SLAVE` (or `MS_PRIVATE`) to
 
 To reiterate some earlier points, if a mounpoint has been locally unmounted,
 then it will no longer be in the process's namespace list at all. Also, within
-`vn_mountedvfs` we do not have to check the `nsm_flags` to determine how to
+`vn_mountedvfs` we do not have to check the `mnse_flags` to determine how to
 traverse a mount.  If the mount is in our list, we follow it. Otherwise it will
 not be in our list and we stay on the underlying vnode.
 
@@ -457,27 +458,27 @@ not be in our list and we stay on the underlying vnode.
 
 The `mount` syscall must be updated to handle `MS_SHARE`, `MS_SLAVE` and
 `MS_PRIVATE` changes to existing mountpoints. This mount operation only
-effects the calling process's namespace, and will change the `nsm_flags`
-value (and potentially also `nsm_gen`) in the namespace's mountpoint entry.
+effects the calling process's namespace, and will change the `mnse_flags`
+value (and potentially also `mnse_gen`) in the namespace's mountpoint entry.
 
 #### Flag and generation example
 
-The following example shows how the `nsm_flags` and `nsm_gen` members
+The following example shows how the `mnse_flags` and `mnse_gen` members
 are handled during the setup of a new `PrivateTmp` namespace
 
- 1. The original namespace has all mounts `MS_SHARED`; the `nsm_flags` on each
-entry is marked as `shared`, the generation number (`nsm_gen`) on each entry
+ 1. The original namespace has all mounts `MS_SHARED`; the `mnse_flags` on each
+entry is marked as `shared`, the generation number (`mnse_gen`) on each entry
 is 0.
  2. A new namespace is created, all current mount entries are duplicated for the
-process. On the duplicated entries the `nsm_flags` and `nsm_gen` members are
+process. On the duplicated entries the `mnse_flags` and `mnse_gen` members are
 the same as the original (i.e. `shared` and 0).
- 3. The new namespace changes a mount entry to `MS_SLAVE`; the `nsm_flags` for
+ 3. The new namespace changes a mount entry to `MS_SLAVE`; the `mnse_flags` for
 this mountpoint changes to `slave`.
  4. The new namespace changes its mount enries back to `MS_SHARED`; the
-`nsm_flags` changes to `shared` and the generation is incremented on the
+`mnse_flags` changes to `shared` and the generation is incremented on the
 entry (i.e. it goes to 1 in the second namespace to be created).
 
-If a namespace changes a mountpoint to `MS_PRIVATE`, `nsm_flags` is set to
+If a namespace changes a mountpoint to `MS_PRIVATE`, `mnse_flags` is set to
 `private`.
 
 ### Tracking mount changes across namespaces
@@ -487,11 +488,11 @@ lowest parent mount in the namespace mount list. This mount will determine how
 to behave. For example, if we're mounting on `/a/b/c/d`, we must look at `d`,
 then `c`, then `b`, then `a`, then `/`, until we hit a mountpoint in our
 namespace. The subsequent mount operation behavior is dictated by the
-`nsm_flags` and `nsm_gen` members on the mountpoint that we just found.
+`mnse_flags` and `mnse_gen` members on the mountpoint that we just found.
 
 Any mount operation that takes place under a portion of the hierarchy which
 is `shared` will have to propagate that change into all of the related
-namespaces. This propagation is controlled by the `nsm_flags` and `nsm_gen`
+namespaces. This propagation is controlled by the `mnse_flags` and `mnse_gen`
 members.
 
 This is best described with some examples.
@@ -499,7 +500,7 @@ This is best described with some examples.
 For the first example, assume a configuration where a new `B` namespace
 recursively updates all of its mounts to `MS_SLAVE`.
 The diagram shows the resulting namespace hierarchy with the
-`nsm_flags` and `nsm_gen` values for the `/tmp` mountpoint on the side of
+`mnse_flags` and `mnse_gen` values for the `/tmp` mountpoint on the side of
 each namespace (i.e. 'sh' is `shared`, 'sl' is `slave`, and the generation is
 0 on both).
 ```
@@ -542,7 +543,7 @@ namespace recursively updates all of its mounts to `MS_SLAVE`, then mounts
 a new `/tmp`, then recursively changes its mount hierarchy to `MS_SHARED`.
 Following that, the `C`, `D`, `E` and `F` namespaces are created by child
 processes. The diagram shows the resulting namespace hierarchy with the
-`nsm_flags` and `nsm_gen` values for the `/tmp` mountpoint on the side of
+`mnse_flags` and `mnse_gen` values for the `/tmp` mountpoint on the side of
 each namespace (i.e. 'sh' is `shared` and the generation is 0 on `A`, 1 on
 the rest).
 ```
@@ -590,10 +591,10 @@ namespace's mount list.
 #### Locking
 
 Given the description above, it is clear that all of the namespaces sharing the
-same view of a mount must be updated together. The `ns_lock` is used to manage
+same view of a mount must be updated together. The `mntns_lock` is used to manage
 this.
 
-During a lookup, the code must take a read lock on `ns_lock`. This should
+During a lookup, the code must take a read lock on `mntns_lock`. This should
 normally not cause any performance impact, since we can have many readers
 with no contention.
 
@@ -601,15 +602,31 @@ During a mount operation, the code must first take a write lock on all of the
 namespaces which will be updated. Once that is done, the mount can actually
 occur, then all of the namespaces can be updated, and finally the write lock
 can be dropped on all of the namespaces. A mount operation which is only
-changing the `nsm_flags` on a mount entry must take the write lock.
+changing the `mnse_flags` on a mount entry must take the write lock.
 
 A write lock must also be take when a child namespace is being created or
-destroyed, since the `ns_children` member is being updated.
+destroyed, since the `mntns_children` member is being updated.
 
-### mdb support
+XXX TBD show data for number of calls in production to lookuppnvp vs. traverse.
 
-XXX TBD ::fsinfo, etc.
+### Debugging support
+
+We will need basic debugging support for this new construct. At a minimum
+we should have an mdb walker which will walk the list of mounts for a process.
+We probably also want a dcmd to print a process mount list in a similar way
+to `::fsinfo`.
+
+We may want a new `pns` tool which can print the mount information for a process
+at the command line. This tool's arguments for mount namespaces should be
+parameterized so it can work with future namespaces (e.g. pid) as support for
+additional namespaces is added.
+
+There might be other debugging tools which may also be necessary. These can be
+added as the need is identified.
 
 ### LX /proc support
 
-XXX TBD
+The work to extend LX `/proc` will need to be done. The `/proc/self/mountinfo`
+file will need to be enhanced to report the correct information about the
+mounts within the namespace. This should follow the description in the
+Linux `proc(5)` manpage.
