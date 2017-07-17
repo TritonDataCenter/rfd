@@ -587,6 +587,25 @@ a `shared` or `slave` entry for `/tmp` in its mount list, and which has the
 same generation number (1). We add an entry for `/tmp/foo` into that
 namespace's mount list.
 
+#### Locking
+
+Given the description above, it is clear that all of the namespaces sharing the
+same view of a mount must be updated together. The `ns_lock` is used to manage
+this.
+
+During a lookup, the code must take a read lock on `ns_lock`. This should
+normally not cause any performance impact, since we can have many readers
+with no contention.
+
+During a mount operation, the code must first take a write lock on all of the
+namespaces which will be updated. Once that is done, the mount can actually
+occur, then all of the namespaces can be updated, and finally the write lock
+can be dropped on all of the namespaces. A mount operation which is only
+changing the `nsm_flags` on a mount entry must take the write lock.
+
+A write lock must also be take when a child namespace is being created or
+destroyed, since the `ns_children` member is being updated.
+
 ### mdb support
 
 XXX TBD ::fsinfo, etc.
