@@ -141,9 +141,14 @@ The results are concatenated and returned to the user.
 |counter|opts|creates a new Counter object with the given options (incl. labels). This call is idempotent|a Counter object|
 |gauge|opts|creates a new Gauge object with the given options (incl. labels). This call is idempotent|a Gauge object|
 |histogram|opts|creates a new Histogram object with the given options (incl. labels). This call is idempotent|a Histogram object|
-|collect|callback|iterates through `registry`, calling the serialization method on each collector|None (string and error via callback)|
+|collect|format, callback|iterates through `registry`, calling the serialization function corresponding to `format` on each collector|None (string and error via callback)|
 
-`collect()` currently returns only Prometheus formatted metrics.
+The `collect()` function takes a format argument. Valid values for this are in
+the global `artedi` namespace. Currently, the only valid values are `FMT_PROM`
+and `FMT_PROM_0_0_4`. `FMT_PROM` will always point to the latest supported
+version of the Prometheus text format. `FMT_PROM_0_0_4` represents version 0.0.4
+of the Prometheus text format, which is the latest supported text
+format version.
 
 
 ### Counter
@@ -167,6 +172,8 @@ see the section on **Metric Cardinality** in README.md.
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |Counter |parent, opts|creates a Counter object from traits available in the parent, and options passed in|a new Counter object|
+|labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
+|prometheus|callback   |returns all of the Counter's metrics in prometheus format as a string|None (string and error via callback)|
 
 `Counter()` is called by the Collector object's `counter()` function.
 
@@ -175,8 +182,6 @@ see the section on **Metric Cardinality** in README.md.
 |----------|-----------|--------|-------------|
 |increment |labels|adds 1 to the metric represented by `labels` (calls `add(1, metric)`)|None|
 |add       |value, labels|adds `value` to the metric represented by `labels`, `value` must be > 0|None|
-|labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
-|prometheus|callback   |returns all of the Counter's metrics in prometheus format as a string|None (string and error via callback)|
 
 Counters internally use the `add()` function from the Metric object, and
 additionally enforce that values are > 0. The Counter's `labels()`
@@ -202,6 +207,8 @@ a gauge that can be set to arbitrary values, look at [AbsoluteGauge](#absolutega
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |Gauge |parent, opts|creates a Gauge object from traits available in the parent, and options passed in|a new Gauge object|
+|labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
+|prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string and error via callback)|
 
 `Gauge()` is called by the Collector object's `gauge()` function.
 
@@ -209,8 +216,6 @@ a gauge that can be set to arbitrary values, look at [AbsoluteGauge](#absolutega
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |add       |value, labels|adds `value` to the metric represented by `labels`|None|
-|labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
-|prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string and error via callback)|
 
 ### AbsoluteGauge
 AbsoluteGauges are metrics that can only be set to an arbitrary value. These are
@@ -230,6 +235,8 @@ instead.
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |AbsoluteGauge |parent, opts|creates an AbsoluteGauge object from traits available in the parent, and options passed in|a new AbsoluteGauge object|
+|labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
+|prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string and error via callback)|
 
 `AbsoluteGauge()` is called by the Collector object's `absoluteGauge()` function.
 
@@ -237,8 +244,6 @@ instead.
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |set|value, labels|sets the metric represented by `labels` to `value`|None|
-|labels|object|returns a metric that have *exactly* the label key/value pairs provided. If none exists, one is created|A Metric object|
-|prometheus|callback   |returns all of the Gauge's metrics in prometheus format as a string|None (string and error via callback)|
 
 The `AbsoluteGauge` object has not yet been implemented. `AbsoluteGauge` is
 going to be implemented in one of the first post-1.0 releases.
@@ -266,6 +271,8 @@ count values that fall between a number of user-provided buckets.
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |Histogram|parent, opts|creates a Histogram object from traits available in the parent, and options passed in|a new Histogram object|
+|labels|object|checks if a Counter with the given labels already exists. If yes, returns it, otherwise creates a new Counter, and initializes another Gauge|None|
+|prometheus|callback|iterates through the Counters, calling `prometheus()` on their `MetricVector` object. The results are stitched together and added to the result of calling `prometheus()` on the Gauge's MetricVector|None (string and error via callback)|
 
 `Histogram()` is called by the parent object's `histogram()` function.
 Buckets will be created using the log/linear method, similar to how it's done in
@@ -276,8 +283,6 @@ outlined in README.md.
 | Function | Arguments | Result | Return Value|
 |----------|-----------|--------|-------------|
 |observe|value, counter|iterates through buckets. If bucket's value >= `value`, that bucket and all subsequent buckets are incremented. The Gauge is also moved to track the running sum of values associated with the Counter|None|
-|labels|object|checks if a Counter with the given labels already exists. If yes, returns it, otherwise creates a new Counter, and initializes another Gauge|None|
-|prometheus|callback|iterates through the Counters, calling `prometheus()` on their `MetricVector` object. The results are stitched together and added to the result of calling `prometheus()` on the Gauge's MetricVector|None (string and error via callback)|
 
 There are helper functions in the global `artedi` namespace to create linear
 and exponential buckets. See [Other Public Functions](#other-public-functions).

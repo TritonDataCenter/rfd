@@ -141,7 +141,7 @@ counter.increment({
     code: '200'
 });
 
-collector.collect(function (err, metrics) {
+collector.collect(artedi.FMT_PROM, function (err, metrics) {
     console.log(metrics);
     // Prints:
     // http_requests_completed{zone="e5d3",method="getobject",code="200"} 1
@@ -160,7 +160,7 @@ histogram.observe(998, {
 // For each bucket, we get a count of the number of requests that fall
 // below or at the latency upper-bound of the bucket.
 // This output is defined by Prometheus.
-collector.collect(function (err, metrics) {
+collector.collect(artedi.FMT_PROM, function (err, metrics) {
     if (err) {
         throw new VError(err, 'could not collect metrics');
     }
@@ -373,7 +373,7 @@ if (res.statusCode >= 500 && res.err) {
 }
 
 // Elsewhere in the code...
-collector.collect(function (err, str) {
+collector.collect(artedi.FMT_PROM, function (err, str) {
     console.log(str);
 });
 
