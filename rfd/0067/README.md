@@ -3,7 +3,7 @@ authors: Trent Mick <trent.mick@joyent.com>
 state: draft
 ---
 
-# RFD 67: Triton headnode resilience
+# RFD 67 Triton headnode resilience
 
 Some parts of Triton support HA deployments -- e.g. binder (which houses
 zookeeper), manatee, and moray -- so that theoretically the service can survive

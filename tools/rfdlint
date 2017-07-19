@@ -1,0 +1,200 @@
+#!/bin/bash
+
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+#
+
+#
+# Copyright 2017, Joyent, Inc.
+#
+
+#
+# The number of days to look back for a 'discussion' field in RFD metadata
+#
+rfdlint_daycheck=45
+
+tmp=`mktemp`
+prog=`basename $0`
+
+if [[ ! -f README.md || ! -d ./rfd ]]; then
+	echo $prog: must be run in root directory of rfd repository
+	exit 1
+fi
+
+#
+# Create an awk script that will do a pass over README.md to verify that
+# the links are properly formed and RFD numbers appropriately used in the
+# RFD table.
+#
+cat > $tmp <<EOF
+{
+	l++;
+
+	if (\$0 == "| state    | RFD |") {
+		if (rfdtable) {
+			printf("$prog: table found twice\n");
+			exit 1;
+		}
+
+		rfdtable = 1;
+		nextrfd = 0;
+		next;
+	}
+
+	if (!rfdtable)
+		next;
+
+	if (\$2 == "--------") {
+		if (nextrfd != 0) {
+			printf("$prog: header found twice\n");
+			exit 1;
+		}
+
+		next;
+	}
+
+	if (length(\$0) == 0) {
+		done = 1;
+		next;
+	}
+
+	if (done) {
+		if (\$4 == "[RFD" && \$0 ~ "/rfd/") {
+			printf("$prog: RFD at line %d is not in table\n", l);
+			exit 1;
+		}
+
+		next;
+	}
+
+	nextrfd++;
+	rfd = \$5;
+	state = \$2;
+
+	if (rfd != nextrfd) {
+		printf("$prog: at line %d, expected RFD %d found RFD %s\n",
+		    l, nextrfd, rfd);
+		exit 1;
+	}
+
+	if (state != "publish" && state != "draft" && state != "predraft") {
+		printf("$prog: illegal state '%s' for RFD %s\n", \$2, rfd);
+		exit 1;
+	}
+
+	link = substr(\$0, index(\$0, "]") + 1, length(\$0));
+
+	link = substr(link, 2, index(link, ")") - 2);
+
+	if (rfd < 10) {
+		prefix = "000";
+	} else if (rfd < 100) {
+		prefix = "00";
+	} else if (rfd < 1000) {
+		prefix = "0";
+	}
+
+	expected = "./rfd/" prefix rfd "/README"
+
+	if (link != expected ".md" && link != expected ".adoc") {
+		printf("$prog: RFD %d has malformed link '%s'\n", rfd, link);
+		exit 1;
+	}
+}
+EOF
+
+cat README.md | awk -f $tmp
+rm $tmp
+
+if [[ $? -ne 0 ]]; then
+	exit 1
+fi
+
+#
+# Now iterate over every RFD and make sure that it's in the table in README.md
+# and in a matching state and with sane metadata.
+#
+for f in rfd/[0-9][0-9][0-9][0-9]/README.md rfd/*/README.adoc; do
+	line=`grep '^|' README.md | grep $f`;
+
+	if [[ -z "$line" ]]; then
+		echo "$prog: did not find $f linked in RFD table in README.md"
+		exit 1
+	fi
+
+	state=`echo $line | cut -d\| -f2 | awk '{ print $1 }'`
+	title=`echo $line | cut -d\| -f3 | cut -d\[ -f2 | cut -d\] -f1`
+	rfd=`echo $line | awk '{ print $5 }'`
+	check=`cat $f | grep -w ^# | head -1 | cut -c3-`
+
+	if [[ "$title" != "$check" ]]; then
+		echo "$prog: mismatched title on RFD $rfd";
+		echo "$prog: in README.md: \"$title\""
+		echo "$prog: in $f: \"$check\""
+		exit 1
+	fi
+
+	if [[ `basename $f` == "README.adoc" ]]; then
+		continue
+	fi
+
+	if [[ `head -1 $f` != "---" ]]; then
+		echo "$prog: missing metadata in $f"
+		exit 1
+	fi
+
+	check=`grep "^state: " $f | awk '{ print $2 }'`
+
+	if [[ "$state" != "$check" ]]; then
+		echo "$prog: mismatched state on RFD $rfd"
+		echo "$prog: in README.md: \"$state\""
+		echo "$prog: in $f: \"$check\""
+		exit 1
+	fi
+
+	authors=`grep "^authors: " $f | cut -d: -f2- | cut -c2-`
+
+	if [[ -z "$authors" ]]; then
+		echo "$prog: RFD $rfd is missing an 'authors' field"
+		exit 1
+	fi
+
+	if [[ "$state" != "publish" ]]; then
+		#
+		# If this is not in a publish state and is less than 3 months
+		# old (or not under git control) and lacks a discussion field,
+		# we'll flag it.
+		#
+		origin=`git log --format=format:%ct $f | tail -1`
+		now=`date +%s`
+
+		if [[ -z $origin ]]; then
+			origin=$now
+		fi
+
+		seconds=`expr $now - $origin`
+		days=`expr $seconds / 86400`
+
+		discussion=`grep "^discussion: " $f`
+
+		if [[ -z $discussion && $days -lt $rfdlint_daycheck ]]; then
+cat <<EOF
+$prog: RFD $rfd (in $state state, $days days old) lacks 'discussion' field
+$prog: if not already opened, add the following issue:
+
+RFD $rfd: Discussion
+
+This issue represents an opportunity for discussion of [$title](https://github.com/joyent/rfd/tree/master/$f) while it remains in a pre-published state.
+
+$prog: Then add to metadata section in ./$f:
+
+discussion: https://github.com/joyent/rfd/issues?q=\"RFD+$rfd\"
+
+EOF
+			exit 1
+		fi
+	fi
+done
+

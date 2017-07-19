@@ -1,6 +1,7 @@
 ---
 authors: Cody Mello <cody.mello@joyent.com>
 state: predraft
+discussion: https://github.com/joyent/rfd/issues?q=\"RFD+100\"
 ---
 
 <!--

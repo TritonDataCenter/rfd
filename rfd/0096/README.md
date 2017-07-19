@@ -13,7 +13,7 @@ state: draft
     Copyright 2017 Joyent, Inc.
 -->
 
-# RFD 96: Named thread API
+# RFD 96 Named thread API
 
 ## Introduction
 

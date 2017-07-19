@@ -1,4 +1,9 @@
-# Modernize TLS Options
+---
+authors: Brian Bennett <brian.bennett@joyent.com>
+state: publish
+---
+
+# RFD 93 Modernize TLS Options
 
 SSL and now TLS are the bedrock of on-the-wire security on the Internet. In the
 recent past, TLS has taken a beating. There have been demonstrated weaknesses

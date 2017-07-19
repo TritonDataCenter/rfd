@@ -13,7 +13,7 @@ state: draft
     Copyright 2016 Joyent, Inc.
 -->
 
-# RFD 60: Scaling the Designation API
+# RFD 60 Scaling the Designation API
 
 The Designation API -- usually referred to by its old name, dapi -- is a library
 which selects a server for a new container. It currently resides inside cnapi as

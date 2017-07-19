@@ -13,8 +13,7 @@ state: draft
     Copyright 2016 Joyent, Inc.
 -->
 
-RFD 0039 VM Attribute Cache (vminfod)
-================
+# RFD 39 VM Attribute Cache (vminfod)
 
 Introduction
 ------------

@@ -1,4 +1,9 @@
-# Docker images upgrade for content addressable images - registry 2.0
+---
+authors: Todd Whiteman <todd.whiteman@joyent.com>, Trent Mick <trent.mick@joyent.com>
+state: draft
+---
+
+# RFD 57 Moving to Content Addressable Docker Images
 
 # Why?
 

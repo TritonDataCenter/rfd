@@ -1,5 +1,5 @@
 ---
-author: Jerry Jelinek <jerry@joyent.com>
+authors: Jerry Jelinek <jerry@joyent.com>
 state: predraft
 ---
 

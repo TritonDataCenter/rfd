@@ -13,7 +13,8 @@ state: draft
     Copyright 2016 Joyent
 -->
 
-# RFD 0037 Metrics Instrumenter
+# RFD 37 Metrics Instrumenter
+
 ## Introduction
 SmartOS metrics are spread across multiple native libraries
 (e.g. kstat, prstat, zfs) and modules such as node-kstat make interacting with

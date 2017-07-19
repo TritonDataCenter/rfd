@@ -3,7 +3,7 @@ authors: Brian Bennett <brian.bennett@joyent.com>
 state: predraft
 ---
 
-# RFD 34 Instance Migration
+# RFD 34 Instance migration
 
 ## Introduction
 

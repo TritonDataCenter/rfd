@@ -13,7 +13,7 @@ state: draft
     Copyright 2016 Joyent, Inc.
 -->
 
-# RFD 41: Improved JavaScript errors
+# RFD 41 Improved JavaScript errors
 
 We've long used the [verror](https://github.com/davepacheco/node-verror) module
 to represent JavaScript errors.  Historically, the main goals were:

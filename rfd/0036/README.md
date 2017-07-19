@@ -13,7 +13,7 @@ state: draft
     Copyright 2016 Casey Bisson, Joyent
 -->
 
-# RFD 36 Triton Service Manager (code name: Mariposa)
+# RFD 36 Mariposa
 
 Cloud infrastructure (IaaS) providers offer compute, network, and storage resources on which applications can be built and operated. However, those solutions leave it to the customer to assemble those infrastructure components to meet their needs. A given application might require several compute instances for a given component, but the customer is typically responsible for maintaining a mental model of their application, provisioning each instance, and then recognizing the compute instances that support a given software component within a larger list of instances.
 

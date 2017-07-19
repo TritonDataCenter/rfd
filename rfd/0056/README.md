@@ -13,7 +13,7 @@ state: predraft
     Copyright 2016 Joyent, Inc.
 -->
 
-# RFD 56: Revamp Cloudapi
+# RFD 56 Revamp Cloudapi
 
 Cloudapi has a relatively long history in the Triton stack. It was initially
 written to support the SDC 6.5 public API, and retained that compatibility for

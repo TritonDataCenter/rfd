@@ -51,6 +51,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 5 Triton Change Feed Support](./rfd/0005/README.md) |
 | publish  | [RFD 6 Improving Triton and Manta RAS Infrastructure](./rfd/0006/README.md) |
 | draft    | [RFD 7 Datalink LLDP and State Tracking](./rfd/0007/README.md) |
+| predraft | [RFD 8 Datalink Fault Management Topology](./rfd/0008/README.md) |
 | publish  | [RFD 9 sdcadm fabrics management](./rfd/0009/README.md) |
 | publish  | [RFD 10 Sending GZ Docker Logs to Manta](./rfd/0010/README.md) |
 | draft    | [RFD 11 IPv6 and multiple IP addresses support in Triton](./rfd/0011/README.md) |
@@ -65,8 +66,8 @@ formal writing that it has come to represent.)
 | draft    | [RFD 20 Manta Slop-Aware Zone Scheduling](./rfd/0020/README.md) |
 | draft    | [RFD 21 Metadata Scrubber For Triton](./rfd/0021/README.md) |
 | draft    | [RFD 22 Improved user experience after a request has failed](./rfd/0022/README.md) |
-| draft    | [RFD 23 A plan for Manta docs](./rfd/0023/README.md) |
-| predraft | [RFD 24 Designation API improvements to facilitate platform update](./rfd/0024/README.md) |
+| publish  | [RFD 23 Manta docs pipeline](./rfd/0023/README.md) |
+| draft    | [RFD 24 Designation API improvements to facilitate platform update](./rfd/0024/README.md) |
 | draft    | [RFD 25 Pluralizing CloudAPI CreateMachine et al](./rfd/0025/README.md) |
 | draft    | [RFD 26 Network Shared Storage for Triton](./rfd/0026/README.md) |
 | publish  | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
@@ -77,19 +78,19 @@ formal writing that it has come to represent.)
 | draft    | [RFD 32 Multiple IP Addresses in NAPI](./rfd/0032/README.md) |
 | publish  | [RFD 33 Moray client v2](./rfd/0033/README.md) |
 | predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
-| draft | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
-| draft    | [RFD 36 Mariposa](./rfd/0036) |
+| draft    | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
+| draft    | [RFD 36 Mariposa](./rfd/0036/README.md) |
 | draft    | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
 | draft    | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
 | draft    | [RFD 39 VM Attribute Cache (vminfod)](./rfd/0039/README.md) |
 | publish  | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |
 | draft    | [RFD 41 Improved JavaScript errors](./rfd/0041/README.md) |
-| predraft | [RFD 42 Provide global zone pkgsrc package set](./rfd/0042/README.md) |
+| draft    | [RFD 42 Provide global zone pkgsrc package set](./rfd/0042/README.md) |
 | publish  | [RFD 43 Rack Aware Network Pools](./rfd/0043/README.md) |
 | predraft | [RFD 44 Create VMs with Delegated Datasets](./rfd/0044/README.md) |
 | draft    | [RFD 45 Tooling for code reviews and code standards](./rfd/0045/README.md) |
 | publish  | [RFD 46 Origin images for Triton and Manta core images](./rfd/0046/README.md) |
-| draft    | [RFD 47 Retention policy for Joyent engineering data in Manta](./rfd/0047/README.md) |
+| publish  | [RFD 47 Retention policy for Joyent engineering data in Manta](./rfd/0047/README.md) |
 | predraft | [RFD 48 Triton A&A Overhaul (AUTHAPI)](./rfd/0048/README.md) |
 | predraft | [RFD 49 AUTHAPI internals](./rfd/0049/README.md) |
 | predraft | [RFD 50 Enhanced Audit Trail for Instance Lifecycle Events](./rfd/0050/README.md) |
@@ -124,7 +125,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 79 Reserved for Mariposa](./rfd/0079/README.md) |
 | predraft | [RFD 80 Reserved for Mariposa](./rfd/0080/README.md) |
 | predraft | [RFD 81 Reserved for Mariposa](./rfd/0081/README.md) |
-| predraft | [RFD 82 Triton agents install and update](./rfd/0082/README.md) |
+| draft | [RFD 82 Triton agents install and update](./rfd/0082/README.md) |
 | publish | [RFD 83 Triton `http_proxy` support](./rfd/0083/README.md) |
 | predraft | [RFD 84 Providing Manta access on multiple networks](./rfd/0084/README.md) |
 | publish  | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |

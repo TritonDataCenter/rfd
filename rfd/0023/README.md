@@ -3,7 +3,7 @@ authors: Trent Mick <trent.mick@joyent.com>
 state: publish
 ---
 
-# RFD 23 The Manta docs pipeline
+# RFD 23 Manta docs pipeline
 
 Here in the docs plan for Manta (where primary sources live, how to build them,
 how to publish them). If this document and reality differ, then someone hasn't

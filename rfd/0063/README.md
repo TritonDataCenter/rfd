@@ -13,7 +13,7 @@ state: predraft
     Copyright 2016 Joyent
 -->
 
-# RFD 63 Add branding to kernel cred\_t
+# RFD 63 Adding branding to kernel cred\_t
 
 ## Introduction
 

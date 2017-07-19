@@ -13,7 +13,7 @@ state: predraft
     Copyright 2017 Joyent
 -->
 
-# RFD 55 LX Support for Mount Namespaces
+# RFD 55 LX support for Mount Namespaces
 
 ## Introduction
 

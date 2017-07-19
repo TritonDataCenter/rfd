@@ -1,6 +1,6 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
-state: predraft
+state: publish
 ---
 
 # RFD 83 Triton `http_proxy` support

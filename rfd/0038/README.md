@@ -1,6 +1,6 @@
 ---
-author: Jerry Jelinek <jerry@joyent.com>
-contriutors: Joshua Clulow <jclulow@joyent.com>
+authors: Jerry Jelinek <jerry@joyent.com>
+contributors: Joshua Clulow <jclulow@joyent.com>
 state: draft
 ---
 

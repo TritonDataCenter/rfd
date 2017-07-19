@@ -3,7 +3,7 @@ authors: Trent Mick <trent.mick@joyent.com>
 state: draft
 ---
 
-# RFD 68: Triton versioning
+# RFD 68 Triton versioning
 
 This document will attempt to codify how we version things in Triton components.
 This covers things like the following:

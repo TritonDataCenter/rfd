@@ -1,9 +1,9 @@
 ---
 authors: Angela Fong <angela.fong@joyent.com>
-state: predraft
+state: draft
 ---
 
-# RFD 22: Improved user experience after a request has failed
+# RFD 22 Improved user experience after a request has failed
 
 ## Background
 

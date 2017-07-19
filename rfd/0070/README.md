@@ -3,7 +3,7 @@ authors: Chris Burroughs <chris.burroughs@joyent.com>
 state: draft
 ---
 
-# RFD 70: Joyent Repository Metadata
+# RFD 70 Joyent Repository Metadata
 
 ## Introduction
 

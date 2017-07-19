@@ -1,6 +1,6 @@
 ---
 authors: Nick Zivkovic <nick.zivkovic@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--

@@ -3,7 +3,7 @@ authors: Angela Fong <angela.fong@joyent.com>
 state: draft
 ---
 
-# RFD 24: Designation API improvements to facilitate platform update
+# RFD 24 Designation API improvements to facilitate platform update
 
 ## Introduction
 
