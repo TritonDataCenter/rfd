@@ -144,7 +144,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 99 Client Library for Collecting Application Metrics](./rfd/0099/README.md) |
 | predraft | [RFD 100 Improving lint and style checks in JavaScript](./rfd/0100/README.md) |
 | draft | [RFD 101 Models for operational escalation into engineering](./rfd/0101/README.md) |
-| draft | [RFD 102 Requests for Enhancement](./rfd/0102/README.md) |
+| publish | [RFD 102 Requests for Enhancement](./rfd/0102/README.md) |
 
 
 ## Contents of an RFD
@@ -324,6 +324,35 @@ example, if you RFD number 169 with the title  Overlay Networks for Triton,
 then the subject would be `RFD 169 Overlay Networks for Triton`.
 
 In the body, make sure to include a link to the RFD.
+
+If an RFD is in the `predraft` or `draft` state, you should also [open an
+issue](https://github.com/joyent/rfd/issues) to allow for additional
+opportunity for discussion of the RFD.  This issue should have the synopsis
+that reflects its purpose (e.g. "RFD 169: Discussion") and the body should
+explain its intent (e.g. "This issue represents an opportunity for discussion
+of RFD 169 while it remains in a pre-published state.").  Moreover, a
+`discussion` field should be added to the RFD metadata, with a URL that
+points to an issue query for the RFD number.  For example:
+
+```
+---
+authors: Chewbacca <chewie77@falcon.org>
+state: draft
+discussion: https://github.com/joyent/rfd/issues?q="RFD+169"
+---
+```
+
+When the RFD is transitioned into the `publish` state, the discussion issue
+should be closed with an explanatory note (e.g. "This RFD has been published
+and while additional feedback is welcome, this discussion issue is being
+closed."), but the `discussion` link should remain in the RFD metadata.
+
+Note that discussion might happen via more than one means; if discussion is
+being duplicated across media, it's up to the author(s) to reflect or otherwise
+reconcile discussion in the RFD itself.  (That is, it is the RFD that is
+canonical, not necessarily the discussion which may be occurring online,
+offline, in person, over chat, or wherever human-to-human interaction can be
+found.)
 
 ### Finishing up
 
