@@ -1,7 +1,7 @@
 ---
 authors: Bryan Cantrill <bryan@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=is%3Aissue+is%3Aopen+"RFD+102"
+discussion: https://github.com/joyent/rfd/issues?q="RFD+102"
 ---
 
 <!--
