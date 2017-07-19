@@ -1,7 +1,7 @@
 ---
 authors: Bryan Cantrill <bryan@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q="RFD+102"
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+102%22
 ---
 
 <!--
@@ -61,10 +61,10 @@ success?
 There is an art to describing the problem that needs to be solved:  too
 vague, and one runs the risk of putative solutions that don't actually
 solve the problem; too specific and the problem description drifts into
-a solution description.  Ideally, the problem description should be 
+a solution description.  Ideally, the problem description should be
 abstract and yet still sufficiently concrete to constrain (but not overly
 constrain!) solutions.  For example, an RFE asking for a GPGPU-based
-container offering (say) is vague and likely underspecified -- but 
+container offering (say) is vague and likely underspecified -- but
 one asking for
 an offering based on NVIDIA Tesla P100 GPUs may be too confining.
 Rather, the RFE may be for GPGPU-based container offering that allows
@@ -151,11 +151,10 @@ describe -- in narrative form -- what the software should do from a
 user's perspective.  ("As a user, I would like to create a container that
 is attached to a GPGPU instance.")  While RFEs may very well look like an
 agile story, they are likely to be more technical than what is
-traditionally thought of as a story, but the technique of adding a 
+traditionally thought of as a story, but the technique of adding a
 narrative may well be considered useful to flesh out an RFE.
 
 ## Mechanics
 
 RFEs -- like RFDs -- are public.  Like RFDs, they will have their own
 public repository and numbering scheme.
-

@@ -184,17 +184,16 @@ cat <<EOF
 $prog: RFD $rfd (in $state state, $days days old) lacks 'discussion' field
 $prog: if not already opened, add the following issue:
 
-RFD $rfd: Discussion
+    RFD $rfd: Discussion
 
-This issue represents an opportunity for discussion of [$title](https://github.com/joyent/rfd/tree/master/$f) while it remains in a pre-published state.
+    This issue represents an opportunity for discussion of [$title](https://github.com/joyent/rfd/tree/master/$f) while it remains in a pre-published state.
 
 $prog: Then add to metadata section in ./$f:
 
-discussion: https://github.com/joyent/rfd/issues?q=\"RFD+$rfd\"
+    discussion: https://github.com/joyent/rfd/issues?q=%22RFD+$rfd%22
 
 EOF
 			exit 1
 		fi
 	fi
 done
-

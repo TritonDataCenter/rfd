@@ -1,7 +1,7 @@
 ---
 authors: Bryan Cantrill <bryan@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q="RFD+101"
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+101%22
 ---
 
 <!--
@@ -53,7 +53,7 @@ life:  socializing must be limited, travel must be eliminated, presentations
 time) must be canceled, etc.  This can be very stressful -- even if an
 engineer is never, in fact, called.
 
-* **It doesn't necessarily solve the problem.**  Because escalation into 
+* **It doesn't necessarily solve the problem.**  Because escalation into
 engineering is (tautologically) due to a problem outside of the system's
 designed parameters, one cannot know that the engineer who
 happens to be on call will be able to root-cause the problem.  Indeed, it
@@ -128,4 +128,3 @@ Engineering escalation is a regretable necessity of any software deployed
 as a service; the Code Blue model is -- as Churchill famously described
 democracy -- probably the worst escalation model except for all of the
 others.
-
