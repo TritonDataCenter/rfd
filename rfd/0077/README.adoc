@@ -941,6 +941,12 @@ some cases -- e.g. deployments within virtual machines for development.
 ## PostgreSQL and Moray
 
  * Auth and TLS. Using LDAP to validate signatures as passwords?
+ * In current version of PostgreSQL, the main limitation for using mTLS for
+   AuthN/AuthZ is that PG has not supported reloading of certificates without
+   a server restart. PostgreSQL now has certificate reloading on master, not
+   yet in PG9.6. Reload is triggered by SIGHUP and/or "pg_ctl reload."
+   Backporting a patch to PG9.2 would not be difficult
+   (https://github.com/postgres/postgres/commit/de41869b64d57160f58852eab20a27f248188135[postgres change on master].)
 
 [[soft-token]]
 ## Zone soft token details
