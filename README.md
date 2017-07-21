@@ -146,6 +146,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 100 Improving lint and style checks in JavaScript](./rfd/0100/README.md) |
 | draft | [RFD 101 Models for operational escalation into engineering](./rfd/0101/README.md) |
 | publish | [RFD 102 Requests for Enhancement](./rfd/0102/README.md) |
+| predraft | [RFD 103 Operationalize Resharding](./rfd/0103/README.md) |
 
 
 ## Contents of an RFD
