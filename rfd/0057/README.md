@@ -1,6 +1,6 @@
 ---
 authors: Todd Whiteman <todd.whiteman@joyent.com>, Trent Mick <trent.mick@joyent.com>
-state: draft
+state: publish
 ---
 
 # RFD 57 Moving to Content Addressable Docker Images
