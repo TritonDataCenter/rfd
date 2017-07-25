@@ -17,6 +17,7 @@
 #       purge-system-logs /admin/stor/logs                # dry-run by default
 #       purge-system-logs -f /admin/stor/logs             # '-f' to actually del
 #       purge-system-logs -f /admin/stor/logs $datacenter # specific Triton DC
+#       purge-system-logs -f /admin/stor/sdc/usage $datacenter # usage logs
 #
 # Log files build up in Manta. They need to eventually be purged so they don't
 # take up ever increasing space. This script knows how to remove old
@@ -66,6 +67,19 @@
 #   2a7157a0.log
 #   31850a62.log
 #   ......
+#
+# For the Triton usage CN logs, the breakdown is by CN but shares a very
+# similar structure:
+#                                   # Example:
+#   $basedir/                       #   /admin/stor/sdc/usage
+#     $datacenter/                  #     us-sw-1/
+#       $server/                    #       44454c4c-5a00-1051-8039-b2c04f485331/
+#         $year/                    #         2017/
+#           $month/                 #           04/
+#             $day/                 #             24/
+#               $logname            #               $serveruuid.log
+#
+
 
 
 if [[ -n "$TRACE" ]]; then
@@ -192,6 +206,11 @@ TTL_DAYS_FROM_NAME_TRITON='{
 TTL_DAYS_FROM_NAME_MANTA='{
 }'
 
+# All usage logs will be retained for 90 days only
+TTL_DAYS_FROM_NAME_USAGE='{
+    "all": 90
+}'
+
 opt_dryrun=yes    # Dry-run by default.
 opt_quiet=no
 
@@ -216,6 +235,7 @@ function usage() {
     echo '  purge-system-logs /admin/stor/logs               # dry-run by default'
     echo '  purge-system-logs -f /admin/stor/logs            # -f to actually rm'
     echo '  purge-system-logs -f /admin/stor/logs datacenter # prune a certain DC'
+    echo '  purge-system-logs -f /admin/stor/sdc/usage datacenter # usage logs'
     if [[ -n "$1" ]]; then
         exit 1
     else
@@ -252,6 +272,8 @@ function ttl_days_from_name
         echo "$TTL_DAYS_FROM_NAME_TRITON" | json -- $name
     elif [[ $logs_dir == "/poseidon/stor/logs" ]]; then
         echo "$TTL_DAYS_FROM_NAME_MANTA" | json -- $name
+    elif [[ $logs_dir == "/admin/stor/sdc/usage" ]]; then
+        echo "$TTL_DAYS_FROM_NAME_USAGE" | json -- $name
     else
         fatal "Cannot get TTL for unknown log archive $logs_dir"
     fi
@@ -316,6 +338,7 @@ function purge_system_logs
     local days
     local hour
     local hours
+    local ttl_key
 
     logs_dir=$1
     dc_dir=$2
@@ -334,7 +357,13 @@ function purge_system_logs
     for service in $services; do
 #       The 'cutoff' is the current time minus the ttl_days number of days,
 #       in the format of YYYY-MM-DD.
-        ttl_days=$(ttl_days_from_name $logs_dir $service)
+        if [[ $logs_dir == "/admin/stor/sdc/usage" ]]; then 
+            ttl_key="all"
+        else
+            ttl_key=$service
+        fi
+
+        ttl_days=$(ttl_days_from_name $logs_dir $ttl_key)
 
         if [[ -z "$ttl_days" ]]; then
             log "# skip $top_dir/$service: do not have a TTL for '$service'"
@@ -419,6 +448,16 @@ if [[ $LOGS_DIR == "/admin/stor/logs"* ]]; then
 elif [[ $LOGS_DIR == "/poseidon/stor/logs" ]]; then
     log "# Pruning Manta log archive"
     purge_system_logs "$LOGS_DIR"
+elif [[ $LOGS_DIR == "/admin/stor/sdc/usage"* ]]; then
+    log "# Pruning usage log archive"
+
+    if [[ -z "$DATACENTERS" ]]; then
+        DATACENTERS=$(mls --type d $LOGS_DIR | sed -e 's#/$##' | xargs)
+    fi
+
+    for DC_DIR in $DATACENTERS; do
+        purge_system_logs "$LOGS_DIR" "$DC_DIR"
+    done
 else
     fatal "Unknown log archive $LOGS_DIR"
 fi
