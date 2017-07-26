@@ -161,7 +161,7 @@ for f in rfd/[0-9][0-9][0-9][0-9]/README.md rfd/*/README.adoc; do
 		exit 1
 	fi
 
-	if [[ "$state" != "publish" ]]; then
+	if [[ "$state" == "draft" ]]; then
 		#
 		# If this is not in a publish state and is less than 3 months
 		# old (or not under git control) and lacks a discussion field,
