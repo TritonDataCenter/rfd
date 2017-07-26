@@ -147,6 +147,8 @@ formal writing that it has come to represent.)
 | draft | [RFD 101 Models for operational escalation into engineering](./rfd/0101/README.md) |
 | publish | [RFD 102 Requests for Enhancement](./rfd/0102/README.md) |
 | predraft | [RFD 103 Operationalize Resharding](./rfd/0103/README.md) |
+| predraft | [RFD 104 Engineering Guide - General Principles](./rfd/0104/README.md) |
+| predraft | [RFD 105 Engineering Guide - Node.js Best Practices](./rfd/0105/README.md) |
 
 
 ## Contents of an RFD
