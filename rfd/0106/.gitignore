@@ -1,0 +1,7 @@
+.Python
+bin/
+include/
+lib/
+pip-selfcheck.json
+*.pdf
+*.html
