@@ -380,30 +380,29 @@ https://github.com/joyent/sdc-wf-client
 
 ## How to update a zone to node v4
 
-1. You need a 15.4.x-generation origin image. Until RFD 46 comes along that
-   means (a) sdc-minimal-multiarch-lts@15.4.1 plus (b) adding a few pkgsrc
-   package beyond minimal. Make changes similar to this to MG:
+1. You need the current triton-origin-image.  This is currently
+   triton-origin-multiarch-15.4.1@1.0.1.  Make changes similar to this to
+   targets.json.in in MG:
 
     ```
     -    "image_uuid": "fd2cc906-8938-11e3-beab-4359c665ac99",
-    +    "// image_uuid": "sdc-minimal-multiarch-lts@15.4.1",
-    +    "image_uuid": "18b094b0-eb01-11e5-80c1-175dac7ddf02",
+    +    "// image_uuid": "triton-origin-multiarch-15.4.1@1.0.1",
+    +    "image_uuid": "04a48d7d-6bb5-4e83-8c3b-e60a99e0f48f",
          "pkgsrc": [
-    +        "coreutils-8.23nb2",
-    +        "curl-7.47.1",
-    +        "gsed-4.2.2nb4",
-    +        "patch-2.7.5",
-    +        "sudo-1.8.15"
+            ....
          ],
     ```
 
-    This set of pkgsrc packages comes from
-    <https://github.com/joyent/rfd/tree/master/rfd/0046#q2-base--or-minimal--or-something-in-between>.
+    Currently, the triton origin image includes the following packages:
+    * coreutils-8.23nb2
+    * curl-7.51.0
+    * gsed-4.22nb4
+    * patch-2.7.5
+    * sudo-1.8.15
 
-    TODO: Is `dateutils-0.3.1nb1` required? IMGAPI is using it right now but
-    there is not history for why that package (which isn't included in the RFD
-    46 set) was included. For now we should exclude it from future users, and
-    test removing it from IMGAPI's current list.
+    If any of those packages are present in the MG config for a component,
+    they can be removed since they will already be present in the origin
+    image.
 
 2. Update your Makefile to get a 4.x sdcnode build. Something like this:
 
