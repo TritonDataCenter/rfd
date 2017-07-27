@@ -1,6 +1,7 @@
 :author: Alex Wilson
 :email: alex.wilson@joyent.com
-:revremark: State: predraft
+:state: predraft
+:revremark: State: {state}
 
 :showtitle:
 :toc: left
