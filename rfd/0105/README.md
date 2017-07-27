@@ -82,21 +82,18 @@ these are both considered deprecated.
 For building our own add-ons, we typically use
 [v8plus](https://github.com/joyent/v8plus).
 
-Until [very recently](https://github.com/nodejs/abi-stable-node) (as of this
-writing), Node.js did not provide a stable binary interface.  We have not yet
-evaluated the newly-added interface, and it depends on newer Node versions than
-we're running anyway.  So ignoring that, because C++ does not define a useful
-compiler- or platform-dependent
+Repositories that build their own add-ons (which is nearly all of ours because
+of our heavy use of "node-dtrace-provider") **must** bundle their own Node
+binaries.  Platform components that use the platform Node are generally exempt,
+since they know which version of Node they're building for.
+
+**Rationale:** Node.js does not have a stable binary ABI, and because C++ does
+not define a useful compiler- or platform-dependent
 [binary](http://stackoverflow.com/questions/7492180/c-abi-issues-list)
 [interface](http://developers.sun.com/solaris/articles/CC_abi/CC_abi_content.html),
 and we have seen breakage resulting from changing compiler versions, any repo
-that uses add-ons (binary modules) **must** bundle its own copy of "node" and
-use that copy at runtime.
-
-Almost every repo will fall into this bucket, since we use the native
-node-dtrace-provider heavily for observability.  Platform components that use
-the platform Node are generally exempt, since they know which version of Node
-they're building for.
+that uses add-ons (binary modules) must bundle its own copy of "node" and use
+that copy at runtime.
 
 There are two ways you can get a Node build for your repo:
 
@@ -292,4 +289,3 @@ in a way that's easy to keep backwards-compatible.
 * [nhttpsnoop](https://github.com/joyent/nhttpsnoop): allows you to dynamically
   trace garbage collection or HTTP client or server requests for any Node
   program using the standard library
-

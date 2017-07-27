@@ -57,13 +57,13 @@ based on the existing engineering guide and additional content.
 
 ## Joyent Engineering Guide: General Principles
 
-In order to maintain consistency and quality in all of our production software,
-the engineering team has put together this document describing standards and
-best practices for software development at Joyent.  It's understood that
-situations differ, and rules should not be followed blindly, but these
-guidelines represent the consensus of the team.  If you feel it necessary to
-diverge from them, be sure to document the divergence (including why it's
-necessary) and get review for the change.
+To maintain consistency and quality in all of our production software, the
+engineering team has put together this document describing standards and best
+practices for software development at Joyent.  It's understood that situations
+differ, and rules should not be followed blindly, but these guidelines represent
+the consensus of the team.  If you feel it necessary to diverge from them, be
+sure to document the divergence (including why it's necessary) and get review
+for the change.
 
 In general, process is shrink-to-fit: we adopt process that help us work better,
 but process for process's sake is avoided. Any resemblance to formalized
@@ -75,14 +75,16 @@ methodologies, living or dead, is purely coincidental.
 **The "master" branch of a repository should be FCS (first customer ship)
 quality all the time.**  That means the code is style-clean, lint-clean, passes
 all automated tests, and generally works.  Any testing required for a change
-must be completed before it's integrated into master.  Later sections of this
-guide discuss these pieces in more detail.
+**must** be completed before it's integrated into master.  Later sections of
+this guide discuss these pieces in more detail.
 
 In general, use the "master" branch for all development.  This does not mean you
 can't use your own branches for personal development, but try to keep these
 branches sync'd up with master.  If it becomes necessary to share these dev
 branches, consider instead integrating whatever pieces you can into "master" to
-minimize divergence.  The goal is to avoid the [quality death spiral
+minimize divergence.
+
+**Rationale:** The goal is to avoid the [quality death spiral
 (QDS)](http://wiki.illumos.org/display/illumos/On+the+Quality+Death+Spiral) that
 results when people stop using the "master" branch for everyday development.
 
@@ -91,10 +93,10 @@ results when people stop using the "master" branch for everyday development.
 
 #### Source control
 
-All software should live in a git repository.  To the extent possible, software
-should be open-source, and open-source Joyent software should be hosted on
-GitHub under the Joyent organization.  For historical reasons, some components
-still live under individuals' GitHub accounts.
+All software **must** live in a git repository.  To the extent possible,
+software **should** be open-source, and open-source Joyent software should be
+hosted on GitHub under the Joyent organization.  For historical reasons, some
+components still live under individuals' GitHub accounts.
 
 Note that just because a repo is on github doesn't mean its issues are tracked
 there.  See "Issue Tracking".
@@ -130,14 +132,14 @@ describes the workflow and approval criteria in more detail.
 
 #### Programming language
 
-New server-side projects should generally use one of the languages for which we
-have developed a Best Practices section within this Guide.  That's primarily
-Node.js at the moment, but it's expected to expand in the near future.
+New server-side projects **should** use one of the languages for which we have
+developed a Best Practices section within this Guide.  That's primarily Node.js
+at the moment, but it's expected to expand in the near future.
 
 
 #### Repository naming
 
-Triton repositories are generally prefixed with `triton-` or `sdc-` (the latter
+Triton repositories **should** be prefixed with `triton-` or `sdc-` (the latter
 for historical reasons) and contain the name of the API that they implement.
 Examples:
 
@@ -145,7 +147,7 @@ Examples:
 - `sdc-napi` (for NAPI, the Network API)
 - `triton-cmon` (for the Container Monitor)
 
-Manta repositories are generally prefixed with `manta-` and mostly use fish
+Manta repositories **should** be prefixed with `manta-` and mostly use fish
 names as code names:
 
 - `manta-muskie` (for Muskie, the Manta API server)
@@ -160,7 +162,7 @@ See language-specific guides for details.
 #### Licenses and copyright
 
 For Triton and Manta repositories, every source file (including documentation
-and Makefiles) should have the MPL 2.0 header and a copyright statement. These
+and Makefiles) **must** have the MPL 2.0 header and a copyright statement. These
 statements should match one of the [prototypes supplied by
 eng.git](https://github.com/joyent/eng/tree/master/prototypes).
 
@@ -186,12 +188,12 @@ the year should be updated to be the current year that the file was modified.
 
 Every repository **must** have a consistent coding style that is enforced by
 some tool.  It's not necessary that all projects in a language use the same
-style, but all styles **must** limit line length to 80 columns.  Please keep
-differences across repositories to an absolute minimum (e.g., only hard vs. soft
-tabs and tabstops).
+style, but all styles **must** limit line length to 80 columns.  Differences
+across repositories **should** be kept to an absolute minimum (e.g., only hard
+vs. soft tabs and tabstops).
 
-It's important that the style checking tools support disabling checks for
-individual lines in files and for individual sections in files.
+Style checking tools **must** support disabling checks for individual lines in
+files and for individual sections in files.
 
 Note that many projects have patterns that are not enforced by a tool  (e.g.,
 naming conventions).  Look for and respect the patterns within the repositories
@@ -204,10 +206,10 @@ See the language-specific guides for details.
 
 Most languages have static analysis tools that attempt to identify software bugs
 or dangerous coding patterns.  For each language, we will standardize on a small
-set of these tools (ideally just one), and one of those tools should be run on
+set of these tools (ideally just one), and one of those tools **must** be run on
 all code written in that language.
 
-Linters selected for each language should have discrete checks that can be
+Linters selected for each language **should** have discrete checks that can be
 individually disabled by configuration, on a per-repository basis, for certain
 lines in files, and for certain sections in files.
 
@@ -271,11 +273,11 @@ Please also include:
 * a description of the structure of the project
 * useful design notes
 
-Every repository should also have in its root a CONTRIBUTING file that exactly
-matches the one used for other projects.  There's one file used for Triton
-repositories, one for Manta, and one for standalone components.  This file
-causes GitHub to make these guidelines prominent when people submit issues or
-pull requests, so it's very useful to include.
+Every repository **should** also have in its root a CONTRIBUTING file that
+exactly matches the one used for other projects.  There's one file used for
+Triton repositories, one for Manta, and one for standalone components.  This
+file causes GitHub to make these guidelines prominent when people submit issues
+or pull requests, so it's very useful to include.
 
 
 #### Build system
@@ -371,17 +373,16 @@ commit is needed:
 
     INTRO-581 move mdb_v8 into illumos-joyent (missing file)
 
-
-This format makes it easy to correlate tickets and commits, since there's
-usually exactly one commit for each resolved ticket.  It also makes it easier
-to back out the changes for a particular project.
-
 **There must be no information in the commit message aside from the ticket
 identifiers, the ticket synopsis, and the reviewer and approver information.**
-Other information should go into the bug tracker, including the nature of the
-bug and the debugging process (if applicable), the change, and the test plan.
-We keep this information in the bug tracker so that it can be modified,
-augmented, searched, and so on.
+
+**Rationale:** This format makes it easy to correlate tickets and commits, since
+there's usually exactly one commit for each resolved ticket.  It also makes it
+easier to back out the changes for a particular project.  The other valuable
+information that is sometimes put into commit messages should instead go into
+the bug tracker.  That includes the nature of the bug and the debugging process
+(if applicable), the change, and the test plan.  We keep this information in the
+bug tracker so that it can be edited, augmented, searched, and so on.
 
 
 #### Ticket contents
@@ -478,12 +479,12 @@ programs be debuggable after the fact (_post hoc_).  Concretely, this means:
 
 #### Error handling
 
-Error handling should reflect the ideas of programmer errors and operational
-errors as described in [Error Handling in
+Error handling should reflect the ideas and practices around programmer errors
+and operational errors as described in [Error Handling in
 Node.js](https://www.joyent.com/node-js/production/design/errors).  While that
 document was written for Node.js, most of it applies to other programming
-languages.  **Make sure to read and understand this document!** Programmer
-errors should generally cause crashes, while operational errors should be
+languages.  **Make sure to read and understand this document!**  Programmer
+errors **should** generally cause crashes, while operational errors **must** be
 cleanly handleable, reportable, and traceable.  They should provide enough
 information for consumers to switch on different error types and report on
 metadata.
@@ -680,5 +681,3 @@ before the code is promoted to production:
 - Steps to undo this change if necessary.
 
 For reference, read the [owasp top 10](https://www.owasp.org/index.php/Category:OWASP_Top_Ten_Project) vulnerabilities.
-
-
