@@ -1,0 +1,85 @@
+.\"
+.\" This file and its contents are supplied under the terms of the
+.\" Common Development and Distribution License ("CDDL"), version 1.0.
+.\" You may only use this file in accordance with the terms of version
+.\" 1.0 of the CDDL.
+.\"
+.\" A full copy of the text of the CDDL should have accompanied this
+.\" source.  A copy of the CDDL is also available via the Internet at
+.\" http://www.illumos.org/license/CDDL.
+.\"
+.\"
+.\" Copyright (c) 2017, Joyent, Inc.
+.\"
+.Dd July 24, 2017
+.Dt MRI_START 9E
+.Os
+.Sh NAME
+.Nm mri_start ,
+.Nm mri_stop
+.Nd ring start and stop entry point
+.Sh SYNOPSIS
+.In sys/mac_provider.h
+.Ft int
+.Fo prefix_ring_start
+.Fa "mac_ring_driver_t rh"
+.Fa "uint64_t mr_gen"
+.Fc
+.Ft void
+.Fo prefix_ring_stop
+.Fa "mac_ring_driver_t rh"
+.Fc
+.Sh INTERFACE LEVEL
+.Sy Evolving -
+This interface is still evolving.
+API and ABI stability is not guaranteed.
+.Sh PARAMETERS
+.Bl -tag -width Fa
+.It Fa rh
+A pointer to the ring's private data that was passed in via the
+.Vt mri_driver
+member of the
+.Xr mac_ring_info 9S
+structure as part of the
+.Xr mr_rget 9E
+entry point.
+.It Fa mr_gen
+A 64-bit generation number.
+.El
+.Sh DESCRIPTION
+The
+.Fn mri_start
+entry point is a required entry point that allows the driver a chance to
+take any action to start the ring in hardware.
+The ring is indicated by the driver's private data structure
+structure for the ring:
+.Fa rh .
+The driver should record the value of
+.Fa mr_gen
+in its private data structure.
+This value is used when receiving data as the argument to the
+.Xr mac_ring_rx 9F
+function.
+For many drivers, the only action that is required is recording the
+generation number.
+.Pp
+The
+.Fn mri_stop
+entry point is an optional entry point that allows the driver a chance
+to take any actions to stop the ring in hardware.
+The ring is indicated by its private data structure
+.Fa rh .
+.Sh RETURN VALUES
+Upon successful completion, the device driver should return
+.Sy 0
+from the
+.Fn mri_start
+entry point.
+Otherwise, they should return anon-zero positive error number to indicate
+the error that occurred.
+.Sh SEE ALSO
+.Xr mac 9E ,
+.Xr mac_capab_rings 9E ,
+.Xr mr_rget 9E ,
+.Xr mac_ring_rx 9F ,
+.Xr mac_ring_info 9S

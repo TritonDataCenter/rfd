@@ -1,0 +1,65 @@
+.\"
+.\" This file and its contents are supplied under the terms of the
+.\" Common Development and Distribution License ("CDDL"), version 1.0.
+.\" You may only use this file in accordance with the terms of version
+.\" 1.0 of the CDDL.
+.\"
+.\" A full copy of the text of the CDDL should have accompanied this
+.\" source.  A copy of the CDDL is also available via the Internet at
+.\" http://www.illumos.org/license/CDDL.
+.\"
+.\"
+.\" Copyright (c) 2017, Joyent, Inc.
+.\"
+.Dd July 26, 2017
+.Dt MGI_START 9E
+.Os
+.Sh NAME
+.Nm mgi_start ,
+.Nm mgi_stop
+.Nd Start and stop a MAC group
+.Sh SYNOPSIS
+.In sys/mac_provider.h
+.Ft int
+.Fo prefix_group_start
+.Fa "mac_group_driver_t gh"
+.Fc
+.Ft void
+.Fo prefix_group_stop
+.Fa "mac_group_driver_t gh"
+.Fc
+.Sh INTERFACE LEVEL
+.Sy Evolving -
+This interface is still evolving.
+API and ABI stability is not guaranteed.
+.Sh PARAMETERS
+.Bl -tag -width Fa
+.It Fa driver
+A pointer to the ring's private data that was passed in via the
+.Vt mgi_driver
+member of the
+.Xr mac_group_info 9S
+structure as part of the
+.Xr mr_gget 9E
+entry point.
+.El
+.Sh DESCRIPTION
+The
+.Fn mgi_start
+and
+.Fn mgi_stop
+are optional entry points that allow a chance for the device driver to
+do anything that it needs to do to start and stop a group respectively.
+The group that is being operated on is identified by
+.Fa gh .
+.Sh RETURN VALUES
+Upon successful completion, the
+.Fn mgi_start
+interface should return
+.Sy 0 .
+Otherwise, it should return the appropriate error number.
+.Sh SEE ALSO
+.Xr mac 9E ,
+.Xr mac_capab_rings 9E ,
+.Xr mr_gget 9E ,
+.Xr mac_group_info 9S

@@ -1,0 +1,2007 @@
+%PDF-1.1
+1 0 obj
+<<
+>>
+endobj
+3 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F0
+/BaseFont /Times-Roman
+>>
+4 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F1
+/BaseFont /Times-Bold
+>>
+5 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F2
+/BaseFont /Times-Italic
+>>
+6 0 obj
+<<
+/Type /Font
+/Subtype /Type1
+/Name /F3
+/BaseFont /Times-BoldItalic
+>>
+7 0 obj
+<<
+/Length 8 0 R
+>>
+stream
+BT
+/F1 11 Tf
+68.013 702.834 Td
+(NAME) Tj
+ET
+BT
+/F1 11 Tf
+81.763 687.445 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+101.310 687.445 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+106.810 687.445 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+115.973 687.445 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+121.473 687.445 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+153.868 687.445 Td
+(,) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+159.368 687.445 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+178.915 687.445 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+184.415 687.445 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+193.578 687.445 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+199.078 687.445 Td
+(ring) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+218.636 687.445 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+224.136 687.445 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+259.281 687.445 Td
+(-) Tj
+ET
+BT
+/F0 11 Tf
+265.694 687.445 Td
+(indicate) Tj
+ET
+BT
+/F0 11 Tf
+303.270 687.445 Td
+(that) Tj
+ET
+BT
+/F0 11 Tf
+322.520 687.445 Td
+(a) Tj
+ET
+BT
+/F0 11 Tf
+330.154 687.445 Td
+(device) Tj
+ET
+BT
+/F0 11 Tf
+361.614 687.445 Td
+(can) Tj
+ET
+BT
+/F0 11 Tf
+379.632 687.445 Td
+(transmit) Tj
+ET
+BT
+/F0 11 Tf
+418.440 687.445 Td
+(again) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+68.013 656.667 Td
+(SYNOPSIS) Tj
+ET
+BT
+/F1 11 Tf
+81.763 641.278 Td
+(#include) Tj
+ET
+BT
+/F1 11 Tf
+124.245 641.278 Td
+(<sys/mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+167.178 641.278 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+172.678 641.278 Td
+(provider.h>) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+81.763 610.500 Td
+(void) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+81.763 595.111 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+101.310 595.111 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+106.810 595.111 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+115.973 595.111 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+121.473 595.111 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+153.868 595.111 Td
+(\() Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+157.531 595.111 Td
+(mac_handle_t) Tj
+ET
+BT
+/F2 11 Tf
+222.607 595.111 Td
+(mh) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+236.049 595.111 Td
+(\);) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+81.763 564.333 Td
+(void) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+81.763 548.944 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+101.310 548.944 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+106.810 548.944 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+115.973 548.944 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+121.473 548.944 Td
+(ring) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+141.031 548.944 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+146.531 548.944 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+178.926 548.944 Td
+(\() Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+182.589 548.944 Td
+(mac_handle_t) Tj
+ET
+BT
+/F2 11 Tf
+247.665 548.944 Td
+(mh) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+261.107 548.944 Td
+(,) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+266.607 548.944 Td
+(mac_ring_handle_t) Tj
+ET
+BT
+/F2 11 Tf
+355.520 548.944 Td
+(mrh) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+373.241 548.944 Td
+(\);) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+68.013 518.166 Td
+(INTERFACE) Tj
+ET
+BT
+/F1 11 Tf
+135.542 518.166 Td
+(LEVEL) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+81.763 502.777 Td
+(illumos) Tj
+ET
+BT
+/F0 11 Tf
+117.524 502.777 Td
+(DDI) Tj
+ET
+BT
+/F0 11 Tf
+139.821 502.777 Td
+(specific) Tj
+ET
+BT
+/F0 11 Tf
+81.763 471.999 Td
+(The) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+101.618 471.999 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+121.165 471.999 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+126.665 471.999 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+135.828 471.999 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+141.328 471.999 Td
+(ring) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+160.886 471.999 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+166.386 471.999 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+198.781 471.999 Td
+(\(\)) Tj
+ET
+BT
+/F0 11 Tf
+208.857 471.999 Td
+(function) Tj
+ET
+BT
+/F0 11 Tf
+248.270 471.999 Td
+(point) Tj
+ET
+BT
+/F0 11 Tf
+273.636 471.999 Td
+(is) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+283.723 471.999 Td
+(Evolving) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+325.292 471.999 Td
+(.) Tj
+ET
+BT
+/F0 11 Tf
+333.542 471.999 Td
+(API) Tj
+ET
+BT
+/F0 11 Tf
+354.013 471.999 Td
+(and) Tj
+ET
+BT
+/F0 11 Tf
+372.647 471.999 Td
+(ABI) Tj
+ET
+BT
+/F0 11 Tf
+394.339 471.999 Td
+(stability) Tj
+ET
+BT
+/F0 11 Tf
+432.542 471.999 Td
+(is) Tj
+ET
+BT
+/F0 11 Tf
+442.629 471.999 Td
+(not) Tj
+ET
+BT
+/F0 11 Tf
+459.437 471.999 Td
+(guaranteed.) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+68.013 441.221 Td
+(PARAMETERS) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+81.763 425.832 Td
+(mh) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+152.647 425.832 Td
+(The) Tj
+ET
+BT
+/F0 11 Tf
+172.502 425.832 Td
+(MAC) Tj
+ET
+BT
+/F0 11 Tf
+200.310 425.832 Td
+(handle) Tj
+ET
+BT
+/F0 11 Tf
+232.386 425.832 Td
+(obtained) Tj
+ET
+BT
+/F0 11 Tf
+273.020 425.832 Td
+(from) Tj
+ET
+BT
+/F0 11 Tf
+297.154 425.832 Td
+(a) Tj
+ET
+BT
+/F0 11 Tf
+304.788 425.832 Td
+(call) Tj
+ET
+BT
+/F0 11 Tf
+323.422 425.832 Td
+(to) Tj
+ET
+BT
+/F0 11 Tf
+334.730 425.832 Td
+(mac_register\(9F\).) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+81.763 395.054 Td
+(mrh) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+153.263 395.054 Td
+(The) Tj
+ET
+BT
+/F0 11 Tf
+173.118 395.054 Td
+(MAC) Tj
+ET
+BT
+/F0 11 Tf
+200.926 395.054 Td
+(ring) Tj
+ET
+BT
+/F0 11 Tf
+221.397 395.054 Td
+(handle) Tj
+ET
+BT
+/F0 11 Tf
+253.473 395.054 Td
+(obtained) Tj
+ET
+BT
+/F0 11 Tf
+294.107 395.054 Td
+(when) Tj
+ET
+BT
+/F0 11 Tf
+320.683 395.054 Td
+(the) Tj
+ET
+BT
+/F0 11 Tf
+336.875 395.054 Td
+(driver's) Tj
+ET
+BT
+/F0 11 Tf
+373.835 395.054 Td
+(ring) Tj
+ET
+BT
+/F0 11 Tf
+394.306 395.054 Td
+(entry) Tj
+ET
+BT
+/F0 11 Tf
+419.661 395.054 Td
+(point) Tj
+ET
+BT
+/F0 11 Tf
+445.027 395.054 Td
+(mr_rget\(9E\)) Tj
+ET
+BT
+/F0 11 Tf
+502.150 395.054 Td
+(was) Tj
+ET
+BT
+/F0 11 Tf
+153.263 379.665 Td
+(called.) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+68.013 348.887 Td
+(DESCRIPTION) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+81.763 333.498 Td
+(The) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+101.618 333.498 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+121.165 333.498 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+126.665 333.498 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+135.828 333.498 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+141.328 333.498 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+173.723 333.498 Td
+(\(\)) Tj
+ET
+BT
+/F0 11 Tf
+183.799 333.498 Td
+(function) Tj
+ET
+BT
+/F0 11 Tf
+223.212 333.498 Td
+(is) Tj
+ET
+BT
+/F0 11 Tf
+233.299 333.498 Td
+(used) Tj
+ET
+BT
+/F0 11 Tf
+256.212 333.498 Td
+(by) Tj
+ET
+BT
+/F0 11 Tf
+269.962 333.498 Td
+(device) Tj
+ET
+BT
+/F0 11 Tf
+301.422 333.498 Td
+(drivers) Tj
+ET
+BT
+/F0 11 Tf
+334.719 333.498 Td
+(to) Tj
+ET
+BT
+/F0 11 Tf
+346.027 333.498 Td
+(indicate) Tj
+ET
+BT
+/F0 11 Tf
+383.603 333.498 Td
+(that) Tj
+ET
+BT
+/F0 11 Tf
+402.853 333.498 Td
+(the) Tj
+ET
+BT
+/F0 11 Tf
+419.045 333.498 Td
+(device) Tj
+ET
+BT
+/F0 11 Tf
+450.505 333.498 Td
+(represented) Tj
+ET
+BT
+/F0 11 Tf
+503.954 333.498 Td
+(by) Tj
+ET
+BT
+/F0 11 Tf
+517.704 333.498 Td
+(the) Tj
+ET
+BT
+/F0 11 Tf
+81.763 318.109 Td
+(handle) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+113.839 318.109 Td
+(mh) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+130.031 318.109 Td
+(can) Tj
+ET
+BT
+/F0 11 Tf
+148.049 318.109 Td
+(transmit) Tj
+ET
+BT
+/F0 11 Tf
+186.857 318.109 Td
+(data) Tj
+ET
+BT
+/F0 11 Tf
+207.933 318.109 Td
+(again.) Tj
+ET
+BT
+/F0 11 Tf
+240.009 318.109 Td
+(It) Tj
+ET
+BT
+/F0 11 Tf
+249.480 318.109 Td
+(should) Tj
+ET
+BT
+/F0 11 Tf
+281.567 318.109 Td
+(only) Tj
+ET
+BT
+/F0 11 Tf
+303.875 318.109 Td
+(be) Tj
+ET
+BT
+/F0 11 Tf
+317.009 318.109 Td
+(called) Tj
+ET
+BT
+/F0 11 Tf
+346.027 318.109 Td
+(after) Tj
+ET
+BT
+/F0 11 Tf
+368.929 318.109 Td
+(the) Tj
+ET
+BT
+/F0 11 Tf
+385.121 318.109 Td
+(device) Tj
+ET
+BT
+/F0 11 Tf
+416.581 318.109 Td
+(driver) Tj
+ET
+BT
+/F0 11 Tf
+445.599 318.109 Td
+(has) Tj
+ET
+BT
+/F0 11 Tf
+463.012 318.109 Td
+(returned) Tj
+ET
+BT
+/F0 11 Tf
+502.414 318.109 Td
+(data) Tj
+ET
+BT
+/F0 11 Tf
+81.763 302.720 Td
+(from) Tj
+ET
+BT
+/F0 11 Tf
+105.897 302.720 Td
+(its) Tj
+ET
+BT
+/F0 11 Tf
+119.042 302.720 Td
+(mc_tx\(9E\)) Tj
+ET
+BT
+/F0 11 Tf
+168.839 302.720 Td
+(endpoint.) Tj
+ET
+BT
+/F0 11 Tf
+215.589 302.720 Td
+(For) Tj
+ET
+BT
+/F0 11 Tf
+233.618 302.720 Td
+(more) Tj
+ET
+BT
+/F0 11 Tf
+258.973 302.720 Td
+(information) Tj
+ET
+BT
+/F0 11 Tf
+313.665 302.720 Td
+(on) Tj
+ET
+BT
+/F0 11 Tf
+327.415 302.720 Td
+(when) Tj
+ET
+BT
+/F0 11 Tf
+353.991 302.720 Td
+(this) Tj
+ET
+BT
+/F0 11 Tf
+372.636 302.720 Td
+(should) Tj
+ET
+BT
+/F0 11 Tf
+404.723 302.720 Td
+(be) Tj
+ET
+BT
+/F0 11 Tf
+417.857 302.720 Td
+(called,) Tj
+ET
+BT
+/F0 11 Tf
+449.625 302.720 Td
+(see) Tj
+ET
+BT
+/F0 11 Tf
+466.422 302.720 Td
+(both) Tj
+ET
+BT
+/F0 11 Tf
+488.730 302.720 Td
+(mc_tx\(9E\)) Tj
+ET
+BT
+/F0 11 Tf
+81.763 287.331 Td
+(and) Tj
+ET
+BT
+/F0 11 Tf
+100.397 287.331 Td
+(the) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+116.589 287.331 Td
+(Transmitting) Tj
+ET
+BT
+/F2 11 Tf
+176.187 287.331 Td
+(Data) Tj
+ET
+BT
+/F2 11 Tf
+200.937 287.331 Td
+(and) Tj
+ET
+BT
+/F2 11 Tf
+220.187 287.331 Td
+(Back) Tj
+ET
+BT
+/F2 11 Tf
+244.926 287.331 Td
+(Pressure) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+286.781 287.331 Td
+(section) Tj
+ET
+BT
+/F0 11 Tf
+320.694 287.331 Td
+(of) Tj
+ET
+BT
+/F0 11 Tf
+332.607 287.331 Td
+(mac\(9E\).) Tj
+ET
+BT
+/F0 11 Tf
+81.763 256.553 Td
+(Device) Tj
+ET
+BT
+/F0 11 Tf
+115.665 256.553 Td
+(drivers) Tj
+ET
+BT
+/F0 11 Tf
+148.962 256.553 Td
+(should) Tj
+ET
+BT
+/F0 11 Tf
+181.049 256.553 Td
+(not) Tj
+ET
+BT
+/F0 11 Tf
+197.857 256.553 Td
+(hold) Tj
+ET
+BT
+/F0 11 Tf
+220.165 256.553 Td
+(any) Tj
+ET
+BT
+/F0 11 Tf
+238.799 256.553 Td
+(of) Tj
+ET
+BT
+/F0 11 Tf
+250.712 256.553 Td
+(their) Tj
+ET
+BT
+/F0 11 Tf
+273.625 256.553 Td
+(own) Tj
+ET
+BT
+/F0 11 Tf
+295.317 256.553 Td
+(locks) Tj
+ET
+BT
+/F0 11 Tf
+321.288 256.553 Td
+(when) Tj
+ET
+BT
+/F0 11 Tf
+347.864 256.553 Td
+(calling) Tj
+ET
+BT
+/F0 11 Tf
+380.556 256.553 Td
+(into) Tj
+ET
+BT
+/F0 11 Tf
+400.422 256.553 Td
+(this) Tj
+ET
+BT
+/F0 11 Tf
+419.067 256.553 Td
+(function.) Tj
+ET
+BT
+/F0 11 Tf
+463.980 256.553 Td
+(See) Tj
+ET
+BT
+/F0 11 Tf
+482.614 256.553 Td
+(the) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+498.806 256.553 Td
+(MAC) Tj
+ET
+BT
+/F2 11 Tf
+81.763 241.164 Td
+(Callbacks) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+128.513 241.164 Td
+(section) Tj
+ET
+BT
+/F0 11 Tf
+162.426 241.164 Td
+(of) Tj
+ET
+BT
+/F0 11 Tf
+174.339 241.164 Td
+(mac\(9E\)) Tj
+ET
+BT
+/F0 11 Tf
+214.962 241.164 Td
+(for) Tj
+ET
+BT
+/F0 11 Tf
+230.538 241.164 Td
+(more) Tj
+ET
+BT
+/F0 11 Tf
+255.893 241.164 Td
+(information.) Tj
+ET
+BT
+/F0 11 Tf
+81.763 210.386 Td
+(When) Tj
+ET
+BT
+/F0 11 Tf
+110.781 210.386 Td
+(a) Tj
+ET
+BT
+/F0 11 Tf
+118.415 210.386 Td
+(driver) Tj
+ET
+BT
+/F0 11 Tf
+147.433 210.386 Td
+(has) Tj
+ET
+BT
+/F0 11 Tf
+164.846 210.386 Td
+(negotiated) Tj
+ET
+BT
+/F0 11 Tf
+213.422 210.386 Td
+(the) Tj
+ET
+BT
+/F0 11 Tf
+229.614 210.386 Td
+(MAC_CAPAB_RINGS) Tj
+ET
+BT
+/F0 11 Tf
+338.096 210.386 Td
+(capability) Tj
+ET
+BT
+/F0 11 Tf
+384.230 210.386 Td
+(and) Tj
+ET
+BT
+/F0 11 Tf
+402.864 210.386 Td
+(indicated) Tj
+ET
+BT
+/F0 11 Tf
+445.940 210.386 Td
+(that) Tj
+ET
+BT
+/F0 11 Tf
+465.190 210.386 Td
+(it) Tj
+ET
+BT
+/F0 11 Tf
+474.056 210.386 Td
+(supports) Tj
+ET
+BT
+/F0 11 Tf
+81.763 194.997 Td
+(transmit) Tj
+ET
+BT
+/F0 11 Tf
+120.571 194.997 Td
+(groups,) Tj
+ET
+BT
+/F0 11 Tf
+156.013 194.997 Td
+(it) Tj
+ET
+BT
+/F0 11 Tf
+164.879 194.997 Td
+(must) Tj
+ET
+BT
+/F0 11 Tf
+189.024 194.997 Td
+(not) Tj
+ET
+BT
+/F0 11 Tf
+205.832 194.997 Td
+(use) Tj
+ET
+BT
+/F0 11 Tf
+223.245 194.997 Td
+(the) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+239.437 194.997 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+258.984 194.997 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+264.484 194.997 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+273.647 194.997 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+279.147 194.997 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+311.542 194.997 Td
+(\(\)) Tj
+ET
+BT
+/F0 11 Tf
+321.618 194.997 Td
+(function) Tj
+ET
+BT
+/F0 11 Tf
+361.031 194.997 Td
+(and) Tj
+ET
+BT
+/F0 11 Tf
+379.665 194.997 Td
+(should) Tj
+ET
+BT
+/F0 11 Tf
+411.752 194.997 Td
+(instead) Tj
+ET
+BT
+/F0 11 Tf
+445.665 194.997 Td
+(call) Tj
+ET
+BT
+/F0 11 Tf
+464.299 194.997 Td
+(the) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+81.763 179.608 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+101.310 179.608 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+106.810 179.608 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+115.973 179.608 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+121.473 179.608 Td
+(ring) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+141.031 179.608 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+146.531 179.608 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+178.926 179.608 Td
+(\(\)) Tj
+ET
+BT
+/F0 11 Tf
+189.002 179.608 Td
+(function) Tj
+ET
+BT
+/F0 11 Tf
+228.415 179.608 Td
+(targeting) Tj
+ET
+BT
+/F0 11 Tf
+270.270 179.608 Td
+(a) Tj
+ET
+BT
+/F0 11 Tf
+277.904 179.608 Td
+(specific) Tj
+ET
+BT
+/F0 11 Tf
+314.864 179.608 Td
+(ring) Tj
+ET
+BT
+/F0 11 Tf
+335.335 179.608 Td
+(instead.) Tj
+ET
+BT
+/F0 11 Tf
+374.748 179.608 Td
+(The) Tj
+ET
+BT
+/F0 11 Tf
+394.603 179.608 Td
+(ring) Tj
+ET
+BT
+/F0 11 Tf
+415.074 179.608 Td
+(that) Tj
+ET
+BT
+/F0 11 Tf
+434.324 179.608 Td
+(is) Tj
+ET
+BT
+/F0 11 Tf
+444.411 179.608 Td
+(being) Tj
+ET
+BT
+/F0 11 Tf
+471.603 179.608 Td
+(updated) Tj
+ET
+BT
+/F0 11 Tf
+509.179 179.608 Td
+(is) Tj
+ET
+BT
+/F0 11 Tf
+81.763 164.219 Td
+(specified) Tj
+ET
+BT
+/F0 11 Tf
+124.223 164.219 Td
+(by) Tj
+ET
+BT
+/F0 11 Tf
+137.973 164.219 Td
+(the) Tj
+ET
+BT
+/F0 11 Tf
+154.165 164.219 Td
+(ring) Tj
+ET
+BT
+/F0 11 Tf
+174.636 164.219 Td
+(handle) Tj
+ET
+BT
+/F0 11 Tf
+206.712 164.219 Td
+(passed) Tj
+ET
+BT
+/F0 11 Tf
+238.788 164.219 Td
+(in) Tj
+ET
+BT
+/F0 11 Tf
+250.096 164.219 Td
+(the) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+266.288 164.219 Td
+(mrh) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+286.759 164.219 Td
+(argument.) Tj
+ET
+BT
+/F0 11 Tf
+336.556 164.219 Td
+(The) Tj
+ET
+BT
+/F0 11 Tf
+356.411 164.219 Td
+(ring) Tj
+ET
+BT
+/F0 11 Tf
+376.882 164.219 Td
+(should) Tj
+ET
+BT
+/F0 11 Tf
+408.969 164.219 Td
+(have) Tj
+ET
+BT
+/F0 11 Tf
+432.487 164.219 Td
+(previously) Tj
+ET
+BT
+/F0 11 Tf
+481.679 164.219 Td
+(returned) Tj
+ET
+BT
+/F0 11 Tf
+81.763 148.830 Td
+(frames) Tj
+ET
+BT
+/F0 11 Tf
+114.444 148.830 Td
+(from) Tj
+ET
+BT
+/F0 11 Tf
+138.578 148.830 Td
+(its) Tj
+ET
+BT
+/F0 11 Tf
+151.723 148.830 Td
+(mri_tx\(9E\)) Tj
+ET
+BT
+/F0 11 Tf
+203.357 148.830 Td
+(entry) Tj
+ET
+BT
+/F0 11 Tf
+228.712 148.830 Td
+(point) Tj
+ET
+BT
+/F0 11 Tf
+254.078 148.830 Td
+(to) Tj
+ET
+BT
+/F0 11 Tf
+265.386 148.830 Td
+(indicate) Tj
+ET
+BT
+/F0 11 Tf
+302.962 148.830 Td
+(that) Tj
+ET
+BT
+/F0 11 Tf
+322.212 148.830 Td
+(it) Tj
+ET
+BT
+/F0 11 Tf
+331.078 148.830 Td
+(was) Tj
+ET
+BT
+/F0 11 Tf
+350.933 148.830 Td
+(blocked.) Tj
+ET
+BT
+/F0 11 Tf
+81.763 118.052 Td
+(In) Tj
+ET
+BT
+/F0 11 Tf
+93.676 118.052 Td
+(all) Tj
+ET
+BT
+/F0 11 Tf
+107.426 118.052 Td
+(other) Tj
+ET
+BT
+/F0 11 Tf
+132.781 118.052 Td
+(respects,) Tj
+ET
+BT
+/F0 11 Tf
+173.712 118.052 Td
+(the) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+189.904 118.052 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+209.451 118.052 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+214.951 118.052 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+224.114 118.052 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+229.614 118.052 Td
+(ring) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+249.172 118.052 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+254.672 118.052 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+287.067 118.052 Td
+(\(\)) Tj
+ET
+BT
+/F0 11 Tf
+297.143 118.052 Td
+(function) Tj
+ET
+BT
+/F0 11 Tf
+336.556 118.052 Td
+(is) Tj
+ET
+BT
+/F0 11 Tf
+346.643 118.052 Td
+(similar) Tj
+ET
+BT
+/F0 11 Tf
+379.951 118.052 Td
+(to) Tj
+ET
+BT
+/F0 11 Tf
+391.259 118.052 Td
+(the) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+407.451 118.052 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+426.998 118.052 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+432.498 118.052 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+441.661 118.052 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+447.161 118.052 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+479.556 118.052 Td
+(\(\)) Tj
+ET
+BT
+/F0 11 Tf
+489.632 118.052 Td
+(function.) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+68.013 739.068 Td
+(MAC_TX_UPDATE\(9F\)) Tj
+ET
+BT
+/F0 11 Tf
+243.749 739.068 Td
+(Kernel) Tj
+ET
+BT
+/F0 11 Tf
+276.430 739.068 Td
+(Functions) Tj
+ET
+BT
+/F0 11 Tf
+322.575 739.068 Td
+(for) Tj
+ET
+BT
+/F0 11 Tf
+338.151 739.068 Td
+(Drivers) Tj
+ET
+BT
+/F0 11 Tf
+431.079 739.068 Td
+(MAC_TX_UPDATE\(9F\)) Tj
+ET
+BT
+/F0 11 Tf
+68.013 36.234 Td
+(illumos) Tj
+ET
+BT
+/F0 11 Tf
+277.651 36.234 Td
+(July) Tj
+ET
+BT
+/F0 11 Tf
+298.738 36.234 Td
+(24,) Tj
+ET
+BT
+/F0 11 Tf
+315.238 36.234 Td
+(2017) Tj
+ET
+BT
+/F0 11 Tf
+511.115 36.234 Td
+(illumos) Tj
+ET
+ET
+endstream
+endobj
+8 0 obj
+15243
+endobj
+9 0 obj
+<<
+/ProcSet [/PDF /Text]
+/Font <<
+/F0 3 0 R
+/F1 4 0 R
+/F2 5 0 R
+/F3 6 0 R
+>>
+>>
+10 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/Resources 9 0 R
+/Contents 7 0 R
+>>
+endobj
+11 0 obj
+<<
+/Length 12 0 R
+>>
+stream
+BT
+/F1 11 Tf
+68.013 702.834 Td
+(CONTEXT) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+81.763 687.445 Td
+(The) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+101.618 687.445 Td
+(mac) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+121.165 687.445 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+126.665 687.445 Td
+(tx) Tj
+ET
+/F2 11 Tf
+BT
+/F2 11 Tf
+135.828 687.445 Td
+(_) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+141.328 687.445 Td
+(update) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+173.723 687.445 Td
+(\(\)) Tj
+ET
+BT
+/F0 11 Tf
+183.799 687.445 Td
+(function) Tj
+ET
+BT
+/F0 11 Tf
+223.212 687.445 Td
+(may) Tj
+ET
+BT
+/F0 11 Tf
+244.904 687.445 Td
+(be) Tj
+ET
+BT
+/F0 11 Tf
+258.038 687.445 Td
+(called) Tj
+ET
+BT
+/F0 11 Tf
+287.056 687.445 Td
+(from) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+311.190 687.445 Td
+(user) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+331.353 687.445 Td
+(,) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+336.853 687.445 Td
+(kernel) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+366.795 687.445 Td
+(,) Tj
+ET
+BT
+/F0 11 Tf
+372.295 687.445 Td
+(or) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+384.208 687.445 Td
+(interrupt) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+430.342 687.445 Td
+(context.) Tj
+ET
+/F1 11 Tf
+BT
+/F1 11 Tf
+68.013 656.667 Td
+(SEE) Tj
+ET
+BT
+/F1 11 Tf
+91.553 656.667 Td
+(ALSO) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+81.763 641.278 Td
+(mac\(9E\),) Tj
+ET
+BT
+/F0 11 Tf
+125.136 641.278 Td
+(mac_capab_rings\(9E\),) Tj
+ET
+BT
+/F0 11 Tf
+227.161 641.278 Td
+(mac_tx\(9E\),) Tj
+ET
+BT
+/F0 11 Tf
+284.592 641.278 Td
+(mc_tx\(9E\),) Tj
+ET
+BT
+/F0 11 Tf
+337.139 641.278 Td
+(mr_rget\(9E\),) Tj
+ET
+BT
+/F0 11 Tf
+397.012 641.278 Td
+(mri_tx\(9E\),) Tj
+ET
+BT
+/F0 11 Tf
+451.396 641.278 Td
+(mac_register\(9F\)) Tj
+ET
+/F0 11 Tf
+BT
+/F0 11 Tf
+68.013 739.068 Td
+(MAC_TX_UPDATE\(9F\)) Tj
+ET
+BT
+/F0 11 Tf
+243.749 739.068 Td
+(Kernel) Tj
+ET
+BT
+/F0 11 Tf
+276.430 739.068 Td
+(Functions) Tj
+ET
+BT
+/F0 11 Tf
+322.575 739.068 Td
+(for) Tj
+ET
+BT
+/F0 11 Tf
+338.151 739.068 Td
+(Drivers) Tj
+ET
+BT
+/F0 11 Tf
+431.079 739.068 Td
+(MAC_TX_UPDATE\(9F\)) Tj
+ET
+BT
+/F0 11 Tf
+68.013 36.234 Td
+(illumos) Tj
+ET
+BT
+/F0 11 Tf
+277.651 36.234 Td
+(July) Tj
+ET
+BT
+/F0 11 Tf
+298.738 36.234 Td
+(24,) Tj
+ET
+BT
+/F0 11 Tf
+315.238 36.234 Td
+(2017) Tj
+ET
+BT
+/F0 11 Tf
+511.115 36.234 Td
+(illumos) Tj
+ET
+ET
+endstream
+endobj
+12 0 obj
+2069
+endobj
+13 0 obj
+<<
+/ProcSet [/PDF /Text]
+/Font <<
+/F0 3 0 R
+/F1 4 0 R
+/F2 5 0 R
+/F3 6 0 R
+>>
+>>
+14 0 obj
+<<
+/Type /Page
+/Parent 2 0 R
+/Resources 13 0 R
+/Contents 11 0 R
+>>
+endobj
+2 0 obj
+<<
+/Type /Pages
+/MediaBox [0 0 612 790]
+/Count 2
+/Kids [ 10 0 R 14 0 R]
+>>
+endobj
+15 0 obj
+<<
+/Type /Catalog
+/Pages 2 0 R
+>>
+xref
+0 16
+0000000000 65535 f 
+0000000009 00000 n 
+0000018136 00000 n 
+0000000030 00000 n 
+0000000105 00000 n 
+0000000179 00000 n 
+0000000255 00000 n 
+0000000335 00000 n 
+0000015630 00000 n 
+0000015651 00000 n 
+0000015739 00000 n 
+0000015820 00000 n 
+0000017943 00000 n 
+0000017964 00000 n 
+0000018053 00000 n 
+0000018226 00000 n 
+trailer
+<<
+/Size 16
+/Root 15 0 R
+/Info 1 0 R
+>>
+startxref
+18269
+%%EOF
