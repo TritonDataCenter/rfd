@@ -1,5 +1,6 @@
 :author: Han Solo <han@example.com>; Frodo Baggins <frodo@example.com>
-:revremark: State: predraft
+:state: predraft
+:revremark: State: {state}
 
 :showtitle:
 :toc: left
@@ -13,6 +14,5 @@
 
     Copyright 2017 <contribution>
 ////
-
 
 # RFD <Number> <Title>
