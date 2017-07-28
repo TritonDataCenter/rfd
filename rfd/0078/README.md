@@ -1016,18 +1016,18 @@ The recommendation in this case is to handle the error event and to fall back to
 a behavior that is reasonable for users and operators.
 
 Using the work done as part of RFD 26 as an example, the new VOLAPI service
-needs to be able to search VM objects based on a new `required_nfs_volumes`
+needs to be able to search VM objects based on a new `volumes`
 field.
 
 An index will be added on this field in VMAPI, and all `ListVms` requests
 handled by VMAPI will set the `requireIndexes` option for `findObjects` to
-`true` _only_ when the `required_nfs_volumes` parameter is sent as part of the
+`true` _only_ when the `volumes` parameter is sent as part of the
 request's parameters.
 
 When this request emits an `'UnhandledOptionsError'` error event because the
 moray server is not at a version that supports checking whether indexes are
 usable, or a `'NotIndexedError'` error because the reindexing process for the
-`required_nfs_volumes` field is not completed, VMAPI will respond with a HTTP
+`volumes` field is not completed, VMAPI will respond with a HTTP
 503 `UnsupportedSearchError` error.
 
 The consumer of VMAPI, in this case VOLAPI, will fall back to sending a HTTP 503
