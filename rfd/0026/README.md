@@ -930,7 +930,7 @@ The `predicate` parameter is a JSON string that can be used to build a LDAP
 filter to search on the following indexed properties:
 
 * `name`
-* `billing_id` (mvp milestone)
+* `billing_id` (volume packages milestone)
 * `type`
 * `state`
 * `tags` (mvp milestone)
@@ -1537,7 +1537,7 @@ or "VOLAPI".
 | name            | String             | master-integration | Allows to filter volumes by name. |
 | size            | Stringified Number | master-integration | Allows to filter volumes by size. |
 | owner_uuid      | String             | master-integration | When not empty, only volume objects with an owner whose UUID is `owner_uuid` will be included in the output |
-| billing_id      | String             | mvp                | When not empty, only volume objects with a billing\_id whose UUID is `billing_id` will be included in the output |
+| billing_id (volume packages milestone)      | String             | mvp                | When not empty, only volume objects with a billing\_id whose UUID is `billing_id` will be included in the output |
 | type            | String             | master-integration | Allows to filter volumes by type, e.g `type=tritonnfs`. |
 | state           | String             | master-integration | Allows to filter volumes by state, e.g `state=failed`. |
 | predicate       | String             | master-integration | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
@@ -1567,7 +1567,7 @@ on the following indexed properties:
 
 * `name`
 * `owner_uuid`
-* `billing_id` (mvp milestone)
+* `billing_id` (volume packages milestone)
 * `type`
 * `size`
 * `state`
@@ -1929,7 +1929,7 @@ Volumes are be represented as objects that share a common set of properties:
   volume, the owner is the user who created the volume using the `docker volume
   create` command.
 
-* `billing_id`: the UUID of the [volume
+* `billing_id` (volume packages milestone): the UUID of the [volume
   package](#introduction-of-volume-packages) used when creating the volume.
 
 * `name`: the volume's name. It must be unique for a given user. This is similar
