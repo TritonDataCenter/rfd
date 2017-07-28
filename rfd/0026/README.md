@@ -63,7 +63,7 @@ state: draft
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
         - [GetVolume GET /volumes/id](#getvolume-get-volumesid)
-        - [GetVolumeReferences GET /volumes/id/references](#getvolumereferences-get-volumesidreferences)
+        - [GetVolumeReferences GET /volumes/id/references (MVP milestone)](#getvolumereferences-get-volumesidreferences-mvp-milestone)
         - [DeleteVolume DELETE /volumes/id](#deletevolume-delete-volumesid)
         - [UpdateVolume POST /volumes/id](#updatevolume-post-volumesid)
         - [ListVolumeSizes GET /volumesizes](#listvolumesizes-get-volumesizes)
@@ -114,12 +114,14 @@ state: draft
       - [ListVolumeSizes GET /volumesizes](#listvolumesizes-get-volumesizes-1)
         - [Input](#input-7)
         - [Output](#output-8)
+      - [GetVolumeReferences GET /volumes/uuid/references](#getvolumereferences-get-volumesuuidreferences)
+        - [Output](#output-9)
       - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork (MVP milestone)](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork-mvp-milestone)
         - [Input](#input-8)
-        - [Output](#output-9)
+        - [Output](#output-10)
       - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork (MVP milestone)](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-mvp-milestone)
         - [Input](#input-9)
-        - [Output](#output-10)
+        - [Output](#output-11)
       - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
@@ -1049,20 +1051,19 @@ determine when a volume being created is ready to be used.
 
 A [volume object](#volume-objects) representing the volume with UUID `id`.
 
-##### GetVolumeReferences GET /volumes/id/references
+##### GetVolumeReferences GET /volumes/id/references (MVP milestone)
 
-`GetVolumeReferences` can be used to list resources that are using the volume
-with UUID `volume-uuid`.
+`GetVolumeReferences` can be used to list VMs that are using the volume
+with ID `id`.
 
 ###### Output
 
-A list of URI pointing to resources (not necessarily VMs) that are using the
-volume with UUID `volume-uuid`:
+A list of VM UUIDs that are using the volume with ID `id`:
 
 ```
 [
-   "http://api.triton-datacenter.tld/login/machines/some-vm-uuid/",
-   "http://api.triton-datacenter.tld/login/machines/some-other-vm-uuid/"
+   "a495d72a-2498-8d49-a042-87b222a8b63c",
+   "b135a72a-1438-2829-aa42-17b231a6b63e"
 ]
 ```
 
@@ -1750,6 +1751,22 @@ The response is an array of objects having two properties:
   clearer for a human to understand. For instance, for a `size` value of
   `10240`, which would mean `10240 mebibytes`, the value of the `description`
   property would be `10GiB`
+
+#### GetVolumeReferences GET /volumes/uuid/references
+
+`GetVolumeReferences` can be used to list VMs that are using the volume with
+UUID `uuid`.
+
+##### Output
+
+A list of VM UUIDs that are using the volume with UUID `uuid`:
+
+```
+[
+   "a495d72a-2498-8d49-a042-87b222a8b63c",
+   "b135a72a-1438-2829-aa42-17b231a6b63e"
+]
+```
 
 #### AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork (MVP milestone)
 
