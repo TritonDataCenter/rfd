@@ -8,6 +8,8 @@ state: draft
 **Table of Contents**
 
 - [RFD 26 Network Shared Storage for Triton](#rfd-26-network-shared-storage-for-triton)
+  - [Conventions used in this document](#conventions-used-in-this-document)
+    - [Milestones](#milestones)
   - [Introduction](#introduction)
   - [Current prototype](#current-prototype)
   - [Use cases](#use-cases)
@@ -24,7 +26,7 @@ state: draft
       - [List](#list)
       - [Get](#get)
       - [Delete](#delete)
-      - [Adding a new `triton report` command](#adding-a-new-triton-report-command)
+      - [Adding a new `triton report` command (MVP milestone)](#adding-a-new-triton-report-command-mvp-milestone)
     - [Docker](#docker)
       - [Interaction with local volumes](#interaction-with-local-volumes)
       - [Overview](#overview-1)
@@ -65,15 +67,15 @@ state: draft
         - [DeleteVolume DELETE /volumes/id](#deletevolume-delete-volumesid)
         - [UpdateVolume POST /volumes/id](#updatevolume-post-volumesid)
         - [ListVolumeSizes GET /volumesizes](#listvolumesizes-get-volumesizes)
-        - [AttachVolumeToNetwork POST /volumes/id/attachtonetwork](#attachvolumetonetwork-post-volumesidattachtonetwork)
-        - [DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork](#detachvolumefromnetwork-post-volumesiddetachfromnetwork)
-        - [CreateVolumeSnapshot POST /volumes/id/snapshot](#createvolumesnapshot-post-volumesidsnapshot)
+        - [AttachVolumeToNetwork POST /volumes/id/attachtonetwork (MVP milestone)](#attachvolumetonetwork-post-volumesidattachtonetwork-mvp-milestone)
+        - [DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork (MVP milestone)](#detachvolumefromnetwork-post-volumesiddetachfromnetwork-mvp-milestone)
+        - [CreateVolumeSnapshot POST /volumes/id/snapshot (Snapshot milestone)](#createvolumesnapshot-post-volumesidsnapshot-snapshot-milestone)
         - [GetVolumeSnapshot GET /volumes/id/snapshots/snapshot-name](#getvolumesnapshot-get-volumesidsnapshotssnapshot-name)
-        - [RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot](#rollbacktovolumesnapshot-post-volumesidrollbacktosnapshot)
-        - [ListVolumeSnapshots GET /volume/id/snapshots](#listvolumesnapshots-get-volumeidsnapshots)
-        - [DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name](#deletevolumesnapshot-delete-volumesidsnapshotssnapshot-name)
-        - [ListVolumePackages GET /volumepackages](#listvolumepackages-get-volumepackages)
-        - [GetVolumePackage GET /volumepackages/volume-package-uuid](#getvolumepackage-get-volumepackagesvolume-package-uuid)
+        - [RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot (Snapshot milestone)](#rollbacktovolumesnapshot-post-volumesidrollbacktosnapshot-snapshot-milestone)
+        - [ListVolumeSnapshots GET /volume/id/snapshots (Snapshot milestone)](#listvolumesnapshots-get-volumeidsnapshots-snapshot-milestone)
+        - [DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name (Snapshot milestone)](#deletevolumesnapshot-delete-volumesidsnapshotssnapshot-name-snapshot-milestone)
+        - [ListVolumePackages GET /volumepackages (Volume packages milestone)](#listvolumepackages-get-volumepackages-volume-packages-milestone)
+        - [GetVolumePackage GET /volumepackages/volume-package-uuid (Volume packages milestone)](#getvolumepackage-get-volumepackagesvolume-package-uuid-volume-packages-milestone)
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
@@ -84,15 +86,15 @@ state: draft
         - [Output](#output)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
     - [Changes to PAPI](#changes-to-papi)
-      - [Introduction of volume packages](#introduction-of-volume-packages)
+      - [Introduction of volume packages (Volume packages milestone)](#introduction-of-volume-packages-volume-packages-milestone)
         - [Storage of volume packages](#storage-of-volume-packages)
         - [Naming conventions](#naming-conventions)
-      - [CreateVolumePackage POST /volumepackages](#createvolumepackage-post-volumepackages)
+      - [CreateVolumePackage POST /volumepackages (Volume packages milestone)](#createvolumepackage-post-volumepackages-volume-packages-milestone)
         - [Input](#input-1)
         - [Output](#output-1)
-      - [GetVolumePackage](#getvolumepackage)
+      - [GetVolumePackage (Volume packages milestone)](#getvolumepackage-volume-packages-milestone)
         - [Output](#output-2)
-      - [DeleteVolumePackage](#deletevolumepackage)
+      - [DeleteVolumePackage (Volume packages milestone)](#deletevolumepackage-volume-packages-milestone)
     - [New `VOLAPI` service and API](#new-volapi-service-and-api)
       - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
         - [Input](#input-2)
@@ -112,13 +114,13 @@ state: draft
       - [ListVolumeSizes GET /volumesizes](#listvolumesizes-get-volumesizes-1)
         - [Input](#input-7)
         - [Output](#output-8)
-      - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork)
+      - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork (MVP milestone)](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork-mvp-milestone)
         - [Input](#input-8)
         - [Output](#output-9)
-      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork)
+      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork (MVP milestone)](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-mvp-milestone)
         - [Input](#input-9)
         - [Output](#output-10)
-      - [Snapshots](#snapshots)
+      - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
         - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name)
@@ -133,20 +135,31 @@ state: draft
         - [Persistent storage](#persistent-storage)
       - [Volumes state machine](#volumes-state-machine)
       - [Data retention policy](#data-retention-policy)
-        - [Reaping failed and deleted volumes](#reaping-failed-and-deleted-volumes)
-  - [Snapshots](#snapshots-1)
+        - [Reaping failed volumes](#reaping-failed-volumes)
+  - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone-1)
     - [Use case](#use-case)
     - [Implementation](#implementation)
       - [Limits](#limits)
   - [Support for operating shared volumes](#support-for-operating-shared-volumes)
-    - [New sdc-pkgadm command](#new-sdc-pkgadm-command)
+    - [New sdc-pkgadm command (Volume packages milestone)](#new-sdc-pkgadm-command-volume-packages-milestone)
       - [Adding new volume packages](#adding-new-volume-packages)
       - [Activating/deactivating a volume package](#activatingdeactivating-a-volume-package)
-    - [New `sdc-voladm` command](#new-sdc-voladm-command)
+    - [New `sdc-voladm` command (Operators milestone)](#new-sdc-voladm-command-operators-milestone)
       - [Listing shared volume zones](#listing-shared-volume-zones)
       - [Restarting shared volume zones](#restarting-shared-volume-zones)
       - [Updating shared volume zones](#updating-shared-volume-zones)
       - [Deleting shared volume zones](#deleting-shared-volume-zones)
+  - [Integration plan](#integration-plan)
+    - [Milestones](#milestones-1)
+      - [Master integration](#master-integration)
+      - [MVP](#mvp)
+      - [Operators](#operators)
+      - [Volume packages](#volume-packages)
+      - [Snapshots](#snapshots)
+      - [Affinity](#affinity)
+    - [Setting up a DC to support NFS volumes](#setting-up-a-dc-to-support-nfs-volumes)
+      - [Turning it off](#turning-it-off)
+    - [Integration of the "master integration" milestone](#integration-of-the-master-integration-milestone)
   - [Open questions](#open-questions)
     - [Allocation/placement](#allocationplacement)
       - [What happens when mounting of a volume fails?](#what-happens-when-mounting-of-a-volume-fails)
@@ -164,33 +177,54 @@ state: draft
 
 # RFD 26 Network Shared Storage for Triton
 
+## Conventions used in this document
+
+### Milestones
+
+This document describes features and changes that are not meant to be integrated
+at the same time, but instead progressively, in stages. Each stage is
+represented by a milestone that has a name.
+
+When no milestone is mentioned when describing a change or new feature, readers
+should assume that they belong to the default milestone that will be integrated
+first (named "master integration"). Otherwise, the name of the milestone should
+be mentioned clearly.
+
+See the [integration plan](#integration-plan) for more details about milestones
+and when they are planned to be integrated.
+
 ## Introduction
 
-In general, support for network shared storage is antithetical to the Triton (formerly SmartDataCenter or SDC)
-philosophy. However, for some customers and applications it is a requirement.
-In particular, network shared storage is needed to support Docker volumes in
-configurations where the Triton zones are deployed on different compute nodes.
+In general, support for network shared storage is antithetical to the Triton
+(formerly SmartDataCenter or SDC) philosophy. However, for some customers and
+applications it is a requirement. In particular, network shared storage is
+needed to support Docker volumes in configurations where the Triton zones are
+deployed on different compute nodes.
 
 ## Current prototype
 
 A prototype for what this RFD describes is available at
-https://github.com/joyent/sdc-volapi. It implements a minimal set of endpoints
-for [a new Volumes API service](#new-volapi-service-and-api).
+https://github.com/joyent/sdc-volapi. It implements [a new Volumes API
+service](#new-volapi-service-and-api).
 
 Its [`tools/setup/coal-setup.sh` script](https://github.com/joyent/sdc-volapi/blob/master/tools/setup/coal-setup.sh)
-also installs an image of the sdc-docker service that contains changes to
-support the `tritonnfs` Docker volume driver to allow Docker users to create and
-mount NFS shared volumes.
+also installs:
 
-This prototype is meant to be used on a COAL (Cloud On A Laptop) Triton setup,
-and not in a production environment, or any environment where data integrity
-matters.
+* an image of the sdc-docker service that contains changes to support the
+  `tritonnfs` Docker volume driver to allow Docker users to create and mount NFS
+  shared volumes
+
+* an image of the CloudAPI service that contains changes to support creating NFS
+  volumes using CloudAPI
+
+In addition to that, joyent/node-triton's master branch has support for creating
+and managing NFS volumes.
+
+This prototype is _not_ meant to be used in a production environment, or any
+environment where data integrity matters.
 
 See its [README](https://github.com/joyent/sdc-volapi/blob/master/README.md) for
 more details on how to install and use it.
-
-It is used both as a proof of concept and as a foundation upon which to build a
-long term solution for the problems that this RFD describes.
 
 ## Use cases
 
@@ -280,7 +314,7 @@ works and makes sense to him.
 2. Support a maximum shared file system size of 1TB.
 
 3. Although initially targeted toward Docker volume support, the solution should
-be applicable to non-Docker containers as well.
+   be applicable to non-Docker containers as well.
 
 ### Non-requirements
 
@@ -312,13 +346,14 @@ triton volume create|list|get|delete
 
 triton volume create --opt network=mynetwork --name wp-uploads --size 100g
 triton volume create -n wp-uploads -s 100g
-triton volume create -n wp-uploads nfs1-100g
+triton volume create -n wp-uploads nfs1-100g (volume packages milestone)
 ```
 
 #### Create
 
 ```
-triton volume create --opt network=mynetwork --name wp-uploads --size 100g -e affinity:container!=wp-server
+triton volume create --opt network=mynetwork --name wp-uploads --size 100g
+triton volume create --opt network=mynetwork --name wp-uploads --size 100g -e affinity:container!=wp-server (affinity milestone)
 ```
 
 ##### Options
@@ -354,9 +389,7 @@ endpoint](#listvolumepackages-get-volumepackages).
 
 The network to which this shared volume will be attached.
 
-###### Affinity
-
-_This functionality is not required for the MVP._
+###### Affinity (Affinity milestone)
 
 See [Expressing locality with affinity
 filters](#expressing-locality-with-affinity-filters) below.
@@ -394,10 +427,10 @@ but not if only non-Docker containers use it. In the latter case, it is the
 responsibility the shared volume's owner to determine whenever it is
 appropriate to delete it without impacting other compute containers.
 
-#### Adding a new `triton report` command
+#### Adding a new `triton report` command (MVP milestone)
 
 Creating a shared volume results in creating a VM object and an instance with
-`container_type: 'volume'`. As such, a user could list all their "resources"
+`smartdc_role: 'nfsserver'`. As such, a user could list all their "resources"
 (including instances _and_ shared volumes) by listing instances.
 
 However, the fact that shared volumes have a 1 to 1 relationship with their
@@ -443,9 +476,10 @@ docker run -d -v wp-uploads:/var/wp-uploads wp-server
 ```
 
 The `tritonnfs` driver is the default driver on Triton. If not specified, the
-network to which a newly created volume is attached is the default nic. So
-more typically, creating a shared volume can be done using the following
-shorter command line:
+network to which a newly created volume is attached is the default fabric
+network.
+
+Creating a shared volume can be done using the following shorter command line:
 
 ```
 docker volume create --name wp-uploads --opt size=100g
@@ -906,7 +940,7 @@ the predicate and the non-predicate query parameters. For example, if your
 predicate includes any checks on the `name` field, passing the `name=` query
 paramter is an error.
 
-####### Searching by tags
+####### Searching by tags (MVP milestone)
 
 Note: searching for tags is to be implemented as part of the mvp milestone.
 
@@ -988,7 +1022,7 @@ A list of volume objects of the following form:
 | size          | Number       | No        | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes (10 gibibytes). |
 | type          | String       | Yes       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | Yes       | A list of UUIDs representing networks on which the volume is reachable. These networks must be fabric networks owned by the user sending the request. |
-| labels        | Object       | No        | An object representing key/value pairs that correspond to label names/values. |
+| labels (mvp milestone)        | Object       | No        | An object representing key/value pairs that correspond to label names/values. |
 
 ###### Output
 
@@ -1074,7 +1108,7 @@ shared volume:
 | ------------------- | ------------ | --------------------------------|
 | id            | String       | The id of the volume object       |
 | name | String | The new name of the volume with id `id` |
-| tags | Array of string | The new tags for the volume with id `id` |
+| tags (mvp milestone) | Array of string | The new tags for the volume with id `id` |
 
 Sending any other input parameter will result in an error. Updating other
 properties of a volume, such as the networks it's attached to, must be performed
@@ -1104,9 +1138,7 @@ The response is an array of objects having two properties:
   `10240`, which would mean `10240 mebibytes`, the value of the `description`
   property would be `10GiB`
 
-##### AttachVolumeToNetwork POST /volumes/id/attachtonetwork
-
-_This functionality is not required for the MVP._
+##### AttachVolumeToNetwork POST /volumes/id/attachtonetwork (MVP milestone)
 
 `AttachVolumeToNetwork` can be used to make a volume reachable on a given
 _fabric_ network. Non-fabric networks are not supported, and passing a
@@ -1123,9 +1155,7 @@ _fabric_ network. Non-fabric networks are not supported, and passing a
 
 A [volume object](#volume-objects) representing the volume with ID `id`.
 
-##### DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork
-
-_This functionality is not required for the MVP._
+##### DetachVolumeFromNetwork POST /volumes/id/detachfromnetwork (MVP milestone)
 
 `DetachVolumeFromNetwork` can be used to make a volume that used to be reachable
 on a given network not reachable on that network anymore.
@@ -1141,7 +1171,7 @@ on a given network not reachable on that network anymore.
 
 A [volume object](#volume-objects) representing the volume with ID `id`.
 
-##### CreateVolumeSnapshot POST /volumes/id/snapshot
+##### CreateVolumeSnapshot POST /volumes/id/snapshot (Snapshot milestone)
 
 ###### Input
 
@@ -1162,7 +1192,7 @@ can fail as no space might be left in the corresponding zfs dataset.
 The [snapshot object](#snapshot-objects) with name `snapshot-name` for the
 volume with ID `id`.
 
-##### RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot
+##### RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot (Snapshot milestone)
 
 Note that rolling back a NFS shared volume to a given snapshot requires its
 underlying storage VM to be stopped and restarted.
@@ -1180,7 +1210,7 @@ The volume object that represents the volume with ID `id` with its state
 property set to `rolling_back`. When the volume has been rolled back to the
 snapshot with name `name`, the volume's `state` property is `ready`.
 
-##### ListVolumeSnapshots GET /volume/id/snapshots
+##### ListVolumeSnapshots GET /volume/id/snapshots (Snapshot milestone)
 
 ###### Input
 
@@ -1193,7 +1223,7 @@ snapshot with name `name`, the volume's `state` property is `ready`.
 A list of [snapshot objects](#snapshot-objects) that were created from the
 volume with ID `id`.
 
-##### DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name
+##### DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name (Snapshot milestone)
 
 ###### Output
 
@@ -1202,9 +1232,7 @@ This volume object can be polled to determine when the snapshot with name
 `snapshot-name` is not present in the `snapshots` list anymore, which means the
 snapshot was deleted successfully.
 
-##### ListVolumePackages GET /volumepackages
-
-_This functionality is not required for the MVP._
+##### ListVolumePackages GET /volumepackages (Volume packages milestone)
 
 ###### Input
 
@@ -1217,9 +1245,7 @@ _This functionality is not required for the MVP._
 An array of objects representing [volume packages](#introduction-of-volume-packages) with the
 type set to `type`.
 
-##### GetVolumePackage GET /volumepackages/volume-package-uuid
-
-_This functionality is not required for the MVP._
+##### GetVolumePackage GET /volumepackages/volume-package-uuid (Volume packages milestone)
 
 ###### Output
 
@@ -1304,9 +1330,7 @@ alias='volume-$volumename-$volumeuuid'
 
 ### Changes to PAPI
 
-#### Introduction of volume packages
-
-_This functionality is not required for the MVP._
+#### Introduction of volume packages (Volume packages milestone)
 
 Storage volumes sharing the same traits will be grouped into _volume types_. For
 instance, NFS shared volumes will have the volume type "tritonnfs". Potential
@@ -1424,7 +1448,7 @@ For instance, the proposed names for tritonnfs volume packages are:
 * nfs1-900g
 * nfs1-1000g
 
-#### CreateVolumePackage POST /volumepackages
+#### CreateVolumePackage POST /volumepackages (Volume packages milestone)
 
 ##### Input
 
@@ -1454,7 +1478,7 @@ An object representing a volume package:
 }
 ```
 
-#### GetVolumePackage
+#### GetVolumePackage (Volume packages milestone)
 
 ```
 GET /volumepackages/uuid
@@ -1476,7 +1500,7 @@ GET /volumepackages/uuid
 }
 ```
 
-#### DeleteVolumePackage
+#### DeleteVolumePackage (Volume packages milestone)
 
 As for compute packages, volume packages cannot be destroyed.
 
@@ -1517,7 +1541,7 @@ or "VOLAPI".
 | type            | String             | master-integration | Allows to filter volumes by type, e.g `type=tritonnfs`. |
 | state           | String             | master-integration | Allows to filter volumes by state, e.g `state=failed`. |
 | predicate       | String             | master-integration | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
-| tag.key         | String             | mvp                | A string representing the value for the tag with key `key` to match. More details below. |
+| tag.key (mvp milestone)        | String             | mvp                | A string representing the value for the tag with key `key` to match. More details below. |
 
 ###### Searching by name
 
@@ -1554,7 +1578,7 @@ the predicate and the non-predicate query parameters. For example, if your
 predicate includes any checks on the `name` field, passing the `name=` query
 paramter is an error.
 
-###### Searching by tags
+###### Searching by tags (MVP milestone)
 
 Note: searching for tags is to be implemented as part of the mvp milestone.
 
@@ -1638,7 +1662,7 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 | networks      | Array        | A list of UUIDs representing networks on which the volume will be reachable. These networks must be owned by the user with UUID `owner_uuid` and must be fabric networks. |
 | server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
 | ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
-| tags          | Object       | An object representing key/value pairs that correspond to tags names/values. Docker volumes' labels are implemented with tags. |
+| tags (mvp milestone)          | Object       | An object representing key/value pairs that correspond to tags names/values. Docker volumes' labels are implemented with tags. |
 
 ##### Output
 
@@ -1694,7 +1718,7 @@ shared volume:
 | owner_uuid    | String       | The UUID of the volume's owner. |
 | uuid            | String       | The uuid of the volume object       |
 | name | String | The new name of the volume with uuid `uuid` |
-| tags | Array of string | The new tags for the volume with uuid `uuid` |
+| tags (mvp milestone) | Array of string | The new tags for the volume with uuid `uuid` |
 
 ##### Output
 
@@ -1727,7 +1751,7 @@ The response is an array of objects having two properties:
   `10240`, which would mean `10240 mebibytes`, the value of the `description`
   property would be `10GiB`
 
-#### AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork
+#### AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork (MVP milestone)
 
 `AttachVolumeToNetwork` can be used to make a volume reachable on a given
 network.
@@ -1744,7 +1768,7 @@ network.
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
-#### DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork
+#### DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork (MVP milestone)
 
 `DetachVolumeFromNetwork` can be used to make a volume that used to be reachable
 on a given network not reachable on that network anymore.
@@ -1761,7 +1785,7 @@ on a given network not reachable on that network anymore.
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
-#### Snapshots
+#### Snapshots (Snapshots milestone)
 
 A snapshot represents the state of a volume's storage at a given point in time.
 Volume snapshot objects are stored within volume objects because the
@@ -1921,8 +1945,8 @@ Volumes are be represented as objects that share a common set of properties:
   was created.
 
 * `state`: `creating`, `ready`, `deleting`, `deleted`, `failed` or
-  `rolling_back`. Indicates in which state the volume currently is. `deleted`
-  and `failed` volumes are still persisted to Moray for
+  `rolling_back` (snapshots milestone). Indicates in which state the volume
+  currently is. `deleted` and `failed` volumes are still persisted to Moray for
   troubleshooting/debugging purposes. See the section [Volumes state
   machine](#volumes-state-machine) for a diagram and further details about the
   volumes' state machine.
@@ -1930,10 +1954,11 @@ Volumes are be represented as objects that share a common set of properties:
 * `networks`: a list of network UUIDs that represents the networks on which this
   volume can be reached.
 
-* `snapshots`: a list of [snapshot objects](#snapshot-objects).
+* `snapshots` (snapshots milestone): a list of
+  [snapshot objects](#snapshot-objects).
 
-* `tags`: a map of key/value pairs that represent volume tags. Docker volumes'
-  labels are implemented with tags.
+* `tags` (mvp milestone): a map of key/value pairs that represent volume tags.
+  Docker volumes' labels are implemented with tags.
 
 ##### Naming constraints
 
@@ -1964,8 +1989,8 @@ Different volume types may need to store different properties in addition to the
 properties listed above. For instance, "tritonnfs" volumes have the following
 extra properties:
 
-* `nfs_path`: the path that can be used by a NFS client to mount the NFS remote
-  filesystem in the host's filesystem.
+* `filesystem_path`: the path that can be used by a NFS client to mount the NFS
+  remote filesystem in the host's filesystem.
 * `vm_uuid`: the UUID of the Triton VM running the NFS server that exports the
   actual storage provided by this volume.
 * `size`: a Number representing the storage size available for this volume, in
@@ -2010,7 +2035,7 @@ Indexes are setup for the following searchable properties:
 * `type`
 * `create_timestamp`
 * `state`
-* `tags`
+* `tags` (mvp milestone)
 
 #### Volumes state machine
 
@@ -2018,7 +2043,7 @@ Indexes are setup for the following searchable properties:
 
 #### Data retention policy
 
-##### Reaping failed and deleted volumes
+##### Reaping failed volumes
 
 Volumes in state `failed` are stored in Moray, but they do not need to be
 present in persistent storage forever. Not deleting these entries has an impact
@@ -2032,7 +2057,7 @@ chosen so that staled volume objects are still kept in persistent storage for
 long enough and most debugging tasks that require inspecting them can still take
 place. For instance, IMGAPI reaps stalled images after a week.
 
-## Snapshots
+## Snapshots (Snapshots milestone)
 
 ### Use case
 
@@ -2077,7 +2102,7 @@ Shared volumes are hosted on zones that need to be operated in a way similar
 than other user-owned containers. Operators need to be able to migrate, stop,
 restart, upgrade them, etc.
 
-### New sdc-pkgadm command
+### New sdc-pkgadm command (Volume packages milestone)
 
 A new sdc-pkgadm command line tool will be added, initially with support for
 volume packages only.
@@ -2097,12 +2122,12 @@ provided with the `--storage-instance-pkg` command line option.
 sdc-pkgadm volume activate|deactivate $volume-pkg-uuid
 ```
 
-### New `sdc-voladm` command
+### New `sdc-voladm` command (Operators milestone)
 
 _This functionality is not required for the MVP._
 
-Triton operators need to be able to perform new operations using a new `sdc-voladm`
-command
+Triton operators need to be able to perform new operations using a new
+`sdc-voladm` command.
 
 #### Listing shared volume zones
 
@@ -2160,6 +2185,134 @@ If Docker containers use the shared volumes that need to be deleted, `sdcadm`
 doesn't delete the shared volume zones and instead outputs the containers'
 uuids so that the operator knows which containers are still using them.
 
+## Integration plan
+
+### Milestones
+
+Development of features and changes presented in this document will happen in
+milestones so that they can be integrated progressively.
+
+Development progress is tracked in JIRA and each milestone corresponds to a
+JIRA label. For each milestone for which development started, a JIRA filter is
+available that lists all its open tickets.
+
+#### Master integration
+
+The first milestone represents the set of changes that tackles the major design
+issues and establishes the technical foundations. It also provides basic
+features to end users so that they can use NFS volumes in a way that is useful
+and fulfill the original goal of this RFD.
+
+#### MVP
+
+The MVP milestone builds on the first "master integration" milestone and
+implements features and changes that are part of the core functionality of NFS
+volumes but that did not make it into the master integration milestone because
+they did not represent major design risks.
+
+#### Operators
+
+The operators milestone groups changes and features aimed at making operating
+NFS volumes easier.
+
+#### Volume packages
+
+The "volume packages" milestone adds the ability for users to specify volume
+package names or UUIDs instead of just a size (or any other attribute that
+belongs to a volume's configuration) when performing operations on volumes.
+
+#### Snapshots
+
+The "snapshots" milestone groups changes that allow users to create and manage snapshots of their volumes.
+
+#### Affinity
+
+The affinity milestone groups changes that allow users to provision volumes and
+specify locality constraints against other volumes or VMs.
+
+### Setting up a DC to support NFS volumes
+
+In order to setup support for NFS volumes in a given DC, operators need to run
+the following two commands:
+
+```
+$ sdcadm post-setup volapi
+$ sdcadm experimental nfs-volumes
+```
+
+The first one creates a new VOLAPI service and its associated zone on the
+headnode, the second sets a flag in SAPI that indicates that the "NFS volumes"
+feature is turned on.
+
+`sdcadm experimental nfs-volumes` checks whether all core services that provide
+part of the NFS volumes support are deployed with a version that supports NFS
+volumes. If it is not the case, the command reports what services and their
+image versions do not meet the requirements.
+
+Operators who would still want to proceed with enabling the feature flag in SAPI
+could use the `--force` flag to bypass that check.
+
+#### Turning it off
+
+Operators may want to turn the experimental "nfs-volumes" SAPI flag off when,
+for instance, it was been enabled but caused issues in a given deployment.
+
+They can do that by running the following command:
+
+```
+$ sdcadm experimental nfs-volumes -d
+```
+
+### Integration of the "master integration" milestone
+
+The first milestone to have its changes merged to the master branches of
+relevant code repositories is the "master integration milestone.
+
+The list of repositories with changes that need to be integrated as part of that milestone is:
+
+* joyent/sdcadm
+* joyent/sdc-workflow
+* joyent/sdc-vmapi
+* joyent/sdc-docker
+* joyent/node-sdc-clients
+* joyent/sdc-sdc
+* joyent/sdc-headnode
+
+For all these repositories, all changes relevant to this RFD are in a branch
+named “tritonnfs”. They can be integrated into their respective master branch in
+the following sequence:
+
+1. node-sdc-clients, sdc-headnode, sdc-sdc
+2. sdc-workflow, sdc-docker, sc-cloudapi, sdc-vmapi
+3. sdcadm
+
+Changes in node-sdc-clients need to be integrated first because several other
+repositories (sdc-docker and sdc-vmapi) depend on them. Changes in sdc-headnode
+and sdc-sdc can be integrated independently of other changes. They provide the
+“sdc-volapi” command in the GZ. If the command is not present when support of
+volumes is enabled, operability suffers, but end users can use NFS volumes. If
+the command is present but support of volumes is not enabled, then the command
+will output a clear error message when it’s used.
+
+However, once the changes in sdcadm are integrated, any user could in theory
+enable support for NFS shared volumes. After doing that, but without upgrading
+all images of core Triton services that have changes related to RFD 26, a user
+could start using the new support for NFS shared volumes and not get expected
+results.
+
+Thus, once all changes in sdc-workflow, sdc-headnode, sdc-sdc, sdc-docker,
+sdc-cloudapi and sdc-vmapi are integrated into their respective master branch
+and images with these changes are built and published, a check will be added to
+sdcadm experimental volapi to allow enabling the experimental NFS shared volumes
+flag only if the relevant core Triton services have been upgraded to a version
+that support NFS shared volumes, otherwise a clear error message will be
+outputted.
+
+However, because that check will rely on images information being present in
+IMGAPI, it is possible to get to a point where sdcadm won’t be able to determine
+whether it’s safe to enable the NFS volumes feature flag. In this case, it will
+be possible for users to “force enable” it.
+
 ## Open questions
 
 ### Allocation/placement
@@ -2180,8 +2333,8 @@ message that is as clear as possible.
 What are the NFS security requirements?
 
 At this point sdc-nfs does not support anything other than restricting to a
-specific list of IPs, so we're planning to leave it open to any networks assigned
-to the container. Is this a acceptable?
+specific list of IPs, so we're planning to leave it open to any networks
+assigned to the container. Is this a acceptable?
 
 ### Can we limit the number of NFS volumes a single container can mount?
 
