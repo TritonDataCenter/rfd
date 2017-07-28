@@ -80,7 +80,7 @@ state: draft
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
       - [New `nfserver` `smartdc_role`](#new-nfserver-smartdc_role)
-      - [New internal `required_nfs_volumes` property on VM objects](#new-internal-required_nfs_volumes-property-on-vm-objects)
+      - [New internal `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
       - [New `mounting_volume` parameter for the `ListVms` endpoint](#new-mounting_volume-parameter-for-the-listvms-endpoint)
         - [Input](#input)
         - [Output](#output)
@@ -1272,11 +1272,11 @@ an appropriate error message when used on shared volumes zones.
 Machines acting as shared volumes' storage zones will have the value `nfsserver`
 for their `smartdc_role` property. To know of this new `smartdc_role` value is used by CloudAPI to prevent users from performing operations on these storage VMs, refer to
 
-#### New internal `required_nfs_volumes` property on VM objects
+#### New internal `volumes` property on VM objects
 
 A VM object that represents a Docker container mounting a shared volumes will
 store a reference to that volume in a new _indexable_ property named
-`required_nfs_volumes`.
+`volumes`.
 
 This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
 is used by VMAPI's `ListVms` endpoint to implement support for its new
@@ -1285,8 +1285,8 @@ parameter](#new-mounting_volume-parameter-for-the-listvms-endpoint).
 
 #### New `mounting_volume` parameter for the `ListVms` endpoint
 
-While the [`required_nfs_volumes`
-property](#new-internal-required_nfs_volumes-property-on-vm-objects) on VM
+While the [`volumes`
+property](#new-internal-volumes-property-on-vm-objects) on VM
 objects is internal, the `ListVms` API endpoint allows users to list _active_
 VMs that mount a given volume.
 
@@ -2014,7 +2014,7 @@ A volume is considered to be "in use" if the
 [`GetVolumeReferences`](#getvolumereferences-get-volumesvolume-uuidreferences-1)
 endpoint doesn't return an empty list of objects UUIDs. When a Docker container
 is created, it adds any of its mounted volumes to [an internal
-property](#new-internal-required_nfs_volumes-property-on-vm-objects). A
+property](#new-internal-volumes-property-on-vm-objects). A
 container referencing a shared volume is considered to be using it when it's in
 any state except `failed` and `destroyed` -- in other words in any state that
 cannot transition to `running`.
