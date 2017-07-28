@@ -904,10 +904,11 @@ parameter that corresponds to the user making the request.
 | Param           | Type         | Milestone          | Description                              |
 | --------------- | ------------ | ------------------ | ---------------------------------------- |
 | name            | String       | master-integration | Allows to filter volumes by name. |
-| type            | String       | master-integration | Allows to filter volumes by type, e.g `tritonnfs`. |
-| state           | String       | master-integration | Allows to filter volumes by state, e.g `state=failed`. |
 | predicate       | String       | master-integration | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
+| size            | String       | master-integration | Allows to filter volumes by size, e.g `size=10240`. |
+| state           | String       | master-integration | Allows to filter volumes by state, e.g `state=failed`. |
 | tag.key         | String       | mvp                | A string representing the value for the tag with key `key` to match. More details below. |
+| type            | String       | master-integration | Allows to filter volumes by type, e.g `tritonnfs`. |
 
 ####### Searching by name
 
