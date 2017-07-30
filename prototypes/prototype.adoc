@@ -2,6 +2,7 @@
 authors: Han Solo <han@example.com>, Frodo Baggins <frodo@example.com>
 state: predraft
 ---
+= RFD <NUMBER> <Title>
 :author: Han Solo <han@example.com>; Frodo Baggins <frodo@example.com>
 :state: predraft
 :revremark: State: {state}
@@ -16,7 +17,6 @@ state: predraft
 :sectnumlevels: 2
 :showtitle:
 :source-highlighter: pygments
-:skip-front-matter:
 :toc: left
 
 ////
@@ -27,4 +27,5 @@ state: predraft
     Copyright 2017 <contribution>
 ////
 
-# RFD <Number> <Title>
+[[introduction]]
+== Introduction
