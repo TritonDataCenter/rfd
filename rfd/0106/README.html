@@ -1,0 +1,2775 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="generator" content="Asciidoctor 1.5.6.1">
+<meta name="keywords" content="rfd, rfd 0106, rfd 106, go, golang, best practices, joyent, engineering, software">
+<meta name="author" content="Sean Chittenden">
+<title>RFD 106 Engineering Guide - Go Best Practices</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
+<style>
+/* Asciidoctor default stylesheet | MIT License | http://asciidoctor.org */
+/* Remove comment around @import statement below when using as a custom stylesheet */
+/*@import "https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700";*/
+article,aside,details,figcaption,figure,footer,header,hgroup,main,nav,section,summary{display:block}
+audio,canvas,video{display:inline-block}
+audio:not([controls]){display:none;height:0}
+[hidden],template{display:none}
+script{display:none!important}
+html{font-family:sans-serif;-ms-text-size-adjust:100%;-webkit-text-size-adjust:100%}
+a{background:transparent}
+a:focus{outline:thin dotted}
+a:active,a:hover{outline:0}
+h1{font-size:2em;margin:.67em 0}
+abbr[title]{border-bottom:1px dotted}
+b,strong{font-weight:bold}
+dfn{font-style:italic}
+hr{-moz-box-sizing:content-box;box-sizing:content-box;height:0}
+mark{background:#ff0;color:#000}
+code,kbd,pre,samp{font-family:monospace;font-size:1em}
+pre{white-space:pre-wrap}
+q{quotes:"\201C" "\201D" "\2018" "\2019"}
+small{font-size:80%}
+sub,sup{font-size:75%;line-height:0;position:relative;vertical-align:baseline}
+sup{top:-.5em}
+sub{bottom:-.25em}
+img{border:0}
+svg:not(:root){overflow:hidden}
+figure{margin:0}
+fieldset{border:1px solid silver;margin:0 2px;padding:.35em .625em .75em}
+legend{border:0;padding:0}
+button,input,select,textarea{font-family:inherit;font-size:100%;margin:0}
+button,input{line-height:normal}
+button,select{text-transform:none}
+button,html input[type="button"],input[type="reset"],input[type="submit"]{-webkit-appearance:button;cursor:pointer}
+button[disabled],html input[disabled]{cursor:default}
+input[type="checkbox"],input[type="radio"]{box-sizing:border-box;padding:0}
+input[type="search"]{-webkit-appearance:textfield;-moz-box-sizing:content-box;-webkit-box-sizing:content-box;box-sizing:content-box}
+input[type="search"]::-webkit-search-cancel-button,input[type="search"]::-webkit-search-decoration{-webkit-appearance:none}
+button::-moz-focus-inner,input::-moz-focus-inner{border:0;padding:0}
+textarea{overflow:auto;vertical-align:top}
+table{border-collapse:collapse;border-spacing:0}
+*,*:before,*:after{-moz-box-sizing:border-box;-webkit-box-sizing:border-box;box-sizing:border-box}
+html,body{font-size:100%}
+body{background:#fff;color:rgba(0,0,0,.8);padding:0;margin:0;font-family:"Noto Serif","DejaVu Serif",serif;font-weight:400;font-style:normal;line-height:1;position:relative;cursor:auto;tab-size:4;-moz-osx-font-smoothing:grayscale;-webkit-font-smoothing:antialiased}
+a:hover{cursor:pointer}
+img,object,embed{max-width:100%;height:auto}
+object,embed{height:100%}
+img{-ms-interpolation-mode:bicubic}
+.left{float:left!important}
+.right{float:right!important}
+.text-left{text-align:left!important}
+.text-right{text-align:right!important}
+.text-center{text-align:center!important}
+.text-justify{text-align:justify!important}
+.hide{display:none}
+img,object,svg{display:inline-block;vertical-align:middle}
+textarea{height:auto;min-height:50px}
+select{width:100%}
+.center{margin-left:auto;margin-right:auto}
+.spread{width:100%}
+p.lead,.paragraph.lead>p,#preamble>.sectionbody>.paragraph:first-of-type p{font-size:1.21875em;line-height:1.6}
+.subheader,.admonitionblock td.content>.title,.audioblock>.title,.exampleblock>.title,.imageblock>.title,.listingblock>.title,.literalblock>.title,.stemblock>.title,.openblock>.title,.paragraph>.title,.quoteblock>.title,table.tableblock>.title,.verseblock>.title,.videoblock>.title,.dlist>.title,.olist>.title,.ulist>.title,.qlist>.title,.hdlist>.title{line-height:1.45;color:#7a2518;font-weight:400;margin-top:0;margin-bottom:.25em}
+div,dl,dt,dd,ul,ol,li,h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6,pre,form,p,blockquote,th,td{margin:0;padding:0;direction:ltr}
+a{color:#2156a5;text-decoration:underline;line-height:inherit}
+a:hover,a:focus{color:#1d4b8f}
+a img{border:none}
+p{font-family:inherit;font-weight:400;font-size:1em;line-height:1.6;margin-bottom:1.25em;text-rendering:optimizeLegibility}
+p aside{font-size:.875em;line-height:1.35;font-style:italic}
+h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{font-family:"Open Sans","DejaVu Sans",sans-serif;font-weight:300;font-style:normal;color:#ba3925;text-rendering:optimizeLegibility;margin-top:1em;margin-bottom:.5em;line-height:1.0125em}
+h1 small,h2 small,h3 small,#toctitle small,.sidebarblock>.content>.title small,h4 small,h5 small,h6 small{font-size:60%;color:#e99b8f;line-height:0}
+h1{font-size:2.125em}
+h2{font-size:1.6875em}
+h3,#toctitle,.sidebarblock>.content>.title{font-size:1.375em}
+h4,h5{font-size:1.125em}
+h6{font-size:1em}
+hr{border:solid #ddddd8;border-width:1px 0 0;clear:both;margin:1.25em 0 1.1875em;height:0}
+em,i{font-style:italic;line-height:inherit}
+strong,b{font-weight:bold;line-height:inherit}
+small{font-size:60%;line-height:inherit}
+code{font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;font-weight:400;color:rgba(0,0,0,.9)}
+ul,ol,dl{font-size:1em;line-height:1.6;margin-bottom:1.25em;list-style-position:outside;font-family:inherit}
+ul,ol{margin-left:1.5em}
+ul li ul,ul li ol{margin-left:1.25em;margin-bottom:0;font-size:1em}
+ul.square li ul,ul.circle li ul,ul.disc li ul{list-style:inherit}
+ul.square{list-style-type:square}
+ul.circle{list-style-type:circle}
+ul.disc{list-style-type:disc}
+ol li ul,ol li ol{margin-left:1.25em;margin-bottom:0}
+dl dt{margin-bottom:.3125em;font-weight:bold}
+dl dd{margin-bottom:1.25em}
+abbr,acronym{text-transform:uppercase;font-size:90%;color:rgba(0,0,0,.8);border-bottom:1px dotted #ddd;cursor:help}
+abbr{text-transform:none}
+blockquote{margin:0 0 1.25em;padding:.5625em 1.25em 0 1.1875em;border-left:1px solid #ddd}
+blockquote cite{display:block;font-size:.9375em;color:rgba(0,0,0,.6)}
+blockquote cite:before{content:"\2014 \0020"}
+blockquote cite a,blockquote cite a:visited{color:rgba(0,0,0,.6)}
+blockquote,blockquote p{line-height:1.6;color:rgba(0,0,0,.85)}
+@media only screen and (min-width:768px){h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{line-height:1.2}
+h1{font-size:2.75em}
+h2{font-size:2.3125em}
+h3,#toctitle,.sidebarblock>.content>.title{font-size:1.6875em}
+h4{font-size:1.4375em}}
+table{background:#fff;margin-bottom:1.25em;border:solid 1px #dedede}
+table thead,table tfoot{background:#f7f8f7;font-weight:bold}
+table thead tr th,table thead tr td,table tfoot tr th,table tfoot tr td{padding:.5em .625em .625em;font-size:inherit;color:rgba(0,0,0,.8);text-align:left}
+table tr th,table tr td{padding:.5625em .625em;font-size:inherit;color:rgba(0,0,0,.8)}
+table tr.even,table tr.alt,table tr:nth-of-type(even){background:#f8f8f7}
+table thead tr th,table tfoot tr th,table tbody tr td,table tr td,table tfoot tr td{display:table-cell;line-height:1.6}
+h1,h2,h3,#toctitle,.sidebarblock>.content>.title,h4,h5,h6{line-height:1.2;word-spacing:-.05em}
+h1 strong,h2 strong,h3 strong,#toctitle strong,.sidebarblock>.content>.title strong,h4 strong,h5 strong,h6 strong{font-weight:400}
+.clearfix:before,.clearfix:after,.float-group:before,.float-group:after{content:" ";display:table}
+.clearfix:after,.float-group:after{clear:both}
+*:not(pre)>code{font-size:.9375em;font-style:normal!important;letter-spacing:0;padding:.1em .5ex;word-spacing:-.15em;background-color:#f7f7f8;-webkit-border-radius:4px;border-radius:4px;line-height:1.45;text-rendering:optimizeSpeed;word-wrap:break-word}
+*:not(pre)>code.nobreak{word-wrap:normal}
+*:not(pre)>code.nowrap{white-space:nowrap}
+pre,pre>code{line-height:1.45;color:rgba(0,0,0,.9);font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;font-weight:400;text-rendering:optimizeSpeed}
+em em{font-style:normal}
+strong strong{font-weight:400}
+.keyseq{color:rgba(51,51,51,.8)}
+kbd{font-family:"Droid Sans Mono","DejaVu Sans Mono",monospace;display:inline-block;color:rgba(0,0,0,.8);font-size:.65em;line-height:1.45;background-color:#f7f7f7;border:1px solid #ccc;-webkit-border-radius:3px;border-radius:3px;-webkit-box-shadow:0 1px 0 rgba(0,0,0,.2),0 0 0 .1em white inset;box-shadow:0 1px 0 rgba(0,0,0,.2),0 0 0 .1em #fff inset;margin:0 .15em;padding:.2em .5em;vertical-align:middle;position:relative;top:-.1em;white-space:nowrap}
+.keyseq kbd:first-child{margin-left:0}
+.keyseq kbd:last-child{margin-right:0}
+.menuseq,.menuref{color:#000}
+.menuseq b:not(.caret),.menuref{font-weight:inherit}
+.menuseq{word-spacing:-.02em}
+.menuseq b.caret{font-size:1.25em;line-height:.8}
+.menuseq i.caret{font-weight:bold;text-align:center;width:.45em}
+b.button:before,b.button:after{position:relative;top:-1px;font-weight:400}
+b.button:before{content:"[";padding:0 3px 0 2px}
+b.button:after{content:"]";padding:0 2px 0 3px}
+p a>code:hover{color:rgba(0,0,0,.9)}
+#header,#content,#footnotes,#footer{width:100%;margin-left:auto;margin-right:auto;margin-top:0;margin-bottom:0;max-width:62.5em;*zoom:1;position:relative;padding-left:.9375em;padding-right:.9375em}
+#header:before,#header:after,#content:before,#content:after,#footnotes:before,#footnotes:after,#footer:before,#footer:after{content:" ";display:table}
+#header:after,#content:after,#footnotes:after,#footer:after{clear:both}
+#content{margin-top:1.25em}
+#content:before{content:none}
+#header>h1:first-child{color:rgba(0,0,0,.85);margin-top:2.25rem;margin-bottom:0}
+#header>h1:first-child+#toc{margin-top:8px;border-top:1px solid #ddddd8}
+#header>h1:only-child,body.toc2 #header>h1:nth-last-child(2){border-bottom:1px solid #ddddd8;padding-bottom:8px}
+#header .details{border-bottom:1px solid #ddddd8;line-height:1.45;padding-top:.25em;padding-bottom:.25em;padding-left:.25em;color:rgba(0,0,0,.6);display:-ms-flexbox;display:-webkit-flex;display:flex;-ms-flex-flow:row wrap;-webkit-flex-flow:row wrap;flex-flow:row wrap}
+#header .details span:first-child{margin-left:-.125em}
+#header .details span.email a{color:rgba(0,0,0,.85)}
+#header .details br{display:none}
+#header .details br+span:before{content:"\00a0\2013\00a0"}
+#header .details br+span.author:before{content:"\00a0\22c5\00a0";color:rgba(0,0,0,.85)}
+#header .details br+span#revremark:before{content:"\00a0|\00a0"}
+#header #revnumber{text-transform:capitalize}
+#header #revnumber:after{content:"\00a0"}
+#content>h1:first-child:not([class]){color:rgba(0,0,0,.85);border-bottom:1px solid #ddddd8;padding-bottom:8px;margin-top:0;padding-top:1rem;margin-bottom:1.25rem}
+#toc{border-bottom:1px solid #efefed;padding-bottom:.5em}
+#toc>ul{margin-left:.125em}
+#toc ul.sectlevel0>li>a{font-style:italic}
+#toc ul.sectlevel0 ul.sectlevel1{margin:.5em 0}
+#toc ul{font-family:"Open Sans","DejaVu Sans",sans-serif;list-style-type:none}
+#toc li{line-height:1.3334;margin-top:.3334em}
+#toc a{text-decoration:none}
+#toc a:active{text-decoration:underline}
+#toctitle{color:#7a2518;font-size:1.2em}
+@media only screen and (min-width:768px){#toctitle{font-size:1.375em}
+body.toc2{padding-left:15em;padding-right:0}
+#toc.toc2{margin-top:0!important;background-color:#f8f8f7;position:fixed;width:15em;left:0;top:0;border-right:1px solid #efefed;border-top-width:0!important;border-bottom-width:0!important;z-index:1000;padding:1.25em 1em;height:100%;overflow:auto}
+#toc.toc2 #toctitle{margin-top:0;margin-bottom:.8rem;font-size:1.2em}
+#toc.toc2>ul{font-size:.9em;margin-bottom:0}
+#toc.toc2 ul ul{margin-left:0;padding-left:1em}
+#toc.toc2 ul.sectlevel0 ul.sectlevel1{padding-left:0;margin-top:.5em;margin-bottom:.5em}
+body.toc2.toc-right{padding-left:0;padding-right:15em}
+body.toc2.toc-right #toc.toc2{border-right-width:0;border-left:1px solid #efefed;left:auto;right:0}}
+@media only screen and (min-width:1280px){body.toc2{padding-left:20em;padding-right:0}
+#toc.toc2{width:20em}
+#toc.toc2 #toctitle{font-size:1.375em}
+#toc.toc2>ul{font-size:.95em}
+#toc.toc2 ul ul{padding-left:1.25em}
+body.toc2.toc-right{padding-left:0;padding-right:20em}}
+#content #toc{border-style:solid;border-width:1px;border-color:#e0e0dc;margin-bottom:1.25em;padding:1.25em;background:#f8f8f7;-webkit-border-radius:4px;border-radius:4px}
+#content #toc>:first-child{margin-top:0}
+#content #toc>:last-child{margin-bottom:0}
+#footer{max-width:100%;background-color:rgba(0,0,0,.8);padding:1.25em}
+#footer-text{color:rgba(255,255,255,.8);line-height:1.44}
+.sect1{padding-bottom:.625em}
+@media only screen and (min-width:768px){.sect1{padding-bottom:1.25em}}
+.sect1+.sect1{border-top:1px solid #efefed}
+#content h1>a.anchor,h2>a.anchor,h3>a.anchor,#toctitle>a.anchor,.sidebarblock>.content>.title>a.anchor,h4>a.anchor,h5>a.anchor,h6>a.anchor{position:absolute;z-index:1001;width:1.5ex;margin-left:-1.5ex;display:block;text-decoration:none!important;visibility:hidden;text-align:center;font-weight:400}
+#content h1>a.anchor:before,h2>a.anchor:before,h3>a.anchor:before,#toctitle>a.anchor:before,.sidebarblock>.content>.title>a.anchor:before,h4>a.anchor:before,h5>a.anchor:before,h6>a.anchor:before{content:"\00A7";font-size:.85em;display:block;padding-top:.1em}
+#content h1:hover>a.anchor,#content h1>a.anchor:hover,h2:hover>a.anchor,h2>a.anchor:hover,h3:hover>a.anchor,#toctitle:hover>a.anchor,.sidebarblock>.content>.title:hover>a.anchor,h3>a.anchor:hover,#toctitle>a.anchor:hover,.sidebarblock>.content>.title>a.anchor:hover,h4:hover>a.anchor,h4>a.anchor:hover,h5:hover>a.anchor,h5>a.anchor:hover,h6:hover>a.anchor,h6>a.anchor:hover{visibility:visible}
+#content h1>a.link,h2>a.link,h3>a.link,#toctitle>a.link,.sidebarblock>.content>.title>a.link,h4>a.link,h5>a.link,h6>a.link{color:#ba3925;text-decoration:none}
+#content h1>a.link:hover,h2>a.link:hover,h3>a.link:hover,#toctitle>a.link:hover,.sidebarblock>.content>.title>a.link:hover,h4>a.link:hover,h5>a.link:hover,h6>a.link:hover{color:#a53221}
+.audioblock,.imageblock,.literalblock,.listingblock,.stemblock,.videoblock{margin-bottom:1.25em}
+.admonitionblock td.content>.title,.audioblock>.title,.exampleblock>.title,.imageblock>.title,.listingblock>.title,.literalblock>.title,.stemblock>.title,.openblock>.title,.paragraph>.title,.quoteblock>.title,table.tableblock>.title,.verseblock>.title,.videoblock>.title,.dlist>.title,.olist>.title,.ulist>.title,.qlist>.title,.hdlist>.title{text-rendering:optimizeLegibility;text-align:left;font-family:"Noto Serif","DejaVu Serif",serif;font-size:1rem;font-style:italic}
+table.tableblock>caption.title{white-space:nowrap;overflow:visible;max-width:0}
+.paragraph.lead>p,#preamble>.sectionbody>.paragraph:first-of-type p{color:rgba(0,0,0,.85)}
+table.tableblock #preamble>.sectionbody>.paragraph:first-of-type p{font-size:inherit}
+.admonitionblock>table{border-collapse:separate;border:0;background:none;width:100%}
+.admonitionblock>table td.icon{text-align:center;width:80px}
+.admonitionblock>table td.icon img{max-width:initial}
+.admonitionblock>table td.icon .title{font-weight:bold;font-family:"Open Sans","DejaVu Sans",sans-serif;text-transform:uppercase}
+.admonitionblock>table td.content{padding-left:1.125em;padding-right:1.25em;border-left:1px solid #ddddd8;color:rgba(0,0,0,.6)}
+.admonitionblock>table td.content>:last-child>:last-child{margin-bottom:0}
+.exampleblock>.content{border-style:solid;border-width:1px;border-color:#e6e6e6;margin-bottom:1.25em;padding:1.25em;background:#fff;-webkit-border-radius:4px;border-radius:4px}
+.exampleblock>.content>:first-child{margin-top:0}
+.exampleblock>.content>:last-child{margin-bottom:0}
+.sidebarblock{border-style:solid;border-width:1px;border-color:#e0e0dc;margin-bottom:1.25em;padding:1.25em;background:#f8f8f7;-webkit-border-radius:4px;border-radius:4px}
+.sidebarblock>:first-child{margin-top:0}
+.sidebarblock>:last-child{margin-bottom:0}
+.sidebarblock>.content>.title{color:#7a2518;margin-top:0;text-align:center}
+.exampleblock>.content>:last-child>:last-child,.exampleblock>.content .olist>ol>li:last-child>:last-child,.exampleblock>.content .ulist>ul>li:last-child>:last-child,.exampleblock>.content .qlist>ol>li:last-child>:last-child,.sidebarblock>.content>:last-child>:last-child,.sidebarblock>.content .olist>ol>li:last-child>:last-child,.sidebarblock>.content .ulist>ul>li:last-child>:last-child,.sidebarblock>.content .qlist>ol>li:last-child>:last-child{margin-bottom:0}
+.literalblock pre,.listingblock pre:not(.highlight),.listingblock pre[class="highlight"],.listingblock pre[class^="highlight "],.listingblock pre.CodeRay,.listingblock pre.prettyprint{background:#f7f7f8}
+.sidebarblock .literalblock pre,.sidebarblock .listingblock pre:not(.highlight),.sidebarblock .listingblock pre[class="highlight"],.sidebarblock .listingblock pre[class^="highlight "],.sidebarblock .listingblock pre.CodeRay,.sidebarblock .listingblock pre.prettyprint{background:#f2f1f1}
+.literalblock pre,.literalblock pre[class],.listingblock pre,.listingblock pre[class]{-webkit-border-radius:4px;border-radius:4px;word-wrap:break-word;padding:1em;font-size:.8125em}
+.literalblock pre.nowrap,.literalblock pre[class].nowrap,.listingblock pre.nowrap,.listingblock pre[class].nowrap{overflow-x:auto;white-space:pre;word-wrap:normal}
+@media only screen and (min-width:768px){.literalblock pre,.literalblock pre[class],.listingblock pre,.listingblock pre[class]{font-size:.90625em}}
+@media only screen and (min-width:1280px){.literalblock pre,.literalblock pre[class],.listingblock pre,.listingblock pre[class]{font-size:1em}}
+.literalblock.output pre{color:#f7f7f8;background-color:rgba(0,0,0,.9)}
+.listingblock pre.highlightjs{padding:0}
+.listingblock pre.highlightjs>code{padding:1em;-webkit-border-radius:4px;border-radius:4px}
+.listingblock pre.prettyprint{border-width:0}
+.listingblock>.content{position:relative}
+.listingblock code[data-lang]:before{display:none;content:attr(data-lang);position:absolute;font-size:.75em;top:.425rem;right:.5rem;line-height:1;text-transform:uppercase;color:#999}
+.listingblock:hover code[data-lang]:before{display:block}
+.listingblock.terminal pre .command:before{content:attr(data-prompt);padding-right:.5em;color:#999}
+.listingblock.terminal pre .command:not([data-prompt]):before{content:"$"}
+table.pyhltable{border-collapse:separate;border:0;margin-bottom:0;background:none}
+table.pyhltable td{vertical-align:top;padding-top:0;padding-bottom:0;line-height:1.45}
+table.pyhltable td.code{padding-left:.75em;padding-right:0}
+pre.pygments .lineno,table.pyhltable td:not(.code){color:#999;padding-left:0;padding-right:.5em;border-right:1px solid #ddddd8}
+pre.pygments .lineno{display:inline-block;margin-right:.25em}
+table.pyhltable .linenodiv{background:none!important;padding-right:0!important}
+.quoteblock{margin:0 1em 1.25em 1.5em;display:table}
+.quoteblock>.title{margin-left:-1.5em;margin-bottom:.75em}
+.quoteblock blockquote,.quoteblock blockquote p{color:rgba(0,0,0,.85);font-size:1.15rem;line-height:1.75;word-spacing:.1em;letter-spacing:0;font-style:italic;text-align:justify}
+.quoteblock blockquote{margin:0;padding:0;border:0}
+.quoteblock blockquote:before{content:"\201c";float:left;font-size:2.75em;font-weight:bold;line-height:.6em;margin-left:-.6em;color:#7a2518;text-shadow:0 1px 2px rgba(0,0,0,.1)}
+.quoteblock blockquote>.paragraph:last-child p{margin-bottom:0}
+.quoteblock .attribution{margin-top:.5em;margin-right:.5ex;text-align:right}
+.quoteblock .quoteblock{margin-left:0;margin-right:0;padding:.5em 0;border-left:3px solid rgba(0,0,0,.6)}
+.quoteblock .quoteblock blockquote{padding:0 0 0 .75em}
+.quoteblock .quoteblock blockquote:before{display:none}
+.verseblock{margin:0 1em 1.25em 1em}
+.verseblock pre{font-family:"Open Sans","DejaVu Sans",sans;font-size:1.15rem;color:rgba(0,0,0,.85);font-weight:300;text-rendering:optimizeLegibility}
+.verseblock pre strong{font-weight:400}
+.verseblock .attribution{margin-top:1.25rem;margin-left:.5ex}
+.quoteblock .attribution,.verseblock .attribution{font-size:.9375em;line-height:1.45;font-style:italic}
+.quoteblock .attribution br,.verseblock .attribution br{display:none}
+.quoteblock .attribution cite,.verseblock .attribution cite{display:block;letter-spacing:-.025em;color:rgba(0,0,0,.6)}
+.quoteblock.abstract{margin:0 0 1.25em 0;display:block}
+.quoteblock.abstract blockquote,.quoteblock.abstract blockquote p{text-align:left;word-spacing:0}
+.quoteblock.abstract blockquote:before,.quoteblock.abstract blockquote p:first-of-type:before{display:none}
+table.tableblock{max-width:100%;border-collapse:separate}
+table.tableblock td>.paragraph:last-child p>p:last-child,table.tableblock th>p:last-child,table.tableblock td>p:last-child{margin-bottom:0}
+table.tableblock,th.tableblock,td.tableblock{border:0 solid #dedede}
+table.grid-all>thead>tr>.tableblock,table.grid-all>tbody>tr>.tableblock{border-width:0 1px 1px 0}
+table.grid-all>tfoot>tr>.tableblock{border-width:1px 1px 0 0}
+table.grid-cols>*>tr>.tableblock{border-width:0 1px 0 0}
+table.grid-rows>thead>tr>.tableblock,table.grid-rows>tbody>tr>.tableblock{border-width:0 0 1px 0}
+table.grid-rows>tfoot>tr>.tableblock{border-width:1px 0 0 0}
+table.grid-all>*>tr>.tableblock:last-child,table.grid-cols>*>tr>.tableblock:last-child{border-right-width:0}
+table.grid-all>tbody>tr:last-child>.tableblock,table.grid-all>thead:last-child>tr>.tableblock,table.grid-rows>tbody>tr:last-child>.tableblock,table.grid-rows>thead:last-child>tr>.tableblock{border-bottom-width:0}
+table.frame-all{border-width:1px}
+table.frame-sides{border-width:0 1px}
+table.frame-topbot{border-width:1px 0}
+th.halign-left,td.halign-left{text-align:left}
+th.halign-right,td.halign-right{text-align:right}
+th.halign-center,td.halign-center{text-align:center}
+th.valign-top,td.valign-top{vertical-align:top}
+th.valign-bottom,td.valign-bottom{vertical-align:bottom}
+th.valign-middle,td.valign-middle{vertical-align:middle}
+table thead th,table tfoot th{font-weight:bold}
+tbody tr th{display:table-cell;line-height:1.6;background:#f7f8f7}
+tbody tr th,tbody tr th p,tfoot tr th,tfoot tr th p{color:rgba(0,0,0,.8);font-weight:bold}
+p.tableblock>code:only-child{background:none;padding:0}
+p.tableblock{font-size:1em}
+td>div.verse{white-space:pre}
+ol{margin-left:1.75em}
+ul li ol{margin-left:1.5em}
+dl dd{margin-left:1.125em}
+dl dd:last-child,dl dd:last-child>:last-child{margin-bottom:0}
+ol>li p,ul>li p,ul dd,ol dd,.olist .olist,.ulist .ulist,.ulist .olist,.olist .ulist{margin-bottom:.625em}
+ul.checklist,ul.none,ol.none,ul.no-bullet,ol.no-bullet,ol.unnumbered,ul.unstyled,ol.unstyled{list-style-type:none}
+ul.no-bullet,ol.no-bullet,ol.unnumbered{margin-left:.625em}
+ul.unstyled,ol.unstyled{margin-left:0}
+ul.checklist{margin-left:.625em}
+ul.checklist li>p:first-child>.fa-square-o:first-child,ul.checklist li>p:first-child>.fa-check-square-o:first-child{width:1.25em;font-size:.8em;position:relative;bottom:.125em}
+ul.checklist li>p:first-child>input[type="checkbox"]:first-child{margin-right:.25em}
+ul.inline{margin:0 auto .625em auto;margin-left:-1.375em;margin-right:0;padding:0;list-style:none;overflow:hidden}
+ul.inline>li{list-style:none;float:left;margin-left:1.375em;display:block}
+ul.inline>li>*{display:block}
+.unstyled dl dt{font-weight:400;font-style:normal}
+ol.arabic{list-style-type:decimal}
+ol.decimal{list-style-type:decimal-leading-zero}
+ol.loweralpha{list-style-type:lower-alpha}
+ol.upperalpha{list-style-type:upper-alpha}
+ol.lowerroman{list-style-type:lower-roman}
+ol.upperroman{list-style-type:upper-roman}
+ol.lowergreek{list-style-type:lower-greek}
+.hdlist>table,.colist>table{border:0;background:none}
+.hdlist>table>tbody>tr,.colist>table>tbody>tr{background:none}
+td.hdlist1,td.hdlist2{vertical-align:top;padding:0 .625em}
+td.hdlist1{font-weight:bold;padding-bottom:1.25em}
+.literalblock+.colist,.listingblock+.colist{margin-top:-.5em}
+.colist>table tr>td:first-of-type{padding:.4em .75em 0 .75em;line-height:1;vertical-align:top}
+.colist>table tr>td:first-of-type img{max-width:initial}
+.colist>table tr>td:last-of-type{padding:.25em 0}
+.thumb,.th{line-height:0;display:inline-block;border:solid 4px #fff;-webkit-box-shadow:0 0 0 1px #ddd;box-shadow:0 0 0 1px #ddd}
+.imageblock.left,.imageblock[style*="float: left"]{margin:.25em .625em 1.25em 0}
+.imageblock.right,.imageblock[style*="float: right"]{margin:.25em 0 1.25em .625em}
+.imageblock>.title{margin-bottom:0}
+.imageblock.thumb,.imageblock.th{border-width:6px}
+.imageblock.thumb>.title,.imageblock.th>.title{padding:0 .125em}
+.image.left,.image.right{margin-top:.25em;margin-bottom:.25em;display:inline-block;line-height:0}
+.image.left{margin-right:.625em}
+.image.right{margin-left:.625em}
+a.image{text-decoration:none;display:inline-block}
+a.image object{pointer-events:none}
+sup.footnote,sup.footnoteref{font-size:.875em;position:static;vertical-align:super}
+sup.footnote a,sup.footnoteref a{text-decoration:none}
+sup.footnote a:active,sup.footnoteref a:active{text-decoration:underline}
+#footnotes{padding-top:.75em;padding-bottom:.75em;margin-bottom:.625em}
+#footnotes hr{width:20%;min-width:6.25em;margin:-.25em 0 .75em 0;border-width:1px 0 0 0}
+#footnotes .footnote{padding:0 .375em 0 .225em;line-height:1.3334;font-size:.875em;margin-left:1.2em;text-indent:-1.05em;margin-bottom:.2em}
+#footnotes .footnote a:first-of-type{font-weight:bold;text-decoration:none}
+#footnotes .footnote:last-of-type{margin-bottom:0}
+#content #footnotes{margin-top:-.625em;margin-bottom:0;padding:.75em 0}
+.gist .file-data>table{border:0;background:#fff;width:100%;margin-bottom:0}
+.gist .file-data>table td.line-data{width:99%}
+div.unbreakable{page-break-inside:avoid}
+.big{font-size:larger}
+.small{font-size:smaller}
+.underline{text-decoration:underline}
+.overline{text-decoration:overline}
+.line-through{text-decoration:line-through}
+.aqua{color:#00bfbf}
+.aqua-background{background-color:#00fafa}
+.black{color:#000}
+.black-background{background-color:#000}
+.blue{color:#0000bf}
+.blue-background{background-color:#0000fa}
+.fuchsia{color:#bf00bf}
+.fuchsia-background{background-color:#fa00fa}
+.gray{color:#606060}
+.gray-background{background-color:#7d7d7d}
+.green{color:#006000}
+.green-background{background-color:#007d00}
+.lime{color:#00bf00}
+.lime-background{background-color:#00fa00}
+.maroon{color:#600000}
+.maroon-background{background-color:#7d0000}
+.navy{color:#000060}
+.navy-background{background-color:#00007d}
+.olive{color:#606000}
+.olive-background{background-color:#7d7d00}
+.purple{color:#600060}
+.purple-background{background-color:#7d007d}
+.red{color:#bf0000}
+.red-background{background-color:#fa0000}
+.silver{color:#909090}
+.silver-background{background-color:#bcbcbc}
+.teal{color:#006060}
+.teal-background{background-color:#007d7d}
+.white{color:#bfbfbf}
+.white-background{background-color:#fafafa}
+.yellow{color:#bfbf00}
+.yellow-background{background-color:#fafa00}
+span.icon>.fa{cursor:default}
+a span.icon>.fa{cursor:inherit}
+.admonitionblock td.icon [class^="fa icon-"]{font-size:2.5em;text-shadow:1px 1px 2px rgba(0,0,0,.5);cursor:default}
+.admonitionblock td.icon .icon-note:before{content:"\f05a";color:#19407c}
+.admonitionblock td.icon .icon-tip:before{content:"\f0eb";text-shadow:1px 1px 2px rgba(155,155,0,.8);color:#111}
+.admonitionblock td.icon .icon-warning:before{content:"\f071";color:#bf6900}
+.admonitionblock td.icon .icon-caution:before{content:"\f06d";color:#bf3400}
+.admonitionblock td.icon .icon-important:before{content:"\f06a";color:#bf0000}
+.conum[data-value]{display:inline-block;color:#fff!important;background-color:rgba(0,0,0,.8);-webkit-border-radius:100px;border-radius:100px;text-align:center;font-size:.75em;width:1.67em;height:1.67em;line-height:1.67em;font-family:"Open Sans","DejaVu Sans",sans-serif;font-style:normal;font-weight:bold}
+.conum[data-value] *{color:#fff!important}
+.conum[data-value]+b{display:none}
+.conum[data-value]:after{content:attr(data-value)}
+pre .conum[data-value]{position:relative;top:-.125em}
+b.conum *{color:inherit!important}
+.conum:not([data-value]):empty{display:none}
+dt,th.tableblock,td.content,div.footnote{text-rendering:optimizeLegibility}
+h1,h2,p,td.content,span.alt{letter-spacing:-.01em}
+p strong,td.content strong,div.footnote strong{letter-spacing:-.005em}
+p,blockquote,dt,td.content,span.alt{font-size:1.0625rem}
+p{margin-bottom:1.25rem}
+.sidebarblock p,.sidebarblock dt,.sidebarblock td.content,p.tableblock{font-size:1em}
+.exampleblock>.content{background-color:#fffef7;border-color:#e0e0dc;-webkit-box-shadow:0 1px 4px #e0e0dc;box-shadow:0 1px 4px #e0e0dc}
+.print-only{display:none!important}
+@media print{@page{margin:1.25cm .75cm}
+*{-webkit-box-shadow:none!important;box-shadow:none!important;text-shadow:none!important}
+a{color:inherit!important;text-decoration:underline!important}
+a.bare,a[href^="#"],a[href^="mailto:"]{text-decoration:none!important}
+a[href^="http:"]:not(.bare):after,a[href^="https:"]:not(.bare):after{content:"(" attr(href) ")";display:inline-block;font-size:.875em;padding-left:.25em}
+abbr[title]:after{content:" (" attr(title) ")"}
+pre,blockquote,tr,img,object,svg{page-break-inside:avoid}
+thead{display:table-header-group}
+svg{max-width:100%}
+p,blockquote,dt,td.content{font-size:1em;orphans:3;widows:3}
+h2,h3,#toctitle,.sidebarblock>.content>.title{page-break-after:avoid}
+#toc,.sidebarblock,.exampleblock>.content{background:none!important}
+#toc{border-bottom:1px solid #ddddd8!important;padding-bottom:0!important}
+.sect1{padding-bottom:0!important}
+.sect1+.sect1{border:0!important}
+#header>h1:first-child{margin-top:1.25rem}
+body.book #header{text-align:center}
+body.book #header>h1:first-child{border:0!important;margin:2.5em 0 1em 0}
+body.book #header .details{border:0!important;display:block;padding:0!important}
+body.book #header .details span:first-child{margin-left:0!important}
+body.book #header .details br{display:block}
+body.book #header .details br+span:before{content:none!important}
+body.book #toc{border:0!important;text-align:left!important;padding:0!important;margin:0!important}
+body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-break-before:always}
+.listingblock code[data-lang]:before{display:block}
+#footer{background:none!important;padding:0 .9375em}
+#footer-text{color:rgba(0,0,0,.6)!important;font-size:.9em}
+.hide-on-print{display:none!important}
+.print-only{display:block!important}
+.hide-for-print{display:none!important}
+.show-for-print{display:inherit!important}}
+</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css">
+<style>
+.listingblock .pygments .hll { background-color: #ffffcc }
+.listingblock .pygments, .listingblock .pygments code { background: #f8f8f8; }
+.listingblock .pygments .tok-c { color: #408080; font-style: italic } /* Comment */
+.listingblock .pygments .tok-err { border: 1px solid #FF0000 } /* Error */
+.listingblock .pygments .tok-k { color: #008000; font-weight: bold } /* Keyword */
+.listingblock .pygments .tok-o { color: #666666 } /* Operator */
+.listingblock .pygments .tok-ch { color: #408080; font-style: italic } /* Comment.Hashbang */
+.listingblock .pygments .tok-cm { color: #408080; font-style: italic } /* Comment.Multiline */
+.listingblock .pygments .tok-cp { color: #BC7A00 } /* Comment.Preproc */
+.listingblock .pygments .tok-cpf { color: #408080; font-style: italic } /* Comment.PreprocFile */
+.listingblock .pygments .tok-c1 { color: #408080; font-style: italic } /* Comment.Single */
+.listingblock .pygments .tok-cs { color: #408080; font-style: italic } /* Comment.Special */
+.listingblock .pygments .tok-gd { color: #A00000 } /* Generic.Deleted */
+.listingblock .pygments .tok-ge { font-style: italic } /* Generic.Emph */
+.listingblock .pygments .tok-gr { color: #FF0000 } /* Generic.Error */
+.listingblock .pygments .tok-gh { color: #000080; font-weight: bold } /* Generic.Heading */
+.listingblock .pygments .tok-gi { color: #00A000 } /* Generic.Inserted */
+.listingblock .pygments .tok-go { color: #888888 } /* Generic.Output */
+.listingblock .pygments .tok-gp { color: #000080; font-weight: bold } /* Generic.Prompt */
+.listingblock .pygments .tok-gs { font-weight: bold } /* Generic.Strong */
+.listingblock .pygments .tok-gu { color: #800080; font-weight: bold } /* Generic.Subheading */
+.listingblock .pygments .tok-gt { color: #0044DD } /* Generic.Traceback */
+.listingblock .pygments .tok-kc { color: #008000; font-weight: bold } /* Keyword.Constant */
+.listingblock .pygments .tok-kd { color: #008000; font-weight: bold } /* Keyword.Declaration */
+.listingblock .pygments .tok-kn { color: #008000; font-weight: bold } /* Keyword.Namespace */
+.listingblock .pygments .tok-kp { color: #008000 } /* Keyword.Pseudo */
+.listingblock .pygments .tok-kr { color: #008000; font-weight: bold } /* Keyword.Reserved */
+.listingblock .pygments .tok-kt { color: #B00040 } /* Keyword.Type */
+.listingblock .pygments .tok-m { color: #666666 } /* Literal.Number */
+.listingblock .pygments .tok-s { color: #BA2121 } /* Literal.String */
+.listingblock .pygments .tok-na { color: #7D9029 } /* Name.Attribute */
+.listingblock .pygments .tok-nb { color: #008000 } /* Name.Builtin */
+.listingblock .pygments .tok-nc { color: #0000FF; font-weight: bold } /* Name.Class */
+.listingblock .pygments .tok-no { color: #880000 } /* Name.Constant */
+.listingblock .pygments .tok-nd { color: #AA22FF } /* Name.Decorator */
+.listingblock .pygments .tok-ni { color: #999999; font-weight: bold } /* Name.Entity */
+.listingblock .pygments .tok-ne { color: #D2413A; font-weight: bold } /* Name.Exception */
+.listingblock .pygments .tok-nf { color: #0000FF } /* Name.Function */
+.listingblock .pygments .tok-nl { color: #A0A000 } /* Name.Label */
+.listingblock .pygments .tok-nn { color: #0000FF; font-weight: bold } /* Name.Namespace */
+.listingblock .pygments .tok-nt { color: #008000; font-weight: bold } /* Name.Tag */
+.listingblock .pygments .tok-nv { color: #19177C } /* Name.Variable */
+.listingblock .pygments .tok-ow { color: #AA22FF; font-weight: bold } /* Operator.Word */
+.listingblock .pygments .tok-w { color: #bbbbbb } /* Text.Whitespace */
+.listingblock .pygments .tok-mb { color: #666666 } /* Literal.Number.Bin */
+.listingblock .pygments .tok-mf { color: #666666 } /* Literal.Number.Float */
+.listingblock .pygments .tok-mh { color: #666666 } /* Literal.Number.Hex */
+.listingblock .pygments .tok-mi { color: #666666 } /* Literal.Number.Integer */
+.listingblock .pygments .tok-mo { color: #666666 } /* Literal.Number.Oct */
+.listingblock .pygments .tok-sa { color: #BA2121 } /* Literal.String.Affix */
+.listingblock .pygments .tok-sb { color: #BA2121 } /* Literal.String.Backtick */
+.listingblock .pygments .tok-sc { color: #BA2121 } /* Literal.String.Char */
+.listingblock .pygments .tok-dl { color: #BA2121 } /* Literal.String.Delimiter */
+.listingblock .pygments .tok-sd { color: #BA2121; font-style: italic } /* Literal.String.Doc */
+.listingblock .pygments .tok-s2 { color: #BA2121 } /* Literal.String.Double */
+.listingblock .pygments .tok-se { color: #BB6622; font-weight: bold } /* Literal.String.Escape */
+.listingblock .pygments .tok-sh { color: #BA2121 } /* Literal.String.Heredoc */
+.listingblock .pygments .tok-si { color: #BB6688; font-weight: bold } /* Literal.String.Interpol */
+.listingblock .pygments .tok-sx { color: #008000 } /* Literal.String.Other */
+.listingblock .pygments .tok-sr { color: #BB6688 } /* Literal.String.Regex */
+.listingblock .pygments .tok-s1 { color: #BA2121 } /* Literal.String.Single */
+.listingblock .pygments .tok-ss { color: #19177C } /* Literal.String.Symbol */
+.listingblock .pygments .tok-bp { color: #008000 } /* Name.Builtin.Pseudo */
+.listingblock .pygments .tok-fm { color: #0000FF } /* Name.Function.Magic */
+.listingblock .pygments .tok-vc { color: #19177C } /* Name.Variable.Class */
+.listingblock .pygments .tok-vg { color: #19177C } /* Name.Variable.Global */
+.listingblock .pygments .tok-vi { color: #19177C } /* Name.Variable.Instance */
+.listingblock .pygments .tok-vm { color: #19177C } /* Name.Variable.Magic */
+.listingblock .pygments .tok-il { color: #666666 } /* Literal.Number.Integer.Long */
+</style>
+</head>
+<body class="article toc2 toc-left">
+<div id="header">
+<h1>RFD 106 Engineering Guide - Go Best Practices</h1>
+<div class="details">
+<span id="author" class="author">Sean Chittenden</span><br>
+<span id="email" class="email"><a href="mailto:seanc@joyent.com">seanc@joyent.com</a></span><br>
+<span id="revnumber">version 0.1.0,</span>
+<span id="revdate">2017-07-30</span>
+<br><span id="revremark">State: predraft</span>
+</div>
+<div id="toc" class="toc2">
+<div id="toctitle">Table of Contents</div>
+<ul class="sectlevel1">
+<li><a href="#introduction">Introduction</a>
+<ul class="sectlevel2">
+<li><a href="#core-beliefs">Core Beliefs</a></li>
+</ul>
+</li>
+<li><a href="#version-of-go">1. Version of Go</a></li>
+<li><a href="#project-structure">2. Project Structure</a></li>
+<li><a href="#workflow">3. Workflow</a></li>
+<li><a href="#style">4. Style</a></li>
+<li><a href="#developer-tools">5. Developer Tools</a></li>
+<li><a href="#editor-integration">6. <code>$EDITOR</code> Integration</a></li>
+<li><a href="#vendor-management">7. <code>vendor/</code> Management</a></li>
+<li><a href="#naming-conventions">8. Naming Conventions</a></li>
+<li><a href="#api-stability">9. API Stability</a></li>
+<li><a href="#static-analysis">10. Static Analysis</a></li>
+<li><a href="#explicit-types">11. Explicit Types</a></li>
+<li><a href="#return-parameters">12. Return Parameters</a></li>
+<li><a href="#interface-receivers">13. Interface Receivers</a></li>
+<li><a href="#const">14. <code>const</code></a></li>
+<li><a href="#bitmasks">15. Bitmasks</a></li>
+<li><a href="#documentation">16. Documentation</a></li>
+<li><a href="#context">17. Context</a></li>
+<li><a href="#deadline-timers-and-timeouts">18. Deadline Timers and Timeouts</a></li>
+<li><a href="#grpc">19. gRPC</a></li>
+<li><a href="#external-resources">20. External Resources</a></li>
+<li><a href="#glossary">Glossary</a></li>
+</ul>
+</div>
+</div>
+<div id="content">
+<div id="preamble">
+<div class="sectionbody">
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>"Go is efficient, scalable, and productive. Some programmers find it fun to work
+in; others find it unimaginative, even boring. In this article we will explain
+why those are not contradictory positions. Go was designed to address the
+problems faced in software development at Google, which led to a language that
+is not a breakthrough research language but is nonetheless an excellent tool for
+engineering large software projects."</p>
+</div>
+<div class="paragraph">
+<p>— <a href="https://talks.golang.org/2012/splash.article">Rob Pike, 2012</a></p>
+</div>
+</blockquote>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="introduction"><a class="anchor" href="#introduction"></a><a class="link" href="#introduction">Introduction</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Joyent has <a href="http://dtrace.org/blogs/wesolows/2014/12/29/fin/">a</a>
+<a href="http://dtrace.org/blogs/wesolows/2014/12/29/golang-is-trash/">storied</a>
+<a href="https://golang.org/pkg/net/#hdr-Name_Resolution">history</a> with regards to
+<a href="https://github.com/golang/go/issues/20603">Go</a>. Without providing modern
+treatment to past issues, it is undeniable that many, if not most (as of
+2017) distributed systems are being written in Go. To that extent,
+Joyent is embracing of Go&#8217;s contribution to distributed, enterprise,
+production-grade computing and celebrates the software engineering ethos held by
+many in the Go community because their beliefs are aligned with our
+<a href="https://gist.github.com/davepacheco/1878bad488053093348d9ec9967f5b06">principles</a>.</p>
+</div>
+<div class="paragraph">
+<p>In this document we will define and articulate Joyent&#8217;s evolving set of
+best-practices with regards to how to Go.</p>
+</div>
+<div class="paragraph">
+<p>Each item has a recommendation and a rationale.  Over time these recommendations
+and rationale are apt to evolve and be refined to further reflect our
+experiences.  Omissions or gaps in the list of items, the recommendations, or
+their rationale is almost certainly unintentional.  At times several of the
+recommendations or rationale become pithy due to time constraints or the
+perceived lack of a need to provide a more robust explanation, and similarly,
+this is unintentional.  If an issue warrants additional discussion, please
+<a href="#contributing">open an issue</a>.</p>
+</div>
+<div class="paragraph">
+<p><a id="contributing"></a>To provide feedback, bug fixes, request clarification, or
+initiate a discussion, please open an
+<a href="https://github.com/joyent/rfd/issues/new">RFD issue</a> and reference
+<a href="https://github.com/joyent/rfd/tree/master/rfd/0106"><code>RFD 106</code></a> along with the
+necessary specifics.  For issues where there is a debate or discussion, this
+document will include a link back to the individual issues where a particular
+item was addressed or debated.</p>
+</div>
+<div class="paragraph">
+<p>This RFD makes use of terminology defined in
+<a href="https://www.rfc-editor.org/info/bcp14">BCP 14</a>
+(<a href="https://www.rfc-editor.org/rfc/rfc2119.txt">RFC 2119</a> and
+<a href="https://www.rfc-editor.org/rfc/rfc8174.txt">RFC 8174</a>,
+i.e.  "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+NOT", "RECOMMENDED", "MAY", and "OPTIONAL").</p>
+</div>
+<div class="sect2">
+<h3 id="core-beliefs"><a class="anchor" href="#core-beliefs"></a><a class="link" href="#core-beliefs">Core Beliefs</a></h3>
+<div class="paragraph">
+<p>At Joyent we have the following beliefs regarding software:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Build robust, trusted systems</p>
+<div class="ulist">
+<ul>
+<li>
+<p>Build secure systems</p>
+</li>
+<li>
+<p>Data integrity</p>
+</li>
+</ul>
+</div>
+</li>
+<li>
+<p>Operability</p>
+</li>
+<li>
+<p>Maintainability</p>
+</li>
+<li>
+<p>Availability</p>
+</li>
+<li>
+<p>Debuggablity</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>It&#8217;s not possible to prescribe a fool-proof set of best-practices but it is
+possible to influence the outcome. To wit, in order to satisfy these beliefs, we
+take principled stances on the following (in no particular order, but roughly
+ordered from philosophical to practical):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Version of Go</p>
+</li>
+<li>
+<p>Project Structure</p>
+</li>
+<li>
+<p>Workflow</p>
+</li>
+<li>
+<p>Style</p>
+</li>
+<li>
+<p><code>$EDITOR</code> Integration</p>
+</li>
+<li>
+<p><code>vendor/</code> Management</p>
+</li>
+<li>
+<p>Naming Conventions</p>
+</li>
+<li>
+<p>API stability</p>
+</li>
+<li>
+<p>Static Analysis</p>
+</li>
+<li>
+<p>Explicit Types</p>
+</li>
+<li>
+<p><code>return</code> Parameters</p>
+</li>
+<li>
+<p>Interface Receivers</p>
+</li>
+<li>
+<p><code>const</code></p>
+</li>
+<li>
+<p>Constructing and Using Bitmasks</p>
+</li>
+<li>
+<p>Documentation</p>
+</li>
+<li>
+<p>Use of <code>context</code></p>
+</li>
+<li>
+<p>Deadline Timers and Timeouts</p>
+</li>
+</ul>
+</div>
+<div class="sect3">
+<h4 id="beliefs"><a class="anchor" href="#beliefs"></a><a class="link" href="#beliefs">Beliefs</a></h4>
+<div class="sect4">
+<h5 id="build-robust-trusted-systems"><a class="anchor" href="#build-robust-trusted-systems"></a><a class="link" href="#build-robust-trusted-systems">Build Robust, Trusted Systems</a></h5>
+<div class="ulist">
+<ul>
+<li>
+<p>Data Integrity</p>
+</li>
+<li>
+<p>Predictability</p>
+</li>
+<li>
+<p>Security</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect4">
+<h5 id="operability"><a class="anchor" href="#operability"></a><a class="link" href="#operability">Operability</a></h5>
+
+</div>
+<div class="sect4">
+<h5 id="maintainability"><a class="anchor" href="#maintainability"></a><a class="link" href="#maintainability">Maintainability</a></h5>
+
+</div>
+<div class="sect4">
+<h5 id="availability"><a class="anchor" href="#availability"></a><a class="link" href="#availability">Availability</a></h5>
+
+</div>
+<div class="sect4">
+<h5 id="debuggablity"><a class="anchor" href="#debuggablity"></a><a class="link" href="#debuggablity">Debuggablity</a></h5>
+
+</div>
+<div class="sect4">
+<h5 id="principles"><a class="anchor" href="#principles"></a><a class="link" href="#principles">Principles</a></h5>
+
+</div>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="version-of-go"><a class="anchor" href="#version-of-go"></a><a class="link" href="#version-of-go">1. Version of Go</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>The latest released version <em>or</em> a current
+<a href="https://twitter.com/bradfitz/status/889898218573766656">release candidate</a> of
+Go SHOULD be used for day-to-day development.</p>
+</li>
+<li>
+<p>A released version of Go or <a href="https://www.youtube.com/watch?v=OuT8YYAOOVI">a
+release candidate </a>, until the next version becomes available, MUST be used
+for building released binaries.</p>
+</li>
+<li>
+<p>The latest version of Go SHOULD be used for release engineering.</p>
+</li>
+<li>
+<p><a href="https://github.com/golang/go/tree/master"><code>master</code></a> MAY be used for
+development and is RECOMMENDED for Continuous Integration (CI) testing.</p>
+</li>
+<li>
+<p>Every time the version of <code><a href="https://golang.org/cmd/go/">go(1)</a></code> changes the contents of <code>$GOPATH/pkg</code> MUST
+be cleaned out:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ rm -rf $GOPATH/pkg/</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<h3 id="rationale" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>The Go team and project are consistently advancing the state of the Go compiler
+and standard library.  Released versions and release candidates are considered
+fit for production and should therefore be used in production.  Upgrade early
+and often.</p>
+</div>
+<div class="paragraph">
+<p>When release candidates are available, they should be used until the next
+finalized release is made available.</p>
+</div>
+<div class="paragraph">
+<p>The Go team and contributors have a good track record of advancing the state of
+the compiler in terms of stability and performance.  Tendencies toward risk
+aversion frequently have a higher cost (e.g. security, correctness, performance,
+or stability) than absorbing the cost of any incremental upgrade.</p>
+</div>
+<div class="paragraph">
+<p>Use of <a href="https://github.com/golang/go/tree/master"><code>master</code></a> is not peril free,
+however it is good way of staying current and doesn&#8217;t cause much grief during
+development, but frequently does improve both correctness and quality.</p>
+</div>
+<div class="paragraph">
+<p>The version of <code><a href="https://golang.org/cmd/go/">go(1)</a></code> is tightly coupled to the cached object files in
+<code>$GOPATH/pkg</code> and there is no stability contract.  Cleaning out <code>$GOPATH/pkg</code>
+periodically is an ounce of prevention whose tiny cost is worth more than the
+pound of debugging.<sup class="footnote" id="_footnote_gopath-tmp">[<a id="_footnoteref_1" class="footnote" href="#_footnote_1" title="View footnote.">1</a>]</sup></p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="project-structure"><a class="anchor" href="#project-structure"></a><a class="link" href="#project-structure">2. Project Structure</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-2" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code>$GOPATH</code> SHOULD be set to <code>$HOME/go</code> and SHOULD be incorporated into your
+shell&#8217;s environment.</p>
+</li>
+<li>
+<p>All development SHOULD be done within <code>$GOPATH/src</code>.</p>
+</li>
+<li>
+<p><code>$GOPATH/bin</code> SHOULD be part of <code>PATH</code> and before <code>/usr/local</code> or
+<code>/opt/local</code> (i.e. before system or package manager managed binaries).</p>
+<div class="listingblock">
+<div class="content">
+<pre>$ export GOPATH=$HOME/go
+$ export PATH=$GOPATH/bin:$PATH</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Where appropriate, it is RECOMMENDED to make use of monolithic repositories
+(mono-repo).</p>
+</li>
+<li>
+<p>Publicly consumable libraries or programs SHOULD be pushed to a distinct
+canonical public location and automatically synchronized to the internal
+codebase.</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-2" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Starting in Go 1.8, <code><a href="https://golang.org/cmd/go/">go(1)</a></code> defaulted to <code>$HOME/go</code> as its default <code>GOPATH</code>.  It
+is not strictly necessary to set <code>GOPATH</code>, however it is still advised to make
+this implicit default explicit.
+<a href="https://github.com/mailru/easyjson/pull/132">Many</a> tools or pieces of software
+test for the environment variable <code>GOPATH</code> instead of using using <code>go env
+GOPATH</code>.</p>
+</div>
+<div class="paragraph">
+<p>In Go 1.8, the Go project defaulted to <code>$HOME/go</code> as the default value for
+<code>$GOPATH</code>. Use of one-workspace per project is counter-productive and
+establishes a workflow that is orthogonal to the ethos of the prevailing Go
+ecosystem. This isn&#8217;t to say there are times where this is necessary
+(i.e. clean-room verification or maintenance of <code>vendor/</code>), but the default
+practice SHOULD be to work inside of a single <code>$GOPATH</code> workspace
+<sup class="footnote">[<a id="_footnoteref_2" class="footnote" href="#_footnote_2" title="View footnote.">2</a>]</sup>.</p>
+</div>
+<div class="paragraph">
+<p>Go&#8217;s tooling makes it especially productive to move all libraries and programs
+into the same codebase so that refactoring can commence in atomic units of
+work. In particular, making sweeping changes via <code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code> <code>-r</code> is easy to
+accomplish in a single repository and commit. Breaking apart individual
+libraries into discrete repositories fragments the codebase with no isolation
+guarantees that Version Control System (VCS) doesn&#8217;t already provide. Contrast
+that with having all libraries and programs in the same codebase, it is now
+possible to move the entire codebase forward in an atomic transaction
+<sup class="footnote">[<a id="_footnoteref_3" class="footnote" href="#_footnote_3" title="View footnote.">3</a>]</sup>. Additional arguments in support of monorepos
+include:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://npf.io/2017/03/3.5yrs-500k-lines-of-go/">3.5 Years, 500k Lines
+of Go (Part 1)</a></p>
+</li>
+<li>
+<p><a href="https://blog.gopheracademy.com/advent-2015/go-in-a-monorepo/">Go in a
+Monorepo</a></p>
+</li>
+<li>
+<p><a href="https://hackernoon.com/basic-monorepo-design-in-go-e9ba1cb8e4e6">Basic
+Project Design in Go</a>
+*
+<a href="https://medium.com/wattpad-engineering/building-and-testing-go-apps-monorepo-speed-9e9ca4978e19">Building
+and testing Go apps + monorepo + speed</a>
+*
+<a href="https://medium.com/@LucasVieiraDev/dependencies-in-golang-projects-f46a11fef832">Dependencies
+in Golang projects</a></p>
+</li>
+<li>
+<p><a href="http://pliutau.com/pros_and_cons_golang_in_monorepo/">Pros and Cons:
+Golang in a Monorepo</a></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Publicly reusable components, however, SHOULD be discretely usable.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="workflow"><a class="anchor" href="#workflow"></a><a class="link" href="#workflow">3. Workflow</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-3" class="discrete">Recommendation</h3>
+<div class="paragraph">
+<p>Engineer workflow changes based on whether or not you have write-privileges to
+the target repository.</p>
+</div>
+<div id="workflow-github-like" class="paragraph">
+<p>If you HAVE write access to a repository and it is Github-like:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Checkout the repository:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -d my.git.server/my_org/my_project</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create a branch for your change:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ cd $GOPATH/src/my.git.server/my_org/my_project
+$ git checkout -b my-branch-name</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Commit your change(s):</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git commit</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Push your change to <code>origin</code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git push -u origin my-branch-name</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Submit a Pull Request (PR).</p>
+</li>
+<li>
+<p>You SHOULD obtain a review. For all changes deemed to be trivial this is not
+necessary, however the change MUST be made through a PR in order to to aid in
+a quick backout commit.</p>
+</li>
+<li>
+<p>Automated regression tests MUST complete and pass.</p>
+</li>
+<li>
+<p>If the velocity of change for the repository is low enough, a <code>CHANGELOG</code>
+entry for the project SHOULD be committed to the PR as the final step before
+merging the PR. If the velocity of the repository is too high, the
+<code>CHANGELOG</code> entry for the project MAY be added after the PR has been merged.</p>
+</li>
+<li>
+<p>Merge the PR. If the history of the PR is messy with unhelpful commits
+(e.g. "fix typo", "update test"), perform a squash merge with a detailed,
+high-quality commit message that has been approved by the rest of the
+team. Detail that can&#8217;t be expressed in the commit message should be outlined
+in code comments.</p>
+</li>
+<li>
+<p>Pull the latest changes:</p>
+<div class="listingblock">
+<div class="content">
+<pre>$ git checkout master &amp;&amp; git pull origin master</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Delete your local branch:</p>
+<div class="listingblock">
+<div class="content">
+<pre>$ git branch -d my-branch-name</pre>
+</div>
+</div>
+</li>
+<li>
+<p>Delete your branch from the server (e.g. <code>my-branch-name</code>).</p>
+</li>
+</ol>
+</div>
+<div id="workflow-github-like-fork" class="paragraph">
+<p>If you do NOT HAVE write access to a repository the workflow is largely the same
+except you MUST create a fork of the repository:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Checkout the original repository:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -d -v my.git.server/my_org/my_project</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Fork the upstream repository to your individual user account.</p>
+</li>
+<li>
+<p>Add the remote for your repository:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ cd $GOPATH/src/my.git.server/my_org/my_project
+$ git remote add me my.git.server/my_user/my_project</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create a branch for your change:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git checkout -b my-branch-name</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Commit your change(s)</p>
+</li>
+<li>
+<p>Push your change to <code>me</code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git push -u me my-branch-name</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>A <code>CHANGELOG</code> entry SHOULD be incorporated into the PR unless the upstream
+project will write the <code>CHANGELOG</code> entry for you.</p>
+</li>
+<li>
+<p>Submit a Pull Request (PR).</p>
+</li>
+<li>
+<p>Wait for the upstream provider to merge your PR.</p>
+</li>
+<li>
+<p>Pull the latest changes:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git checkout master
+$ git pull origin master</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Delete your local branch:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git branch -d my-branch-name</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div id="workflow-package-path" class="admonitionblock important">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-important" title="Important"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Work MUST be completed within the same directory as the upstream source and not
+the path to your fork of an upstream module (i.e.  CORRECT:
+<code>$GOPATH/src/my.git.server/upstream_org/my_project</code> WRONG:
+<code>$GOPATH/src/my.git.server/my_user/my_project</code>).  Instead use the path of your
+upstream source, but use a different <code>git remote</code> URL.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div id="workflow-gerrit" class="paragraph">
+<p>If you HAVE write access to a repository and it is Gerrit:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Checkout the repository:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git clone --origin gerrit https://my.git.server/my_org/my_project.git</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Create a branch for your change:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git checkout -b my-branch-name</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Commit your change(s):</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git commit</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Push your change to <code>origin</code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git push gerrit HEAD:refs/for/master</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>You MUST obtain a review.</p>
+</li>
+<li>
+<p>Automated regression tests MUST complete and pass.</p>
+</li>
+<li>
+<p>A <code>CHANGELOG</code> entry MUST be committed to the PR as the final step before
+merging the PR.</p>
+</li>
+<li>
+<p>Merge the PR. If the history of the PR is messy with unhelpful commits
+(e.g. "fix typo", "update test"), perform a squash merge with a detailed,
+high-quality commit message that has been approved by the rest of the
+team. Detail that can&#8217;t be expressed in the commit message should be
+outlined in code comments.</p>
+</li>
+<li>
+<p>Pull the latest changes:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git checkout master
+$ git pull origin master</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Delete your local branch:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git branch -d my-branch-name</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="style"><a class="anchor" href="#style"></a><a class="link" href="#style">4. Style</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-4" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>All code MUST pass through <code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code>. <code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code> SHOULD be executed with
+the <code>-s</code> flag.</p>
+</li>
+<li>
+<p>Lines SHOULD wrap at 80 characters.</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-3" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>The particular brand of <a href="https://blog.golang.org/go-fmt-your-code">tribal fascism
+that extends from <code>gofmt(1)</code></a> increases the overall productivity of the
+entire Go community by creating a single dialect of Go that is universal across
+projects, teams, and organizations. Being able to drop into any arbitrary Go
+project, regardless of the copyright, and be able to understand the codebase
+quickly is a universal boon.</p>
+</div>
+<div class="paragraph">
+<p>The only observable consequence to adhering to `https://golang.org/cmd/gofmt/[gofmt(1)]&#8217;s set of style norms
+is the cost of shedding the sentimental attachment to a preference for "my way
+of doing things". Developing a personal or project-wide coding style takes
+discipline to adhere to, an understanding of the style guide&#8217;s rules (including
+their rationale), and an eagle-eye to enforce. Investment in such skills and the
+pride attached to that skill-set is near-zero in the Go community. Shedding
+personal preference - justified or not - in favor of a prescribed doctrine is a
+tangible hurdle to overcome.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>The computing industry has been well served by project-wide style
+guidelines in part because this created a sufficiently high barrier to entry
+which acted as a litmus-test to ensure tribal norms were understood and
+communicated to new members of the tribe. With many of the original industrial
+programming languages being riddled with undefined behavior (e.g. C or C++),
+style guides helped communities of engineers ship more reliable code and with
+fewer bugs because project-wide idioms had a tendency to be put in place for a
+reason.</p>
+</div>
+<div class="paragraph">
+<p>Even before <code><a href="https://golang.org/cmd/go/">go(1)</a></code> adopted <code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code> to enforce Go&#8217;s single-style guideline,
+<code>ident(1)</code> existed as a crude tool for enforcing style (crude to the point that
+<code>ident(1)</code> was eschewed because it was unable to perform at the levels required
+for a developer tool). In no way should <code>clang-format(1)</code> or <code>clang-tidy(1)</code> be
+lumped into the same league of correctness as <code>ident(1)</code> because
+<code>clang-format(1)</code> and <code>clang-tidy(1)</code> <sup class="footnote">[<a id="_footnoteref_4" class="footnote" href="#_footnote_4" title="View footnote.">4</a>]</sup> recreate the AST before rewriting code (vs the brute-force text-level
+tokenization performed by most <code>ident(1)</code> implementations).</p>
+</div>
+<div class="paragraph">
+<p>The value and merit of individual or project preferences with regards to the
+artistry stemming from style guides has been eclipsed by the value generated
+from participating in the open, code-sharing world of the Go Open Source
+ecosystem. Go came into the world with a lack of legacy, fragmentation, or
+tribalism and has largely remained an unfragmented community in large part due
+to its fungability of both Go developers and code that can be readily shared
+across either projects or organizations.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p><code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code> SHOULD be used in place of the <code><a href="https://golang.org/cmd/go/">go(1)</a></code> tool&#8217;s <code>fmt</code> command
+because:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code> supports the <code>-s</code> flag to
+<a href="https://golang.org/cmd/gofmt/#hdr-The_simplify_command">simplify code where
+possible</a>.</p>
+</li>
+<li>
+<p><code>go fmt</code> calls <code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code>:
+<a href="https://github.com/golang/go/blob/af2ac47/src/cmd/go/internal/fmtcmd/fmt.go#L42-L71">src/cmd/go/internal/fmtcmd/fmt.go
+L42-L71</a></p>
+</li>
+<li>
+<p><code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code> supports programmatic rewriting of the code base via the <code>-r</code>
+flag.</p>
+</li>
+<li>
+<p>Code SHOULD be fungible. Go&#8217;s simple syntax, emphasis on readability, and
+"side-effect"-free code largely make this a reality.</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Additional rationale is included in
+<a href="https://talks.golang.org/2015/gofmt-en.slide">Robert Griesemer&#8217;s talk on The
+Cultural Evolution of gofmt</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="developer-tools"><a class="anchor" href="#developer-tools"></a><a class="link" href="#developer-tools">5. Developer Tools</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-5" class="discrete">Recommendation</h3>
+<div class="paragraph">
+<p>The following tools are RECOMMENDED for development:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code><a href="https://godoc.org/golang.org/x/tools/cmd/goimports">goimports(1)</a></code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/goimports</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/guru</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><code><a href="https://golang.org/cmd/godoc/">godoc(1)</a></code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/godoc</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><code><a href="https://godoc.org/golang.org/x/tools/cmd/gorename">gorename(1)</a></code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/gorename</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><code><a href="https://godoc.org/golang.org/x/tools/cmd/gomvpkg">gomvpkg(1)</a></code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/gomvpkg</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<h3 id="rationale-4" class="discrete">Rationale</h3>
+<h4 id="code-goimports-1-code" class="discrete"><code>goimports(1)</code></h4>
+<div class="paragraph">
+<p>Manually maintaining <a href="https://golang.org/ref/spec#Import_declarations"><code>import</code>
+declarations</a> is a tedious waste of time.  <code><a href="https://godoc.org/golang.org/x/tools/cmd/goimports">goimports(1)</a></code> gets this right 99% of
+the time and increases productivity significantly once integrated into your
+<code>$EDITOR</code>.  <code><a href="https://godoc.org/golang.org/x/tools/cmd/goimports">goimports(1)</a></code> does periodically get the package wrong when there
+is ambiguity, but with a nudge in the right direction it doesn&#8217;t go off the
+rails again for a particular source file.</p>
+</div>
+<h4 id="guru-rationale" class="discrete"><code>guru(1)</code></h4>
+<div class="paragraph">
+<p><code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> SHOULD be integrated into your <code>$EDITOR</code> because it enables quick,
+authoritative traversal of codebases.  <code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> is a huge productivity bump
+and can&#8217;t have enough good things said about it.  Watch
+<a href="https://www.youtube.com/watch?v=ak97oH0D6fI">Navigating Unfamiliar Code with the
+Go Guru</a> and read <a href="https://golang.org/s/using-guru">Using Go Guru: an editor-integrated tool for
+navigating Go code</a>.  Spiritually <code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> could probably attribute a material
+portion of its inspiration with <a href="https://en.wikipedia.org/wiki/Ctags"><code>ctags(1)</code></a>,
+ <a href="https://en.wikipedia.org/wiki/Cscope"><code>cscope(1)</code></a>, and
+ <a href="https://en.wikipedia.org/wiki/LXR_Cross_Referencer">LXR</a>, however <code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> is
+much more sophisticated.</p>
+</div>
+<div class="paragraph">
+<p>The list of <code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code>s functionality includes (as of July 2017, and taken
+from <a href="https://golang.org/x/tools/cmd/guru" class="bare">golang.org/x/tools/cmd/guru</a>):</p>
+</div>
+<div class="dlist">
+<div class="title">Identifier Queries</div>
+<dl>
+<dt class="hdlist1"><code>what</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>what</code> query describes the current source position as rapidly as possible.
+It is not intended to be invoked directly by the user, but it allows editors to
+provide immediate feedback in the UI whenever the cursor position changes.  It
+can be used to highlight all identifiers that are equivalent to current one.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+<dt class="hdlist1"><code>definition</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>definition</code> query finds the declaration of the selected identifier.  In
+some editors, it may jump the cursor directly to that location.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+<dt class="hdlist1"><code>referrers</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>referrers</code> query finds references to the selected identifier, scanning all
+necessary packages within the workspace.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+<dt class="hdlist1"><code>freevars</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>freevars</code> query enumerates the free variables of the selection.  "Free
+variables" is a technical term meaning the set of variables that are referenced
+but not defined within the selection, or loosely speaking, its inputs.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+</dl>
+</div>
+<div class="dlist">
+<div class="title">Type Queries</div>
+<dl>
+<dt class="hdlist1"><code>describe</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>describe</code> query shows various properties of the selected syntax: its
+syntactic kind, the type of an expression, the value of a constant expression,
+the size, alignment, method set, and interfaces of a type, the declaration of an
+identifier, and so on.  You may <code>describe</code> almost any piece of syntax, and
+<code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> will print all the useful information it can.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+<dt class="hdlist1"><code>implements</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>implements</code> query shows interfaces that are implemented by the selected
+type and, if the selected type is itself an interface, the set of concrete types
+that implement it.  An implements query on a value reports the same information
+about the expression’s type.  An <code>implements</code> query on a method shows the set of
+abstract or concrete methods that are related to it.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+</dl>
+</div>
+<div class="dlist">
+<div class="title">Call Graph Queries</div>
+<dl>
+<dt class="hdlist1"><code>callees</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>callees</code> query shows the possible call targets of the selected function
+call site.  The cursor or selection must be within a function call expression;
+the selection need not be exact.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+<dt class="hdlist1"><code>callers</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>callers</code> query shows the possible callers of the function containing the
+selection.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+<dt class="hdlist1"><code>callstack</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The callstack query shows an arbitrary path from the root of the call graph to
+the function containing the selection.  This may be useful to understand how the
+function is reached in a given program.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+</dl>
+</div>
+<div class="dlist">
+<div class="title">Alias Queries</div>
+<dl>
+<dt class="hdlist1"><code>pointsto</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>pointsto</code> query shows the set of possible objects to which a pointer may
+point.  It also works for other reference types, like slices, functions, maps,
+and channels.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+<dt class="hdlist1"><code>whicherrs</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>whicherrs</code> query reports the set of possible constants, global variables,
+and concrete types that may appear in a value of type error.  This information
+may be useful when handling errors to ensure all the important cases have been
+dealt with.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+<dt class="hdlist1"><code>peers</code></dt>
+<dd>
+<div class="quoteblock">
+<blockquote>
+<div class="paragraph">
+<p>The <code>peers</code> query shows the set of possible sends/receives on the channel
+operand of the selected send or receive operation; the selection must be a <code><-</code>
+token.</p>
+</div>
+</blockquote>
+</div>
+</dd>
+</dl>
+</div>
+<h4 id="code-godoc-1-code" class="discrete"><code>godoc(1)</code></h4>
+<div class="paragraph">
+<p><code><a href="https://golang.org/cmd/godoc/">godoc(1)</a></code> SHOULD be installed in order to have quick access to formatted
+documentation.  Before committing a new body of work, the documentation for the
+package should be inspected.  A strong cofactor in determining the reusable
+value of software is its documentation (see also:
+<a href="https://en.wikipedia.org/wiki/Network_effect">network effect</a>).</p>
+</div>
+<h4 id="code-gorename-1-code-and-code-gomvpkg-1-code" class="discrete"><code>gorename(1)</code> and <code>gomvpkg(1)</code></h4>
+<div class="paragraph">
+<p><code><a href="https://godoc.org/golang.org/x/tools/cmd/gorename">gorename(1)</a></code> SHOULD be used for renaming package, function, and method members
+(i.e. <code>const</code>, <code>func</code>, <code>var</code>, and <code>type</code>).</p>
+</div>
+<div class="paragraph">
+<p>While less commonly needed, <code><a href="https://godoc.org/golang.org/x/tools/cmd/gomvpkg">gomvpkg(1)</a></code> SHOULD be used when moving packages
+around because it updates the necessary <code>import</code> declarations in a given scope.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="editor-integration"><a class="anchor" href="#editor-integration"></a><a class="link" href="#editor-integration">6. <code>$EDITOR</code> Integration</a></h2>
+<div class="sectionbody">
+<h3 id="editor-integration-recommendation" class="discrete">Recommendation</h3>
+<div class="paragraph">
+<p>This section is NOT making a recommendation regarding any particular
+<code>$EDITOR</code>.<sup class="footnote">[<a id="_footnoteref_5" class="footnote" href="#_footnote_5" title="View footnote.">5</a>]</sup> This section is, however making a
+strong recommendation that your <code>$EDITOR</code> include the following interrogations in
+order to aid in maximal productivity:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><code><a href="https://godoc.org/golang.org/x/tools/cmd/goimports">goimports(1)</a></code> is SHOULD be added as a save hook. <code>$EDITOR</code> instructions are
+found at: <a href="https://godoc.org/golang.org/x/tools/cmd/goimports" class="bare">godoc.org/golang.org/x/tools/cmd/goimports</a>.</p>
+</li>
+<li>
+<p><code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> SHOULD be integrated into your <code>$EDITOR</code> as a plugin. Binding
+"jump-to-definition" to an easy-to-access keybinding is strongly
+RECOMMENDED. Instructions can be found at
+<a href="https://golang.org/s/using-guru">https://golang.org/s/using-guru</a>.  See <a href="#guru-rationale"><code>guru(1)</code>
+rationale</a>.</p>
+</li>
+<li>
+<p><code><a href="https://godoc.org/golang.org/x/tools/cmd/gorename">gorename(1)</a></code> SHOULD be integrated into your <code>$EDITOR</code> as a plugin
+(instructions for
+<a href="https://github.com/dominikh/go-mode.el/blob/master/go-rename.el#L13-L17">emacs</a>,
+<a href="https://github.com/fatih/vim-go">vim</a>).</p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Specific editor integrations (alphabetically sorted):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>emacs</code> users SHOULD look at
+<a href="https://github.com/dominikh/go-mode.el">go-mode.el</a> and MAY OPTIONALLY
+investigate integrating <a href="https://github.com/nsf/gocode">gocode</a>.  With
+<code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> installed, enabling <code>go-guru-hl-identifier-mode</code> is RECOMMENDED
+when navigating code.</p>
+</li>
+<li>
+<p><code>JetBrains</code> users SHOULD look at <a href="https://www.jetbrains.com/go/">Gogland</a>.</p>
+</li>
+<li>
+<p><code>vim</code> users SHOULD look at <a href="https://github.com/fatih/vim-go">vim-go</a> and MAY
+OPTIONALLY investigate integrating <a href="https://github.com/nsf/gocode">gocode</a>.</p>
+</li>
+</ul>
+</div>
+<h3 id="editor-integration-rationale" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p><code>$EDITOR</code> preferences and configuration is an intensely personal subject.
+Integrating <code>gofmt -s -w $FILE</code> may be a benefit to your individual workflow.
+Some people who use <code>emacs</code> really like
+<a href="https://github.com/dougm/goflymake"><code>flymake</code> or <code>flycheck</code></a> or
+<code>go-guru-hl-identifier-mode</code>, whereas others don&#8217;t like the extra background CPU
+they incur.  The list above is both lightweight and common.  Additional
+<a href="#contributing">suggestions or tips to improve <code>$EDITOR</code> productivity are
+welcome</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="vendor-management"><a class="anchor" href="#vendor-management"></a><a class="link" href="#vendor-management">7. <code>vendor/</code> Management</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-6" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Forked and cached libraries in <a href="https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo/edit#!"><code>vendor/</code></a> MUST be managed via the <code><a href="https://github.com/golang/dep">dep(1)</a></code> tool:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u github.com/golang/dep/cmd/dep   <i class="conum" data-value="1"></i><b>(1)</b>
+$ dep status                                <i class="conum" data-value="2"></i><b>(2)</b>
+$ dep ensure                                <i class="conum" data-value="3"></i><b>(3)</b>
+$ dep ensure -update                        <i class="conum" data-value="4"></i><b>(4)</b>
+$ dep init                                  <i class="conum" data-value="5"></i><b>(5)</b></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Install <code><a href="https://github.com/golang/dep">dep(1)</a></code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td><a href="https://github.com/golang/dep#checking-the-status-of-dependencies">Checking the status of dependencies</a></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td><a href="https://github.com/golang/dep#usage"><code>ensure</code>, the main subcommand</a></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td><a href="https://github.com/golang/dep#updating-dependencies">Update Dependencies</a></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td><a href="https://github.com/golang/dep#setup"><code>dep(1)</code> Setup</a></td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>In a monorepo, whomever wants to update the bits in <code>vendor/</code> and
+<code>Gopkg.lock</code> MAY update the version, however they MUST:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>take responsibility for making the change (and updating code as necessary).</p>
+</li>
+<li>
+<p>testing the change.</p>
+</li>
+<li>
+<p>communicate the change with consumers of the library.</p>
+</li>
+<li>
+<p>receive approval from teams receiving the update.</p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p><code>Gopkg.toml</code> SHOULD NOT lock a version to a specific version without reason.
+Valid reasons include:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>Upstream did in-fact change something that requires local attention <strong>and</strong> the
+cost of fixing the change locally is currently too high.</p>
+</li>
+<li>
+<p>Upstream did in-fact commit something that is materially broken and the cost
+of fixing the bug upstream is too high.</p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Release CI runs MUST use the version specified in <code>Gopkg.lock</code>.</p>
+</li>
+<li>
+<p>Non-release CI SHOULD be able to report vendor drift via <code>dep status</code>.  If
+the CI environment is safely isolated to the extent that you&#8217;re willing to
+run uninspected code from upstream, <code>dep ensure -update</code> SHOULD be run and
+report breakage caused by upstream changes.</p>
+</li>
+<li>
+<p><code>vendor/</code> and <code>Gopkg.lock</code> SHOULD be updated regularly in order to prevent
+forklift upgrades.</p>
+</li>
+<li>
+<p><a href="https://github.com/golang/dep/blob/master/docs/FAQ.md#what-is-the-difference-between-gopkgtoml-the-manifest-and-gopkglock-the-lock">Understanding
+the difference between the <code>Gopkg.toml</code> and <code>Gopkg.lock</code> files</a> is REQUIRED.</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-5" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>As of Gophercon 2017, <a href="https://www.youtube.com/watch?v=5LtMb090AZI"><code>dep(1)</code>
+is on track to becoming the community defacto <code>vendor/</code> management tool</a> (this
+is also on track according to their
+<a href="https://github.com/golang/dep/wiki/Roadmap">roadmap</a>). If a project is using
+either <a href="https://github.com/tools/godep"><code>godep(1)</code></a> or
+<a href="https://github.com/kardianos/govendor"><code>govendor(1)</code></a>, please make plans to
+upgrade to <code><a href="https://github.com/golang/dep">dep(1)</a></code>.</p>
+</div>
+<div class="paragraph">
+<p>See also <a href="https://github.com/golang/dep/issues/281" class="bare">github.com/golang/dep/issues/281</a> and the
+<a href="https://github.com/golang/dep/blob/master/docs/FAQ.md"><code>dep(1)</code>
+FAQ</a>. <a href="https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md"><code>Gopkg.toml</code>
+documentation</a> is RECOMMENDED reading, too.</p>
+</div>
+<div class="paragraph">
+<p>CI automatically updating dependencies in non-release builds provides a
+motivation for <code>vendor/</code> to more closely track the upstream&#8217;s most recently
+tagged version or <code>master</code>.  Tracking more frequent, small changes is less error
+prone than large "#yolo updates."</p>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+Confusingly named, <code><a href="https://github.com/golang/dep">dep(1)</a></code> is not the same as <code>godep(1)</code>.  <code><a href="https://github.com/golang/dep">dep(1)</a></code>
+is the future, not <code>godep(1)</code>.
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock caution">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-caution" title="Caution"></i>
+</td>
+<td class="content">
+CI systems can only run <code>dep ensure -update</code> if the CI systems are
+capable of running untrusted, foreign code (or some other compensating control
+is in place).
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="naming-conventions"><a class="anchor" href="#naming-conventions"></a><a class="link" href="#naming-conventions">8. Naming Conventions</a></h2>
+<div class="sectionbody">
+<h3 id="recommendations" class="discrete">Recommendations</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Go software SHOULD conform to the recommendations outlined in the following
+resources:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p><a href="https://blog.golang.org/package-names">Package Names</a></p>
+</li>
+<li>
+<p><a href="https://golang.org/doc/effective_go.html#names">Effective Go</a></p>
+</li>
+<li>
+<p><a href="https://blog.golang.org/organizing-go-code">Organizing Go Code</a></p>
+</li>
+<li>
+<p><a href="https://talks.golang.org/2014/organizeio.slide">Organizing Go Code</a></p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Package authors MAY deviate from these conventions IF they have sought
+feedback from engineers who have sufficient experience writing Go libraries.</p>
+</li>
+<li>
+<p>When working with a forked copy of a package, package import paths MUST
+continue to use the canonical, public import path.  See
+<a href="#workflow-package-path">comments in workflow</a>.</p>
+</li>
+<li>
+<p>Package aliases SHOULD be used when necessary and there are two libraries
+with the same package name.</p>
+</li>
+<li>
+<p>Programs SHOULD NOT explicitly <code>import</code> a package into the current namespace
+(i.e. do not use <code>import . "lib/math" Sin</code>).</p>
+</li>
+<li>
+<p>Programs MAY import a package for their side effects using the black
+identifier (i.e. a package&#8217;s <code>init()</code> MUST run). For example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">import</span> <span class="tok-p">(</span>
+  <span class="tok-s">&quot;database/sql&quot;</span>          <i class="conum" data-value="1"></i><b>(1)</b>
+
+  <span class="tok-nx">_</span> <span class="tok-s">&quot;github.com/lib/pq&quot;</span>   <i class="conum" data-value="2"></i><b>(2)</b>
+<span class="tok-p">)</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>import</code>s <code>database/sql</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Invoke&#8217;s <code>github.com/lib/pq</code>'s <code>init()</code> method because it
+<a href="https://github.com/lib/pq/blob/dd1fe2071026ce53f36a39112e645b4d4f5793a4/conn.go#L44-L46">registers
+itself</a> with the <code>sql</code> package.</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+<h3 id="rationale-6" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Naming is one of the hard things in software. The package semantics of Go help
+with this dilemma and minimize the blast-radius of poorly chosen names.  With
+tools like <code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> commonly in use, the practice of encoding extraneous type
+and package information into variable names is non-idiomatic and frowned upon.
+<a href="https://github.com/joyent/triton-go/pull/19#issuecomment-308860337">The burden
+for good naming and exported functions falls on library authors</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="api-stability"><a class="anchor" href="#api-stability"></a><a class="link" href="#api-stability">9. API Stability</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-7" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>APIs within a single project SHOULD use tightly-coupled function signatures.</p>
+</li>
+<li>
+<p>Refactoring APIs within a single project SHOULD use <code><a href="https://golang.org/cmd/gofmt/">gofmt(1)</a></code>'s <code>-r</code> flag
+to migrate function signatures.</p>
+</li>
+<li>
+<p>External APIs that are loosely coupled across projects AND potentially
+unstable SHOULD use <code>struct</code> inputs. For example:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">package</span> <span class="tok-nx">mypkg</span>
+<span class="tok-kd">struct</span> <span class="tok-nx">MyFuncInputs</span> <span class="tok-p">{</span>
+  <span class="tok-nx">ArgA</span> <span class="tok-kt">string</span>
+  <span class="tok-nx">ArgB</span> <span class="tok-kt">int</span>
+  <span class="tok-nx">ArgC</span> <span class="tok-kt">bool</span>
+<span class="tok-p">}</span>
+<span class="tok-kd">func</span> <span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">args</span> <span class="tok-nx">MyFuncInputs</span><span class="tok-p">)</span> <span class="tok-p">{</span>
+  <span class="tok-c1">// ...</span>
+<span class="tok-p">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>on the caller&#8217;s side:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-nx">mypkg</span><span class="tok-p">.</span><span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">MyFuncInput</span><span class="tok-p">{</span>
+  <span class="tok-nx">ArgA</span><span class="tok-p">:</span> <span class="tok-s">&quot;foo&quot;</span><span class="tok-p">,</span>
+  <span class="tok-nx">ArgB</span><span class="tok-p">:</span> <span class="tok-mh">0xba72</span><span class="tok-p">,</span>
+  <span class="tok-nx">Argc</span><span class="tok-p">:</span> <span class="tok-kc">true</span><span class="tok-p">,</span>
+<span class="tok-p">})</span></code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Required arguments SHOULD be extracted from the input struct.</p>
+</li>
+<li>
+<p>Optional arguments or parameters that are subject to change by the authors of
+the library SHOULD be included in the input struct in order to provide loose
+coupling between the library and its consumers.</p>
+</li>
+<li>
+<p>Where input arguments are not reused across API calls, use of
+stack-initialized (e.g. <code>MyFuncInput{}</code>) input structs SHOULD be used (vs
+heap initialized, e.g. <code>&amp;MyFuncInput{}</code>).</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-7" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Tightly coupled interfaces within the same project SHOULD be treated as local
+where possible. The onus for maintaining the API MUST be on the author changing
+the function signature. Tools that programmatically rewrite the codebase SHOULD
+be employed to make the change. The entire change SHOULD be merged as a single
+operation.  Sweeping mechanical changes SHOULD be committed independent of
+either functional or behavioral changes.</p>
+</div>
+<div class="paragraph">
+<p>External APIs that are loosely coupled where consumers of a library are apt to
+not update all of their call sites need to acknowledge that it is a maintenance
+cost to enforce tight coupling between a project and an external library. Use of
+<code>struct</code> input arguments allows:</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>library maintainer to advance the functionality of their library
+independently</p>
+</li>
+<li>
+<p>consumers of the library to update without fear of breaking their API</p>
+</li>
+</ol>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This recommendation stems from the following hypothetical:</p>
+</div>
+<div class="paragraph">
+<p>Imagine a function signature is:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kd">func</span> <span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">a</span> <span class="tok-kt">string</span><span class="tok-p">,</span> <span class="tok-nx">b</span> <span class="tok-kt">int</span><span class="tok-p">)</span> <span class="tok-p">{</span> <span class="tok-cm">/* ... */</span> <span class="tok-p">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>and the authors of <code>MyFunc()</code> decide the function signature needs to be updated
+to:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kd">func</span> <span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">a</span> <span class="tok-kt">string</span><span class="tok-p">,</span> <span class="tok-nx">b</span> <span class="tok-kt">int</span><span class="tok-p">,</span> <span class="tok-nx">c</span> <span class="tok-kt">bool</span><span class="tok-p">)</span> <span class="tok-p">{</span> <span class="tok-cm">/* ... */</span> <span class="tok-p">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>All consumers of <code>MyFunc()</code> must update to the new signature.  In some cases
+this compile-time breakage may be desirable in order for <code>MyFunc()</code>'s authors
+to communicate a breaking change or semantic change that requires some level of
+understanding by the consumer. In other cases, the authors of <code>MyFunc()</code> may
+have added new functionality without changing the semantic meaning of the
+contract API. In the latter case, adding functionality to <code>MyFunc()</code> requires
+source-code level API flexibility with a permissive interfaces in order to
+minimize the maintenance cost incurred by consumers.</p>
+</div>
+<div class="paragraph">
+<p>This could be achieved by adding an additional variadic function argument:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">a</span> <span class="tok-kt">string</span><span class="tok-p">,</span> <span class="tok-nx">b</span> <span class="tok-kt">int</span><span class="tok-p">,</span> <span class="tok-nx">args</span> <span class="tok-o">...</span><span class="tok-kd">interface</span><span class="tok-p">{})</span> <span class="tok-p">{</span> <span class="tok-cm">/* ... */</span> <span class="tok-p">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>but that approach would require runtime checking of the variadic argument,
+<code>args</code>, and would eschew compile-time safety guarantees (and subsequent
+optimizations).  If the consumers of <code>MyFunc()</code> span team or organizational
+boundaries, it is effectively impossible to force callers to update their
+interface to match the new function signature.</p>
+</div>
+<div class="paragraph">
+<p>This recommendation is to introduce a static function signature with an
+"append-only input structure":</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kd">type</span> <span class="tok-nx">MyFuncInputs</span> <span class="tok-kd">struct</span> <span class="tok-p">{}</span>
+<span class="tok-kd">func</span> <span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">ctxt</span> <span class="tok-nx">context</span><span class="tok-p">,</span> <span class="tok-nx">dnode</span> <span class="tok-kt">uint64</span><span class="tok-p">,</span> <span class="tok-nx">MyFuncInputs</span><span class="tok-p">{})</span> <span class="tok-p">{</span>
+  <span class="tok-c1">//</span>
+<span class="tok-p">}</span></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>The function signature for <code>MyFunc()</code> can now be effectively frozen and stable
+from the perspective of the consumers of the library.  <code>MyFunc()</code>'s new
+signature acknowledges that both <code>ctxt</code> and <code>dnode</code> are required arguments yet
+still allows the library author to extend the API in the future by appending
+members to the <code>MyFuncInputs struct</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>If an API is performance sensitive, this approach MAY NOT be appropriate. Use of
+this technique is an exercise in forethought where the cost of maintenance
+burdened by the author is weighed against the runtime performance impact of
+passing an optional struct input to a function. It is difficult to imagine the
+case where the execution cost of thousands of requests per second would outweigh
+the engineering burden of maintaining a frequently updated or loosely coupled
+interface that spans repositories.</p>
+</div>
+<div class="paragraph">
+<p>This technique must adhere to similar rules as those suggested when
+<a href="https://developers.google.com/protocol-buffers/docs/proto3#updating">updating a
+protobuf message type</a>, notably:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>*Input</code> struct member names are permanent and MUST NOT change or have their
+meaning altered in a way that changes their contract.</p>
+</li>
+<li>
+<p>Obsolete <code>*Input</code> struct member names MUST:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>be automatically mapped to an updated struct member(s)</p>
+</li>
+<li>
+<p>ignored (a discouraged practice)</p>
+</li>
+<li>
+<p>removed thereby explicitly breaking any existing code</p>
+</li>
+<li>
+<p>never be reused for the life of the interface (and therefore the <code>*Input</code>
+struct.</p>
+<div class="paragraph">
+<p>A phased approach to evolving a <code>*Input</code> struct is an acceptable strategy.</p>
+</div>
+</li>
+</ol>
+</div>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Again, this is a recommended technique for providing stable interfaces where the
+runtime and diminished readability has been weighed against the cost of
+maintenance (most notably engineering time or runtime breakage).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="static-analysis"><a class="anchor" href="#static-analysis"></a><a class="link" href="#static-analysis">10. Static Analysis</a></h2>
+<div class="sectionbody">
+<h3 id="recommendations-2" class="discrete">Recommendations</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Use and integration of "baseline static analysis checks" SHOULD be integrated
+into the CI.</p>
+</li>
+<li>
+<p>An inventory of "optional static analysis checks" is RECOMMENDED but not
+necessary for a second tier of checks to be added to list of suggested static
+analysis checks (e.g. "noisy, but useful" or "mostly accurate, but still
+throws false-positives").</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-8" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p><code>reviewdog</code> stands out as a pragmatic way to
+<a href="https://medium.com/@haya14busa/reviewdog-a-code-review-dog-who-keeps-your-codebase-healthy-d957c471938b">programmatically
+raise the bar of quality within a given Go project</a> by automatically executing
+and providing inline annotations in PRs with the results of baseline checks. If
+a particular type of error occurs more than a few times, write a static analysis
+check and incorporate it into <code>reviewdog</code>.</p>
+</div>
+<div class="paragraph">
+<p>For offline development, use of <code><a href="https://github.com/alecthomas/gometalinter">gometalinter(1)</a></code> is RECOMMENDED:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u github.com/alecthomas/gometalinter
+$ gometalinter --install</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Regardless of the tool, incorporating a baseline of static analysis of commonly
+identified issues frees up reviewers to focus on the content of change versus
+the mechanics of the change. Time invested in static analysis checks usually
+pays dividends with respect to preventing bugs
+(e.g. <a href="https://github.com/kyoh86/scopelint"><code>scopelint</code></a>,
+<a href="https://golang.org/cmd/vet/#hdr-Shadowed_variables"><code>go tool vet --shadow</code></a>,
+<a href="https://github.com/kisielk/errcheck"><code>errcheck</code></a>,
+<a href="https://github.com/stripe/safesql"><code>safesql</code></a>,
+<a href="https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck"><code>staticcheck</code></a>),
+reducing sub-optimal code (e.g.
+<a href="https://github.com/gordonklaus/ineffassign"><code>ineffassign</code></a>,
+<a href="https://github.com/mvdan/unparam"><code>unparam</code></a>), or reducing engineering time
+wasted pointing out nits that could be identified consistently by bots
+(e.g. <a href="https://golang.org/cmd/vet/"><code>go vet</code></a>, <a href="https://github.com/walle/lll"><code>lll</code>
+(long line linter)</a>, <a href="https://github.com/client9/misspell"><code>misspell</code></a>).</p>
+</div>
+<div class="paragraph">
+<p>Several recommended static analysis checks include (most come from
+<code><a href="https://github.com/alecthomas/gometalinter">gometalinter(1)</a></code>, alphabetically sorted):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://github.com/tsenart/deadcode"><code>deadcode</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/kisielk/errcheck"><code>errcheck</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/golang/lint/golint"><code>golint</code></a></p>
+</li>
+<li>
+<p><a href="https://honnef.co/go/tools/cmd/gosimple"><code>gosimple</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/gordonklaus/ineffassign"><code>ineffassign</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/walle/lll"><code>lll</code> (Long Line Linter)</a></p>
+</li>
+<li>
+<p><a href="https://github.com/client9/misspell/cmd/misspell"><code>misspell</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/stripe/safesql"><code>safesql</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/kyoh86/scopelint"><code>scopelint</code></a></p>
+</li>
+<li>
+<p><a href="https://honnef.co/go/tools/cmd/staticcheck"><code>staticcheck</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/mdempsky/unconvert"><code>unconvert</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/mvdan/unparam"><code>unparam</code></a></p>
+</li>
+<li>
+<p><a href="https://honnef.co/go/tools/cmd/unused"><code>unused</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/opennota/check/tree/master/cmd/varcheck"><code>varcheck</code></a></p>
+</li>
+<li>
+<p><a href="https://golang.org/cmd/vet/"><code>vet</code></a></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Several optional linters include (alphabetically sorted):</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://github.com/opennota/check/cmd/aligncheck"><code>aligncheck</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/dominikh/go-structlayout"><code>go-structlayout</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/jgautheron/goconst"><code>goconst</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/opennota/check/cmd/structcheck"><code>structcheck</code></a></p>
+</li>
+<li>
+<p><a href="https://github.com/jgautheron/usedexports"><code>usedexports</code></a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="explicit-types"><a class="anchor" href="#explicit-types"></a><a class="link" href="#explicit-types">11. Explicit Types</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-8" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Explicit types SHOULD be used within a project.</p>
+</li>
+<li>
+<p>Libraries or public APIs MAY export types where it helps readability.</p>
+</li>
+<li>
+<p>Where the meaning or intent of a fundamental type would benefit from explicit
+type checking by the compiler, explicit types SHOULD be used.</p>
+</li>
+<li>
+<p><a href="https://golang.org/ref/spec#Conversions">Type Conversions</a> SHOULD be deferred
+as long as reasonable.</p>
+</li>
+<li>
+<p>Where explicitly typed variables are employed, the lifecycle of identifiers
+referencing underlying types SHOULD be reduced to the smallest reasonable
+scope possible.</p>
+</li>
+<li>
+<p>Use of <code><a href="https://godoc.org/golang.org/x/tools/cmd/gorename">gorename(1)</a></code> to maintain <code>type</code> names is RECOMMENDED. The
+RECOMMENDED use of <code><a href="https://godoc.org/golang.org/x/tools/cmd/gorename">gorename(1)</a></code> extends to all package, function, and
+method members (i.e. <code>const</code>, <code>func</code>, <code>var</code>, and <code>type</code>).</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-9" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Go is an <a href="https://golang.org/ref/spec#Types">explicitly typed language</a>.  The
+compiler does not perform any implicit type conversions of
+<a href="https://golang.org/ref/spec#Type_identity">named types</a>. Exported functions,
+<code>interface</code>s, and <code>type</code>s SHOULD make use of explicit types in order to
+enable the compiler to detect and enforce a pacakge&#8217;s specified type system. It
+is NOT RECOMMENDED to deprive the compiler of the necessary type information it
+requires in order to prevent developers from incorrectly and abusively
+overloading Go&#8217;s underlying types (e.g.  <code>string</code> vs <code>RandomStringID</code>, or
+<code>uint64</code> vs <code>inode</code>).</p>
+</div>
+<div class="paragraph">
+<p>As an example, a <code>string</code> SHOULD be thought of as an immutable
+<a href="https://golang.org/ref/spec#String_types">slice of runes</a> that is missing its
+type information (i.e. a <code>string</code> is a container, not a type).</p>
+</div>
+<div class="paragraph">
+<p>Go&#8217;s fundamental or underlying types (e.g. <code>string</code>, <code>int*</code>, <code>[]byte</code>) are
+containers that crudely answer the question "how is a variable going to be
+stored efficiently." Use of underlying types do not answer the question "what
+bits are in a given container."
+<a href="https://golang.org/ref/spec#Type_declarations">Go does not permit any implicit
+type conversions of named types</a>.</p>
+</div>
+<div class="paragraph">
+<p>Go&#8217;s explicit type system prevents variables backed by the same underlying type
+from fraternizing. Use of fundamental types at formal interface boundaries is
+discouraged because use of variable names to indicate the intended use of a
+variable is only enforced by the reader, not by the compiler. If variable names
+are sufficient to guard against variable misues, you MAY rely on variable names
+to convey type information.</p>
+</div>
+<div class="paragraph">
+<p>Where type intent information SHOULD be enforced by the compiler, use of
+explicit types is RECOMMENDED. The Go type system is a compile-time cost, not a
+runtime cost. Use types.</p>
+</div>
+<div class="paragraph">
+<p>Examples:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><table class="pyhltable"><tr><td class="linenos"><div class="linenodiv">1
+2
+3
+4
+5
+6
+7
+8</div></td><td class="code"><span></span><span class="tok-kd">type</span> <span class="tok-nx">ID</span> <span class="tok-kt">string</span>                <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="tok-kd">type</span> <span class="tok-nx">ID</span> <span class="tok-kt">uint64</span>                <i class="conum" data-value="2"></i><b>(2)</b>
+<span class="tok-kd">type</span> <span class="tok-nx">CookieID</span> <span class="tok-kt">string</span>
+<span class="tok-kd">type</span> <span class="tok-nx">UUID</span> <span class="tok-p">[]</span><span class="tok-kt">byte</span>
+<span class="tok-kd">type</span> <span class="tok-nx">Index</span> <span class="tok-kt">uint</span>
+<span class="tok-kd">type</span> <span class="tok-nx">Key</span> <span class="tok-kt">string</span>
+<span class="tok-kd">type</span> <span class="tok-nx">Value</span> <span class="tok-kt">string</span>
+<span class="tok-kd">type</span> <span class="tok-nx">Lookup</span> <span class="tok-kd">map</span><span class="tok-p">[</span><span class="tok-nx">Key</span><span class="tok-p">]</span><span class="tok-nx">Value</span>
+</td></tr></table></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>ID</code> may have started out as a <code>string</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td><code>ID</code> could be easily changed to a <code>uint64</code> and the consequences easily
+observed.  NOTE: this wouldn&#8217;t compile due to the <code>ID</code> identifier being reused
+in the same package.</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="return-parameters"><a class="anchor" href="#return-parameters"></a><a class="link" href="#return-parameters">12. Return Parameters</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-9" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>When deciding if a function or method should return an argument by value or
+pointer, returning a value SHOULD be your default position except in the
+following situations, in which case it is RECOMMENDED to return a pointer to
+a value:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>the API contract you want to establish with the caller is to force them
+to deal with errors by returning <code>nil</code> AND the construction of the zero-value
+is onerous or expensive (i.e. return <code>""</code> for a string).</p>
+</li>
+<li>
+<p>ownership of the variable may change throughout the course of the
+variable&#8217;s life.</p>
+</li>
+<li>
+<p>the expense of copying the variable is measurable.</p>
+</li>
+</ol>
+</div>
+</li>
+</ol>
+</div>
+<h3 id="rationale-10" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Go uses pass-by-value semantics and employs
+<a href="http://www.agardner.me/golang/garbage/collection/gc/escape/analysis/2015/10/18/go-escape-analysis.html">variable
+escape analysis</a>.</p>
+</div>
+<div class="paragraph">
+<p>Embrace the pass-by-value nature of Go, be productive, and let the compiler do
+work for you.</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://dhdersch.github.io/golang/2016/01/23/golang-when-to-use-string-pointers.html">When
+to use string pointers</a></p>
+</li>
+<li>
+<p><a href="https://research.swtch.com/godata">Go Data Structures</a></p>
+</li>
+<li>
+<p><a href="https://blog.golang.org/go-slices-usage-and-internals">Go Slices: usage and
+internals</a></p>
+</li>
+<li>
+<p><a href="https://blog.golang.org/slices">Arrays, slices (and strings): The mechanics of
+'append'</a></p>
+</li>
+<li>
+<p><a href="https://groups.google.com/forum/#!msg/golang-nuts/3SBKSFRVbWA/IArLsJi-xV4J">Using
+Pointers in Golang</a></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Much of the above reading was shamelessly borrowed from a
+<a href="https://stackoverflow.com/questions/20849911/move-semantics-in-golang#20856597">Stack
+Overflow article</a> which is a good read on its own merits.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="interface-receivers"><a class="anchor" href="#interface-receivers"></a><a class="link" href="#interface-receivers">13. Interface Receivers</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-10" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>When deciding if a receiver should be a value or a pointer, a pointer SHOULD
+be used by default except in the following situations, in which case it is
+RECOMMENDED to use a value:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p>the value of the receiver is a simple underlying type (i.e. an <code>int</code>)</p>
+</li>
+<li>
+<p>invocation of the given interface method SHOULD result in a copy of the
+receiver.</p>
+</li>
+</ol>
+</div>
+</li>
+</ol>
+</div>
+<h3 id="rationale-11" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>This is simple: use a pointer to a receiver in nearly all cases. Item <code>1b</code> is
+very rare in practice.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><table class="pyhltable"><tr><td class="linenos"><div class="linenodiv"> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10</div></td><td class="code"><span></span><span class="tok-kd">type</span> <span class="tok-nx">Foo</span> <span class="tok-kd">struct</span> <span class="tok-p">{</span>
+  <span class="tok-nx">bar</span> <span class="tok-kt">string</span>
+<span class="tok-p">}</span>
+
+<span class="tok-c1">// Baz assigns &quot;bur&quot; to f.bar.  Without the pointer, this the instance of Foo</span>
+<span class="tok-c1">// would have been copied and the assignment would have been not visible to</span>
+<span class="tok-c1">// the caller (a nice source of frustration when first learning Go).</span>
+<span class="tok-kd">func</span> <span class="tok-p">(</span><span class="tok-nx">f</span> <span class="tok-o">*</span><span class="tok-nx">Foo</span><span class="tok-p">)</span> <span class="tok-nx">Baz</span><span class="tok-p">()</span> <span class="tok-p">{</span>
+  <span class="tok-nx">f</span><span class="tok-p">.</span><span class="tok-nx">bar</span> <span class="tok-p">=</span> <span class="tok-s">&quot;bur&quot;</span>
+<span class="tok-p">}</span>
+</td></tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In practice, use of non-pointer receivers is limited to the following example:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><table class="pyhltable"><tr><td class="linenos"><div class="linenodiv"> 1
+ 2
+ 3
+ 4
+ 5
+ 6
+ 7
+ 8
+ 9
+10
+11
+12
+13
+14
+15</div></td><td class="code"><span></span><span class="tok-kd">type</span> <span class="tok-nx">MyEnum</span> <span class="tok-kt">int</span>
+
+<span class="tok-kd">func</span> <span class="tok-p">(</span><span class="tok-nx">e</span> <span class="tok-nx">MyEnum</span><span class="tok-p">)</span> <span class="tok-nx">String</span><span class="tok-p">()</span> <span class="tok-kt">string</span> <span class="tok-p">{</span>
+  <span class="tok-k">switch</span> <span class="tok-nx">e</span> <span class="tok-p">{</span>
+  <span class="tok-k">case</span> <span class="tok-mi">0</span><span class="tok-p">:</span>
+    <span class="tok-k">return</span> <span class="tok-s">&quot;zero&quot;</span>
+  <span class="tok-k">case</span> <span class="tok-mi">1</span><span class="tok-p">:</span>
+    <span class="tok-k">return</span> <span class="tok-s">&quot;one&quot;</span>
+  <span class="tok-k">default</span><span class="tok-p">:</span>
+    <span class="tok-k">return</span> <span class="tok-s">&quot;something not one or zero&quot;</span>
+  <span class="tok-p">}</span>
+<span class="tok-p">}</span>
+
+<span class="tok-kd">var</span> <span class="tok-nx">myEnum</span> <span class="tok-nx">MyEnum</span> <span class="tok-p">=</span> <span class="tok-mi">0</span>
+<span class="tok-nx">fmt</span><span class="tok-p">.</span><span class="tok-nx">Println</span><span class="tok-p">(</span><span class="tok-s">&quot;%s&quot;</span><span class="tok-p">,</span> <span class="tok-nx">myEnum</span><span class="tok-p">)</span>
+</td></tr></table></code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Where the important takeaway is that in <code>String()</code>, it doesn&#8217;t matter if the
+value is copied.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="const"><a class="anchor" href="#const"></a><a class="link" href="#const">14. <code>const</code></a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-11" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Use of <code>const</code> is RECOMMENDED.</p>
+</li>
+<li>
+<p>Create explicitly typed <code>const</code>s is RECOMMENDED.</p>
+</li>
+<li>
+<p><code>const</code>s with type information SHOULD should be exported (both the <code>type</code> and
+the <code>const</code> values).</p>
+</li>
+<li>
+<p>Periodically using static analysis checks like
+<a href="https://github.com/jgautheron/goconst">goconst</a> is RECOMMENDED but OPTIONAL.</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-12" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>By creating a <code>const</code>, you give the Go tooling an identifier which you can
+search for referrers of the given <code>const</code>. See the <code>referrers</code> section of the
+<a href="https://golang.org/s/using-guru">Using Guru</a> document (this document SHOULD be <em>required</em>
+reading).</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="bitmasks"><a class="anchor" href="#bitmasks"></a><a class="link" href="#bitmasks">15. Bitmasks</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-12" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Bitmasks SHOULD be created using <code>const</code> and <code>iota</code>.</p>
+</li>
+<li>
+<p>Bitmasks SHOULD be explicitly typed.</p>
+</li>
+<li>
+<p>The meaning of bits in a bitmask MAY change if it is documented in the
+interface that the meaning of individual bits may change.</p>
+</li>
+<li>
+<p>The meaning of bits MUST NOT change if the bitmask is exported and the
+position of individual bits is part of the contract.</p>
+</li>
+<li>
+<p>A new type, removal of the bitmask as a type, or other form of compile-time
+breakage MUST be introduced in order to communicate the change in behavior.</p>
+</li>
+<li>
+<p>Manual manipulation of bitmasks SHOULD NOT be performed without explicitly
+named bits.</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-13" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Go provides a convenient trick to automatically creating bitmasks:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><table class="pyhltable"><tr><td class="linenos"><div class="linenodiv">1
+2
+3
+4
+5
+6
+7
+8</div></td><td class="code"><span></span><span class="tok-kd">type</span> <span class="tok-nx">MyBitmask</span> <span class="tok-kt">int</span>
+
+<span class="tok-kd">const</span> <span class="tok-p">(</span>
+      <span class="tok-nx">FlagA</span> <span class="tok-nx">MyBitmask</span> <span class="tok-p">=</span> <span class="tok-mi">1</span> <span class="tok-o">&lt;&lt;</span> <span class="tok-kc">iota</span>  <i class="conum" data-value="1"></i><b>(1)</b>
+      <span class="tok-nx">FlagB</span>                        <i class="conum" data-value="2"></i><b>(2)</b>
+      <span class="tok-nx">FlagC</span>                        <i class="conum" data-value="3"></i><b>(3)</b>
+      <span class="tok-nx">FlagD</span>                        <i class="conum" data-value="4"></i><b>(4)</b>
+<span class="tok-p">)</span>
+</td></tr></table></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td><code>FlagA</code> == <code>0x01</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td><code>FlagB</code> == <code>0x02</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td><code>FlagC</code> == <code>0x04</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td><code>FlagD</code> == <code>0x08</code></td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Leverage this trick.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="documentation"><a class="anchor" href="#documentation"></a><a class="link" href="#documentation">16. Documentation</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-13" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Projects MUST use <code>godoc(1)</code> to document their project.</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-14" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Read the <a href="https://blog.golang.org/godoc-documenting-go-code">Godoc: documenting Go
+code</a> blog post.<sup class="footnote">[<a id="_footnoteref_6" class="footnote" href="#_footnote_6" title="View footnote.">6</a>]</sup></p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="context"><a class="anchor" href="#context"></a><a class="link" href="#context">17. Context</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-14" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Projects MUST the <a href="https://golang.org/pkg/context/">context</a> pattern for
+passing state along request-scoped state information (e.g. <code>deadlines</code>,
+<code>cancelation signals</code>, or request-specific information).</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-15" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Read the <a href="https://blog.golang.org/context">Go Concurrency Patterns: Context</a> blog
+post.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="deadline-timers-and-timeouts"><a class="anchor" href="#deadline-timers-and-timeouts"></a><a class="link" href="#deadline-timers-and-timeouts">18. Deadline Timers and Timeouts</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-15" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>In-process timers and timeouts MUST use <code>time.Duration</code>.</p>
+</li>
+<li>
+<p>In-process timers and timeouts using the <code>context</code> package MUST use
+<code>context.WithTimeout</code>.</p>
+</li>
+<li>
+<p>Inter-process timeout enforcement MUST communicate using an absolute time
+reference using <code>time.Time</code>.</p>
+</li>
+<li>
+<p>Inter-process timeouts using the <code>context</code> package MUST use
+<code>context.WithDeadline</code>.</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-16" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Starting in <a href="https://github.com/golang/go/issues/12914">Go</a>
+<a href="https://github.com/golang/go/issues/12914">1.9</a>, Go&#8217;s
+<a href="https://golang.org/pkg/time/#hdr-Monotonic_Clocks"><code>time.Time</code> package uses
+monotonic time</a>.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="grpc"><a class="anchor" href="#grpc"></a><a class="link" href="#grpc">19. gRPC</a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-16" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><a href="https://grpc.io/">gRPC</a> SHOULD be preferred as the RPC framework for communicating between
+discrete Go processes locally or on the network.</p>
+</li>
+<li>
+<p>JSON MAY be used as the RPC framework when necessary to interoperate with
+non- <a href="https://grpc.io/">gRPC</a> clients.</p>
+</li>
+</ol>
+</div>
+<h3 id="rationale-17" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>Read the <a href="https://blog.golang.org/context">Go Concurrency Patterns: Context</a> blog
+post.</p>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="external-resources"><a class="anchor" href="#external-resources"></a><a class="link" href="#external-resources">20. External Resources</a></h2>
+<div class="sectionbody">
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><a href="https://www.youtube.com/watch?v=rKnDgT73v8s">The Go Programming Language</a></p>
+</li>
+<li>
+<p><a href="https://commandcenter.blogspot.com/2012/06/less-is-exponentially-more.html">Less is exponentially more</a></p>
+</li>
+<li>
+<p><a href="https://go-proverbs.github.io/">Go Proverbs</a></p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=2m48s">Don&#8217;t communicate by sharing memory, share memory by communicating.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=3m42s">Concurrency is not parallelism.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=4m20s">Channels orchestrate; mutexes serialize.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=5m17s">The bigger the interface, the weaker the abstraction.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=6m25s">Make the zero value useful.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=7m36s">interface{} says nothing.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=8m43s">gofmt&#8217;s style is no one&#8217;s favorite, yet gofmt is everyone&#8217;s favorite.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=9m28s">A little copying is better than a little dependency.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=11m10s">syscall.* must always be guarded with build tags.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=11m53s">Cgo must always be guarded with build tags.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=12m37s">Cgo is not Go.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=13m49s">With the unsafe package there are no guarantees.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=14m35s">Clear is better than clever.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=15m22s">Reflection is never clear.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=16m13s">Errors are values.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=17m25s">Don&#8217;t just check errors, handle them gracefully.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=18m09s">Design the architecture, name the components, document the details.</a></p>
+</li>
+<li>
+<p><a href="https://www.youtube.com/watch?v=PAAkCSZUG1c&amp;t=19m07s">Documentation is for users.</a></p>
+</li>
+<li>
+<p><a href="https://github.com/golang/go/wiki/CodeReviewComments#dont-panic">Don&#8217;t panic.</a></p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p><a href="https://github.com/golang/go/wiki">Go wiki</a></p>
+</li>
+<li>
+<p><a href="https://awesome-go.com/">Awesome Go</a>: A curated list of awesome Go frameworks, libraries and software.</p>
+</li>
+</ol>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="glossary"><a class="anchor" href="#glossary"></a><a class="link" href="#glossary">Glossary</a></h2>
+<div class="sectionbody">
+<div class="dlist glossary">
+<dl>
+<dt>CI</dt>
+<dd>
+<p>Continuous Integration</p>
+</dd>
+</dl>
+</div>
+</div>
+</div>
+</div>
+<div id="footnotes">
+<hr>
+<div class="footnote" id="_footnote_1">
+<a href="#_footnoteref_1">1</a>. While not an official recommendation, one could easily be forgiven for symlinking <code>$GOPATH/pkg</code> to someplace in <code>/tmp/</code> in order to take advantage of the automatic pruning of old <code>.a</code> files that happens periodically and after every reboot on many *NIX platforms (including macOS).
+</div>
+<div class="footnote" id="_footnote_2">
+<a href="#_footnoteref_2">2</a>. Tools similar to <a href="https://bazel.build/">bazel</a> could influence this recommendation in the future however there are no plans to augment the workflow presented by the <code><a href="https://golang.org/cmd/go/">go(1)</a></code> tool.
+</div>
+<div class="footnote" id="_footnote_3">
+<a href="#_footnoteref_3">3</a>. Monorepos can be justified by either their productivity gains, by <a href="https://en.wikipedia.org/wiki/Parkinson%27s_law">Parkinson&#8217;s law</a>, or by blurring blurring the natural organizational lines stemming from <a href="https://en.wikipedia.org/wiki/Conway%27s_law">Conway&#8217;s law</a> by embracing the egalitarian nature of software.
+</div>
+<div class="footnote" id="_footnote_4">
+<a href="#_footnoteref_4">4</a>. <code>clang-format(1)</code> SHOULD be considered for C and C++ codebases alike. <a href="https://www.youtube.com/watch?v=s7JmdCfI__c">clang-format - Automatic formatting for CXX</a> and <a href="https://www.youtube.com/watch?v=cX_GhJ6BuWI&amp;t=1605">code::dive 2016 conference – Chandler Carruth – Making CXX easier, faster and safer (part 1)</a>.
+</div>
+<div class="footnote" id="_footnote_5">
+<a href="#_footnoteref_5">5</a>. See <a href="https://www.xkcd.com/378/">Real Programmers</a> <a href="https://xkcd.com/1823/">Hottest Editors</a>
+</div>
+<div class="footnote" id="_footnote_6">
+<a href="#_footnoteref_6">6</a>. It would be nice, however, if <code><a href="https://golang.org/cmd/godoc/">godoc(1)</a></code> supported a richer markup like <a href="https://en.wikipedia.org/wiki/AsciiDoc"><code>asciidoc</code></a>.
+</div>
+</div>
+<div id="footer">
+<div id="footer-text">
+Version 0.1.0<br>
+Last updated 2017-07-30 04:13:35 PDT
+</div>
+</div>
+</body>
+</html>
