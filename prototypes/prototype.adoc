@@ -6,6 +6,7 @@ state: predraft
 :author: Han Solo <han@example.com>; Frodo Baggins <frodo@example.com>
 :state: predraft
 :revremark: State: {state}
+:attribute-missing: warn
 :docinfo:
 :doctype: article
 :icons: font
