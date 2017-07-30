@@ -1,46 +1,30 @@
-PANDOC ?= pandoc
-RST2PDF ?= rst2pdf
-RST2HTML5 ?= rst2html5
-TITLE ?= How to Go at Joyent
+ASCIIDOCTOR ?= asciidoctor
+ASCIIDOCTOR_PDF ?= asciidoctor-pdf
+DATE ?= "`date +%Y-%m-%d`"
 
-.SUFFIXES: .html .md .pdf .rst
+.SUFFIXES: .adoc .html .9 .pdf
 
 default:: README
 
-README:: README.pdf README.html README.md
+README:: README.pdf README.html
 
-README.md: README.rst header.md
-	$(PANDOC) -o $@ -f rst -t markdown $<
-	cat header.md README.md > README.md.new
-	mv README.md.new README.md
+%.html: %.adoc
+	$(ASCIIDOCTOR) \
+		--attribute=skip-front-matter \
+		--attribute=revdate="$(DATE)" \
+		-b html5 \
+		-o $@ -n $<
 
-%.html: %.rst
-	$(RST2HTML5) \
-		--title="$(TITLE)" \
-		--date \
-		--time \
-		--toc-top-backlinks \
-		--strict \
-		--smart-quotes=yes \
-		--rfc-references \
-		--trim-footnote-reference-space \
-		--bootstrap-css \
-		--embed-content \
-		--section-subtitles \
-		--pretty-print-code \
-		$< $@
+%.pdf: %.adoc
+	$(ASCIIDOCTOR_PDF) -b pdf -o $@ -n $<
 
-%.md: %.rst
-	$(PANDOC) -o $@ -f rst -t markdown $<
-
-%.pdf: %.rst
-	$(RST2PDF) \
-		--real-footnotes \
-		-o $@ $<
+%.9: %.adoc
+	$(ASCIIDOCTOR) -b manpage -o $@ -n $<
 
 init-env::
-	virtualenv .
-	sh -c '. bin/activate && pip install pygments rst2pdf rstcheck rst2html5 rst2html5-tools'
+	# sudo port install ruby2.4
+	# sudo gem2.4 install asciidoctor-pdf asciidoctor-diagram
+	# sudo gem2.4 install asciidoctor-latex --pre
 
 clean::
-	rm -rf .Python bin/ include/ lib/ pip-selfcheck.json README.pdf README.html
+	rm -rf README.pdf README.html README.9

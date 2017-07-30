@@ -1,0 +1,1591 @@
+---
+authors: Sean Chittenden <seanc@joyent.com>
+state: predraft
+---
+= RFD 0106 Go Best Practices: A Joyent Engineering Guide
+:author: Sean Chittenden
+:email: seanc@joyent.com
+:state: predraft
+:revremark: State: {state}
+:attribute-missing: warn
+:docinfo:
+:doctype: article
+:hide-uri-scheme:
+:icons: font
+:idprefix:
+:idseparator: -
+:keywords: rfd, rfd 0106, rfd 106, go, golang, best practices, joyent, engineering, software
+:numbered:
+:revnumber: 0.1.0
+:sectanchors:
+:sectlinks:
+:sectnums:
+:sectnumlevels: 1
+:showtitle:
+:source-highlighter: pygments
+:toc: left
+:xrefstyle: full
+
+////
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Copyright 2017 Joyent, Inc.
+////
+
+////
+BEGIN: reused attributes.
+
+These attributes can be used throughout the document.  In order to create a
+monospace link, the attribute must be wrapped in backticks (e.g. `{gofmt-1}`).
+
+NOTE(seanc@): If a future reviewer figures out a better way of doing this so
+that the monospace formatting can be encoded at the attribute definition, please
+let me know how to do this.  Ideally it would be possible to do something like:
+
+  :gofmt-1: {gofmt-1-url}[`{gofmt-1-name}`]
+
+and the caller, {gofmt-1}, wouldn't need to be wrapped in backticks.
+////
+
+:dep-1-url: https://github.com/golang/dep
+:dep-1-name: dep(1)
+:dep-1: {dep-1-url}[{dep-1-name}]
+:go-1-url: https://golang.org/cmd/go/
+:go-1: {go-1-url}[go(1)]
+:godoc-1-url: https://golang.org/cmd/godoc/
+:godoc-1-name: godoc(1)
+:godoc-1: {godoc-1-url}[{godoc-1-name}]
+:gofmt-1-url: https://golang.org/cmd/gofmt/
+:gofmt-1-name: gofmt(1)
+:gofmt-1: {gofmt-1-url}[{gofmt-1-name}]
+:goimports-1-url: https://godoc.org/golang.org/x/tools/cmd/goimports
+:goimports-1-name: goimports(1)
+:goimports-1: {goimports-1-url}[{goimports-1-name}]
+:gometalinter-1-name: gometalinter(1)
+:gometalinter-1-url: https://github.com/alecthomas/gometalinter
+:gometalinter-1: {gometalinter-1-url}[{gometalinter-1-name}]
+:gomvpkg-1-name: gomvpkg(1)
+:gomvpkg-1-url: https://godoc.org/golang.org/x/tools/cmd/gomvpkg
+:gomvpkg-1: {gomvpkg-1-url}[{gomvpkg-1-name}]
+:gorename-1-name: gorename(1)
+:gorename-1-url: https://godoc.org/golang.org/x/tools/cmd/gorename
+:gorename-1: {gorename-1-url}[{gorename-1-name}]
+:go-lang-url: https://golang.org/[Go]
+:go-lang: {go-lang-url}[Go]
+:grpc-name: gRPC
+:grpc-url: https://grpc.io/
+:grpc: {grpc-url}[{grpc-name}]
+:guru-using-url: https://golang.org/s/using-guru
+:guru-1-url: https://golang.org/x/tools/cmd/guru
+:guru-1-name: guru(1)
+:guru-1: {guru-1-url}[{guru-1-name}]
+
+////
+END: reused attributes
+////
+
+:sectnums!:
+
+________________________________________________________________________________
+"Go is efficient, scalable, and productive. Some programmers find it fun to work
+in; others find it unimaginative, even boring. In this article we will explain
+why those are not contradictory positions. Go was designed to address the
+problems faced in software development at Google, which led to a language that
+is not a breakthrough research language but is nonetheless an excellent tool for
+engineering large software projects."
+
+— https://talks.golang.org/2012/splash.article[Rob Pike, 2012]
+________________________________________________________________________________
+
+[[introduction]]
+== Introduction
+
+Joyent has http://dtrace.org/blogs/wesolows/2014/12/29/fin/[a]
+http://dtrace.org/blogs/wesolows/2014/12/29/golang-is-trash/[storied]
+https://golang.org/pkg/net/#hdr-Name_Resolution[history] with regards to
+https://github.com/golang/go/issues/20603[Go]. Without providing modern
+treatment to past issues, it is undeniable that many, if not most (as of
+2017) distributed systems are being written in Go. To that extent,
+Joyent is embracing of Go's contribution to distributed, enterprise,
+production-grade computing and celebrates the software engineering ethos held by
+many in the Go community because their beliefs are aligned with our
+https://gist.github.com/davepacheco/1878bad488053093348d9ec9967f5b06[principles].
+
+In this document we will define and articulate Joyent's evolving set of
+best-practices with regards to how to Go.
+
+Each item has a recommendation and a rationale.  Over time these recommendations
+and rationale are apt to evolve and be refined to further reflect our
+experiences.  Omissions or gaps in the list of items, the recommendations, or
+their rationale is almost certainly unintentional.  At times several of the
+recommendations or rationale become pithy due to time constraints or the
+perceived lack of a need to provide a more robust explanation, and similarly,
+this is unintentional.  If an issue warrants additional discussion, please
+<<contributing,open an issue>>.
+
+[[contributing]]To provide feedback, bug fixes, request clarification, or
+initiate a discussion, please open an
+https://github.com/joyent/rfd/issues/new[RFD issue] and reference
+https://github.com/joyent/rfd/tree/master/rfd/0106[`RFD 106`] along with the
+necessary specifics.  For issues where there is a debate or discussion, this
+document will include a link back to the individual issues where a particular
+item was addressed or debated.
+
+This RFD makes use of terminology defined in
+https://www.rfc-editor.org/info/bcp14[BCP 14]
+(https://www.rfc-editor.org/rfc/rfc2119.txt[RFC 2119] and
+https://www.rfc-editor.org/rfc/rfc8174.txt[RFC 8174],
+i.e.  "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
+NOT", "RECOMMENDED", "MAY", and "OPTIONAL").
+
+[[core-beliefs]]
+=== Core Beliefs
+
+At Joyent we have the following beliefs regarding software:
+
+* Build robust, trusted systems
+** Build secure systems
+** Data integrity
+* Operability
+* Maintainability
+* Availability
+* Debuggablity
+
+////
+Add a blurb on Go's (alpha-sorted list):
+* Aproachability
+* Availability
+* Compatibility
+* Debugability
+* Expressiveness
+* Extensibility
+* Interoperability
+* Integrity
+* Operability
+* Maintainability
+* Performance
+* Portability
+* Robustness
+* Security
+* Stability
+* Velocity
+////
+
+It's not possible to prescribe a fool-proof set of best-practices but it is
+possible to influence the outcome. To wit, in order to satisfy these beliefs, we
+take principled stances on the following (in no particular order, but roughly
+ordered from philosophical to practical):
+
+* Version of Go
+* Project Structure
+* Workflow
+* Style
+* `$EDITOR` Integration
+* `vendor/` Management
+* Naming Conventions
+* API stability
+* Static Analysis
+* Explicit Types
+* `return` Parameters
+* Interface Receivers
+* `const`
+* Constructing and Using Bitmasks
+* Documentation
+* Use of `context`
+* Deadline Timers and Timeouts
+
+////
+NOTE: the following haven't been written yet but are on the agenda to
+write. Feel free to request more.
+
+ * Error Handling
+ * Logging
+ * Testing
+ * ``defer``
+ * Transactions
+ * CLI flags and arg parsing
+ * Environment variables
+ * Tracing
+ * Metrics
+ * Cluster Schedulers
+ * 12-Factor Applications
+ * Secrets and Secrets Management
+ * ``map`` and ``array`` Initialization
+ * Immutable Applications
+ * Mutexes
+ * ``sync.Atomic``
+ * Use of ``interface{}``
+ * Type Assertions
+ * Behavior vs Data (``interface`` vs ``interface{}``)
+ * Build Tags
+ * IO
+ * TLS
+ * gRPC
+ * JSON Handling
+ * JSON and JSON5
+   is ezjson case sensitive?
+ * PostgreSQL
+ * Using external software
+   * License check
+   * Read the documentation (e.g. == vs .Equal())
+ * pprof
+ * Agent
+ * Use of verbs when calling Formatters
+ * Object Composition
+ * Thread Worker Pools
+ * Appropriate use of ``chan``
+ * Use of `cgo`
+ * Use of Go tooling
+ * Productivity
+ * Recommended Reading and References
+////
+
+[[beliefs]]
+==== Beliefs
+
+[[build-robust-trusted-systems]]
+===== Build Robust, Trusted Systems
+
+* Data Integrity
+* Predictability
+* Security
+
+[[operability]]
+===== Operability
+
+[[maintainability]]
+===== Maintainability
+
+[[availability]]
+===== Availability
+
+[[debuggablity]]
+===== Debuggablity
+
+[[principles]]
+===== Principles
+
+:sectnums:
+
+[[version-of-go,reftext=go-version]]
+== Version of Go
+
+[discrete]
+=== Recommendation
+
+1. The latest released version _or_ a current
+   https://twitter.com/bradfitz/status/889898218573766656[release candidate] of
+   Go SHOULD be used for day-to-day development.
+2. A released version of Go or https://www.youtube.com/watch?v=OuT8YYAOOVI[a
+   release candidate ], until the next version becomes available, MUST be used
+   for building released binaries.
+3. The latest version of Go SHOULD be used for release engineering.
+4. https://github.com/golang/go/tree/master[`master`] MAY be used for
+   development and is RECOMMENDED for ((Continuous Integration)) (CI) testing.
+5. Every time the version of `{go-1}` changes the contents of `$GOPATH/pkg` MUST
+   be cleaned out:
++
+[source,shell]
+----
+$ rm -rf $GOPATH/pkg/
+----
+
+[discrete]
+=== Rationale
+
+The Go team and project are consistently advancing the state of the Go compiler
+and standard library.  Released versions and release candidates are considered
+fit for production and should therefore be used in production.  Upgrade early
+and often.
+
+When release candidates are available, they should be used until the next
+finalized release is made available.
+
+The Go team and contributors have a good track record of advancing the state of
+the compiler in terms of stability and performance.  Tendencies toward risk
+aversion frequently have a higher cost (e.g. security, correctness, performance,
+or stability) than absorbing the cost of any incremental upgrade.
+
+Use of https://github.com/golang/go/tree/master[`master`] is not peril free,
+however it is good way of staying current and doesn't cause much grief during
+development, but frequently does improve both correctness and quality.
+
+The version of `{go-1}` is tightly coupled to the cached object files in
+`$GOPATH/pkg` and there is no stability contract.  Cleaning out `$GOPATH/pkg`
+periodically is an ounce of prevention whose tiny cost is worth more than the
+pound of debugging.footnoteref:[gopath-tmp,While not an official recommendation,
+one could easily be forgiven for symlinking `$GOPATH/pkg` to someplace in `/tmp/`
+in order to take advantage of the automatic pruning of old `.a` files that
+happens periodically and after every reboot on many *NIX platforms (including
+macOS).]
+
+[[project-structure,reftext=project-structure]]
+Project Structure
+-----------------
+
+[discrete]
+=== Recommendation
+
+1. `$GOPATH` SHOULD be set to `$HOME/go` and SHOULD be incorporated into your
+   shell's environment.
+2. All development SHOULD be done within `$GOPATH/src`.
+3. `$GOPATH/bin` SHOULD be part of `PATH` and before `/usr/local` or
+   `/opt/local` (i.e. before system or package manager managed binaries).
++
+-------------------------------
+$ export GOPATH=$HOME/go
+$ export PATH=$GOPATH/bin:$PATH
+-------------------------------
+4. Where appropriate, it is RECOMMENDED to make use of monolithic repositories
+   (mono-repo).
+5. Publicly consumable libraries or programs SHOULD be pushed to a distinct
+   canonical public location and automatically synchronized to the internal
+   codebase.
+
+[discrete]
+=== Rationale
+
+Starting in Go 1.8, `{go-1}` defaulted to `$HOME/go` as its default `GOPATH`.  It
+is not strictly necessary to set `GOPATH`, however it is still advised to make
+this implicit default explicit.
+https://github.com/mailru/easyjson/pull/132[Many] tools or pieces of software
+test for the environment variable `GOPATH` instead of using using `go env
+GOPATH`.
+
+In Go 1.8, the Go project defaulted to `$HOME/go` as the default value for
+`$GOPATH`. Use of one-workspace per project is counter-productive and
+establishes a workflow that is orthogonal to the ethos of the prevailing Go
+ecosystem. This isn't to say there are times where this is necessary
+(i.e. clean-room verification or maintenance of `vendor/`), but the default
+practice SHOULD be to work inside of a single `$GOPATH` workspace
+footnote:[Tools similar to https://bazel.build/[bazel] could influence this
+recommendation in the future however there are no plans to augment the workflow
+presented by the `{go-1}` tool.].
+
+Go's tooling makes it especially productive to move all libraries and programs
+into the same codebase so that refactoring can commence in atomic units of
+work. In particular, making sweeping changes via `{gofmt-1}` `-r` is easy to
+accomplish in a single repository and commit. Breaking apart individual
+libraries into discrete repositories fragments the codebase with no isolation
+guarantees that Version Control System (VCS) doesn't already provide. Contrast
+that with having all libraries and programs in the same codebase, it is now
+possible to move the entire codebase forward in an atomic transaction
+footnote:[Monorepos can be justified by either their productivity gains, by
+https://en.wikipedia.org/wiki/Parkinson%27s_law[Parkinson's law], or by blurring
+blurring the natural organizational lines stemming from
+https://en.wikipedia.org/wiki/Conway%27s_law[Conway's law] by embracing the
+egalitarian nature of software.]. Additional arguments in support of monorepos
+include:
+
+* https://npf.io/2017/03/3.5yrs-500k-lines-of-go/[3.5 Years, 500k Lines
+of Go (Part 1)]
+* https://blog.gopheracademy.com/advent-2015/go-in-a-monorepo/[Go in a
+Monorepo]
+* https://hackernoon.com/basic-monorepo-design-in-go-e9ba1cb8e4e6[Basic
+Project Design in Go]
+*
+https://medium.com/wattpad-engineering/building-and-testing-go-apps-monorepo-speed-9e9ca4978e19[Building
+and testing Go apps + monorepo + speed]
+*
+https://medium.com/@LucasVieiraDev/dependencies-in-golang-projects-f46a11fef832[Dependencies
+in Golang projects]
+* http://pliutau.com/pros_and_cons_golang_in_monorepo/[Pros and Cons:
+Golang in a Monorepo]
+
+Publicly reusable components, however, SHOULD be discretely usable.
+
+[[workflow,reftext=workflow]]
+Workflow
+--------
+
+[discrete]
+=== Recommendation
+
+Engineer workflow changes based on whether or not you have write-privileges to
+the target repository.
+
+[[workflow-github-like]]
+
+If you HAVE write access to a repository and it is Github-like:
+
+1. Checkout the repository:
++
+[source,shell]
+-------------------------------------------
+$ go get -d my.git.server/my_org/my_project
+-------------------------------------------
+2. Create a branch for your change:
++
+[source,shell]
+------------------------------------------------
+$ cd $GOPATH/src/my.git.server/my_org/my_project
+$ git checkout -b my-branch-name
+------------------------------------------------
+3. Commit your change(s):
++
+[source,shell]
+------------
+$ git commit
+------------
+4. Push your change to `origin`:
++
+[source,shell]
+-----------------------------------
+$ git push -u origin my-branch-name
+-----------------------------------
+5. Submit a Pull Request (PR).
+6. You SHOULD obtain a review. For all changes deemed to be trivial this is not
+   necessary, however the change MUST be made through a PR in order to to aid in
+   a quick backout commit.
+7. Automated regression tests MUST complete and pass.
+8. If the velocity of change for the repository is low enough, a `CHANGELOG`
+   entry for the project SHOULD be committed to the PR as the final step before
+   merging the PR. If the velocity of the repository is too high, the
+   `CHANGELOG` entry for the project MAY be added after the PR has been merged.
+9. Merge the PR. If the history of the PR is messy with unhelpful commits
+   (e.g. "fix typo", "update test"), perform a squash merge with a detailed,
+   high-quality commit message that has been approved by the rest of the
+   team. Detail that can't be expressed in the commit message should be outlined
+   in code comments.
+10. Pull the latest changes:
++
+-----------------------------------------------
+$ git checkout master && git pull origin master
+-----------------------------------------------
+11. Delete your local branch:
++
+------------------------------
+$ git branch -d my-branch-name
+------------------------------
+12. Delete your branch from the server (e.g. `my-branch-name`).
+
+[[workflow-github-like-fork]]
+
+If you do NOT HAVE write access to a repository the workflow is largely the same
+except you MUST create a fork of the repository:
+
+1. Checkout the original repository:
++
+[source,shell]
+----------------------------------------------
+$ go get -d -v my.git.server/my_org/my_project
+----------------------------------------------
+2. Fork the upstream repository to your individual user account.
+3. Add the remote for your repository:
++
+[source,shell]
+----------------------------------------------------
+$ cd $GOPATH/src/my.git.server/my_org/my_project
+$ git remote add me my.git.server/my_user/my_project
+----------------------------------------------------
+4. Create a branch for your change:
++
+[source,shell]
+--------------------------------
+$ git checkout -b my-branch-name
+--------------------------------
+5. Commit your change(s)
+6. Push your change to `me`:
++
+[source,shell]
+-------------------------------
+$ git push -u me my-branch-name
+-------------------------------
+7. A `CHANGELOG` entry SHOULD be incorporated into the PR unless the upstream
+   project will write the `CHANGELOG` entry for you.
+8. Submit a Pull Request (PR).
+9. Wait for the upstream provider to merge your PR.
+10. Pull the latest changes:
++
+[source,shell]
+------------------------
+$ git checkout master
+$ git pull origin master
+------------------------
+11. Delete your local branch:
++
+[source,shell]
+------------------------------
+$ git branch -d my-branch-name
+------------------------------
+
+[[workflow-package-path]]
+[IMPORTANT]
+====
+Work MUST be completed within the same directory as the upstream source and not
+the path to your fork of an upstream module (i.e.  CORRECT:
+`$GOPATH/src/my.git.server/upstream_org/my_project` WRONG:
+`$GOPATH/src/my.git.server/my_user/my_project`).  Instead use the path of your
+upstream source, but use a different `git remote` URL.
+====
+
+[[workflow-gerrit]]
+
+If you HAVE write access to a repository and it is Gerrit:
+
+1. Checkout the repository:
++
+[source,shell]
+-----------------------------------------------------------------------
+$ git clone --origin gerrit https://my.git.server/my_org/my_project.git
+-----------------------------------------------------------------------
+2. Create a branch for your change:
++
+[source,shell]
+--------------------------------
+$ git checkout -b my-branch-name
+--------------------------------
+3. Commit your change(s):
++
+[source,shell]
+------------
+$ git commit
+------------
+4. Push your change to `origin`:
++
+[source,shell]
+--------------------------------------
+$ git push gerrit HEAD:refs/for/master
+--------------------------------------
+5. You MUST obtain a review.
+6. Automated regression tests MUST complete and pass.
+7. A `CHANGELOG` entry MUST be committed to the PR as the final step before
+   merging the PR.
+8. Merge the PR. If the history of the PR is messy with unhelpful commits
+   (e.g. "fix typo", "update test"), perform a squash merge with a detailed,
+   high-quality commit message that has been approved by the rest of the
+   team. Detail that can't be expressed in the commit message should be
+   outlined in code comments.
+9. Pull the latest changes:
++
+[source,shell]
+------------------------
+$ git checkout master
+$ git pull origin master
+------------------------
+10. Delete your local branch:
++
+[source,shell]
+------------------------------
+$ git branch -d my-branch-name
+------------------------------
+
+[[style,reftext=style]]
+Style
+-----
+
+[discrete]
+=== Recommendation
+
+1. All code MUST pass through `{gofmt-1}`. `{gofmt-1}` SHOULD be executed with
+   the `-s` flag.
+2. Lines SHOULD wrap at 80 characters.
+
+[discrete]
+=== Rationale
+
+The particular brand of https://blog.golang.org/go-fmt-your-code[tribal fascism
+that extends from `{gofmt-1-name}`] increases the overall productivity of the
+entire Go community by creating a single dialect of Go that is universal across
+projects, teams, and organizations. Being able to drop into any arbitrary Go
+project, regardless of the copyright, and be able to understand the codebase
+quickly is a universal boon.
+
+The only observable consequence to adhering to `{gofmt-1}`'s set of style norms
+is the cost of shedding the sentimental attachment to a preference for "my way
+of doing things". Developing a personal or project-wide coding style takes
+discipline to adhere to, an understanding of the style guide's rules (including
+their rationale), and an eagle-eye to enforce. Investment in such skills and the
+pride attached to that skill-set is near-zero in the Go community. Shedding
+personal preference - justified or not - in favor of a prescribed doctrine is a
+tangible hurdle to overcome.
+
+[NOTE]
+====
+The computing industry has been well served by project-wide style
+guidelines in part because this created a sufficiently high barrier to entry
+which acted as a litmus-test to ensure tribal norms were understood and
+communicated to new members of the tribe. With many of the original industrial
+programming languages being riddled with undefined behavior (e.g. C or C++),
+style guides helped communities of engineers ship more reliable code and with
+fewer bugs because project-wide idioms had a tendency to be put in place for a
+reason.
+
+Even before `{go-1}` adopted `{gofmt-1}` to enforce Go's single-style guideline,
+`ident(1)` existed as a crude tool for enforcing style (crude to the point that
+`ident(1)` was eschewed because it was unable to perform at the levels required
+for a developer tool). In no way should `clang-format(1)` or `clang-tidy(1)` be
+lumped into the same league of correctness as `ident(1)` because
+`clang-format(1)` and `clang-tidy(1)` footnote:[`clang-format(1)` SHOULD be
+considered for C and C++ codebases alike.
+https://www.youtube.com/watch?v=s7JmdCfI__c[clang-format - Automatic formatting
+for CXX] and https://www.youtube.com/watch?v=cX_GhJ6BuWI&t=1605[code::dive 2016
+conference – Chandler Carruth – Making CXX easier, faster and safer (part 1)].
+] recreate the AST before rewriting code (vs the brute-force text-level
+tokenization performed by most `ident(1)` implementations).
+
+
+
+The value and merit of individual or project preferences with regards to the
+artistry stemming from style guides has been eclipsed by the value generated
+from participating in the open, code-sharing world of the Go Open Source
+ecosystem. Go came into the world with a lack of legacy, fragmentation, or
+tribalism and has largely remained an unfragmented community in large part due
+to its fungability of both Go developers and code that can be readily shared
+across either projects or organizations.
+====
+
+`{gofmt-1}` SHOULD be used in place of the `{go-1}` tool's `fmt` command
+because:
+
+1. `{gofmt-1}` supports the `-s` flag to
+   https://golang.org/cmd/gofmt/#hdr-The_simplify_command[simplify code where
+   possible].
+2. `go fmt` calls `{gofmt-1}`:
+   https://github.com/golang/go/blob/af2ac47/src/cmd/go/internal/fmtcmd/fmt.go#L42-L71[src/cmd/go/internal/fmtcmd/fmt.go
+   L42-L71]
+3. `{gofmt-1}` supports programmatic rewriting of the code base via the `-r`
+   flag.
+4. Code SHOULD be fungible. Go's simple syntax, emphasis on readability, and
+   "side-effect"-free code largely make this a reality.
+
+Additional rationale is included in
+https://talks.golang.org/2015/gofmt-en.slide[Robert Griesemer's talk on The
+Cultural Evolution of gofmt].
+
+[[developer-tools]]
+== Developer Tools
+
+[discrete]
+=== Recommendation
+
+The following tools are RECOMMENDED for development:
+
+1. `{goimports-1}`:
++
+[source,shell]
+----
+$ go get -u golang.org/x/tools/cmd/goimports
+----
+2. `{guru-1}`:
++
+[source,shell]
+----
+$ go get -u golang.org/x/tools/cmd/guru
+----
+3. `{godoc-1}`:
++
+[source,shell]
+----
+$ go get -u golang.org/x/tools/cmd/godoc
+----
+4. `{gorename-1}`:
++
+[source,shell]
+----
+$ go get -u golang.org/x/tools/cmd/gorename
+----
+5. `{gomvpkg-1}`:
++
+[source,shell]
+----
+$ go get -u golang.org/x/tools/cmd/gomvpkg
+----
+
+[discrete]
+=== Rationale
+
+[discrete]
+==== `{goimports-1-name}`
+
+Manually maintaining https://golang.org/ref/spec#Import_declarations[`import`
+declarations] is a tedious waste of time.  `{goimports-1}` gets this right 99% of
+the time and increases productivity significantly once integrated into your
+`$EDITOR`.  `{goimports-1}` does periodically get the package wrong when there
+is ambiguity, but with a nudge in the right direction it doesn't go off the
+rails again for a particular source file.
+
+[discrete,]
+==== `{guru-1-name}` [[guru-rationale]]
+
+`{guru-1}` SHOULD be integrated into your `$EDITOR` because it enables quick,
+authoritative traversal of codebases.  `{guru-1}` is a huge productivity bump
+and can't have enough good things said about it.  Watch
+https://www.youtube.com/watch?v=ak97oH0D6fI[Navigating Unfamiliar Code with the
+Go Guru] and read {guru-using-url}[Using Go Guru: an editor-integrated tool for
+navigating Go code].  Spiritually `{guru-1}` could probably attribute a material
+portion of its inspiration with https://en.wikipedia.org/wiki/Ctags[`ctags(1)`],
+ https://en.wikipedia.org/wiki/Cscope[`cscope(1)`], and
+ https://en.wikipedia.org/wiki/LXR_Cross_Referencer[LXR], however `{guru-1}` is
+much more sophisticated.
+
+The list of ``{guru-1}``s functionality includes (as of July 2017, and taken
+from {guru-1-url}):
+
+.Identifier Queries
+`what`::
++
+[quote]
+____
+The `what` query describes the current source position as rapidly as possible.
+It is not intended to be invoked directly by the user, but it allows editors to
+provide immediate feedback in the UI whenever the cursor position changes.  It
+can be used to highlight all identifiers that are equivalent to current one.
+____
+`definition`::
++
+[quote]
+____
+The `definition` query finds the declaration of the selected identifier.  In
+some editors, it may jump the cursor directly to that location.
+____
+`referrers`::
++
+[quote]
+____
+The `referrers` query finds references to the selected identifier, scanning all
+necessary packages within the workspace.
+____
+`freevars`::
++
+[quote]
+____
+The `freevars` query enumerates the free variables of the selection.  "Free
+variables" is a technical term meaning the set of variables that are referenced
+but not defined within the selection, or loosely speaking, its inputs.
+____
+
+.Type Queries
+`describe`::
++
+[quote]
+____
+The `describe` query shows various properties of the selected syntax: its
+syntactic kind, the type of an expression, the value of a constant expression,
+the size, alignment, method set, and interfaces of a type, the declaration of an
+identifier, and so on.  You may `describe` almost any piece of syntax, and
+`{guru-1}` will print all the useful information it can.
+____
+`implements`::
++
+[quote]
+____
+The `implements` query shows interfaces that are implemented by the selected
+type and, if the selected type is itself an interface, the set of concrete types
+that implement it.  An implements query on a value reports the same information
+about the expression’s type.  An `implements` query on a method shows the set of
+abstract or concrete methods that are related to it.
+____
+
+.Call Graph Queries
+`callees`::
++
+[quote]
+____
+The `callees` query shows the possible call targets of the selected function
+call site.  The cursor or selection must be within a function call expression;
+the selection need not be exact.
+____
+`callers`::
++
+[quote]
+____
+The `callers` query shows the possible callers of the function containing the
+selection.
+____
+`callstack`::
++
+[quote]
+____
+The callstack query shows an arbitrary path from the root of the call graph to
+the function containing the selection.  This may be useful to understand how the
+function is reached in a given program.
+____
+
+.Alias Queries
+`pointsto`::
++
+[quote]
+____
+The `pointsto` query shows the set of possible objects to which a pointer may
+point.  It also works for other reference types, like slices, functions, maps,
+and channels.
+____
+`whicherrs`::
++
+[quote]
+____
+The `whicherrs` query reports the set of possible constants, global variables,
+and concrete types that may appear in a value of type error.  This information
+may be useful when handling errors to ensure all the important cases have been
+dealt with.
+____
+`peers`::
++
+[quote]
+____
+The `peers` query shows the set of possible sends/receives on the channel
+operand of the selected send or receive operation; the selection must be a `+++<-+++`
+token.
+____
+
+[discrete]
+==== `{godoc-1-name}`
+
+`{godoc-1}` SHOULD be installed in order to have quick access to formatted
+documentation.  Before committing a new body of work, the documentation for the
+package should be inspected.  A strong cofactor in determining the reusable
+value of software is its documentation (see also:
+https://en.wikipedia.org/wiki/Network_effect[network effect]).
+
+[discrete]
+==== `{gorename-1-name}` and `{gomvpkg-1-name}`
+
+`{gorename-1}` SHOULD be used for renaming package, function, and method members
+(i.e. `const`, `func`, `var`, and `type`).
+
+While less commonly needed, `{gomvpkg-1}` SHOULD be used when moving packages
+around because it updates the necessary `import` declarations in a given scope.
+
+
+[[editor-integration]]
+== `$EDITOR` Integration
+
+[discrete]
+=== Recommendation [[editor-integration-recommendation]]
+
+This section is NOT making a recommendation regarding any particular
+`$EDITOR`.footnote:[See https://www.xkcd.com/378/[Real Programmers]
+https://xkcd.com/1823/[Hottest Editors]] This section is, however making a
+strong recommendation that your `$EDITOR` include the following interrogations in
+order to aid in maximal productivity:
+
+1. `{goimports-1}` is SHOULD be added as a save hook. `$EDITOR` instructions are
+   found at: https://godoc.org/golang.org/x/tools/cmd/goimports[].
+2. `{guru-1}` SHOULD be integrated into your `$EDITOR` as a plugin. Binding
+   "jump-to-definition" to an easy-to-access keybinding is strongly
+   RECOMMENDED. Instructions can be found at
+   {guru-using-url}[{guru-using-url}].  See <<guru-rationale,`{guru-1-name}`
+   rationale>>.
+3. `{gorename-1}` SHOULD be integrated into your `$EDITOR` as a plugin
+   (instructions for
+   https://github.com/dominikh/go-mode.el/blob/master/go-rename.el#L13-L17[emacs],
+   https://github.com/fatih/vim-go[vim]).
+
+Specific editor integrations (alphabetically sorted):
+
+* `emacs` users SHOULD look at
+  https://github.com/dominikh/go-mode.el[go-mode.el] and MAY OPTIONALLY
+  investigate integrating https://github.com/nsf/gocode[gocode].  With
+  `{guru-1}` installed, enabling `go-guru-hl-identifier-mode` is RECOMMENDED
+  when navigating code.
+* `JetBrains` users SHOULD look at https://www.jetbrains.com/go/[Gogland].
+* `vim` users SHOULD look at https://github.com/fatih/vim-go[vim-go] and MAY
+  OPTIONALLY investigate integrating https://github.com/nsf/gocode[gocode].
+
+[discrete]
+=== Rationale [[editor-integration-rationale]]
+
+`$EDITOR` preferences and configuration is an intensely personal subject.
+Integrating `gofmt -s -w $FILE` may be a benefit to your individual workflow.
+Some people who use `emacs` really like
+https://github.com/dougm/goflymake[`flymake` or `flycheck`] or
+`go-guru-hl-identifier-mode`, whereas others don't like the extra background CPU
+they incur.  The list above is both lightweight and common.  Additional
+<<contributing,suggestions or tips to improve `$EDITOR` productivity are
+welcome>>.
+
+[[vendor-management]]
+`vendor/` Management
+--------------------
+
+[discrete]
+=== Recommendation
+
+1. Forked and cached libraries in https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo/edit#![`vendor/`] MUST be managed via the `{dep-1}` tool:
++
+[source,shell]
+----
+$ go get -u github.com/golang/dep/cmd/dep   // <1>
+$ dep status                                // <2>
+$ dep ensure                                // <3>
+$ dep ensure -update                        // <4>
+$ dep init                                  // <5>
+----
+<1> Install `{dep-1}`
+<2> {dep-1-url}#checking-the-status-of-dependencies[Checking the status of dependencies]
+<3> {dep-1-url}#usage[`ensure`, the main subcommand]
+<4> {dep-1-url}#updating-dependencies[Update Dependencies]
+<5> {dep-1-url}#setup[`dep(1)` Setup]
+2. In a monorepo, whomever wants to update the bits in `vendor/` and
+   `Gopkg.lock` MAY update the version, however they MUST:
+.. take responsibility for making the change (and updating code as necessary).
+.. testing the change.
+.. communicate the change with consumers of the library.
+.. receive approval from teams receiving the update.
+3. `Gopkg.toml` SHOULD NOT lock a version to a specific version without reason.
+   Valid reasons include:
+.. Upstream did in-fact change something that requires local attention *and* the
+cost of fixing the change locally is currently too high.
+.. Upstream did in-fact commit something that is materially broken and the cost
+of fixing the bug upstream is too high.
+4. Release CI runs MUST use the version specified in `Gopkg.lock`.
+5. Non-release CI SHOULD be able to report vendor drift via `dep status`.  If
+   the CI environment is safely isolated to the extent that you're willing to
+   run uninspected code from upstream, `dep ensure -update` SHOULD be run and
+   report breakage caused by upstream changes.
+6. `vendor/` and `Gopkg.lock` SHOULD be updated regularly in order to prevent
+   forklift upgrades.
+7. https://github.com/golang/dep/blob/master/docs/FAQ.md#what-is-the-difference-between-gopkgtoml-the-manifest-and-gopkglock-the-lock[Understanding
+   the difference between the `Gopkg.toml` and `Gopkg.lock` files] is REQUIRED.
+
+
+[discrete]
+=== Rationale
+
+As of Gophercon 2017, https://www.youtube.com/watch?v=5LtMb090AZI[`{dep-1-name}`
+is on track to becoming the community defacto `vendor/` management tool] (this
+is also on track according to their
+https://github.com/golang/dep/wiki/Roadmap[roadmap]). If a project is using
+either https://github.com/tools/godep[`godep(1)`] or
+https://github.com/kardianos/govendor[`govendor(1)`], please make plans to
+upgrade to `{dep-1}`.
+
+See also https://github.com/golang/dep/issues/281[] and the
+https://github.com/golang/dep/blob/master/docs/FAQ.md[`{dep-1-name}`
+FAQ]. https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md[`Gopkg.toml`
+documentation] is RECOMMENDED reading, too.
+
+CI automatically updating dependencies in non-release builds provides a
+motivation for `vendor/` to more closely track the upstream's most recently
+tagged version or `master`.  Tracking more frequent, small changes is less error
+prone than large "#yolo updates."
+
+WARNING: Confusingly named, `{dep-1}` is not the same as `godep(1)`.  `{dep-1}`
+is the future, not `godep(1)`.
+
+CAUTION: CI systems can only run `dep ensure -update` if the CI systems are
+capable of running untrusted, foreign code (or some other compensating control
+is in place).
+
+[[naming-conventions]]
+Naming Conventions
+------------------
+
+[discrete]
+=== Recommendations
+
+1. Go software SHOULD conform to the recommendations outlined in the following
+   resources:
+.. https://blog.golang.org/package-names[Package Names]
+.. https://golang.org/doc/effective_go.html#names[Effective Go]
+.. https://blog.golang.org/organizing-go-code[Organizing Go Code]
+.. https://talks.golang.org/2014/organizeio.slide[Organizing Go Code]
+2. Package authors MAY deviate from these conventions IF they have sought
+   feedback from engineers who have sufficient experience writing Go libraries.
+3. When working with a forked copy of a package, package import paths MUST
+   continue to use the canonical, public import path.  See
+   <<workflow-package-path,comments in workflow>>.
+4. Package aliases SHOULD be used when necessary and there are two libraries
+   with the same package name.
+5. Programs SHOULD NOT explicitly `import` a package into the current namespace
+   (i.e. do not use `import . "lib/math" Sin`).
+6. Programs MAY import a package for their side effects using the black
+   identifier (i.e. a package's `init()` MUST run). For example:
++
+[source,go]
+----
+import (
+  "database/sql"          <1>
+
+  _ "github.com/lib/pq"   <2>
+)
+----
+<1> ``import``s `database/sql`
+<2> Invoke's ``github.com/lib/pq``'s `init()` method because it
+https://github.com/lib/pq/blob/dd1fe2071026ce53f36a39112e645b4d4f5793a4/conn.go#L44-L46[registers
+itself] with the `sql` package.
+
+[discrete]
+=== Rationale
+
+Naming is one of the hard things in software. The package semantics of Go help
+with this dilemma and minimize the blast-radius of poorly chosen names.  With
+tools like `{guru-1}` commonly in use, the practice of encoding extraneous type
+and package information into variable names is non-idiomatic and frowned upon.
+https://github.com/joyent/triton-go/pull/19#issuecomment-308860337[The burden
+for good naming and exported functions falls on library authors].
+
+[[api-stability]]
+API Stability
+-------------
+
+[discrete]
+=== Recommendation
+
+1. APIs within a single project SHOULD use tightly-coupled function signatures.
+2. Refactoring APIs within a single project SHOULD use ``{gofmt-1}``'s `-r` flag
+   to migrate function signatures.
+3. External APIs that are loosely coupled across projects AND potentially
+   unstable SHOULD use `struct` inputs. For example:
++
+[source,go]
+--------------------------------
+package mypkg
+struct MyFuncInputs {
+  ArgA string
+  ArgB int
+  ArgC bool
+}
+func MyFunc(args MyFuncInputs) {
+  // ...
+}
+--------------------------------
++
+on the caller's side:
++
+[source,go]
+-------------------------
+mypkg.MyFunc(MyFuncInput{
+  ArgA: "foo",
+  ArgB: 0xba72,
+  Argc: true,
+})
+-------------------------
+4. Required arguments SHOULD be extracted from the input struct.
+5. Optional arguments or parameters that are subject to change by the authors of
+   the library SHOULD be included in the input struct in order to provide loose
+   coupling between the library and its consumers.
+6. Where input arguments are not reused across API calls, use of
+   stack-initialized (e.g. `MyFuncInput{}`) input structs SHOULD be used (vs
+   heap initialized, e.g. `&MyFuncInput{}`).
+
+[discrete]
+=== Rationale
+
+Tightly coupled interfaces within the same project SHOULD be treated as local
+where possible. The onus for maintaining the API MUST be on the author changing
+the function signature. Tools that programmatically rewrite the codebase SHOULD
+be employed to make the change. The entire change SHOULD be merged as a single
+operation.  Sweeping mechanical changes SHOULD be committed independent of
+either functional or behavioral changes.
+
+External APIs that are loosely coupled where consumers of a library are apt to
+not update all of their call sites need to acknowledge that it is a maintenance
+cost to enforce tight coupling between a project and an external library. Use of
+`struct` input arguments allows:
+
+1. library maintainer to advance the functionality of their library
+   independently
+2. consumers of the library to update without fear of breaking their API
+
+[NOTE]
+====
+This recommendation stems from the following hypothetical:
+
+Imagine a function signature is:
+
+[source,go]
+----
+func MyFunc(a string, b int) { /* ... */ }
+----
+
+and the authors of `MyFunc()` decide the function signature needs to be updated
+to:
+
+[source,go]
+----
+func MyFunc(a string, b int, c bool) { /* ... */ }
+----
+
+All consumers of `MyFunc()` must update to the new signature.  In some cases
+this compile-time breakage may be desirable in order for ``MyFunc()``'s authors
+to communicate a breaking change or semantic change that requires some level of
+understanding by the consumer. In other cases, the authors of `MyFunc()` may
+have added new functionality without changing the semantic meaning of the
+contract API. In the latter case, adding functionality to `MyFunc()` requires
+source-code level API flexibility with a permissive interfaces in order to
+minimize the maintenance cost incurred by consumers.
+
+This could be achieved by adding an additional variadic function argument:
+
+[source,go]
+----
+MyFunc(a string, b int, args ...interface{}) { /* ... */ }
+----
+
+but that approach would require runtime checking of the variadic argument,
+`args`, and would eschew compile-time safety guarantees (and subsequent
+optimizations).  If the consumers of `MyFunc()` span team or organizational
+boundaries, it is effectively impossible to force callers to update their
+interface to match the new function signature.
+
+This recommendation is to introduce a static function signature with an
+"append-only input structure":
+
+[source,go]
+----
+type MyFuncInputs struct {}
+func MyFunc(ctxt context, dnode uint64, MyFuncInputs{}) {
+  //
+}
+----
+
+The function signature for `MyFunc()` can now be effectively frozen and stable
+from the perspective of the consumers of the library.  ``MyFunc()``'s new
+signature acknowledges that both `ctxt` and `dnode` are required arguments yet
+still allows the library author to extend the API in the future by appending
+members to the `MyFuncInputs struct`.
+====
+
+If an API is performance sensitive, this approach MAY NOT be appropriate. Use of
+this technique is an exercise in forethought where the cost of maintenance
+burdened by the author is weighed against the runtime performance impact of
+passing an optional struct input to a function. It is difficult to imagine the
+case where the execution cost of thousands of requests per second would outweigh
+the engineering burden of maintaining a frequently updated or loosely coupled
+interface that spans repositories.
+
+This technique must adhere to similar rules as those suggested when
+https://developers.google.com/protocol-buffers/docs/proto3#updating[updating a
+protobuf message type], notably:
+
+* `*Input` struct member names are permanent and MUST NOT change or have their
+  meaning altered in a way that changes their contract.
+* Obsolete `*Input` struct member names MUST:
+  a. be automatically mapped to an updated struct member(s)
+  b. ignored (a discouraged practice)
+  c. removed thereby explicitly breaking any existing code
+  d. never be reused for the life of the interface (and therefore the `*Input`
+     struct.
++
+A phased approach to evolving a `*Input` struct is an acceptable strategy.
+
+Again, this is a recommended technique for providing stable interfaces where the
+runtime and diminished readability has been weighed against the cost of
+maintenance (most notably engineering time or runtime breakage).
+
+[[static-analysis]]
+Static Analysis
+---------------
+
+[discrete]
+=== Recommendations
+
+1. Use and integration of "baseline static analysis checks" SHOULD be integrated
+   into the CI.
+2. An inventory of "optional static analysis checks" is RECOMMENDED but not
+   necessary for a second tier of checks to be added to list of suggested static
+   analysis checks (e.g. "noisy, but useful" or "mostly accurate, but still
+   throws false-positives").
+
+[discrete]
+=== Rationale
+
+`reviewdog` stands out as a pragmatic way to
+https://medium.com/@haya14busa/reviewdog-a-code-review-dog-who-keeps-your-codebase-healthy-d957c471938b[programmatically
+raise the bar of quality within a given Go project] by automatically executing
+and providing inline annotations in PRs with the results of baseline checks. If
+a particular type of error occurs more than a few times, write a static analysis
+check and incorporate it into `reviewdog`.
+
+For offline development, use of `{gometalinter-1}` is RECOMMENDED:
+
+[source,shell]
+----
+$ go get -u github.com/alecthomas/gometalinter
+$ gometalinter --install
+----
+
+Regardless of the tool, incorporating a baseline of static analysis of commonly
+identified issues frees up reviewers to focus on the content of change versus
+the mechanics of the change. Time invested in static analysis checks usually
+pays dividends with respect to preventing bugs
+(e.g. https://github.com/kyoh86/scopelint[`scopelint`],
+https://golang.org/cmd/vet/#hdr-Shadowed_variables[`go tool vet --shadow`],
+https://github.com/kisielk/errcheck[`errcheck`],
+https://github.com/stripe/safesql[`safesql`],
+https://github.com/dominikh/go-tools/tree/master/cmd/staticcheck[`staticcheck`]),
+reducing sub-optimal code (e.g.
+https://github.com/gordonklaus/ineffassign[`ineffassign`],
+https://github.com/mvdan/unparam[`unparam`]), or reducing engineering time
+wasted pointing out nits that could be identified consistently by bots
+(e.g. https://golang.org/cmd/vet/[`go vet`], https://github.com/walle/lll[`lll`
+(long line linter)], https://github.com/client9/misspell[`misspell`]).
+
+Several recommended static analysis checks include (most come from
+`{gometalinter-1}`, alphabetically sorted):
+
+* https://github.com/tsenart/deadcode[`deadcode`]
+* https://github.com/kisielk/errcheck[`errcheck`]
+* https://github.com/golang/lint/golint[`golint`]
+* https://honnef.co/go/tools/cmd/gosimple[`gosimple`]
+* https://github.com/gordonklaus/ineffassign[`ineffassign`]
+* https://github.com/walle/lll[`lll` (Long Line Linter)]
+* https://github.com/client9/misspell/cmd/misspell[`misspell`]
+* https://github.com/stripe/safesql[`safesql`]
+* https://github.com/kyoh86/scopelint[`scopelint`]
+* https://honnef.co/go/tools/cmd/staticcheck[`staticcheck`]
+* https://github.com/mdempsky/unconvert[`unconvert`]
+* https://github.com/mvdan/unparam[`unparam`]
+* https://honnef.co/go/tools/cmd/unused[`unused`]
+* https://github.com/opennota/check/tree/master/cmd/varcheck[`varcheck`]
+* https://golang.org/cmd/vet/[`vet`]
+
+Several optional linters include (alphabetically sorted):
+
+* https://github.com/opennota/check/cmd/aligncheck[`aligncheck`]
+* https://github.com/dominikh/go-structlayout[`go-structlayout`]
+* https://github.com/jgautheron/goconst[`goconst`]
+* https://github.com/opennota/check/cmd/structcheck[`structcheck`]
+* https://github.com/jgautheron/usedexports[`usedexports`]
+
+[[explicit-types]]
+Explicit Types
+--------------
+
+[discrete]
+=== Recommendation
+
+1. Explicit types SHOULD be used within a project.
+2. Libraries or public APIs MAY export types where it helps readability.
+3. Where the meaning or intent of a fundamental type would benefit from explicit
+   type checking by the compiler, explicit types SHOULD be used.
+4. https://golang.org/ref/spec#Conversions[Type Conversions] SHOULD be deferred
+   as long as reasonable.
+5. Where explicitly typed variables are employed, the lifecycle of identifiers
+   referencing underlying types SHOULD be reduced to the smallest reasonable
+   scope possible.
+6. Use of `{gorename-1}` to maintain `type` names is RECOMMENDED. The
+   RECOMMENDED use of `{gorename-1}` extends to all package, function, and
+   method members (i.e. `const`, `func`, `var`, and `type`).
+
+[discrete]
+=== Rationale
+
+Go is an https://golang.org/ref/spec#Types[explicitly typed language].  The
+compiler does not perform any implicit type conversions of
+https://golang.org/ref/spec#Type_identity[named types]. Exported functions,
+``interface``s, and ``type``s SHOULD make use of explicit types in order to
+enable the compiler to detect and enforce a pacakge's specified type system. It
+is NOT RECOMMENDED to deprive the compiler of the necessary type information it
+requires in order to prevent developers from incorrectly and abusively
+overloading Go's underlying types (e.g.  `string` vs `RandomStringID`, or
+`uint64` vs `inode`).
+
+As an example, a `string` SHOULD be thought of as an immutable
+https://golang.org/ref/spec#String_types[slice of runes] that is missing its
+type information (i.e. a `string` is a container, not a type).
+
+Go's fundamental or underlying types (e.g. `string`, `int*`, `[]byte`) are
+containers that crudely answer the question "how is a variable going to be
+stored efficiently." Use of underlying types do not answer the question "what
+bits are in a given container."
+https://golang.org/ref/spec#Type_declarations[Go does not permit any implicit
+type conversions of named types].
+
+Go's explicit type system prevents variables backed by the same underlying type
+from fraternizing. Use of fundamental types at formal interface boundaries is
+discouraged because use of variable names to indicate the intended use of a
+variable is only enforced by the reader, not by the compiler. If variable names
+are sufficient to guard against variable misues, you MAY rely on variable names
+to convey type information.
+
+Where type intent information SHOULD be enforced by the compiler, use of
+explicit types is RECOMMENDED. The Go type system is a compile-time cost, not a
+runtime cost. Use types.
+
+Examples:
+
+[source,go,numbered]
+----
+type ID string                // <1>
+type ID uint64                // <2>
+type CookieID string
+type UUID []byte
+type Index uint
+type Key string
+type Value string
+type Lookup map[Key]Value
+----
+<1> `ID` may have started out as a `string`
+<2> `ID` could be easily changed to a `uint64` and the consequences easily
+observed.  NOTE: this wouldn't compile due to the `ID` identifier being reused
+in the same package.
+
+[[return-parameters]]
+Return Parameters
+-----------------
+
+[discrete]
+=== Recommendation
+
+1. When deciding if a function or method should return an argument by value or
+   pointer, returning a value SHOULD be your default position except in the
+   following situations, in which case it is RECOMMENDED to return a pointer to
+   a value:
+.. the API contract you want to establish with the caller is to force them
+   to deal with errors by returning `nil` AND the construction of the zero-value
+   is onerous or expensive (i.e. return `""` for a string).
+.. ownership of the variable may change throughout the course of the
+   variable's life.
+.. the expense of copying the variable is measurable.
+
+[discrete]
+=== Rationale
+
+Go uses pass-by-value semantics and employs
+http://www.agardner.me/golang/garbage/collection/gc/escape/analysis/2015/10/18/go-escape-analysis.html[variable
+escape analysis].
+
+Embrace the pass-by-value nature of Go, be productive, and let the compiler do
+work for you.
+
+* https://dhdersch.github.io/golang/2016/01/23/golang-when-to-use-string-pointers.html[When
+  to use string pointers]
+* https://research.swtch.com/godata[Go Data Structures]
+* https://blog.golang.org/go-slices-usage-and-internals[Go Slices: usage and
+  internals]
+* https://blog.golang.org/slices[Arrays, slices (and strings): The mechanics of
+  'append']
+* https://groups.google.com/forum/#!msg/golang-nuts/3SBKSFRVbWA/IArLsJi-xV4J[Using
+  Pointers in Golang]
+
+Much of the above reading was shamelessly borrowed from a
+https://stackoverflow.com/questions/20849911/move-semantics-in-golang#20856597[Stack
+Overflow article] which is a good read on its own merits.
+
+[[interface-receivers]]
+Interface Receivers
+-------------------
+
+[discrete]
+=== Recommendation
+
+1. When deciding if a receiver should be a value or a pointer, a pointer SHOULD
+   be used by default except in the following situations, in which case it is
+   RECOMMENDED to use a value:
+.. the value of the receiver is a simple underlying type (i.e. an `int`)
+.. invocation of the given interface method SHOULD result in a copy of the
+   receiver.
+
+[discrete]
+=== Rationale
+
+This is simple: use a pointer to a receiver in nearly all cases. Item `1b` is
+very rare in practice.
+
+[source,go,numbered]
+----
+type Foo struct {
+  bar string
+}
+
+// Baz assigns "bur" to f.bar.  Without the pointer, this the instance of Foo
+// would have been copied and the assignment would have been not visible to
+// the caller (a nice source of frustration when first learning Go).
+func (f *Foo) Baz() {
+  f.bar = "bur"
+}
+----
+
+In practice, use of non-pointer receivers is limited to the following example:
+
+[source,go,numbered]
+----
+type MyEnum int
+
+func (e MyEnum) String() string {
+  switch e {
+  case 0:
+    return "zero"
+  case 1:
+    return "one"
+  default:
+    return "something not one or zero"
+  }
+}
+
+var myEnum MyEnum = 0
+fmt.Println("%s", myEnum)
+----
+
+Where the important takeaway is that in `String()`, it doesn't matter if the
+value is copied.
+
+[[const]]
+`const`
+-------
+
+[discrete]
+=== Recommendation
+
+1. Use of `const` is RECOMMENDED.
+2. Create explicitly typed ``const``s is RECOMMENDED.
+3. ``const``s with type information SHOULD should be exported (both the `type` and
+   the `const` values).
+4. Periodically using static analysis checks like
+   https://github.com/jgautheron/goconst[goconst] is RECOMMENDED but OPTIONAL.
+
+[discrete]
+=== Rationale
+
+By creating a `const`, you give the Go tooling an identifier which you can
+search for referrers of the given `const`. See the `referrers` section of the
+{guru-using-url}[Using Guru] document (this document SHOULD be _required_
+reading).
+
+[[bitmasks]]
+== Bitmasks
+
+[discrete]
+=== Recommendation
+
+1. Bitmasks SHOULD be created using `const` and `iota`.
+2. Bitmasks SHOULD be explicitly typed.
+3. The meaning of bits in a bitmask MAY change if it is documented in the
+   interface that the meaning of individual bits may change.
+4. The meaning of bits MUST NOT change if the bitmask is exported and the
+   position of individual bits is part of the contract.
+5. A new type, removal of the bitmask as a type, or other form of compile-time
+   breakage MUST be introduced in order to communicate the change in behavior.
+6. Manual manipulation of bitmasks SHOULD NOT be performed without explicitly
+   named bits.
+
+[discrete]
+=== Rationale
+
+Go provides a convenient trick to automatically creating bitmasks:
+
+[source,go,numbered]
+----
+type MyBitmask int
+
+const (
+      FlagA MyBitmask = 1 << iota  // <1>
+      FlagB                        // <2>
+      FlagC                        // <3>
+      FlagD                        // <4>
+)
+----
+<1> `FlagA` == `0x01`
+<2> `FlagB` == `0x02`
+<3> `FlagC` == `0x04`
+<4> `FlagD` == `0x08`
+
+Leverage this trick.
+
+[[documentation]]
+Documentation
+-------------
+
+[discrete]
+=== Recommendation
+
+1. Projects MUST use `godoc(1)` to document their project.
+
+[discrete]
+=== Rationale
+
+Read the https://blog.golang.org/godoc-documenting-go-code[Godoc: documenting Go
+code] blog post.footnote:[It would be nice, however, if `{godoc-1}` supported a
+richer markup like https://en.wikipedia.org/wiki/AsciiDoc[`asciidoc`].]
+
+[[context]]
+== Context
+
+[discrete]
+=== Recommendation
+
+1. Projects MUST the https://golang.org/pkg/context/[context] pattern for
+   passing state along request-scoped state information (e.g. `deadlines`,
+   `cancelation signals`, or request-specific information).
+
+[discrete]
+=== Rationale
+
+Read the https://blog.golang.org/context[Go Concurrency Patterns: Context] blog
+post.
+
+[[deadline-timers-and-timeouts]]
+== Deadline Timers and Timeouts
+
+[discrete]
+=== Recommendation
+
+1. In-process timers and timeouts MUST use `time.Duration`.
+2. In-process timers and timeouts using the `context` package MUST use
+   `context.WithTimeout`.
+3. Inter-process timeout enforcement MUST communicate using an absolute time
+   reference using `time.Time`.
+4. Inter-process timeouts using the `context` package MUST use
+   `context.WithDeadline`.
+
+[discrete]
+=== Rationale
+
+Starting in https://github.com/golang/go/issues/12914[Go]
+https://github.com/golang/go/issues/12914[1.9], Go's
+https://golang.org/pkg/time/#hdr-Monotonic_Clocks[`time.Time` package uses
+monotonic time].
+
+[[grpc]]
+== gRPC
+
+[discrete]
+=== Recommendation
+
+1. {gRPC} SHOULD be preferred as the RPC framework for communicating between
+   discrete Go processes locally or on the network.
+2. JSON MAY be used as the RPC framework when necessary to interoperate with
+   non- {gRPC} clients.
+
+[discrete]
+=== Rationale
+
+Read the https://blog.golang.org/context[Go Concurrency Patterns: Context] blog
+post.
+
+[[external-resources]]
+== External Resources
+
+. https://www.youtube.com/watch?v=rKnDgT73v8s[The Go Programming Language]
+. https://commandcenter.blogspot.com/2012/06/less-is-exponentially-more.html[Less is exponentially more]
+. https://go-proverbs.github.io/[Go Proverbs]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=2m48s[Don't communicate by sharing memory, share memory by communicating.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=3m42s[Concurrency is not parallelism.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=4m20s[Channels orchestrate; mutexes serialize.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=5m17s[The bigger the interface, the weaker the abstraction.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=6m25s[Make the zero value useful.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=7m36s[interface{} says nothing.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=8m43s[gofmt's style is no one's favorite, yet gofmt is everyone's favorite.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=9m28s[A little copying is better than a little dependency.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=11m10s[syscall.* must always be guarded with build tags.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=11m53s[Cgo must always be guarded with build tags.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=12m37s[Cgo is not Go.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=13m49s[With the unsafe package there are no guarantees.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=14m35s[Clear is better than clever.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=15m22s[Reflection is never clear.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=16m13s[Errors are values.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=17m25s[Don't just check errors, handle them gracefully.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=18m09s[Design the architecture, name the components, document the details.]
+.. https://www.youtube.com/watch?v=PAAkCSZUG1c&t=19m07s[Documentation is for users.]
+.. https://github.com/golang/go/wiki/CodeReviewComments#dont-panic[Don't panic.]
+. https://github.com/golang/go/wiki[Go wiki]
+. https://awesome-go.com/[Awesome Go]: A curated list of awesome Go frameworks, libraries and software.
+
+[glossary]
+== Glossary
+
+[glossary]
+CI:: Continuous Integration
+
+////
+Indexes were never implemented in asciidoctor.  Commenting out the Index until
+it's supported: https://github.com/asciidoctor/asciidoctor/issues/450
+
+[index]
+== Index
+////

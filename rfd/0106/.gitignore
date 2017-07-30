@@ -1,7 +1,4 @@
-.Python
-bin/
-include/
-lib/
-pip-selfcheck.json
+README.9
+*.md
 *.pdf
 *.html
