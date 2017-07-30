@@ -116,7 +116,7 @@ fi
 # Now iterate over every RFD and make sure that it's in the table in README.md
 # and in a matching state and with sane metadata.
 #
-for f in rfd/[0-9][0-9][0-9][0-9]/README.md rfd/*/README.adoc; do
+for f in rfd/[0-9][0-9][0-9][0-9]/README.{md,adoc}; do
 	line=`grep '^|' README.md | grep $f`;
 
 	if [[ -z "$line" ]]; then
@@ -127,7 +127,13 @@ for f in rfd/[0-9][0-9][0-9][0-9]/README.md rfd/*/README.adoc; do
 	state=`echo $line | cut -d\| -f2 | awk '{ print $1 }'`
 	title=`echo $line | cut -d\| -f3 | cut -d\[ -f2 | cut -d\] -f1`
 	rfd=`echo $line | awk '{ print $5 }'`
-	check=`cat $f | grep -w ^# | head -1 | cut -c3-`
+
+	if [[ `basename $f` == "README.adoc" ]]; then
+	    check=`cat $f | grep -w ^[=#] | head -1 | cut -c3-`
+	fi
+	if [[ `basename $f` == "README.md" ]]; then
+	    check=`cat $f | grep -w ^# | head -1 | cut -c3-`
+	fi
 
 	if [[ "$title" != "$check" ]]; then
 		echo "$prog: mismatched title on RFD $rfd";
