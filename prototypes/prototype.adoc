@@ -9,9 +9,13 @@ state: predraft
 :attribute-missing: warn
 :docinfo:
 :doctype: article
+:hide-uri-scheme:
 :icons: font
 :idprefix:
+:idseparator: -
+:keywords: rfd, rfd <NUMBER, prototype, sample, keywords
 :numbered:
+:revnumber: 0.1.0
 :sectanchors:
 :sectlinks:
 :sectnums:
@@ -19,6 +23,7 @@ state: predraft
 :showtitle:
 :source-highlighter: pygments
 :toc: left
+:xrefstyle: full
 
 ////
     This Source Code Form is subject to the terms of the Mozilla Public
