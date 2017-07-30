@@ -2,7 +2,7 @@
 authors: Sean Chittenden <seanc@joyent.com>
 state: predraft
 ---
-= RFD 0106 Go Best Practices: A Joyent Engineering Guide
+= RFD 106 Engineering Guide - Go Best Practices
 :author: Sean Chittenden
 :email: seanc@joyent.com
 :state: predraft
@@ -25,6 +25,13 @@ state: predraft
 :source-highlighter: pygments
 :toc: left
 :xrefstyle: full
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
 
 ////
     This Source Code Form is subject to the terms of the Mozilla Public

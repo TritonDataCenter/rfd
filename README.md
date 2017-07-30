@@ -149,7 +149,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 103 Operationalize Resharding](./rfd/0103/README.md) |
 | predraft | [RFD 104 Engineering Guide - General Principles](./rfd/0104/README.md) |
 | predraft | [RFD 105 Engineering Guide - Node.js Best Practices](./rfd/0105/README.md) |
-| predraft | [RFD 106 Engineering Guide - Go Best Practices](./rfd/0106/README.md) |
+| predraft | [RFD 106 Engineering Guide - Go Best Practices](./rfd/0106/README.adoc) |
 
 
 ## Contents of an RFD
