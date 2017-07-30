@@ -1,11 +1,23 @@
+---
+authors: Han Solo <han@example.com>, Frodo Baggins <frodo@example.com>
+state: predraft
+---
 :author: Han Solo <han@example.com>; Frodo Baggins <frodo@example.com>
 :state: predraft
 :revremark: State: {state}
-
-:showtitle:
-:toc: left
-:numbered:
+:docinfo:
+:doctype: article
 :icons: font
+:idprefix:
+:numbered:
+:sectanchors:
+:sectlinks:
+:sectnums:
+:sectnumlevels: 2
+:showtitle:
+:source-highlighter: pygments
+:skip-front-matter:
+:toc: left
 
 ////
     This Source Code Form is subject to the terms of the Mozilla Public
