@@ -59,6 +59,7 @@ state: draft
     - [Changes to CloudAPI](#changes-to-cloudapi)
       - [Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
       - [Volume objects representation](#volume-objects-representation)
+      - [New `volumes` parameter to CreateMachine](#new-volumes-parameter-for-createmachine)
       - [New `/volumes` endpoints](#new-volumes-endpoints)
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
@@ -890,6 +891,20 @@ exception is that the `uuid` field is named `id` to adhere to current
 conventions between the representation of Triton objects in CloudAPI and
 internal APIs.
 
+#### New `volumes` parameter for CreateMachine
+
+When creating an machine via CloudAPI, the new `volumes` parameter will allow
+one to specify a list of volumes to mount in the new machine. This would look
+as follows in the CreateMachine payload:
+
+```
+"volumes": ["volume-name-1", "volume-name-2", ...]
+```
+
+and the new machine would then have the specified volumes mounted when it
+starts, and the appropriate references will be added to indicate that this
+machine uses the listed volumes.
+
 #### New `/volumes` endpoints
 
 Users need to be able to manage their shared volumes from CloudAPI. Most of the
@@ -1284,9 +1299,10 @@ This will allow VOLAPI to perform an indexed search on VMAPI to determine what
 uses a given volume when handling operations that depends on a volume's usage,
 e.g a `DeleteVolume` request.
 
-This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
-is used by VMAPI's `ListVms` endpoint to implement support for its new
-[`mounting_volume` input
+This property is _internal_ and is not exposed to VMAPI and CloudAPI users
+though it can be passed in the CreateMachine payload to CloudAPI to mount
+volumes on machine creation. It is used by VMAPI's `ListVms` endpoint to
+implement support for its new [`mounting_volume` input
 parameter](#new-mounting_volume-parameter-for-the-listvms-endpoint).
 
 #### New `mounting_volume` parameter for the `ListVms` endpoint
