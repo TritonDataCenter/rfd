@@ -21,7 +21,8 @@ consistency and quality in our software.  As it's written today, this guide is a
 little outdated (not matching current practice), a little wordy, and a little
 confusingly organized.  Some sections are duplicated or overlapping, and many of
 the principles are tightly coupled to Node.js, though there are sections for
-REST APIs, Makefiles, and bash scripts.
+REST APIs, Makefiles, and bash scripts.  It also never had an RFD, since it
+predates the RFD process.
 
 This RFD is the first of several that together propose an updated Joyent
 Engineering Guide.  This RFD proposes separating out common principles from
