@@ -4,7 +4,7 @@ DATE ?= "`date +%Y-%m-%d`"
 
 .SUFFIXES: .adoc .html .9 .pdf
 
-default:: README
+default:: check README
 
 README:: README.pdf README.html
 
@@ -20,6 +20,9 @@ README:: README.pdf README.html
 
 %.9: %.adoc
 	$(ASCIIDOCTOR) -b manpage -o $@ -n $<
+
+check::
+	$(MAKE) -C examples check
 
 init-env::
 	# sudo port install ruby2.4

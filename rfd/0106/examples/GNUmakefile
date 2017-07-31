@@ -1,0 +1,2 @@
+check::
+	go test -v

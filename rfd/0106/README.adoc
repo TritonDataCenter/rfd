@@ -1004,11 +1004,8 @@ Naming Conventions
 +
 [source,go]
 ----
-import (
-  "database/sql"          <1>
-
-  _ "github.com/lib/pq"   <2>
-)
+include::examples/import_test.go[lines=3..4]
+include::examples/import_test.go[lines=7..9]
 ----
 <1> ``import``s `database/sql`
 <2> Invoke's ``github.com/lib/pq``'s `init()` method because it
