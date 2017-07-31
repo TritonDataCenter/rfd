@@ -424,10 +424,8 @@ field in cloudapi.
 $ triton volume rm volume-name
 ```
 
-This command _fails_ if docker containers are using the volume to be deleted,
-but not if only non-Docker containers use it. In the latter case, it is the
-responsibility the shared volume's owner to determine whenever it is
-appropriate to delete it without impacting other compute containers.
+This command _fails_ if one or more VMs are referencing the volume to be
+deleted.
 
 #### Adding a new `triton report` command (MVP milestone)
 
@@ -1279,10 +1277,6 @@ for their `smartdc_role` property. To know of this new `smartdc_role` value is u
 A VM object that represents a Docker container mounting a shared volumes will
 store a reference to that volume in a new _indexable_ property named
 `required_nfs_volumes`.
-
-This will allow VOLAPI to perform an indexed search on VMAPI to determine what
-uses a given volume when handling operations that depends on a volume's usage,
-e.g a `DeleteVolume` request.
 
 This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
 is used by VMAPI's `ListVms` endpoint to implement support for its new
