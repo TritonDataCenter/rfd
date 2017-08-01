@@ -8,14 +8,14 @@ default:: check README
 
 README:: README.pdf README.html
 
-%.html: %.adoc
+%.html: %.adoc front-matter.adoc
 	$(ASCIIDOCTOR) \
 		--attribute=skip-front-matter \
 		--attribute=revdate="$(DATE)" \
 		-b html5 \
 		-o $@ -n $<
 
-%.pdf: %.adoc
+%.pdf: %.adoc front-matter.adoc
 	$(ASCIIDOCTOR_PDF) -b pdf -o $@ -n $<
 
 %.9: %.adoc

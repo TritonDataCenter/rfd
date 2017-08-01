@@ -6,32 +6,9 @@ state: predraft
 :author: Sean Chittenden
 :email: seanc@joyent.com
 :state: predraft
-:revremark: State: {state}
-:attribute-missing: warn
-:docinfo:
-:doctype: article
-:hide-uri-scheme:
-:icons: font
-:idprefix:
-:idseparator: -
-:keywords: rfd, rfd 0106, rfd 106, go, golang, best practices, joyent, engineering, software
-:numbered:
 :revnumber: 0.1.0
-:sectanchors:
-:sectlinks:
-:sectnums:
-:sectnumlevels: 1
-:showtitle:
-:source-highlighter: pygments
-:toc: left
-:xrefstyle: full
-ifdef::env-github[]
-:tip-caption: :bulb:
-:note-caption: :information_source:
-:important-caption: :heavy_exclamation_mark:
-:caution-caption: :fire:
-:warning-caption: :warning:
-endif::[]
+:keywords: rfd 106, go, golang, best practices, joyent, engineering, software
+include::front-matter.adoc[]
 
 ////
     This Source Code Form is subject to the terms of the Mozilla Public
