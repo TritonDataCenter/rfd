@@ -891,9 +891,9 @@ exception is that the `uuid` field is named `id` to adhere to current
 conventions between the representation of Triton objects in CloudAPI and
 internal APIs.
 
-#### New `volumes` parameter for CreateMachine, ListMachines and GetMachine
+#### New `volumes` parameter/property for CreateMachine, ListMachines and GetMachine
 
-When creating an machine via CloudAPI, the new `volumes` parameter will allow
+When creating a machine via CloudAPI, the new `volumes` parameter will allow
 one to specify a list of volumes to mount in the new machine. This would look
 as follows in the CreateMachine payload:
 
@@ -1295,9 +1295,8 @@ for their `smartdc_role` property. To know of this new `smartdc_role` value is u
 
 #### New `volumes` property on VM objects
 
-A VM object that represents a Docker container mounting a shared volumes will
-store a reference to that volume in a new _indexable_ property named
-`volumes`.
+A VM object that represents a container mounting a shared volumes will store a
+reference to that volume in a new _indexable_ property named `volumes`.
 
 This will allow VOLAPI to perform an indexed search on VMAPI to determine what
 uses a given volume when handling operations that depends on a volume's usage,
