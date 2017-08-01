@@ -1296,10 +1296,9 @@ for their `smartdc_role` property. To know of this new `smartdc_role` value is u
 A VM object that represents a container mounting a shared volumes will store a
 reference to that volume in a new _indexable_ property named `volumes`.
 
-This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
-is used by VMAPI's `ListVms` endpoint to implement support for its new
-[`mounting_volume` input
-parameter](#new-mounting_volume-parameter-for-the-listvms-endpoint).
+This property will also be exposed both at VMAPI and CloudAPI where it can be
+passed in as part of a VM payload to mount specified volumes on VM creation,
+and also can be listed via the ListVms and ListMachines endpoints.
 
 #### New `volumes` parameter for the `ListVms` endpoint
 
