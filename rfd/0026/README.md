@@ -59,7 +59,7 @@ state: draft
     - [Changes to CloudAPI](#changes-to-cloudapi)
       - [Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
       - [Volume objects representation](#volume-objects-representation)
-      - [New `volumes` parameter to CreateMachine](#new-volumes-parameter-for-createmachine)
+      - [New `volumes` parameter for CreateMachine, ListMachines and GetMachine](#new-volumes-parameter-for-createmachine-listmachines-and-getmachine)
       - [New `/volumes` endpoints](#new-volumes-endpoints)
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
@@ -81,7 +81,7 @@ state: draft
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
       - [New `nfserver` `smartdc_role`](#new-nfserver-smartdc_role)
-      - [New internal `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
+      - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
       - [New `volumes` parameter for the `ListVms` endpoint](#new-volumes-parameter-for-the-listvms-endpoint)
         - [Input](#input)
         - [Output](#output)
@@ -889,7 +889,7 @@ exception is that the `uuid` field is named `id` to adhere to current
 conventions between the representation of Triton objects in CloudAPI and
 internal APIs.
 
-#### New `volumes` parameter for CreateMachine
+#### New `volumes` parameter for CreateMachine, ListMachines and GetMachine
 
 When creating an machine via CloudAPI, the new `volumes` parameter will allow
 one to specify a list of volumes to mount in the new machine. This would look
@@ -902,6 +902,10 @@ as follows in the CreateMachine payload:
 and the new machine would then have the specified volumes mounted when it
 starts, and the appropriate references will be added to indicate that this
 machine uses the listed volumes.
+
+When listing or getting a machine via cloudapi, this `volumes` property will
+also be included. In the future, we may also decide to make it possible to
+search by volume(s).
 
 #### New `/volumes` endpoints
 
