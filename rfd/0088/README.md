@@ -1,6 +1,6 @@
 ---
 authors: Robert Mustacchi <rm@joyent.com>
-state: draft
+state: publish
 ---
 
 <!--

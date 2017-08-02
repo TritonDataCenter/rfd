@@ -131,8 +131,8 @@ formal writing that it has come to represent.)
 | publish  | [RFD 85 Tactical improvements for Manta alarms](./rfd/0085/README.md) |
 | publish | [RFD 86 ContainerPilot 3](./rfd/0086/README.md) |
 | predraft | [RFD 87 Docker Events for Triton](./rfd/0087/README.md) |
-| draft    | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md) |
-| draft    | [RFD 89 Project Tiresias](./rfd/0089/README.md) |
+| publish  | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md) |
+| publish  | [RFD 89 Project Tiresias](./rfd/0089/README.md) |
 | predraft | [RFD 90 Handling CPU Caps in Triton](./rfd/0090/README.md) |
 | predraft | [RFD 91 Application level metrics in CMON](./rfd/0091/README.md) |
 | predraft | [RFD 92 Triton Services High Availability](./rfd/0092/README.md) |
