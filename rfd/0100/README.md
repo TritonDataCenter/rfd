@@ -1,6 +1,6 @@
 ---
 authors: Cody Mello <cody.mello@joyent.com>
-state: predraft
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+100%22
 ---
 
@@ -18,15 +18,14 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+100%22
 
 At Joyent, we require all repositories to provide a `check` target in their
 Makefiles. Currently, for code written in JavaScript, we require using
-[JavaScript Lint](http://javascriptlint.com/). While it does catch a variety of
-issues, it has some problems of its own:
+[JavaScript Lint]. While it does catch a variety of issues, it has some
+problems of its own:
 
 - JavaScript Lint doesn't recognize `"use strict"` as being special, which makes
   using strict mode with the `want_assign_or_call` check impossible.
 - The unreferenced identifier checks aren't configurable, which makes it
-  annoying to turn them on when using a library like
-  [vasync](https://www.npmjs.com/package/vasync), which passes a frequently
-  ignored variable to the functions given to `pipeline()`.
+  annoying to turn them on when using a library like [vasync], which passes a
+  frequently ignored variable to the functions given to `pipeline()`.
 
   While these identifiers can be marked as okay with `jsl:ignore` or `jsl:unused`
   comments, doing this everywhere gets annoying and ugly pretty quickly.
@@ -38,10 +37,9 @@ issues, it has some problems of its own:
   again. Additionally, the Mac OS X build tends to break after upgrades.
 
   The upstream Subversion repo that we forked has moved to a pure Python
-  implementation, which we then [tried to use with some
-  changes](https://github.com/davepacheco/javascriptlint/pull/18). Initial
-  experiments with the recent updates found some drawbacks, however. The new
-  pure Python parser is significantly slower, and isn't complete: it lacks
+  implementation, which we then [tried to use with some changes][javascriptlint#18].
+  Initial experiments with the recent updates found some drawbacks, however. The
+  new pure Python parser is significantly slower, and isn't complete: it lacks
   support for `const`, getters and setters in object literals, and more. This made
   trying to use it in several of our repositories somewhat frustrating.
 
@@ -54,11 +52,11 @@ improve on the current situation.
 
 ## Alternative Linters
 
-Two popular alternatives to JavaScript Lint are [ESLint](http://eslint.org/) and
-[JSHint](http://jshint.com/). ESLint offers both lint and style checks, while
-JSHint concentrates more on offering just lint checks. (It has historically also
-offered several style checks, but has removed them in recent versions.) Both are
-written entirely in JavaScript, and can be installed through npm.
+Two popular alternatives to JavaScript Lint are [ESLint] and [JSHint]. ESLint
+offers both lint and style checks, while JSHint concentrates more on offering
+just lint checks. (It has historically also offered several style checks, but
+has removed them in recent versions.) Both are written entirely in JavaScript,
+and can be installed through npm.
 
 If we were to fully switch to using one of these, rather than just supplementing
 our checks with them, we would want to make sure that we didn't lose any useful
@@ -66,9 +64,11 @@ checks in the transition. To help compare them, the following table lists all of
 the checks provided by JavaScript Lint, and shows their equivalents (or lack
 thereof) in the right two columns.
 
+All three of these offer ways to instruct the linter to ignore specific lines.
+
 Each of the JavaScript Lint options are preceded by a plus (`+`) or minus (`-`)
 to indicate if they are enabled or disabled in the Joyent Engineering Guide's
-[recommended configuration](https://github.com/joyent/eng/blob/master/tools/jsl.node.conf).
+[recommended configuration][eng.git/tools/jsl.node.conf].
 
 Note that JSHint, unlike JavaScript Lint and ESLint, works mostly by providing a
 set of checks that are always on by default, so there isn't always an equivalent
@@ -159,8 +159,7 @@ We will want to determine how much we care about each of these options.
 ## Additional Style Checks
 
 ESLint also supports performing a variety of style checks. Most of
-[jsstyle's](https://github.com/davepacheco/jsstyle) features can be
-recreated using the following options:
+[jsstyle's][jsstyle] features can be recreated using the following options:
 
 
 | Description                                                                                         | jsstyle                                                 | ESLint
@@ -168,10 +167,12 @@ recreated using the following options:
 | Maximum line length                                                                                 | line-length                                             | max-len
 | Whether to enforce single or double quoting                                                         | literal-string-quote                                    | quotes
 | Whether to require a space after `/*`                                                               | blank-after-start-comment                               | spaced-comment
-| Whether to require a space before `*/`                                                              | (on by default)                                         | spaced-comment
+| Whether to require a space before `*/`                                                              | (on by default)                                         | spaced-comment ([but not in 2.x][node-eslint-plugin-joyent#2])
 | Whether to require a space after `//`                                                               | blank-after-open-comment                                | spaced-comment
+| Whether to require a leading `*` in multiline comments                                              | (on by default)                                         | :x: ([being worked on][eslint#8320])
+| Whether to require a newline after `/*` and before `*/` in multiline comments                       | (on by default)                                         | :x: ([being worked on][eslint#8320])
 | Whether keywords (if, for, function, etc.) should be followed by a space                            | (on by default)                                         | keyword-spacing
-| How the code should be indented                                                                     | indent                                                  | indent
+| How the code should be indented                                                                     | indent                                                  | indent (see below)
 | Whether a space is required before the opening parenthesis of an anonymous function                 | no-blank-for-anon-function                              | space-before-function-paren
 | Whether values and identifiers need to be parenthesized when returned                               | unparenthesized-return                                  | :x:
 | Whether 4-space continuations are enabled                                                           | continuation-at-front                                   | :x:
@@ -183,13 +184,42 @@ recreated using the following options:
 | Whether spaces are allowed before/after commas                                                      | (on by default)                                         | comma-spacing
 | Whether spaces are allowed before/after the colon in an object literal                              | :x:                                                     | key-spacing
 | Whether spaces are allowed before property names (e.g., `Object. keys(obj)` or `Object .keys(obj)`) | :x:                                                     | no-whitespace-before-property
-| Whether constant values can be written on the left-hand side of comparisions (e.g., `0 === x`)      | :x:                                                     | yoda
+| Whether constant values can be written on the left-hand side of comparisons (e.g., `0 === x`)       | :x:                                                     | yoda
 | Whether constructors can be invoked without parentheses (e.g., `new Object`)                        | :x:                                                     | new-parens
 | Whether to warn on unusual whitespace characters (non-breaking spaces, zero-width chars, etc.)      | :x:                                                     | no-irregular-whitespace
 
 Note that the indentation checks in ESLint don't support some of the styles used
-throughout Triton and Manta code, so it's not really useful. For example, the
-body of the function below would be expected to be indented an additional level:
+throughout Triton and Manta code, so it's not really useful. For example, some
+of our code is indented using tabs with four-space continuations. Additionally,
+when indenting callbacks written out inline, ESLint expects that the body of the
+function is indented one more level from the _line_ the `function` keyword is
+on, rather than the _statement_ that it is in. This means that the following two
+examples are fine:
+
+```javascript
+foo("this is a very", "long line of arguments", function (err) {
+    if (err) {
+        cb(err);
+        return;
+    }
+
+    cb(null, "foo");
+});
+```
+
+```javascript
+foo("this is a very", "long line of arguments",
+    function (err) {
+        if (err) {
+            cb(err);
+            return;
+        }
+
+        cb(null, "foo");
+    });
+```
+
+But the following is not:
 
 ```javascript
 foo("this is a very", "long line of arguments",
@@ -203,23 +233,58 @@ foo("this is a very", "long line of arguments",
 });
 ```
 
+A lot of code throughout Triton and Manta is written in this style, and it would
+be preferable to continue supporting it. While ESLint's `indent` option may not
+support these styles currently, we should be able to extend it such that it can.
+
 ## Recommended Changes
 
 Based on the above comparisons, we can replace JavaScript Lint with ESLint as
 our default linter without losing important checks, and gain new useful ones. To
 make it easy for people to use ESLint in new and current repos, we will update
 the example Makefiles in the Engineering Guide to have a `check-eslint` target
-that `check` depends on, and provide an ESLint plugin,
-[node-eslint-plugin-joyent](https://github.com/joyent/node-eslint-plugin-joyent/),
-so that we have a standard configuration for projects to use.
+that `check` depends on (see [TOOLS-1826]), and provide an ESLint plugin,
+[node-eslint-plugin-joyent], so that we have a standard configuration for
+projects to use. Each project will need to have a `.eslintrc` file at its root,
+which will make it easier for people's editors to automatically discover the
+configuration.
 
 Given the lack of several important style checks in ESLint, we should continue
 to use `jsstyle` for style checks going forward, and supplement what it
-provides with several from ESLint. In the future, we could perhaps extend our
-plugin to support more checks to close the gap (or add them upstream).
+provides with several from ESLint. Once we've worked on extending ESLint (either
+upstream or in our plugin) to support the missing features, we'll be able to
+switch to using just ESLint.
+
+For the time being we will be using the ESLint 2.x series of versions, since
+newer releases [dropped support for node 0.10 and 0.12][eslint-3-node-support].
+Once [RFD 59] is fully executed, we will then be able to move to version 4 or
+newer.
 
 Updating repositories will be done as a gradual process, as people work in
 different repos and take the time to figure out how to appropriately fix lint
 issues (such as unused identifiers). We could update every repo to use ESLint
 with local overrides to silence issues until they are fixed, but doing so would
 probably result in them not being fixed for a while.
+
+<!-- JIRA tickets -->
+[TOOLS-1826]: https://smartos.org/bugview/TOOLS-1826
+
+<!-- Github repos -->
+[vasync]: https://www.npmjs.com/package/vasync
+[node-eslint-plugin-joyent]: https://github.com/joyent/node-eslint-plugin-joyent/
+[eng.git/tools/jsl.node.conf]: https://github.com/joyent/eng/blob/master/tools/jsl.node.conf
+
+<!-- Github issues -->
+[javascriptlint#18]: https://github.com/davepacheco/javascriptlint/pull/18
+[node-eslint-plugin-joyent#2]: https://github.com/joyent/node-eslint-plugin-joyent/issues/2
+[eslint#8320]: https://github.com/eslint/eslint/issues/8320
+
+<!-- External links -->
+[JavaScript Lint]: http://javascriptlint.com/
+[ESLint]: http://eslint.org/
+[JSHint]: http://jshint.com/
+[jsstyle]: https://github.com/davepacheco/jsstyle
+[eslint-3-node-support]: http://eslint.org/docs/user-guide/migrating-to-3.0.0#dropping-support-for-nodejs--4
+
+<!-- Other RFDs -->
+[RFD 59]: ../0059
