@@ -2341,7 +2341,7 @@ IMGAPI, it is possible to get to a point where sdcadm won’t be able to determi
 whether it’s safe to enable the NFS volumes feature flag. In this case, it will
 be possible for users to “force enable” it.
 
-## Open questions
+## Open Questions
 
 ### Allocation/placement
 
@@ -2505,3 +2505,31 @@ communicate it in some way (e.g in the API documentation or by making changes to
 the API/command line tools so that the impact on shared volumes is more
 obvious).
 
+### Automatic mounting for non-docker containers
+
+While docker containers can automatically mount NFS volumes thanks to
+[DOCKER-754](https://smartos.org/bugview/DOCKER-754), for non-docker containers
+to be able to mount these volumes on boot we'll need both the API changes
+described in [PUBAPI-1420](https://smartos.org/bugview/PUBAPI-1420) and some
+changes to the platform to actually perform the mounting. Since the mounting
+will need to happen within the zone (because it needs to be on the zone's
+network) the current best idea of how this could be implemented would be to
+modify the mdata-fetch service's start script to do the mounting. [That
+script](https://github.com/joyent/smartos-live/blob/master/overlay/generic/lib/svc/method/mdata-fetch)
+already looks at metadata and does somewhat similar things.
+
+What we would want to happen here is that on zone startup, the zone would read
+the list of NFS volumes via something like:
+
+```
+mdata-get triton:volumes
+```
+
+and it would then mount each of these volumes. The script would have to be
+changed, but we'd also need to ensure that metadata is available one way or
+another. This would need to include at least the remote host and path and local
+path for each NFS volume.
+
+Note: the above would only work with `joyent` and `joyent-minimal` brands. For
+`lx` we would likely want to add the mounting to lxinit, and for `kvm` we would
+either need to do something different or not support this feature.
