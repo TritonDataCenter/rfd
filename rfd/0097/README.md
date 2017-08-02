@@ -1,6 +1,7 @@
 ---
 authors: Robert Mustacchi <rm@joyent.com>
-state: predraft
+state: draft
+discussion: https://github.com/joyent/rfd/issues?q="RFD+97"
 ---
 
 <!--
