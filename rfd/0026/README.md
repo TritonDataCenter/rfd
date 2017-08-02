@@ -59,7 +59,7 @@ state: draft
     - [Changes to CloudAPI](#changes-to-cloudapi)
       - [Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
       - [Volume objects representation](#volume-objects-representation)
-      - [New `volumes` parameter for CreateMachine, ListMachines and GetMachine](#new-volumes-parameter-for-createmachine-listmachines-and-getmachine)
+      - [New `volumes` parameter/property for CreateMachine](#new-volumes-parameterproperty-for-createmachine)
       - [New `/volumes` endpoints](#new-volumes-endpoints)
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
@@ -82,7 +82,7 @@ state: draft
     - [Changes to VMAPI](#changes-to-vmapi)
       - [New `nfserver` `smartdc_role`](#new-nfserver-smartdc_role)
       - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
-      - [New `volumes` parameter for the `ListVms` endpoint](#new-volumes-parameter-for-the-listvms-endpoint)
+      - [New `volume` parameter for the `ListVms` endpoint](#new-volume-parameter-for-the-listvms-endpoint)
         - [Input](#input)
         - [Output](#output)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
@@ -163,7 +163,7 @@ state: draft
     - [Setting up a DC to support NFS volumes](#setting-up-a-dc-to-support-nfs-volumes)
       - [Turning it off](#turning-it-off)
     - [Integration of the "master integration" milestone](#integration-of-the-master-integration-milestone)
-  - [Open questions](#open-questions)
+  - [Open Questions](#open-questions)
     - [Allocation/placement](#allocationplacement)
       - [What happens when mounting of a volume fails?](#what-happens-when-mounting-of-a-volume-fails)
     - [Security](#security)
@@ -175,6 +175,7 @@ state: draft
     - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
     - [Networking](#networking-1)
       - [Impact of networking changes](#impact-of-networking-changes)
+    - [Automatic mounting for non-docker containers](#automatic-mounting-for-non-docker-containers)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -889,7 +890,7 @@ exception is that the `uuid` field is named `id` to adhere to current
 conventions between the representation of Triton objects in CloudAPI and
 internal APIs.
 
-#### New `volumes` parameter/property for CreateMachine, ListMachines and GetMachine
+#### New `volumes` parameter/property for CreateMachine
 
 When creating a machine via CloudAPI, the new `volumes` parameter will allow
 one to specify a list of volumes to mount in the new machine. This would look
@@ -902,10 +903,6 @@ as follows in the CreateMachine payload:
 and the new machine would then have the specified volumes mounted when it
 starts, and the appropriate references will be added to indicate that this
 machine uses the listed volumes.
-
-When listing or getting a machine via cloudapi, this `volumes` property will
-also be included. In the future, we may also decide to make it possible to
-search by volume(s).
 
 #### New `/volumes` endpoints
 
@@ -1297,25 +1294,26 @@ A VM object that represents a container mounting a shared volumes will store a
 reference to that volume in a new _indexable_ property named `volumes`.
 
 This property will also be exposed both at VMAPI and CloudAPI where it can be
-passed in as part of a VM payload to mount specified volumes on VM creation,
-and also can be listed via the ListVms and ListMachines endpoints.
+passed in as part of a VM payload to mount specified volumes on VM creation.
 
-#### New `volumes` parameter for the `ListVms` endpoint
+#### New `volume` parameter for the `ListVms` endpoint
 
-The ListVms endpoint will include the [`volumes`
-property](#new-volumes-property-on-vm-objects) in order to view the list of
+Note: This feature is not in the master-integration milestone.
+
+The ListVms endpoint will include the [`volume`
+property](#new-volume-property-on-vm-objects) in order to view the list of
 _active_ VMs that mount a given volume.
 
 ##### Input
 
 | Param   | Type         | Description                              |
 | ------- | ------------ | ---------------------------------------- |
-| volumes | String       | A string representing _one_ volume UUID for which to list _active_ VMs that reference it. |
+| volume | String       | A string representing _one_ volume UUID for which to list _active_ VMs that reference it. |
 
 ##### Output
 
 A list of VMs that represent all active VMs that reference the volume
-represented by UUIDs represented by `volumes`, such as:
+represented by UUIDs represented by `volume`, such as:
 
 ```
 [
