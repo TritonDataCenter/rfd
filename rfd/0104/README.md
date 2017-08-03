@@ -238,7 +238,8 @@ Understanding and fixing failures in the automated test run **must** be
 considered the top development priority for that repo's team.  Persistent
 failures are not acceptable. 
 
-The automated test suite **should** be able to generate TAP output.  
+The automated test suite **should** be able to generate
+[TAP-format](https://testanything.org/tap-specification.html) output.
 
 See the language-specific guides for details.
 

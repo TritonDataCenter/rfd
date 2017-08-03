@@ -74,8 +74,8 @@ JavaScript repositories **must** use
 See the "General Principles" section for basic information.
 
 New repositories typically use either [catest](https://github.com/joyent/catest)
-or `tape`.  Historically, repositories have also used `tap` or `nodeunit`, but
-these are both considered deprecated.
+or `tape`.  Historically, repositories have also used the `tap` and `nodeunit`
+modules, but these are both considered deprecated.
 
 
 ### Node add-ons and Node binaries
