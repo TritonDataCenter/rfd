@@ -138,6 +138,10 @@ New server-side projects **should** use one of the languages for which we have
 developed a Best Practices section within this Guide.  That's primarily Node.js
 at the moment, but it's expected to expand in the near future.
 
+Language-specific best practices guides **must** address the sections of this
+guide that refer to language-specific guides, including repository naming,
+coding style, lint checks, automated testing, and debuggability.
+
 
 #### Repository naming
 
@@ -337,6 +341,20 @@ Design documents should generally either be
 under "docs".
 
 
+#### Deployment environment
+
+* The SmartOS platform itself necessarily runs directly on hardware (or, in
+  dev/test environments, in KVM instances to consolidate physical server usage).
+* Triton and Manta agents necessarily run inside SmartOS global zones.
+* Other new software components written by Joyent **must** target SmartOS
+  non-global zones.
+* Third-party software components for which the cost of porting to SmartOS is
+  known to be very high and the value is considered to be very low **may** be
+  deployed inside LX zones.
+
+KVM-based components **should** be avoided if at all possible.
+
+
 ### Tickets and commit messages
 
 #### Commit messages
@@ -355,9 +373,7 @@ result might look like this:
     Approved by: Dave Pacheco <dap@joyent.com>
 
 Note that there is *no* colon between the ticket identifier and the synopsis,
-and there are no blank lines.
-
-With JIRA tickets, it would look like this:
+and there are no blank lines.  With JIRA tickets, it would look like this:
 
     MANTA-3335 Muskie doesn't return after invoking callback with NotEnoughSpaceError
     Reviewed by: Jordan Hendricks <jordan.hendricks@joyent.com>
@@ -385,6 +401,14 @@ information that is sometimes put into commit messages should instead go into
 the bug tracker.  That includes the nature of the bug and the debugging process
 (if applicable), the change, and the test plan.  We keep this information in the
 bug tracker so that it can be edited, augmented, searched, and so on.
+
+It's fine to put multiple tickets into a commit, even if they're unrelated.
+There's generally a tension between bunching changes together so that they can
+be tested once and separating changes so that they can be more easily understood
+by reviewers and future engineers looking at the history.  However, each commit
+should stand alone with respect to documentation, tests, and tooling.  That is,
+a project that delivers a new feature should deliver the code, documentation,
+tests, and tooling in one commit, if possible.
 
 
 #### Ticket contents
@@ -583,6 +607,17 @@ cases it's desirable for multiple consumers to log to the same file, as for
 vmadm and vmadmd. For such cases, syslog is an appropriate choice for logging
 since it handles synchronization automatically. Care must be taken to support
 entries longer than 1024 characters.
+
+Standalone libraries that are long-running and complicated (e.g., `restify`,
+being an HTTP server framework, and `cueball`, since it performs a bunch of
+background asynchronous activity) should accept loggers and log normal operation
+at "trace" or "debug" level.  These components can log at "warn" level when
+something very bad happens, but they should avoid higher levels, since they
+cannot generally know how severe their problem is for the application using
+them.
+
+Standalone components that are relatively simple or with well-bounded discrete
+operations do not need to log directly.
 
 
 #### Service (process) management with SMF
