@@ -59,7 +59,7 @@ more detail.
    usage on the system, but inaccurate accounting is problematic for any
    physical memory capping solution.
 
-   One type of application illustrates this problem. Some database apllications
+   One type of application illustrates this problem. Some database applications
    will fork many processes for scalability. Each of these will map in the same
    large database files. All of these pages will be shared within the zone, but
    a naive accounting will make this zone appear to be using much more physical
@@ -125,7 +125,7 @@ more detail.
 
    The combination of inaccurate RSS numbers, demand paging and large address
    spaces can lead to situations where we never truly get the zone under its
-   memory cap. This is particulary problematic when the zone is hosting one
+   memory cap. This is particularly problematic when the zone is hosting one
    very large process which accounts for the majority of the zone's RSS (see
    the MongoDB example above). In this situation we can wind up continuously
    trying to cap the zone. The locking for accounting and page invalidation
@@ -156,7 +156,7 @@ was added; 'getvmusage'. This syscall can calculate a correct, aggregated
 RSS for a given type of container (e.g. a project or zone). Because this is
 implemented in the kernel, it is more efficient at this calculation, but the
 code still locks the process while traversing the address space, so latency
-issues can occur, as descibed earlier. Various user-level tools, such as 'rcapd'
+issues can occur, as described earlier. Various user-level tools, such as 'rcapd'
 and 'prstat', were enhanced to make use of this new system call when they
 need RSS data for a project or zone.
 
@@ -176,7 +176,7 @@ avoid the 'getvmusage' syscall as much as possible. Use of the lightweight, but
 inaccurate per-process RSS was emphasized, with 'getvmusage' only being called
 when it appears that the zone has gone over the cap. The 'prstat' command was
 also changed to avoid 'getvmusage' unless an accurate RSS was explicitly
-requested. Currently 'zoneadmd' uses a moderately complex RSS scaling mechansim
+requested. Currently 'zoneadmd' uses a moderately complex RSS scaling mechanism
 to further reduce the calls to 'getvmusage' while still trying to maintain a
 reasonable approximation of the RSS.
 
