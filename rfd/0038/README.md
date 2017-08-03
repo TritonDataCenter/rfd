@@ -24,7 +24,7 @@ of the physical memory page cache at the expense of other zones.
 
 There are a number of problems with the existing approach for physical memory
 capping and we have pushed the current implementation about as far as possible.
-The problems are described in this RFD, but to summarize, physcical memory
+The problems are described in this RFD, but to summarize, physical memory
 capping is hard to enforce, can induce unacceptable latency onto the
 application, and is hard to accurately observe. A new approach is needed to
 address the known problems.
