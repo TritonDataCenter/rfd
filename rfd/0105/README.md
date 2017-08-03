@@ -166,6 +166,13 @@ See the "General Principles" section for more context.
 See also: logging.
 
 
+### Metrics
+
+[node-artedi](https://github.com/joyent/node-artedi) is recommended for exposing
+metrics from components.  These metrics can be consumed by Prometheus and other
+systems that support the Prometheus format.
+
+
 ### Errors and error handling
 
 See the public guide for [Error Handling in

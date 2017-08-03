@@ -158,7 +158,7 @@ names as code names:
 Many component repositories are common to both Triton and Manta.  These
 generally have no prefix.  Examples include `moray` and `binder`.
 
-See language-specific guides for details.
+See language-specific guides for additional guidelines.
 
 
 #### Licenses and copyright
@@ -181,9 +181,9 @@ The copyright line should look like this:
 
     Copyright (c) 2017, Joyent, Inc.
 
-There should only be a single year, not a list.  When modifying existing code,
-the year should be updated to be the current year that the file was modified.
-**Do not diverge from this form** except to change the year to the current year.
+There should be a single year, not a list.  When modifying existing code, the
+year should be updated to be the current year that the file was modified.  **Do
+not diverge from this form** except to change the year to the current year.
 
 
 #### Coding style
@@ -215,7 +215,7 @@ Linters selected for each language **should** have discrete checks that can be
 individually disabled by configuration, on a per-repository basis, for certain
 lines in files, and for certain sections in files.
 
-See the language-specific guides for detail.
+See the language-specific guides for details.
 
 
 #### Automated testing
@@ -327,7 +327,7 @@ that's implemented in the file. For example:
 For non-trivial subsystems, consider adding a Big Theory statement that
 describes what the component does, the external interface, and internal details.
 For a great example, check out
-[panic.c](https://github.com/joyent/illumos-joyent/blob/master/usr/src/uts/common/os/panic.c#L29)
+[panic.c](https://github.com/joyent/illumos-joyent/blob/403b9b2581c0e421d5fd8a74975df28290e276e5/usr/src/uts/common/os/panic.c#L30-L122)
 in the kernel.
 
 #### Design documents
@@ -452,14 +452,28 @@ programs be debuggable after the fact (_post hoc_).  Concretely, this means:
   We don't rely on just having a stack trace in the event of a crash, nor on the
   process being able to dump its own state as it dies.  We automatically
   generate core files when programs crash.
+
+Software should be able to exonerate itself in the face of production incidents.
+Even when a component is not itself the problem, it's extremely valuable for it
+to provide tools that demonstrate that it's working correctly (e.g., handling N
+requests per second with no errors and maximum latency of M ms).  Runtime
+observability is critical, since not all failure is fatal (and often the most
+time-consuming failures to debug are implicit, non-fatal failures).  Concretely,
+this means:
+
 * It should be possible to inspect arbitrary runtime state of a program.  This
   is important for understanding cases when a program is hung, is disconnected
   from dependencies, or otherwise not functioning in a non-fatal way.  We use
   `gcore(1M)` to generate core files of running programs with minimal
   disruption.  For a lighter-weight way of observing pre-defined pieces of
   program state, some programs use [kang](https://github.com/davepacheco/kang).
+* Programs should expose metrics about activity, including counters for
+  operations, error cases, and the like.  Kang supports a limited form of this,
+  but components are moving towards exposing the Prometheus API (e.g., via the
+  [node-artedi](https://github.com/joyent/node-artedi) module.
 * It should be possible to understand excessive memory usage, particular in the
-  case of memory leaks, even if they're not fatal.
+  case of memory leaks, even if they're not fatal.  Again, core files are a good
+  vehicle for this.
 * It should be possible to understand the causes of excessive CPU utilization,
   generating flame graphs or similar visualizations.  Ideally, the sampling can
   be done by DTrace.  That allows users to specify arbitrary intervals and avoid
@@ -478,6 +492,8 @@ programs be debuggable after the fact (_post hoc_).  Concretely, this means:
   at specific points of interest, save a core file, and resume the
   program](https://www.joyent.com/blog/stopping-a-broken-program-in-its-tracks).
 
+There are specific recommendations for accomplishing this in the
+language-specific guides.
 
 #### Error handling
 
@@ -580,8 +596,8 @@ SMF works are addressed in the documentation. It's strongly recommended that you
 take a pass through the docs before starting the SMF integration for your
 service. In order of importance, check out:
 
-- SMF concepts: smf(5), smf_restarter(5), smf_method(5), svc.startd(1M)
-- Tools: svcs(1), svcadm(1M), svccfg(1M)
+- SMF concepts: `smf(5)`, `smf_restarter(5)`, `smf_method(5)`, `svc.startd(1M)`
+- Tools: `svcs(1)`, `svcadm(1M)`, `svccfg(1M)`
 
 Common mistakes include:
 
@@ -601,11 +617,11 @@ Common mistakes include:
   for liveness, not rely on SMF, since the start method may have completed
   before the service has opened its TCP socket (for example).
 
-SMF manages processes using an OS mechanism called contracts. See contract(4)
+SMF manages processes using an OS mechanism called contracts. See `contract(4)`
 for details. The upshot is that it can reliably tell when a process is no
 longer running, and it can also track child processes.
 
-Quoting svc.startd(1M):
+Quoting `svc.startd(1M)`:
 
      A contract model service fails if any of the following conditions
      occur:
@@ -632,26 +648,28 @@ output or use the standard logging facility described under "Logging" above.
 
 ### Miscellaneous Best Practices
 
-- Use JSON for config data. Not ini files: iniparser module has bugs, there
-  are always questions about encoding non-string values.
+- Use JSON for config data, and use an automatic validator (such as JSON
+  schema) to validate the contents.  (Plain text "ini" files make it more
+  difficult to encode and validate non-string values.)  Be sure to validate
+  application-specific semantics as well!
 - For services and distributed systems, consider building rich tools to
   understand the state of the service, like lists of the service's objects and
   information about each one. Think of the SmartOS proc(1) tools (see man pages
   for pgrep, pstack, pfiles, pargs).
-- Consider doing development inside a SmartOS zone rather than on your Macbook
-  or a CoaL global zone. That forces us to use our product the way customers
-  might, and it eliminates classes of problems where the dev environment doesn't
-  match production (e.g., because you've inadvertently picked up a
-  globally-installed library instead of checking it in, or resource limits
-  differ between MacOS and a SmartOS zone.
-- Whether you develop in CoaL or on your Macbook, document what's necessary to
-  get from scratch to a working development environment so that other people can
-  try it out. Ideally, automate it. Having a script is especially useful if you
-  do develop on CoaL, which also forces you to keep it up to date.
+- Consider doing development inside a SmartOS zone rather than directly on a
+  non-SmartOS workstation or in a CoaL global zone. Not only does this force us
+  to use our product the way customers might, it also eliminates classes of
+  problems where the dev environment doesn't match production (e.g., because
+  you've inadvertently picked up a globally-installed library instead of
+  checking it in, or resource limits differ between MacOS and a SmartOS zone, or
+  you've forgotten which files you've copied over to the running system in order
+  to test changes).
+- Document what's necessary to get from scratch to a working development
+  environment so that other people can try it out. Ideally, automate it.
 - Similarly, build tools to automate deploying bits to a test system (usually a
-  SmartOS headnode zone). The easier it is to test the actual deployment, the
-  more likely people will actually test that, and you'll catch environment
-  issues in development instead of after pushing.
+  Triton headnode). The easier it is to test the actual deployment, the more
+  likely people will actually test that, and you'll catch environment issues in
+  development instead of after pushing.
 
 
 ### Security and production code deployment process
