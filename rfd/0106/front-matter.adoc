@@ -1,3 +1,6 @@
+:bibtex-order: alphabetical
+:bibtex-style: ieee-with-url
+:bibtex-format: asciidoc
 :revremark: State: {state}
 :attribute-missing: warn
 :docinfo:
@@ -6,6 +9,7 @@
 :icons: font
 :idprefix:
 :idseparator: -
+:imagesdir: images
 :numbered:
 :sectanchors:
 :sectlinks:

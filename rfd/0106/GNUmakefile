@@ -10,6 +10,7 @@ README:: README.pdf README.html
 
 %.html: %.adoc front-matter.adoc
 	$(ASCIIDOCTOR) \
+		-r asciidoctor-bibtex \
 		--attribute=skip-front-matter \
 		--attribute=revdate="$(DATE)" \
 		-b html5 \
@@ -26,7 +27,7 @@ check::
 
 init-env::
 	# sudo port install ruby2.4
-	# sudo gem2.4 install asciidoctor-pdf asciidoctor-diagram
+	# sudo gem2.4 install asciidoctor-pdf asciidoctor-diagram asciidoctor-bibtex
 	# sudo gem2.4 install asciidoctor-latex --pre
 
 clean::

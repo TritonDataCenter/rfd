@@ -12,8 +12,8 @@ include::front-matter.adoc[]
 
 ////
     This Source Code Form is subject to the terms of the Mozilla Public
-    License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+    License, v. 2.0. If a copy of the MPL was not distributed with this file,
+    You can obtain one at http://mozilla.org/MPL/2.0/.
 
     Copyright 2017 Joyent, Inc.
 ////
@@ -33,19 +33,36 @@ let me know how to do this.  Ideally it would be possible to do something like:
 and the caller, {gofmt-1}, wouldn't need to be wrapped in backticks.
 ////
 
-:dep-1-url: https://github.com/golang/dep
+:bezel-1-name: bezel(1)
+:bezel-1-url: https://bazel.build/
+:bezel-1: {bezel-1-url}[{bezel-1-name}]
 :dep-1-name: dep(1)
+:dep-1-url: https://github.com/golang/dep
 :dep-1: {dep-1-url}[{dep-1-name}]
+:expvarmon-1-name: expvarmon(1)
+:expvarmon-1-url: https://github.com/divan/expvarmon
+:expvarmon-1: {expvarmon-1-url}[{expvarmon-1-name}]
+:flamegraph-1-name: FlameGraph
+:flamegraph-1-url: https://github.com/brendangregg/FlameGraph
+:flamegraph-1: {flamegraph-1-url}[{flamegraph-1-name}]
+:git-1-name: git(1)
+:git-1-url: https://git-scm.com/
+:git-1: {git-1-url}[{git-1-name}]
 :go-1-url: https://golang.org/cmd/go/
 :go-1: {go-1-url}[go(1)]
-:godoc-1-url: https://golang.org/cmd/godoc/
+:go-lang-url: https://golang.org/[Go]
+:go-lang: {go-lang-url}[Go]
+:go-torch-1-name: go-torch(1)
+:go-torch-1-url: https://github.com/uber/go-torch
+:go-torch-1: {go-torch-1-url}[{go-torch-1-name}]
 :godoc-1-name: godoc(1)
+:godoc-1-url: https://golang.org/cmd/godoc/
 :godoc-1: {godoc-1-url}[{godoc-1-name}]
-:gofmt-1-url: https://golang.org/cmd/gofmt/
 :gofmt-1-name: gofmt(1)
+:gofmt-1-url: https://golang.org/cmd/gofmt/
 :gofmt-1: {gofmt-1-url}[{gofmt-1-name}]
-:goimports-1-url: https://godoc.org/golang.org/x/tools/cmd/goimports
 :goimports-1-name: goimports(1)
+:goimports-1-url: https://godoc.org/golang.org/x/tools/cmd/goimports
 :goimports-1: {goimports-1-url}[{goimports-1-name}]
 :gometalinter-1-name: gometalinter(1)
 :gometalinter-1-url: https://github.com/alecthomas/gometalinter
@@ -53,18 +70,40 @@ and the caller, {gofmt-1}, wouldn't need to be wrapped in backticks.
 :gomvpkg-1-name: gomvpkg(1)
 :gomvpkg-1-url: https://godoc.org/golang.org/x/tools/cmd/gomvpkg
 :gomvpkg-1: {gomvpkg-1-url}[{gomvpkg-1-name}]
+:gops-1-name: gops(1)
+:gops-1-url: https://github.com/google/gops
+:gops-1: {gops-1-url}[{gops-1-name}]
+:goreleaser-1-name: goreleaser(1)
+:goreleaser-1-url: https://github.com/goreleaser/goreleaser
+:goreleaser-1: {goreleaser-1-url}[{goreleaser-1-name}]
 :gorename-1-name: gorename(1)
 :gorename-1-url: https://godoc.org/golang.org/x/tools/cmd/gorename
 :gorename-1: {gorename-1-url}[{gorename-1-name}]
-:go-lang-url: https://golang.org/[Go]
-:go-lang: {go-lang-url}[Go]
 :grpc-name: gRPC
 :grpc-url: https://grpc.io/
 :grpc: {grpc-url}[{grpc-name}]
-:guru-using-url: https://golang.org/s/using-guru
-:guru-1-url: https://golang.org/x/tools/cmd/guru
 :guru-1-name: guru(1)
+:guru-1-url: https://golang.org/x/tools/cmd/guru
 :guru-1: {guru-1-url}[{guru-1-name}]
+:guru-using-url: https://golang.org/s/using-guru
+:make-1-name: make(1)
+:make-1-url: https://en.wikipedia.org/wiki/Make_(software)
+:make-1: {make-1-url}[{make-1-name}]
+:make-bsd-1-name: make(1)
+:make-bsd-1-url: https://www.freebsd.org/doc/en/books/pmake/book.html
+:make-bsd-1: {make-bsd-1-url}[{make-bsd-1-name}]
+:make-gnu-1-name: make(1)
+:make-gnu-1-url: https://www.gnu.org/software/make/
+:make-gnu-1: {make-gnu-1-url}[{make-gnu-1-name}]
+:net_http_pprof-name: net/http/pprof
+:net_http_pprof-url: https://golang.org/pkg/net/http/pprof/
+:net_http_pprof: {net_http_pprof-url}[{net_http_pprof-name}]
+:pprof-name: pprof
+:pprof-url: https://golang.org/pkg/runtime/pprof
+:pprof: {pprof-url}[{pprof-name}]
+:vg-1-name: vg(1)
+:vg-1-url: https://github.com/GetStream/vg
+:vg-1: {vg-1-url}[{vg-1-name}]
 
 ////
 END: reused attributes
@@ -179,6 +218,7 @@ ordered from philosophical to practical):
 * Documentation
 * Use of `context`
 * Deadline Timers and Timeouts
+* pprof
 
 ////
 NOTE: the following haven't been written yet but are on the agenda to
@@ -187,6 +227,9 @@ write. Feel free to request more.
  * Error Handling
  * Logging
  * Testing
+ ** https://rakyll.org/parallelize-test-tables/
+ ** https://github.com/google/go-cmp/
+ ** https://mijailovic.net/2017/07/29/go-fuzz/
  * ``defer``
  * Transactions
  * CLI flags and arg parsing
@@ -220,6 +263,8 @@ write. Feel free to request more.
  * Object Composition
  * Thread Worker Pools
  * Appropriate use of ``chan``
+ ** https://medium.com/@matryer/golang-advent-calendar-day-two-starting-and-stopping-things-with-a-signal-channel-f5048161018
+ ** https://geeks.uniplaces.com/building-a-worker-pool-in-golang-1e6c0fdfd78c
  * Use of `cgo`
  * Use of Go tooling
  * Productivity
@@ -304,6 +349,10 @@ one could easily be forgiven for symlinking `$GOPATH/pkg` to someplace in `/tmp/
 in order to take advantage of the automatic pruning of old `.a` files that
 happens periodically and after every reboot on many *NIX platforms (including
 macOS).]
+
+Use of tools like `{vg-1}` MAY be useful or considered in the future but are NOT
+REQUIRED: most of these recommendations are intended to aid productivity and
+decrease friction, not constrain how someone goes about working.
 
 [[project-structure,reftext=project-structure]]
 Project Structure
@@ -964,6 +1013,7 @@ Naming Conventions
 1. Go software SHOULD conform to the recommendations outlined in the following
    resources:
 .. https://blog.golang.org/package-names[Package Names]
+.. https://rakyll.org/style-packages/[Style guideline for Go packages]
 .. https://golang.org/doc/effective_go.html#names[Effective Go]
 .. https://blog.golang.org/organizing-go-code[Organizing Go Code]
 .. https://talks.golang.org/2014/organizeio.slide[Organizing Go Code]
@@ -981,8 +1031,7 @@ Naming Conventions
 +
 [source,go]
 ----
-include::examples/import_test.go[lines=3..4]
-include::examples/import_test.go[lines=7..9]
+include::examples/import_test.go[tags=!test]
 ----
 <1> ``import``s `database/sql`
 <2> Invoke's ``github.com/lib/pq``'s `init()` method because it
@@ -1250,7 +1299,7 @@ Go is an https://golang.org/ref/spec#Types[explicitly typed language].  The
 compiler does not perform any implicit type conversions of
 https://golang.org/ref/spec#Type_identity[named types]. Exported functions,
 ``interface``s, and ``type``s SHOULD make use of explicit types in order to
-enable the compiler to detect and enforce a pacakge's specified type system. It
+enable the compiler to detect and enforce a package's specified type system. It
 is NOT RECOMMENDED to deprive the compiler of the necessary type information it
 requires in order to prevent developers from incorrectly and abusively
 overloading Go's underlying types (e.g.  `string` vs `RandomStringID`, or
@@ -1490,6 +1539,10 @@ richer markup like https://en.wikipedia.org/wiki/AsciiDoc[`asciidoc`].]
 Read the https://blog.golang.org/context[Go Concurrency Patterns: Context] blog
 post.
 
+.Misc Resources
+* https://rakyll.org/leakingctx/
+* https://medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff
+
 [[deadline-timers-and-timeouts]]
 == Deadline Timers and Timeouts
 
@@ -1529,6 +1582,82 @@ monotonic time].
 Read the https://blog.golang.org/context[Go Concurrency Patterns: Context] blog
 post.
 
+[[pprof]]
+== `{pprof-name}` and `{gops-1-name}`
+
+[discrete]
+=== Recommendation
+
+1. Long-running daemons MUST have either a `{gops-1}` or `{pprof}` endpoint
+   available on a secure endpoint (a loopback interface, the default, is
+   considered a secure endpoint).
+2. The `{gops-1}` endpoint is RECOMMENDED and can be added to code like:
++
+[source,go]
+----
+include::examples/gops_test.go[tags=!test;**,indent=0]
+----
+<1> Import the `agent`
+<2> Listen early on after configuration
+3. The `{pprof}` endpoint SHOULD use a standardized URL anchors.
+4. The `{pprof}` endpoint MAY be made available via alternate libraries other
+   than the canonical `{net_http_pprof}` listener.  See <<agent>> for a
+   RECOMMENDED way of enabling the `{pprof}` interface.  If <<agent>> CAN NOT be
+   used, the following fragment is sub-optimal SHOULD NOT be used to create a
+   local listener:
++
+[source,go]
+----
+include::examples/net_http_pprof_bad_test.go[tags=!test;!main]
+include::examples/net_http_pprof_bad_test.go[tags=main,indent=0]
+----
+<1> The `net/http` package is only needed for the standalone listener used in
+    callout 5.
+<2> Initialize the `net/http/pprof` package.
+<3> `init()` SHOULD NOT be used to spawn this listener in order to allow for
+    proper configuration to take place *and* to allow the program to respond to
+    errors in the event the `{pprof}` endpoint fails to initialie.  The
+    `{pprof}` endpoint SHOULD be initialized before this service enters its
+    duty-cycle.
+<4> Start a detached thread to handle `{pprof}` requests.
+<5> Listen on a local endpoint and port
+<6> "One second ought to be enough time for any service to fail."
++
+[WARNING]
+====
+This is a _BAD_ example of how because: the code does not handle errors well;
+assumes the listener will start and fail within one second, and this introduces
+an arbitrary one second delay to program initialization. See the next example
+for a preferred way of initializng the `{pprof}` endpoint which addresses each
+of these concerns.  The example snippet in ``{net_http_pprof}``'s documentation
+is convenient and uncomplicated but SHOULD NOT be used in production for the
+aforementioned reasons.
+====
+////
++
+If <<agent>> can not be used, the following is the preferred, more explicit way
+to initialize `{net_http_pprof}` endpoint:
+[source,go]
+----
+include::examples/net_http_pprof_test.go[tags=!test;!main]
+include::examples/net_http_pprof_test.go[tags=main,indent=0]
+----
+<1> The `net/http` package is only needed for the standalone listener used in
+////
+
+[discrete]
+=== Rationale
+
+TODO.
+
+.Misc Resources
+* https://blog.golang.org/profiling-go-programs
+* https://rakyll.org/profiler-labels/
+* https://rakyll.org/mutexprofile/
+* https://rakyll.org/coredumps/
+* https://github.com/uber/go-torch
+* https://github.com/google/pprof/blob/master/doc/pprof.md
+
 [[external-resources]]
 == External Resources
 
@@ -1557,11 +1686,566 @@ post.
 . https://github.com/golang/go/wiki[Go wiki]
 . https://awesome-go.com/[Awesome Go]: A curated list of awesome Go frameworks, libraries and software.
 
+[appendix,id="go-intro"]
+== Go 101 Resources
+
+If you are completely new to Go, "I haven't written a line of Go in my life
+before today," this section is a quick primmer to get you up and running in a
+hurry.
+
+=== Five Minute Jump Start
+
+Suppose you know nothing and just need to get started.  The following steps
+SHOULD get you to a functioning "Hello World" in ~5min.
+
+. https://golang.org/doc/install[Install a stable copy of Go].  This can be done
+  in a number of ways, either from the https://golang.org/dl/#stable[official
+  Download Page] or via your preferred package management system:
+.. https://pkgsrc.joyent.com/[`pkgsrc`]: `sudo pkgin -y install go`
+.. https://www.macports.org/[MacpPrts]: `sudo port install go`
+.. https://brew.sh/[Homebrew]: `sudo brew install go`
+. Open a terminal and add the following environment variables to your shell
+  (as long as your `GOPATH` is set and `PATH` includes `$GOPATH/bin` at the end
+  of this step how you get this done doesn't matter):
++
+[source,shell]
+----
+$ echo 'export GOPATH=$HOME/go' >> ~/.profile
+$ echo 'export PATH=$GOPATH/bin:$PATH' >> ~/.profile
+$ export GOPATH=$HOME/go
+$ export PATH=$GOPATH/bin:$PATH
+----
+. Ensure `{git-1}` has already been installed.
+. Install `{gometalinter-1}`: `go get -u github.com/alecthomas/gometalinter`
+. Install ``{gometalinter-1}``'s linters: `gometalinter --install`
+. Install `{gops-1}`: `go get -u github.com/google/gops`
+. Install `{expvarmon-1}`: `go get -u github.com/divan/expvarmon`
+. Install `{go-torch-1}`: `go get -u github.com/uber/go-torch`
+. Install `{flamegraph-1}`: `go get -d github.com/brendangregg/FlameGraph`
+. Add ``{flamegraph-1}``'s scripts to your `PATH`: `export
+PATH=$PATH:$GOPATH/github.com/brendangregg/FlameGraph`
+. Change into an existing sample program: `cd $GOPATH/src/github.com/google/gops/examples/hello`
+. Edit `main.go` and make the following edits:
++
+[source,go]
+----
+ package main
+
+ import (
++       "fmt"
+        "log"
+-       "time"
+
+        "github.com/google/gops/agent"
+ )
+
++func getFactorial(n int) int {
++       if n < 0 {
++               return 0
++       }
++
++       if n <= 1 {
++               return 1
++       }
++
++       return n * getFactorial(n-1)
++}
++
+ func main() {
+        if err := agent.Listen(nil); err != nil {
+                log.Fatal(err)
+        }
+-       time.Sleep(time.Hour)
++
++       fmt.Println("Hello World!  Please debug me.")
++       for i := 1000000; i > 0; i-- {
++               getFactorial(i)
++       }
+ }
+----
+. Build the program: `go build`
+. Run the program:
++
+[source,shell]
+----
+$ ./hello
+Hello World!  Please debug me.
+----
++
+This program will run in the foreground for the next hour or until you interrupt
+the program (e.g. `ctrl+c`).
+. The program is available to be inspected via `{gops-1}`:
++
+[source,shell]
+----
+$ gops
+44326	gops	(/Users/seanc/go/bin/gops)
+44319*	hello	(/Users/seanc/go/src/github.com/google/gops/examples/hello/hello)
+$ gops stats 44319
+goroutines: 5
+OS threads: 7
+GOMAXPROCS: 8
+num CPU: 8
+$ gops memstats 44319
+alloc: 96.28KB (98592 bytes)
+total-alloc: 96.28KB (98592 bytes)
+sys: 67.72MB (71012352 bytes)
+lookups: 7
+mallocs: 354
+frees: 7
+heap-alloc: 96.28KB (98592 bytes)
+heap-sys: 32.69MB (34275328 bytes)
+heap-idle: 32.22MB (33783808 bytes)
+heap-in-use: 480.00KB (491520 bytes)
+heap-released: 0 bytes
+heap-objects: 347
+stack-in-use: 32.31MB (33882112 bytes)
+stack-sys: 32.31MB (33882112 bytes)
+next-gc: when heap-alloc >= 4.27MB (4473924 bytes)
+last-gc: -
+gc-pause: 0s
+num-gc: 0
+enable-gc: true
+debug-gc: false
+$ gops stack 44319
+goroutine 8 [running]:
+runtime/pprof.writeGoroutineStacks(0x12094e0, 0xc4200c8020, 0x0, 0x0)
+	/Users/seanc/go1.9/src/runtime/pprof/pprof.go:608 +0xa7
+runtime/pprof.writeGoroutine(0x12094e0, 0xc4200c8020, 0x2, 0x0, 0x0)
+	/Users/seanc/go1.9/src/runtime/pprof/pprof.go:597 +0x44
+runtime/pprof.(*Profile).WriteTo(0x1219060, 0x12094e0, 0xc4200c8020, 0x2, 0x0, 0x0)
+	/Users/seanc/go1.9/src/runtime/pprof/pprof.go:310 +0x3ab
+github.com/google/gops/agent.handle(0x12094e0, 0xc4200c8020, 0xc4200ca000, 0x1, 0x1, 0x0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:171 +0x1a3
+github.com/google/gops/agent.listen()
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:119 +0x2c5
+created by github.com/google/gops/agent.Listen
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:100 +0x457
+
+goroutine 1 [runnable]:
+main.getFactorial(0xefb92, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:14 +0x82
+main.getFactorial(0xefb93, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb94, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb95, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb96, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb97, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb98, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb99, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9a, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9b, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9c, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9d, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9e, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9f, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbaa, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbab, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbac, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbad, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbae, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbaf, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbba, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbb, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbc, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbd, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbe, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbf, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbca, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbcb, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbcc, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbcd, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbce, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbcf, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbda, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbdb, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbdc, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbdd, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbde, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbdf, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbea, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbeb, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbec, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbed, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbee, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbef, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+...additional frames elided...
+
+goroutine 5 [syscall]:
+os/signal.signal_recv(0x0)
+	/Users/seanc/go1.9/src/runtime/sigqueue.go:131 +0xa7
+os/signal.loop()
+	/Users/seanc/go1.9/src/os/signal/signal_unix.go:22 +0x22
+created by os/signal.init.0
+	/Users/seanc/go1.9/src/os/signal/signal_unix.go:28 +0x41
+
+goroutine 6 [select, locked to thread]:
+runtime.gopark(0x1166cb8, 0x0, 0x115e4e1, 0x6, 0x18, 0x1)
+	/Users/seanc/go1.9/src/runtime/proc.go:277 +0x12c
+runtime.selectgo(0xc420040f50, 0xc42007c180)
+	/Users/seanc/go1.9/src/runtime/select.go:395 +0x1138
+runtime.ensureSigM.func1()
+	/Users/seanc/go1.9/src/runtime/signal_unix.go:511 +0x1fe
+runtime.goexit()
+	/Users/seanc/go1.9/src/runtime/asm_amd64.s:2337 +0x1
+
+goroutine 7 [chan receive]:
+github.com/google/gops/agent.gracefulShutdown.func1(0xc420066060)
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:132 +0x34
+created by github.com/google/gops/agent.gracefulShutdown
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:130 +0xb5
+$ gops trace 44319
+Tracing now, will take 5 secs...
+Trace dump saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/trace902953220
+2017/08/03 14:17:23 Parsing trace...
+2017/08/03 14:17:23 Serializing trace...
+2017/08/03 14:17:23 Splitting trace...
+2017/08/03 14:17:23 Opening browser
+# gops will block in the foreground - push ctrl+c when done
+# This program is uneventful so there's nothing to see
+$ gops pprof-heap 44319
+Profiling dump saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
+Binary file saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/binary663659615
+File: binary663659615
+Type: inuse_space
+Time: Aug 3, 2017 at 2:19pm (PDT)
+Entering interactive mode (type "help" for commands, "o" for options)
+(pprof) help
+  Commands:
+    callgrind        Outputs a graph in callgrind format
+    comments         Output all profile comments
+    disasm           Output assembly listings annotated with samples
+    dot              Outputs a graph in DOT format
+    eog              Visualize graph through eog
+    evince           Visualize graph through evince
+    gif              Outputs a graph image in GIF format
+    gv               Visualize graph through gv
+    kcachegrind      Visualize report in KCachegrind
+    list             Output annotated source for functions matching regexp
+    pdf              Outputs a graph in PDF format
+    peek             Output callers/callees of functions matching regexp
+    png              Outputs a graph image in PNG format
+    proto            Outputs the profile in compressed protobuf format
+    ps               Outputs a graph in PS format
+    raw              Outputs a text representation of the raw profile
+    svg              Outputs a graph in SVG format
+    tags             Outputs all tags in the profile
+    text             Outputs top entries in text form
+    top              Outputs top entries in text form
+    topproto         Outputs top entries in compressed protobuf format
+    traces           Outputs all profile samples in text form
+    tree             Outputs a text rendering of call graph
+    web              Visualize graph through web browser
+    weblist          Display annotated source in a web browser
+    o/options        List options and their current values
+    quit/exit/^D     Exit pprof
+
+  Options:
+    call_tree        Create a context-sensitive call tree
+    compact_labels   Show minimal headers
+    divide_by        Ratio to divide all samples before visualization
+    drop_negative    Ignore negative differences
+    edgefraction     Hide edges below <f>*total
+    focus            Restricts to samples going through a node matching regexp
+    hide             Skips nodes matching regexp
+    ignore           Skips paths going through any nodes matching regexp
+    mean             Average sample value over first value (count)
+    nodecount        Max number of nodes to show
+    nodefraction     Hide nodes below <f>*total
+    output           Output filename for file-based outputs
+    positive_percentages Ignore negative samples when computing percentages
+    prune_from       Drops any functions below the matched frame.
+    relative_percentages Show percentages relative to focused subgraph
+    sample_index     Sample value to report (0-based index or name)
+    show             Only show nodes matching regexp
+    source_path      Search path for source files
+    tagfocus         Restrict to samples with tags in range or matched by regexp
+    taghide          Skip tags matching this regexp
+    tagignore        Discard samples with tags in range or matched by regexp
+    tagshow          Only consider tags matching this regexp
+    trim             Honor nodefraction/edgefraction/nodecount defaults
+    unit             Measurement units to display
+
+  Option groups (only set one per group):
+    cumulative
+      cum              Sort entries based on cumulative weight
+      flat             Sort entries based on own weight granularity
+      addresses        Aggregate at the function level.
+      addressnoinlines Aggregate at the function level, including functions' addresses in the output.
+      files            Aggregate at the file level.
+      functionnameonly Aggregate at the function level.
+      functions        Aggregate at the function level.
+      lines            Aggregate at the source code line level.
+      noinlines        Aggregate at the function level.
+
+  type "help <cmd|option>" for more information
+(pprof) exit
+$ go-torch -b /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
+INFO[18:44:38] Run pprof command: go tool pprof -raw /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
+INFO[18:44:38] Writing svg to torch.svg
+$ open -a /Applications/FirefoxNightly.app torch.svg
+$ gops pprof-cpu 44319
+Profiling CPU now, will take 30 secs...
+Profiling dump saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile127087150
+Binary file saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/binary771063221
+File: binary771063221
+Type: cpu
+Time: Aug 3, 2017 at 6:46pm (PDT)
+Duration: 30.16s, Total samples = 26.21s (86.90%)
+Entering interactive mode (type "help" for commands, "o" for options)
+(pprof) exit
+$ go-torch -b /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile127087150
+INFO[18:47:35] Run pprof command: go tool pprof -raw /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile127087150
+INFO[18:47:36] Writing svg to torch.svg
+$ open -a /Applications/FirefoxNightly.app torch.svg
+$ cat $HOME/.config/gops/${PID_OF_HELLO_PROCESS} ; echo
+62023
+----
+
+****
+[#img-trace-sched-latency]
+.Output from ``gops trace`` and the scheduler latency profile
+image::scheduler-latency-profile.png[Scheduler Latency]
+****
+
+It's obviously not required to step through and enumerate all of the
+capabilities of `{gops-1}` and the `{pprof}` endpoints when writing a "Hello
+World" app but it shows off some of the built-in capabilities.  Additional
+information is covered in the section on <<pprof,`pprof`>>.
+
+=== Books
+
+The following is a list of books that people have found helpful for getting
+started.  One of the problems with learning by dead tree is the disparity
+between inches of shelf-space occupied to a given subject versus the mental
+real-estate a given subject occupies.  Because a language feature is address -
+sometimes at length - doesn't mean it is a primary concern or something you need
+to become a subject-matter expert on.
+
+==== Recommended Resources
+
+The following are "approved" resources ("approved" in this context only means
+"this wasn't awful and will point you in the right direction" and doesn't
+constitute as a explicit endorsement #JoyentEmployee).  There may be other good
+resources that exist, but they haven't been reviewed (pull requests welcome).
+
+* http://www.gopl.io/[The Go Programming] citenp:[go-lang(27-282), go-lang(353-366)]
+* Programming in Go citenp:[prog-in-go(1-250), prog-in-go(265-424)]
+* An Introduction to Programming in Go citenp:[intro-to-prog-go] (now available
+  as a PDF as it is now longer in print).
+
+==== Extra Resources
+
+* https://blog.golang.org/index[The Official Go Blog] - This is generally considered
+  an authoritative source of information.
+* https://github.com/avelino/awesome-go#e-books[Go E-Books]
+* https://github.com/avelino/awesome-go#tutorials[Go Tutorials]
+* http://www.golang-book.com/guides/bootcamp[Go Web Programming Bootcamp] may be
+  interesting.
+
+[[make]]
+=== `{make-1-name}`
+
+`{make-1}` comes in many shapes and forms.  {make-gnu-1-url}[GNU
+`{make-gnu-1-name}]` is the predominant `{make-1}` implementation.
+{make-gnu-1-url}[GNU `{make-gnu-1-name}`], however, has its own dialect and its
+dialect is not universally supported.  If you use GNU
+``{make-gnu-1-name}``-specific extensions, you MUST spell the `Makefile` like
+`GNUmakefile`.  The same rule applies to {make-bsd-1-url}[BSD
+`{make-bsd-1-name}`] and `BSDmakefile`.  It is unfortunate that there is poor
+interopoerability between the various `{make-1}` implementations and it's
+equally unfortunate that the prevailing attitudes is to be conformist (versus
+taking a zero-cost principled stand for correctness).
+
+[source,shell]
+----
+$ cat GNUmakefile
+test:
+    echo $(shell echo bar)
+$ bsdmake -f GNUmakefile
+echo
+
+$ gnumake -f GNUmakefile
+echo bar
+bar
+----
+
+In the end, this fragmentation has led many to adopt `{make-1}` as the universal
+human UX and system interoperability layer to front tools like `{bezel-1}` or
+`{goreleaser-1}`.
+
+[NOTE]
+====
+`{make-1}` is like https://en.wikipedia.org/wiki/Latin[Latin].  Many western
+languages decend from `{make-1}`, however no one speaks Latin anymore.  Instead
+people speak Spanish, Italian, French, English, etc.  If you don't speak French
+and call it Latin, I won't speak Spanish and call it Latin.  Incorrectness has
+consequences.  In software it most oftens in deferred cost.
+====
+
 [glossary]
 == Glossary
 
-[glossary]
 CI:: Continuous Integration
+
+[bibliography]
+== Bibliography
+
+bibliography::[]
 
 ////
 Indexes were never implemented in asciidoctor.  Commenting out the Index until

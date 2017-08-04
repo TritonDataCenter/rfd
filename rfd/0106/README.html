@@ -506,7 +506,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <span id="author" class="author">Sean Chittenden</span><br>
 <span id="email" class="email"><a href="mailto:seanc@joyent.com">seanc@joyent.com</a></span><br>
 <span id="revnumber">version 0.1.0,</span>
-<span id="revdate">2017-07-31</span>
+<span id="revdate">2017-08-04</span>
 <br><span id="revremark">State: predraft</span>
 </div>
 <div id="toc" class="toc2">
@@ -536,8 +536,17 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#context">17. Context</a></li>
 <li><a href="#deadline-timers-and-timeouts">18. Deadline Timers and Timeouts</a></li>
 <li><a href="#grpc">19. gRPC</a></li>
-<li><a href="#external-resources">20. External Resources</a></li>
+<li><a href="#pprof">20. <code>pprof</code> and <code>gops(1)</code></a></li>
+<li><a href="#external-resources">21. External Resources</a></li>
+<li><a href="#go-intro">Appendix A: Go 101 Resources</a>
+<ul class="sectlevel2">
+<li><a href="#five-minute-jump-start">Five Minute Jump Start</a></li>
+<li><a href="#books">Books</a></li>
+<li><a href="#make"><code>make(1)</code></a></li>
+</ul>
+</li>
 <li><a href="#glossary">Glossary</a></li>
+<li><a href="#bibliography">Bibliography</a></li>
 </ul>
 </div>
 </div>
@@ -700,6 +709,9 @@ ordered from philosophical to practical):</p>
 <li>
 <p>Deadline Timers and Timeouts</p>
 </li>
+<li>
+<p>pprof</p>
+</li>
 </ul>
 </div>
 <div class="sect3">
@@ -805,6 +817,11 @@ development, but frequently does improve both correctness and quality.</p>
 <code>$GOPATH/pkg</code> and there is no stability contract.  Cleaning out <code>$GOPATH/pkg</code>
 periodically is an ounce of prevention whose tiny cost is worth more than the
 pound of debugging.<sup class="footnote" id="_footnote_gopath-tmp">[<a id="_footnoteref_1" class="footnote" href="#_footnote_1" title="View footnote.">1</a>]</sup></p>
+</div>
+<div class="paragraph">
+<p>Use of tools like <code><a href="https://github.com/GetStream/vg">vg(1)</a></code> MAY be useful or considered in the future but are NOT
+REQUIRED: most of these recommendations are intended to aid productivity and
+decrease friction, not constrain how someone goes about working.</p>
 </div>
 </div>
 </div>
@@ -1759,6 +1776,9 @@ resources:</p>
 <p><a href="https://blog.golang.org/package-names">Package Names</a></p>
 </li>
 <li>
+<p><a href="https://rakyll.org/style-packages/">Style guideline for Go packages</a></p>
+</li>
+<li>
 <p><a href="https://golang.org/doc/effective_go.html#names">Effective Go</a></p>
 </li>
 <li>
@@ -1794,6 +1814,7 @@ identifier (i.e. a package&#8217;s <code>init()</code> MUST run). For example:</
 <div class="content">
 <pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">import</span> <span class="tok-p">(</span>
 	<span class="tok-s">&quot;database/sql&quot;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+	<span class="tok-s">&quot;fmt&quot;</span>
 
 	<span class="tok-nx">_</span> <span class="tok-s">&quot;github.com/lib/pq&quot;</span> <i class="conum" data-value="2"></i><b>(2)</b>
 <span class="tok-p">)</span></code></pre>
@@ -2205,7 +2226,7 @@ method members (i.e. <code>const</code>, <code>func</code>, <code>var</code>, an
 compiler does not perform any implicit type conversions of
 <a href="https://golang.org/ref/spec#Type_identity">named types</a>. Exported functions,
 <code>interface</code>s, and <code>type</code>s SHOULD make use of explicit types in order to
-enable the compiler to detect and enforce a pacakge&#8217;s specified type system. It
+enable the compiler to detect and enforce a package&#8217;s specified type system. It
 is NOT RECOMMENDED to deprive the compiler of the necessary type information it
 requires in order to prevent developers from incorrectly and abusively
 overloading Go&#8217;s underlying types (e.g.  <code>string</code> vs <code>RandomStringID</code>, or
@@ -2588,6 +2609,17 @@ passing state along request-scoped state information (e.g. <code>deadlines</code
 <p>Read the <a href="https://blog.golang.org/context">Go Concurrency Patterns: Context</a> blog
 post.</p>
 </div>
+<div class="ulist">
+<div class="title">Misc Resources</div>
+<ul>
+<li>
+<p><a href="https://rakyll.org/leakingctx/" class="bare">rakyll.org/leakingctx/</a></p>
+</li>
+<li>
+<p><a href="https://medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff" class="bare">medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff</a></p>
+</li>
+</ul>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -2646,7 +2678,163 @@ post.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="external-resources"><a class="anchor" href="#external-resources"></a><a class="link" href="#external-resources">20. External Resources</a></h2>
+<h2 id="pprof"><a class="anchor" href="#pprof"></a><a class="link" href="#pprof">20. <code>pprof</code> and <code>gops(1)</code></a></h2>
+<div class="sectionbody">
+<h3 id="recommendation-17" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Long-running daemons MUST have either a <code><a href="https://github.com/google/gops">gops(1)</a></code> or <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoint
+available on a secure endpoint (a loopback interface, the default, is
+considered a secure endpoint).</p>
+</li>
+<li>
+<p>The <code><a href="https://github.com/google/gops">gops(1)</a></code> endpoint is RECOMMENDED and can be added to code like:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">import</span> <span class="tok-p">(</span>
+	<span class="tok-s">&quot;github.com/google/gops/agent&quot;</span> <i class="conum" data-value="1"></i><b>(1)</b>
+<span class="tok-p">)</span>
+
+	<span class="tok-c1">// Somewhere after configuration, start the agent listener.  Exit if the agent</span>
+	<span class="tok-c1">// is unable to listen.</span>
+	<span class="tok-k">if</span> <span class="tok-nx">err</span> <span class="tok-o">:=</span> <span class="tok-nx">agent</span><span class="tok-p">.</span><span class="tok-nx">Listen</span><span class="tok-p">(</span><span class="tok-kc">nil</span><span class="tok-p">);</span> <span class="tok-nx">err</span> <span class="tok-o">!=</span> <span class="tok-kc">nil</span> <span class="tok-p">{</span> <i class="conum" data-value="2"></i><b>(2)</b>
+		<span class="tok-nx">log</span><span class="tok-p">.</span><span class="tok-nx">Fatal</span><span class="tok-p">(</span><span class="tok-nx">err</span><span class="tok-p">)</span>
+	<span class="tok-p">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Import the <code>agent</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Listen early on after configuration</td>
+</tr>
+</table>
+</div>
+</li>
+<li>
+<p>The <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoint SHOULD use a standardized URL anchors.</p>
+</li>
+<li>
+<p>The <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoint MAY be made available via alternate libraries other
+than the canonical <code><a href="https://golang.org/pkg/net/http/pprof/">net/http/pprof</a></code> listener.  See <a href="#agent">[agent]</a> for a
+RECOMMENDED way of enabling the <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> interface.  If <a href="#agent">[agent]</a> CAN NOT be
+used, the following fragment is sub-optimal SHOULD NOT be used to create a
+local listener:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">import</span> <span class="tok-p">(</span>
+	<span class="tok-s">&quot;fmt&quot;</span>
+	<span class="tok-s">&quot;net/http&quot;</span>         <i class="conum" data-value="1"></i><b>(1)</b>
+	<span class="tok-nx">_</span> <span class="tok-s">&quot;net/http/pprof&quot;</span> <i class="conum" data-value="2"></i><b>(2)</b>
+	<span class="tok-s">&quot;time&quot;</span>
+<span class="tok-p">)</span>
+
+<span class="tok-c1">// In a goroutine listener somewhere downstream of main() </span><i class="conum" data-value="3"></i><b>(3)</b>
+<span class="tok-kd">var</span> <span class="tok-nx">pprofErr</span> <span class="tok-kt">error</span>
+<span class="tok-k">go</span> <span class="tok-kd">func</span><span class="tok-p">()</span> <span class="tok-p">{</span> <i class="conum" data-value="4"></i><b>(4)</b>
+	<span class="tok-c1">// Listen on port 6060 for `localhost`.  This could be [::] or `127.0.0.1`</span>
+	<span class="tok-nx">pprofErr</span> <span class="tok-p">=</span> <span class="tok-nx">http</span><span class="tok-p">.</span><span class="tok-nx">ListenAndServe</span><span class="tok-p">(</span><span class="tok-s">&quot;localhost:6060&quot;</span><span class="tok-p">,</span> <span class="tok-kc">nil</span><span class="tok-p">)</span> <i class="conum" data-value="5"></i><b>(5)</b>
+<span class="tok-p">}()</span>
+
+<span class="tok-c1">// Sleep for 1s to give the backend a chance to fail.</span>
+<span class="tok-nx">time</span><span class="tok-p">.</span><span class="tok-nx">Sleep</span><span class="tok-p">(</span><span class="tok-mi">1</span> <span class="tok-o">*</span> <span class="tok-nx">time</span><span class="tok-p">.</span><span class="tok-nx">Second</span><span class="tok-p">)</span> <i class="conum" data-value="6"></i><b>(6)</b>
+<span class="tok-k">if</span> <span class="tok-nx">pprofErr</span> <span class="tok-o">!=</span> <span class="tok-kc">nil</span> <span class="tok-p">{</span>
+	<span class="tok-k">return</span> <span class="tok-nx">fmt</span><span class="tok-p">.</span><span class="tok-nx">Errorf</span><span class="tok-p">(</span><span class="tok-s">&quot;pprof endpoint failed to initialize: %v&quot;</span><span class="tok-p">,</span> <span class="tok-nx">pprofErr</span><span class="tok-p">)</span>
+<span class="tok-p">}</span></code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>The <code>net/http</code> package is only needed for the standalone listener used in
+callout 5.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Initialize the <code>net/http/pprof</code> package.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td><code>init()</code> SHOULD NOT be used to spawn this listener in order to allow for
+proper configuration to take place <strong>and</strong> to allow the program to respond to
+errors in the event the <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoint fails to initialie.  The
+<code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoint SHOULD be initialized before this service enters its
+duty-cycle.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Start a detached thread to handle <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> requests.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Listen on a local endpoint and port</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>"One second ought to be enough time for any service to fail."</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock warning">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-warning" title="Warning"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>This is a <em>BAD</em> example of how because: the code does not handle errors well;
+assumes the listener will start and fail within one second, and this introduces
+an arbitrary one second delay to program initialization. See the next example
+for a preferred way of initializng the <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoint which addresses each
+of these concerns.  The example snippet in <code><a href="https://golang.org/pkg/net/http/pprof/">net/http/pprof</a></code>'s documentation
+is convenient and uncomplicated but SHOULD NOT be used in production for the
+aforementioned reasons.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</li>
+</ol>
+</div>
+<h3 id="rationale-18" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p>TODO.</p>
+</div>
+<div class="ulist">
+<div class="title">Misc Resources</div>
+<ul>
+<li>
+<p><a href="https://blog.golang.org/profiling-go-programs" class="bare">blog.golang.org/profiling-go-programs</a></p>
+</li>
+<li>
+<p><a href="https://rakyll.org/profiler-labels/" class="bare">rakyll.org/profiler-labels/</a></p>
+</li>
+<li>
+<p><a href="https://rakyll.org/mutexprofile/" class="bare">rakyll.org/mutexprofile/</a></p>
+</li>
+<li>
+<p><a href="https://rakyll.org/coredumps/" class="bare">rakyll.org/coredumps/</a></p>
+</li>
+<li>
+<p><a href="https://github.com/uber/go-torch" class="bare">github.com/uber/go-torch</a></p>
+</li>
+<li>
+<p><a href="https://github.com/google/pprof/blob/master/doc/pprof.md" class="bare">github.com/google/pprof/blob/master/doc/pprof.md</a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="external-resources"><a class="anchor" href="#external-resources"></a><a class="link" href="#external-resources">21. External Resources</a></h2>
 <div class="sectionbody">
 <div class="olist arabic">
 <ol class="arabic">
@@ -2731,15 +2919,674 @@ post.</p>
 </div>
 </div>
 <div class="sect1">
+<h2 id="go-intro"><a class="anchor" href="#go-intro"></a><a class="link" href="#go-intro">Appendix A: Go 101 Resources</a></h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>If you are completely new to Go, "I haven&#8217;t written a line of Go in my life
+before today," this section is a quick primmer to get you up and running in a
+hurry.</p>
+</div>
+<div class="sect2">
+<h3 id="five-minute-jump-start"><a class="anchor" href="#five-minute-jump-start"></a><a class="link" href="#five-minute-jump-start">Five Minute Jump Start</a></h3>
+<div class="paragraph">
+<p>Suppose you know nothing and just need to get started.  The following steps
+SHOULD get you to a functioning "Hello World" in ~5min.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><a href="https://golang.org/doc/install">Install a stable copy of Go</a>.  This can be done
+in a number of ways, either from the <a href="https://golang.org/dl/#stable">official
+Download Page</a> or via your preferred package management system:</p>
+<div class="olist loweralpha">
+<ol class="loweralpha" type="a">
+<li>
+<p><a href="https://pkgsrc.joyent.com/"><code>pkgsrc</code></a>: <code>sudo pkgin -y install go</code></p>
+</li>
+<li>
+<p><a href="https://www.macports.org/">MacpPrts</a>: <code>sudo port install go</code></p>
+</li>
+<li>
+<p><a href="https://brew.sh/">Homebrew</a>: <code>sudo brew install go</code></p>
+</li>
+</ol>
+</div>
+</li>
+<li>
+<p>Open a terminal and add the following environment variables to your shell
+(as long as your <code>GOPATH</code> is set and <code>PATH</code> includes <code>$GOPATH/bin</code> at the end
+of this step how you get this done doesn&#8217;t matter):</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ echo &#39;export GOPATH=$HOME/go&#39; &gt;&gt; ~/.profile
+$ echo &#39;export PATH=$GOPATH/bin:$PATH&#39; &gt;&gt; ~/.profile
+$ export GOPATH=$HOME/go
+$ export PATH=$GOPATH/bin:$PATH</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Ensure <code><a href="https://git-scm.com/">git(1)</a></code> has already been installed.</p>
+</li>
+<li>
+<p>Install <code><a href="https://github.com/alecthomas/gometalinter">gometalinter(1)</a></code>: <code>go get -u github.com/alecthomas/gometalinter</code></p>
+</li>
+<li>
+<p>Install <code><a href="https://github.com/alecthomas/gometalinter">gometalinter(1)</a></code>'s linters: <code>gometalinter --install</code></p>
+</li>
+<li>
+<p>Install <code><a href="https://github.com/google/gops">gops(1)</a></code>: <code>go get -u github.com/google/gops</code></p>
+</li>
+<li>
+<p>Install <code><a href="https://github.com/divan/expvarmon">expvarmon(1)</a></code>: <code>go get -u github.com/divan/expvarmon</code></p>
+</li>
+<li>
+<p>Install <code><a href="https://github.com/uber/go-torch">go-torch(1)</a></code>: <code>go get -u github.com/uber/go-torch</code></p>
+</li>
+<li>
+<p>Install <code><a href="https://github.com/brendangregg/FlameGraph">FlameGraph</a></code>: <code>go get -d github.com/brendangregg/FlameGraph</code></p>
+</li>
+<li>
+<p>Add <code><a href="https://github.com/brendangregg/FlameGraph">FlameGraph</a></code>'s scripts to your <code>PATH</code>: <code>export
+PATH=$PATH:$GOPATH/github.com/brendangregg/FlameGraph</code></p>
+</li>
+<li>
+<p>Change into an existing sample program: <code>cd $GOPATH/src/github.com/google/gops/examples/hello</code></p>
+</li>
+<li>
+<p>Edit <code>main.go</code> and make the following edits:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="go"><span></span> <span class="tok-kn">package</span> <span class="tok-nx">main</span>
+
+ <span class="tok-kn">import</span> <span class="tok-p">(</span>
+<span class="tok-o">+</span>       <span class="tok-s">&quot;fmt&quot;</span>
+        <span class="tok-s">&quot;log&quot;</span>
+<span class="tok-o">-</span>       <span class="tok-s">&quot;time&quot;</span>
+
+        <span class="tok-s">&quot;github.com/google/gops/agent&quot;</span>
+ <span class="tok-p">)</span>
+
+<span class="tok-o">+</span><span class="tok-kd">func</span> <span class="tok-nx">getFactorial</span><span class="tok-p">(</span><span class="tok-nx">n</span> <span class="tok-kt">int</span><span class="tok-p">)</span> <span class="tok-kt">int</span> <span class="tok-p">{</span>
+<span class="tok-o">+</span>       <span class="tok-k">if</span> <span class="tok-nx">n</span> <span class="tok-p">&lt;</span> <span class="tok-mi">0</span> <span class="tok-p">{</span>
+<span class="tok-o">+</span>               <span class="tok-k">return</span> <span class="tok-mi">0</span>
+<span class="tok-o">+</span>       <span class="tok-p">}</span>
+<span class="tok-o">+</span>
+<span class="tok-o">+</span>       <span class="tok-k">if</span> <span class="tok-nx">n</span> <span class="tok-o">&lt;=</span> <span class="tok-mi">1</span> <span class="tok-p">{</span>
+<span class="tok-o">+</span>               <span class="tok-k">return</span> <span class="tok-mi">1</span>
+<span class="tok-o">+</span>       <span class="tok-p">}</span>
+<span class="tok-o">+</span>
+<span class="tok-o">+</span>       <span class="tok-k">return</span> <span class="tok-nx">n</span> <span class="tok-o">*</span> <span class="tok-nx">getFactorial</span><span class="tok-p">(</span><span class="tok-nx">n</span><span class="tok-o">-</span><span class="tok-mi">1</span><span class="tok-p">)</span>
+<span class="tok-o">+</span><span class="tok-p">}</span>
+<span class="tok-o">+</span>
+ <span class="tok-kd">func</span> <span class="tok-nx">main</span><span class="tok-p">()</span> <span class="tok-p">{</span>
+        <span class="tok-k">if</span> <span class="tok-nx">err</span> <span class="tok-o">:=</span> <span class="tok-nx">agent</span><span class="tok-p">.</span><span class="tok-nx">Listen</span><span class="tok-p">(</span><span class="tok-kc">nil</span><span class="tok-p">);</span> <span class="tok-nx">err</span> <span class="tok-o">!=</span> <span class="tok-kc">nil</span> <span class="tok-p">{</span>
+                <span class="tok-nx">log</span><span class="tok-p">.</span><span class="tok-nx">Fatal</span><span class="tok-p">(</span><span class="tok-nx">err</span><span class="tok-p">)</span>
+        <span class="tok-p">}</span>
+<span class="tok-o">-</span>       <span class="tok-nx">time</span><span class="tok-p">.</span><span class="tok-nx">Sleep</span><span class="tok-p">(</span><span class="tok-nx">time</span><span class="tok-p">.</span><span class="tok-nx">Hour</span><span class="tok-p">)</span>
+<span class="tok-o">+</span>
+<span class="tok-o">+</span>       <span class="tok-nx">fmt</span><span class="tok-p">.</span><span class="tok-nx">Println</span><span class="tok-p">(</span><span class="tok-s">&quot;Hello World!  Please debug me.&quot;</span><span class="tok-p">)</span>
+<span class="tok-o">+</span>       <span class="tok-k">for</span> <span class="tok-nx">i</span> <span class="tok-o">:=</span> <span class="tok-mi">1000000</span><span class="tok-p">;</span> <span class="tok-nx">i</span> <span class="tok-p">&gt;</span> <span class="tok-mi">0</span><span class="tok-p">;</span> <span class="tok-nx">i</span><span class="tok-o">--</span> <span class="tok-p">{</span>
+<span class="tok-o">+</span>               <span class="tok-nx">getFactorial</span><span class="tok-p">(</span><span class="tok-nx">i</span><span class="tok-p">)</span>
+<span class="tok-o">+</span>       <span class="tok-p">}</span>
+ <span class="tok-p">}</span></code></pre>
+</div>
+</div>
+</li>
+<li>
+<p>Build the program: <code>go build</code></p>
+</li>
+<li>
+<p>Run the program:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ ./hello
+Hello World!  Please debug me.</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>This program will run in the foreground for the next hour or until you interrupt
+the program (e.g. <code>ctrl+c</code>).</p>
+</div>
+</li>
+<li>
+<p>The program is available to be inspected via <code><a href="https://github.com/google/gops">gops(1)</a></code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ gops
+44326	gops	(/Users/seanc/go/bin/gops)
+44319*	hello	(/Users/seanc/go/src/github.com/google/gops/examples/hello/hello)
+$ gops stats 44319
+goroutines: 5
+OS threads: 7
+GOMAXPROCS: 8
+num CPU: 8
+$ gops memstats 44319
+alloc: 96.28KB (98592 bytes)
+total-alloc: 96.28KB (98592 bytes)
+sys: 67.72MB (71012352 bytes)
+lookups: 7
+mallocs: 354
+frees: 7
+heap-alloc: 96.28KB (98592 bytes)
+heap-sys: 32.69MB (34275328 bytes)
+heap-idle: 32.22MB (33783808 bytes)
+heap-in-use: 480.00KB (491520 bytes)
+heap-released: 0 bytes
+heap-objects: 347
+stack-in-use: 32.31MB (33882112 bytes)
+stack-sys: 32.31MB (33882112 bytes)
+next-gc: when heap-alloc &gt;= 4.27MB (4473924 bytes)
+last-gc: -
+gc-pause: 0s
+num-gc: 0
+enable-gc: true
+debug-gc: false
+$ gops stack 44319
+goroutine 8 [running]:
+runtime/pprof.writeGoroutineStacks(0x12094e0, 0xc4200c8020, 0x0, 0x0)
+	/Users/seanc/go1.9/src/runtime/pprof/pprof.go:608 +0xa7
+runtime/pprof.writeGoroutine(0x12094e0, 0xc4200c8020, 0x2, 0x0, 0x0)
+	/Users/seanc/go1.9/src/runtime/pprof/pprof.go:597 +0x44
+runtime/pprof.(*Profile).WriteTo(0x1219060, 0x12094e0, 0xc4200c8020, 0x2, 0x0, 0x0)
+	/Users/seanc/go1.9/src/runtime/pprof/pprof.go:310 +0x3ab
+github.com/google/gops/agent.handle(0x12094e0, 0xc4200c8020, 0xc4200ca000, 0x1, 0x1, 0x0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:171 +0x1a3
+github.com/google/gops/agent.listen()
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:119 +0x2c5
+created by github.com/google/gops/agent.Listen
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:100 +0x457
+
+goroutine 1 [runnable]:
+main.getFactorial(0xefb92, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:14 +0x82
+main.getFactorial(0xefb93, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb94, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb95, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb96, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb97, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb98, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb99, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9a, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9b, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9c, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9d, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9e, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefb9f, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefba9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbaa, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbab, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbac, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbad, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbae, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbaf, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbb9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbba, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbb, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbc, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbd, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbe, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbbf, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbc9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbca, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbcb, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbcc, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbcd, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbce, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbcf, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbd9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbda, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbdb, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbdc, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbdd, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbde, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbdf, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe6, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe7, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe8, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbe9, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbea, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbeb, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbec, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbed, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbee, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbef, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf0, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf1, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf2, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf3, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf4, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+main.getFactorial(0xefbf5, 0x0)
+	/Users/seanc/go/src/github.com/google/gops/examples/hello/main.go:23 +0x4d
+...additional frames elided...
+
+goroutine 5 [syscall]:
+os/signal.signal_recv(0x0)
+	/Users/seanc/go1.9/src/runtime/sigqueue.go:131 +0xa7
+os/signal.loop()
+	/Users/seanc/go1.9/src/os/signal/signal_unix.go:22 +0x22
+created by os/signal.init.0
+	/Users/seanc/go1.9/src/os/signal/signal_unix.go:28 +0x41
+
+goroutine 6 [select, locked to thread]:
+runtime.gopark(0x1166cb8, 0x0, 0x115e4e1, 0x6, 0x18, 0x1)
+	/Users/seanc/go1.9/src/runtime/proc.go:277 +0x12c
+runtime.selectgo(0xc420040f50, 0xc42007c180)
+	/Users/seanc/go1.9/src/runtime/select.go:395 +0x1138
+runtime.ensureSigM.func1()
+	/Users/seanc/go1.9/src/runtime/signal_unix.go:511 +0x1fe
+runtime.goexit()
+	/Users/seanc/go1.9/src/runtime/asm_amd64.s:2337 +0x1
+
+goroutine 7 [chan receive]:
+github.com/google/gops/agent.gracefulShutdown.func1(0xc420066060)
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:132 +0x34
+created by github.com/google/gops/agent.gracefulShutdown
+	/Users/seanc/go/src/github.com/google/gops/agent/agent.go:130 +0xb5
+$ gops trace 44319
+Tracing now, will take 5 secs...
+Trace dump saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/trace902953220
+2017/08/03 14:17:23 Parsing trace...
+2017/08/03 14:17:23 Serializing trace...
+2017/08/03 14:17:23 Splitting trace...
+2017/08/03 14:17:23 Opening browser
+# gops will block in the foreground - push ctrl+c when done
+# This program is uneventful so there&#39;s nothing to see
+$ gops pprof-heap 44319
+Profiling dump saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
+Binary file saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/binary663659615
+File: binary663659615
+Type: inuse_space
+Time: Aug 3, 2017 at 2:19pm (PDT)
+Entering interactive mode (type &quot;help&quot; for commands, &quot;o&quot; for options)
+(pprof) help
+  Commands:
+    callgrind        Outputs a graph in callgrind format
+    comments         Output all profile comments
+    disasm           Output assembly listings annotated with samples
+    dot              Outputs a graph in DOT format
+    eog              Visualize graph through eog
+    evince           Visualize graph through evince
+    gif              Outputs a graph image in GIF format
+    gv               Visualize graph through gv
+    kcachegrind      Visualize report in KCachegrind
+    list             Output annotated source for functions matching regexp
+    pdf              Outputs a graph in PDF format
+    peek             Output callers/callees of functions matching regexp
+    png              Outputs a graph image in PNG format
+    proto            Outputs the profile in compressed protobuf format
+    ps               Outputs a graph in PS format
+    raw              Outputs a text representation of the raw profile
+    svg              Outputs a graph in SVG format
+    tags             Outputs all tags in the profile
+    text             Outputs top entries in text form
+    top              Outputs top entries in text form
+    topproto         Outputs top entries in compressed protobuf format
+    traces           Outputs all profile samples in text form
+    tree             Outputs a text rendering of call graph
+    web              Visualize graph through web browser
+    weblist          Display annotated source in a web browser
+    o/options        List options and their current values
+    quit/exit/^D     Exit pprof
+
+  Options:
+    call_tree        Create a context-sensitive call tree
+    compact_labels   Show minimal headers
+    divide_by        Ratio to divide all samples before visualization
+    drop_negative    Ignore negative differences
+    edgefraction     Hide edges below &lt;f&gt;*total
+    focus            Restricts to samples going through a node matching regexp
+    hide             Skips nodes matching regexp
+    ignore           Skips paths going through any nodes matching regexp
+    mean             Average sample value over first value (count)
+    nodecount        Max number of nodes to show
+    nodefraction     Hide nodes below &lt;f&gt;*total
+    output           Output filename for file-based outputs
+    positive_percentages Ignore negative samples when computing percentages
+    prune_from       Drops any functions below the matched frame.
+    relative_percentages Show percentages relative to focused subgraph
+    sample_index     Sample value to report (0-based index or name)
+    show             Only show nodes matching regexp
+    source_path      Search path for source files
+    tagfocus         Restrict to samples with tags in range or matched by regexp
+    taghide          Skip tags matching this regexp
+    tagignore        Discard samples with tags in range or matched by regexp
+    tagshow          Only consider tags matching this regexp
+    trim             Honor nodefraction/edgefraction/nodecount defaults
+    unit             Measurement units to display
+
+  Option groups (only set one per group):
+    cumulative
+      cum              Sort entries based on cumulative weight
+      flat             Sort entries based on own weight granularity
+      addresses        Aggregate at the function level.
+      addressnoinlines Aggregate at the function level, including functions&#39; addresses in the output.
+      files            Aggregate at the file level.
+      functionnameonly Aggregate at the function level.
+      functions        Aggregate at the function level.
+      lines            Aggregate at the source code line level.
+      noinlines        Aggregate at the function level.
+
+  type &quot;help &lt;cmd|option&gt;&quot; for more information
+(pprof) exit
+$ go-torch -b /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
+INFO[18:44:38] Run pprof command: go tool pprof -raw /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
+INFO[18:44:38] Writing svg to torch.svg
+$ open -a /Applications/FirefoxNightly.app torch.svg
+$ gops pprof-cpu 44319
+Profiling CPU now, will take 30 secs...
+Profiling dump saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile127087150
+Binary file saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/binary771063221
+File: binary771063221
+Type: cpu
+Time: Aug 3, 2017 at 6:46pm (PDT)
+Duration: 30.16s, Total samples = 26.21s (86.90%)
+Entering interactive mode (type &quot;help&quot; for commands, &quot;o&quot; for options)
+(pprof) exit
+$ go-torch -b /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile127087150
+INFO[18:47:35] Run pprof command: go tool pprof -raw /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile127087150
+INFO[18:47:36] Writing svg to torch.svg
+$ open -a /Applications/FirefoxNightly.app torch.svg
+$ cat $HOME/.config/gops/${PID_OF_HELLO_PROCESS} ; echo
+62023</code></pre>
+</div>
+</div>
+</li>
+</ol>
+</div>
+<div class="sidebarblock">
+<div class="content">
+<div id="img-trace-sched-latency" class="imageblock">
+<div class="content">
+<img src="images/scheduler-latency-profile.png" alt="Scheduler Latency">
+</div>
+<div class="title">Figure 1. Output from <code>gops trace</code> and the scheduler latency profile</div>
+</div>
+</div>
+</div>
+<div class="paragraph">
+<p>It&#8217;s obviously not required to step through and enumerate all of the
+capabilities of <code><a href="https://github.com/google/gops">gops(1)</a></code> and the <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoints when writing a "Hello
+World" app but it shows off some of the built-in capabilities.  Additional
+information is covered in the section on <a href="#pprof"><code>pprof</code></a>.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="books"><a class="anchor" href="#books"></a><a class="link" href="#books">Books</a></h3>
+<div class="paragraph">
+<p>The following is a list of books that people have found helpful for getting
+started.  One of the problems with learning by dead tree is the disparity
+between inches of shelf-space occupied to a given subject versus the mental
+real-estate a given subject occupies.  Because a language feature is address -
+sometimes at length - doesn&#8217;t mean it is a primary concern or something you need
+to become a subject-matter expert on.</p>
+</div>
+<div class="sect3">
+<h4 id="recommended-resources"><a class="anchor" href="#recommended-resources"></a><a class="link" href="#recommended-resources">Recommended Resources</a></h4>
+<div class="paragraph">
+<p>The following are "approved" resources ("approved" in this context only means
+"this wasn&#8217;t awful and will point you in the right direction" and doesn&#8217;t
+constitute as a explicit endorsement #JoyentEmployee).  There may be other good
+resources that exist, but they haven&#8217;t been reviewed (pull requests welcome).</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="http://www.gopl.io/">The Go Programming</a> [<a href="#go-lang">1 pp.&#160;27-282</a>, <a href="#go-lang">1 pp.&#160;353-366</a>]</p>
+</li>
+<li>
+<p>Programming in Go [<a href="#prog-in-go">3 pp.&#160;1-250</a>, <a href="#prog-in-go">3 pp.&#160;265-424</a>]</p>
+</li>
+<li>
+<p>An Introduction to Programming in Go [<a href="#intro-to-prog-go">2</a>] (now available
+as a PDF as it is now longer in print).</p>
+</li>
+</ul>
+</div>
+</div>
+<div class="sect3">
+<h4 id="extra-resources"><a class="anchor" href="#extra-resources"></a><a class="link" href="#extra-resources">Extra Resources</a></h4>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://blog.golang.org/index">The Official Go Blog</a> - This is generally considered
+an authoritative source of information.</p>
+</li>
+<li>
+<p><a href="https://github.com/avelino/awesome-go#e-books">Go E-Books</a></p>
+</li>
+<li>
+<p><a href="https://github.com/avelino/awesome-go#tutorials">Go Tutorials</a></p>
+</li>
+<li>
+<p><a href="http://www.golang-book.com/guides/bootcamp">Go Web Programming Bootcamp</a> may be
+interesting.</p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="make"><a class="anchor" href="#make"></a><a class="link" href="#make"><code>make(1)</code></a></h3>
+<div class="paragraph">
+<p><code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code> comes in many shapes and forms.  <a href="https://www.gnu.org/software/make/">GNU
+<code>make(1)</a></code> is the predominant <code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code> implementation.
+<a href="https://www.gnu.org/software/make/">GNU <code>make(1)</code></a>, however, has its own dialect and its
+dialect is not universally supported.  If you use GNU
+<code>make(1)</code>-specific extensions, you MUST spell the <code>Makefile</code> like
+<code>GNUmakefile</code>.  The same rule applies to <a href="https://www.freebsd.org/doc/en/books/pmake/book.html">BSD
+<code>make(1)</code></a> and <code>BSDmakefile</code>.  It is unfortunate that there is poor
+interopoerability between the various <code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code> implementations and it&#8217;s
+equally unfortunate that the prevailing attitudes is to be conformist (versus
+taking a zero-cost principled stand for correctness).</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="pygments highlight"><code data-lang="shell"><span></span>$ cat GNUmakefile
+test:
+    echo $(shell echo bar)
+$ bsdmake -f GNUmakefile
+echo
+
+$ gnumake -f GNUmakefile
+echo bar
+bar</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>In the end, this fragmentation has led many to adopt <code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code> as the universal
+human UX and system interoperability layer to front tools like <code><a href="https://bazel.build/">bezel(1)</a></code> or
+<code><a href="https://github.com/goreleaser/goreleaser">goreleaser(1)</a></code>.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p><code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code> is like <a href="https://en.wikipedia.org/wiki/Latin">Latin</a>.  Many western
+languages decend from <code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code>, however no one speaks Latin anymore.  Instead
+people speak Spanish, Italian, French, English, etc.  If you don&#8217;t speak French
+and call it Latin, I won&#8217;t speak Spanish and call it Latin.  Incorrectness has
+consequences.  In software it most oftens in deferred cost.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="glossary"><a class="anchor" href="#glossary"></a><a class="link" href="#glossary">Glossary</a></h2>
 <div class="sectionbody">
-<div class="dlist glossary">
+<div class="dlist">
 <dl>
-<dt>CI</dt>
+<dt class="hdlist1">CI</dt>
 <dd>
 <p>Continuous Integration</p>
 </dd>
 </dl>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="bibliography"><a class="anchor" href="#bibliography"></a><a class="link" href="#bibliography">Bibliography</a></h2>
+<div class="sectionbody">
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p><a id="go-lang"></a>A. A. A. Donovan and B. W. Kernighan, <em>The Go Programming Language (Addison-Wesley Professional Computing Series)</em>. Addison-Wesley Professional, 2015 [Online]. Available: <a href="https://smile.amazon.com/Programming-Language-Addison-Wesley-Professional-Computing-ebook/dp/B0184N7WWS" class="bare">smile.amazon.com/Programming-Language-Addison-Wesley-Professional-Computing-ebook/dp/B0184N7WWS</a></p>
+</li>
+<li>
+<p><a id="intro-to-prog-go"></a>C. Doxsey, <em>An Introduction to Programming in Go</em>. CreateSpace Independent Publishing Platform, 2012 [Online]. Available: <a href="http://www.golang-book.com/public/pdf/gobook.0.pdf" class="bare">www.golang-book.com/public/pdf/gobook.0.pdf</a></p>
+</li>
+<li>
+<p><a id="prog-in-go"></a>M. Summerfield, <em>Programming in Go: Creating Applications for the 21st Century (Developer’s Library)</em>. Addison-Wesley Professional, 2012 [Online]. Available: <a href="https://smile.amazon.com/Programming-Go-Creating-Applications-Developers-ebook/dp/B007Y6KDTG" class="bare">smile.amazon.com/Programming-Go-Creating-Applications-Developers-ebook/dp/B007Y6KDTG</a></p>
+</li>
+</ol>
 </div>
 </div>
 </div>
@@ -2768,7 +3615,7 @@ post.</p>
 <div id="footer">
 <div id="footer-text">
 Version 0.1.0<br>
-Last updated 2017-07-31 21:06:22 PDT
+Last updated 2017-08-04 10:47:57 PDT
 </div>
 </div>
 </body>
