@@ -445,14 +445,9 @@ lookup as fast as possible, the process uses its namespace's `mntns_mounts`
 AVL tree to determine the mounted vfs. We use the vnode to determine what is
 mounted on this mountpoint within the namespace. We either get a `vfs_t`,
 which we then traverse into, or we have no entry in `mntns_mounts`, which
-means we stay on the vnode and never traverse.
+means we stay on the vnode, never traverse, and stay on the underlying vfs.
 
 We must take a read lock on the `mntns_lock` while accessing `mntns_mounts`.
-
-Note that within `vn_mountedvfs` we do not have to check the `mnse_flags` to
-determine how to traverse a mount. If the mount is in our AVL tree, we follow
-it. Otherwise it will not be in our AVL tree and we stay on the underlying vfs.
-The `mnse_flags` are only used to control behavior for mount/umount operations.
 
 #### vn_ismntpt
 
@@ -527,13 +522,6 @@ The `mnse_flags` member tracks if a mountpoint is `MS_SHARED`, `MS_SLAVE`
 or `MS_PRIVATE` within the namespace. When this is the controlling
 mount, it impacts propagation for future mount operations within, and across,
 namespaces.
-
-To reiterate some earlier points, if a mounpoint has been locally unmounted,
-then it will no longer be in the process's namespace AVL tree at all. In
-addition, during lookup, within `vn_mountedvfs` we do not have to check the
-`mnse_flags` to determine how to traverse a mount. If the mount is visible in
-our namespace, we follow it. Otherwise it will not be visible and we stay on
-the underlying vnode.
 
 ### Syscall interface
 
