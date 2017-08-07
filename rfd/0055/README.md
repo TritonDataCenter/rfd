@@ -241,16 +241,18 @@ vfs list structure which would point to a single vfs entry. This structure
 will also contain flags for how the vfs is managed by this specific namespace.
 Instead of an actual list, we use an AVL tree indexed by the `vnode_t` on which
 the vfs is mounted. This allows for fast traverse during lookup and is
-described in detail in section *Handling mountpoints during lookup*.
+described in detail in *Handling Mountpoints During Lookup*.
 
     typedef structure mntns_ent {
         vnode_t       *mnse_vnodep; /* mountpoint vnode */
-        uint_t        mnse_flags;   /* mointpoint flags - described below */
+        uint_t        mnse_flags;   /* mointpoint flags */
         vfs_t         *mnse_vfsp;   /* pointer to the vfs visible to the NS */
+	struct mntns_ent *mnse_underlayp; /* underlay mount */
         avl_node_t    mnse_avl;
     } mntns_ent_t;
 
-The `mnse_flags` member is described in section *Mount Propagation*.
+The `mnse_flags` member is described in *Mount Propagation*. The
+`mnse_underlayp` member is described in *Overlay Mounts*.
 
 The namespace structure referenced by the `proc_t` will look like this:
 
@@ -278,7 +280,7 @@ off of the first `vfs_t`.
 
 Within `vfs_t`:
 
-    list_t       *vfs_nslist;     /* list of namespaces seeing this mount */
+    list_t       *vfs_nslist;     /* list of vfsns_ent_t seeing this mount */
     struct vfs   *vfs_mnt_next;   /* next VFS on the same mntpnt */
     struct vfs   *vfs_mnt_prev;   /* prev VFS on the same mntpnt */
     
@@ -290,7 +292,9 @@ syscall.
 It is helpful to reiterate the following points:
  1. A true local filesystem can only be mounted once. We must use `lofs`,
 or something like it, if we want a filesystem to appear in more than one place.
-That will appear in the mount list just as any other `lofs` mount.
+That will appear in the mount list just as any other `lofs` mount. A pseudo
+filesystem, such as `tmpfs`, can have different `vfs_t`'s mounted at the same
+time.
  2. Setting up a new namespace doesn't change where/how the original
 filesystems are mounted. We can only change visibility of future mount activity
 for our namespace.
@@ -304,40 +308,28 @@ on to extend the behavior for full `mount` namespace usage as needed by lx.
 #### Removing zone.zone_vfslist
 
 Given the new process-oriented namespace, the existing zone-oriented mount
-list in `zone_vfslist` could be removed. When `zoneadmd` readies a zone, the
-zone's namespace can be maintained on the `zsched` process. That
-namespace would be inherited by all child processes within the zone.
-
-As a performance optimization, when this namespace is created, there is no
-need to duplicate any of the global zone mounts since the zone mounts, as
-expressed in the `zsched` namespace, are completely built up for the new
-zone. In terms of namespaces, the zone ready process creates an entirely
-new mount tree that behaves approximately like `MS_SHARED`, but because
-the zone is in a chroot-ed environment, all in-zone mount operations are always
-relative to the zone's root. The global zone can see any mounts the non-global
-zone has made. Any mounts made by the global zone under the zone's
-hierarchy would take effect for the zone, although they are not in the zone's
-mount list. Note that this type of mount action would not be considered normal
-for zone operations.
-
-XXX Add details for when we lofs mount something in the GZ that is visible
-under a mount in the NGZ, e.g. mount foo on /usr/bin/xxx, in zone have
-/native/usr/bin/xxx
+list in `zone_vfslist` should be removed. When `zoneadmd` readies a zone, the
+zone's namespace can be maintained on the `zsched` process. That namespace
+would be inherited by all child processes within the zone. See
+*Using a Mount Namespace Per Zone* for a detailed breakdown of how the
+mount namespace design willl interact with zones.
 
 #### The Controlling Mount
 
 A key idea within the Linux mount namespace design is that a mount operation's
 visibility across namespaces is controlled by the `mnse_flags` flags on the
 mountpoint under which the new mount is occurring. This is discussed in more
-detail under section
-*Tracking MS\_SHARE, MS\_SLAVE and MS\_PRIVATE per namespace and mount*.
+detail under
+*Tracking MS\_SHARE, MS\_SLAVE and MS\_PRIVATE Per Namespace and Mount*.
 To keep things simple for now, we simply call this the "controlling mount"
 and assume that a new mount should be visible in all of the same namespaces
 that the controlling mount is visible in. We'll relax that assumption later
 in this design.
 
-Determining the controlling mount is simple. Once we do the lookup on the
-mountpoint, we have a `vnode_t`, so we know the `vfs_t` from the `v_vfsp`.
+Determining the controlling mount is simple. Once we do the lookup for a new
+mountpoint, we have a `vnode_t`, so we know its `vfs_t` from the `v_vfsp`.
+That `vfs_t` is the controlling mount and we can determine our
+namespace-specific mount flags from a match in the `mntns_mounts` AVL tree.
 
 #### Mounting
 
@@ -349,7 +341,7 @@ When a filesystem is first mounted, it continues to be added to the single
 mount list off of `rootvfs` during `vfs_list_add`. The `vfs.vfs_next` and
 `vfs.vfs_next` pointers continue to be used to maintain this list.
 
-As discussed above in section *Removing zone.zone_vfslist*, the vfs is no
+As discussed above in *Removing zone.zone_vfslist*, the vfs is no
 longer added to the per-zone list `zone_vfslist`, but is instead added to the
 process's namespace.
 
@@ -360,7 +352,7 @@ list.
 During the mount, we determine the `vfs_t` of the controlling mount. All of
 the namespaces on the controlling mount are copied into the namespace
 list (`vfs_nslist`) on the new mount. We take a `vfs_hold` for each namespace.
-We also update each of those namespaces to add a new mount entry into the
+We also update each of those namespaces to add the new mount entry into the
 namespace's `mntns_mounts` AVL tree, using the mountpoint vnode as the key.
 
 A special consideration is that different namespaces can have different vfs's
@@ -393,11 +385,11 @@ count on the vfs drops to 0.
 
 Unmounting is made more complex due to the vfs chain on a mountpoint. When
 the final unmount of a vfs occurs, it is possible that the vfs is the first
-element in the chain (`v_vfsmountedhere`) on the mountpoint, or it might be
-someplace else in the chain. The chain must be managed properly so that the
+element in the list (`v_vfsmountedhere`) on the mountpoint, or it might be
+someplace else in the list. The list must be managed properly so that the
 vnode continues to be a mountpoint for any remaining filesystems mounted there.
 
-### Handling mountpoints during lookup
+### Handling Mountpoints During Lookup
 
 The lookup code path is the central point where paths resolve into vnodes.
 Everything funnels through `lookuppnvp()`. This function handles traversing
@@ -408,6 +400,34 @@ example, with a local mount under a `MS_SLAVE` mountpoint, a process within the
 namespace must traverse that mount, but a process outside the namespace must
 not.
 
+For background, the following counts were collected on `traverse` and
+`lookuppnvp` calls for 60 seconds on the compute nodes in `east-3b`.
+```
+traverse   64292
+lookuppnvp 70406
+
+traverse   60917
+lookuppnvp 72152
+
+traverse   79490
+lookuppnvp 60526
+
+traverse   18211
+lookuppnvp 21363
+
+traverse   38085
+lookuppnvp 53405
+
+traverse   7002
+lookuppnvp 9226
+
+traverse   62691
+lookuppnvp 56240
+
+traverse    57357
+lookuppnvp 127795
+```
+
 This section describes the updated lookup handling for the new
 process-oriented namespace mount list.
 
@@ -416,12 +436,12 @@ The following functions are involved in mountpoint traversal.
 #### vn_mountedvfs
 
 This function returns the `vfs` mounted on a vnode (if any). The function
-currently uses `vp->v_vfsmountedhere` to get the `vfs` of the filesystem
+currently uses `vp->v_vfsmountedhere` to get the `vfs_t` of the filesystem
 mounted on the vnode. It returns NULL if the vnode is not a mountpoint.
 
 Under the new design, there can be one or more filesystems mounted on the same
 vnode. The namespace's view will control which vfs to use. In order to keep
-lookup as fast as possible, the process uses it's namespace's `mntns_mounts`
+lookup as fast as possible, the process uses its namespace's `mntns_mounts`
 AVL tree to determine the mounted vfs. We use the vnode to determine what is
 mounted on this mountpoint within the namespace. We either get a `vfs_t`,
 which we then traverse into, or we have no entry in `mntns_mounts`, which
@@ -432,8 +452,7 @@ We must take a read lock on the `mntns_lock` while accessing `mntns_mounts`.
 Note that within `vn_mountedvfs` we do not have to check the `mnse_flags` to
 determine how to traverse a mount. If the mount is in our AVL tree, we follow
 it. Otherwise it will not be in our AVL tree and we stay on the underlying vfs.
-
-XXX TBD overlay mounts
+The `mnse_flags` are only used to control behavior for mount/umount operations.
 
 #### vn_ismntpt
 
@@ -453,6 +472,22 @@ work as-is under the new design.
 There are various other functions, such as `localpath` or `zone_set_root`,
 which use `vn_ismntpt` and `traverse`, so these should work as-is.
 
+### Overlay Mounts
+
+There are some special considerations needed for overlay mounts under this
+design.
+
+Because we want lookup traversal to be fast by using the mountpoint vnode as
+the key on the namespace's `mntns_mounts` AVL tree, we can only have a single
+entry in the tree for that mountpoint. If an overlay mount is done, then
+we remove the original `mntns_ent_t` entry from the AVL tree, add the new
+entry, and store the old entry pointer in the `mnse_underlayp` element of the
+new entry. During unmount, we reverse this operation.
+
+From the `vfs_t` side, we no longer stack overlay mounts on a mountpoint, but
+instead can use the chain of mounts (`vfs_mnt_next` and `vfs_mnt_prev`). There
+is some overlay code cleanup we can perform once this project is complete.
+
 ### Creating a New Namespace
 
 When a new namespace is created, we must duplicate the original namespace's
@@ -470,7 +505,7 @@ namespace.
 
 ### Deleting a Namespace
 
-When a process exits, it decrements the reference count (`mntns_cnt`) on it's
+When a process exits, it decrements the reference count (`mntns_cnt`) on its
 associated namespace. When the reference count on a namespace drops to 0,
 the namespace is deleted. This involves removing the namespace reference from
 each vfs `vfsns_mntnsp` list. We use the `mntns_mounts` AVL tree to find each
@@ -479,7 +514,7 @@ This may result in filesystems being unmounted.
 
 We also cleanup the namespace itself, since nothing can access it any further.
 
-### Tracking MS\_SHARED, MS\_SLAVE and MS\_PRIVATE per namespace and mount
+### Tracking MS\_SHARED, MS\_SLAVE and MS\_PRIVATE Per Namespace and Mount
 
 Up to this point in the design, we have made a simplifying assumption that all
 new mounts will show up in all of the namespaces on the controlling mount.
@@ -500,12 +535,12 @@ addition, during lookup, within `vn_mountedvfs` we do not have to check the
 our namespace, we follow it. Otherwise it will not be visible and we stay on
 the underlying vnode.
 
-#### Syscall interface
+### Syscall interface
 
-The `mount` syscall must be updated to handle `MS_SHARE`, `MS_SLAVE` and
-`MS_PRIVATE` changes to existing mountpoints. This mount operation only
-effects the calling process's namespace, and will change the `mnse_flags`
-value in the namespace's mountpoint entry.
+The `mount` syscall must be updated to handle setting the `MS_SHARE`,
+`MS_SLAVE` and `MS_PRIVATE` flags on existing mountpoints. This mount
+operation only effects the calling process's namespace, and will change
+the `mnse_flags` value in the namespace's mountpoint entry.
 
 #### Mount Propagation
 
@@ -515,21 +550,22 @@ Any mount operation that takes place under a controlling mount which is
 This is best described with some examples.
 
 For the first example, assume namespace `A` has a shared mount on `/tmp`.
-Namespace `B` also has the same shared mount. Namespace `C` has changed it's
+Namespace `B` also has the same shared mount. Namespace `C` has changed its
 `/tmp` mount to be a slave. The table shows the resulting `mnse_flags`
 value for the vfs on the `/tmp` mountpoint on each namespace.
 ```
-    A:tmp0 vfs:shared
-    B:tmp0 vfs:shared
-    C:tmp0 vfs:slave
+   NS | controlling mount | flags
+    A | tmp0 vfs          | shared
+    B | tmp0 vfs          | shared
+    C | tmp0 vfs          | slave
 ```
 This configuration means that anything mounted under `/tmp` by `A`
-must be visible in `B` and `C`, but anything mounted under `/tmp` by `C`
+must also be visible in `B` and `C`, but anything mounted under `/tmp` by `C`
 must only be visible in `C`.
 
 When a mount operation is initiated in `A`, we do the following sequence of
 steps (e.g. `A` is mounting `/tmp/foo`):
- 1. `A` finds the controlling mount vfs (i.e. `tmp0`, the vfs visible on `/tmp`)
+ 1. `A` finds the controlling mount vfs (i.e. `tmp0`; the vfs visible on `/tmp`)
 and checks `mnse_flags` in its namespace to determine if that mountpoint
 is `shared`. It is.
  2. We mount `/tmp/foo`.
@@ -542,7 +578,7 @@ This behavior is what has been described previously in the design.
 
 When a mount operation is initiated in `C`, we do the following sequence of
 steps (e.g. `C` is mounting `/tmp/bar`):
- 1. `C` finds the controlling mount vfs (i.e. `tmp0`, the vfs visible on `/tmp`)
+ 1. `C` finds the controlling mount vfs (i.e. `tmp0`; the vfs visible on `/tmp`)
 and checks `mnse_flags` in its namespace to determine if that mountpoint
 is shared. It is a `slave` within this namespace.
  2. We mount `/tmp/bar`.
@@ -550,16 +586,17 @@ is shared. It is a `slave` within this namespace.
 into `C`'s namespace mount AVL tree, and add `C` to the list of namespaces
 visible on the vfs mounted on `/tmp/bar`.
 
-For the second example, assume a configuration such as setup by `PrivateTmp`,
+For our second example, assume a configuration such as setup by `PrivateTmp`,
 where namespace `C` recursively updates all of its mounts to `MS_SLAVE`, then
 mounts a new vfs on `/tmp`, then recursively updates all of its mounts
 to `MS_SHARED`. This means that we have a chain of vfs's at the `/tmp`
 mountpoint. We have removed `C` from the `tmp0` vfs and added it to the
 `tmp1` vfs.
 ```
-    A:tmp0 vfs:shared
-    B:tmp0 vfs:shared
-    C:tmp1 vfs:shared
+   NS | controlling mount | flags
+    A | tmp0 vfs          | shared
+    B | tmp0 vfs          | shared
+    C | tmp1 vfs          | shared
 ```
 This configuration means that anything mounted under `/tmp` by `A` or `B` 
 must only be visible in `A` or `B`. Anything mounted under `/tmp` by `C` 
@@ -567,7 +604,7 @@ must only be visible in `C`.
 
 When a mount operation is initiated in `B`, we do the following sequence of
 steps (e.g. `B` is mounting `/tmp/foo`):
- 1. `B` finds the controlling mount vfs (i.e. `tmp0`, the vfs visible on `/tmp`)
+ 1. `B` finds the controlling mount vfs (i.e. `tmp0`; the vfs visible on `/tmp`)
 and checks `mnse_flags` in its namespace to determine if that mountpoint
 is `shared`. It is.
  2. We mount `/tmp/foo`.
@@ -578,7 +615,7 @@ namespaces visible on the vfs mounted on `/tmp/foo`.
 
 When a mount operation is initiated in `C`, we do the following sequence of
 steps (e.g. `C` is mounting `/tmp/bar`):
- 1. `C` finds the controlling mount vfs (i.e. `tmp1`, the vfs visible on `/tmp`)
+ 1. `C` finds the controlling mount vfs (i.e. `tmp1`; the vfs visible on `/tmp`)
 and checks `mnse_flags` in its namespace to determine if that mountpoint
 is `shared`. It is.
  2. We mount `/tmp/bar`.
@@ -608,37 +645,9 @@ can be dropped on all of the namespaces. A mount operation which is only
 changing the `mnse_flags` on a mount entry must also take the write lock, in
 case a separate mount operation, which needs the controlling mount, is underway.
 
-A write lock must also be take when a child namespace is being created or
-destroyed, since the `mntns_mounts` AVL list is being updated.
-
-For locking related background, the following counts were collected
-on `traverse` and `lookuppnvp` calls for 60 seconds on the compute nodes
-in `east-3b`.
-```
-traverse   64292
-lookuppnvp 70406
-
-traverse   60917
-lookuppnvp 72152
-
-traverse   79490
-lookuppnvp 60526
-
-traverse   18211
-lookuppnvp 21363
-
-traverse   38085
-lookuppnvp 53405
-
-traverse   7002
-lookuppnvp 9226
-
-traverse   62691
-lookuppnvp 56240
-
-traverse    57357
-lookuppnvp 127795
-```
+A write lock must also be taken when a new namespace is being created or
+destroyed, since the `mntns_mounts` AVL list of the previous namespace is
+being updated.
 
 ### Debugging support
 
@@ -661,3 +670,27 @@ The work to extend LX `/proc` will need to be done. The `/proc/self/mountinfo`
 file will need to be enhanced to report the correct information about the
 mounts within the namespace. This should follow the description in the
 Linux `proc(5)` manpage.
+
+## Using a Mount Namespace Per Zone 
+
+The existing zone-oriented mount list in `zone_vfslist` will be removed.
+When `zoneadmd` readies a zone, the zone's new namespace will setup on
+the `zsched` process. That namespace will be inherited by all child processes
+within the zone. A zone's usage of a mount namespace will be somewhat different
+from the typical Linux usage. Except for lx instances which actually use
+multiple mount namespaces within the zone, each zone will only have a single
+namespace shared by all processes within the zone.
+
+The act of creating the first namespace for a zone can be somewhat different
+from the behavior described earlier in the design. We can provide an
+alternate function for zone mount namespace creation.
+
+When the namespace is created, we do not need to duplicate any of the global
+zone mounts, since the zone mounts are completely built up for the new zone. In
+terms of the namespace, the zone `ready` transition will create an entirely
+new mount tree that behaves like `MS_SHARED`, but because the zone is in a
+chroot-ed environment, all subsequent in-zone mount operations are always
+relative to the zone's root. The global zone can see any mounts the non-global
+zone has made. Any mounts made by the global zone under the zone's
+hierarchy also take effect for the zone, as usual when under a `MS_SHARED`
+controlling mount.
