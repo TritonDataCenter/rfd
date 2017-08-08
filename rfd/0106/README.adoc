@@ -1,4 +1,3 @@
-
 ---
 authors: Sean Chittenden <seanc@joyent.com>
 state: predraft
