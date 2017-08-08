@@ -120,30 +120,13 @@ END: reused attributes
 
 :sectnums!:
 
-________________________________________________________________________________
-"Go is efficient, scalable, and productive. Some programmers find it fun to work
-in; others find it unimaginative, even boring. In this article we will explain
-why those are not contradictory positions. Go was designed to address the
-problems faced in software development at Google, which led to a language that
-is not a breakthrough research language but is nonetheless an excellent tool for
-engineering large software projects."
-
-— https://talks.golang.org/2012/splash.article[Rob Pike, 2012]
-________________________________________________________________________________
-
 [[introduction]]
 == Introduction
 
-Joyent has http://dtrace.org/blogs/wesolows/2014/12/29/fin/[a]
-http://dtrace.org/blogs/wesolows/2014/12/29/golang-is-trash/[storied]
-https://golang.org/pkg/net/#hdr-Name_Resolution[history] with regards to
-https://github.com/golang/go/issues/20603[Go]. Without providing modern
-treatment to past issues, it is undeniable that many, if not most (as of
-2017) distributed systems are being written in Go. To that extent,
 Joyent is embracing of Go's contribution to distributed, enterprise,
 production-grade computing and celebrates the software engineering ethos held by
 many in the Go community because their beliefs are aligned with our
-https://gist.github.com/davepacheco/1878bad488053093348d9ec9967f5b06[principles].
+https://github.com/joyent/rfd/tree/master/rfd/0104[General Principles].
 
 In this document we will define and articulate Joyent's evolving set of
 best-practices with regards to how to Go.
