@@ -55,6 +55,9 @@ and the caller, {gofmt-1}, wouldn't need to be wrapped in backticks.
 :go-torch-1-name: go-torch(1)
 :go-torch-1-url: https://github.com/uber/go-torch
 :go-torch-1: {go-torch-1-url}[{go-torch-1-name}]
+:gobin-1-name: gobin(1)
+:gobin-1-url: https://godoc.org/github.com/rjeczalik/bin/cmd/gobin
+:gobin-1: {gobin-1-url}[{gobin-1-name}]
 :godoc-1-name: godoc(1)
 :godoc-1-url: https://golang.org/cmd/godoc/
 :godoc-1: {godoc-1-url}[{godoc-1-name}]
@@ -101,6 +104,12 @@ and the caller, {gofmt-1}, wouldn't need to be wrapped in backticks.
 :pprof-name: pprof
 :pprof-url: https://golang.org/pkg/runtime/pprof
 :pprof: {pprof-url}[{pprof-name}]
+:stdlib-context-pkg-name: context
+:stdlib-context-pkg-url: https://golang.org/pkg/context/
+:stdlib-context-pkg: {stdlib-context-pkg-url}[{stdlib-context-pkg-name}]
+:stdlib-context-type-name: context.Context
+:stdlib-context-type-url: {stdlib-context-pkg-url}#Context
+:stdlib-context-type: {stdlib-context-type-url}[{stdlib-context-type-name}]
 :vg-1-name: vg(1)
 :vg-1-url: https://github.com/GetStream/vg
 :vg-1: {vg-1-url}[{vg-1-name}]
@@ -189,6 +198,7 @@ Add a blurb on Go's (alpha-sorted list):
 * Operability
 * Maintainability
 * Performance
+** https://benchmarksgame.alioth.debian.org/u64q/compare.php?lang=go&lang2=node
 * Portability
 * Robustness
 * Security
@@ -228,11 +238,18 @@ write. Feel free to request more.
  * Logging
  * Testing
  ** https://rakyll.org/parallelize-test-tables/
+ ** https://godoc.org/github.com/kylelemons/godebug/pretty#Compare
  ** https://github.com/google/go-cmp/
  ** https://mijailovic.net/2017/07/29/go-fuzz/
+ ** https://www.youtube.com/watch?v=8hQG7QlcLBk
+ * Benchmarking
+ ** https://medium.com/@hackintoshrao/daily-code-optimization-using-benchmarks-and-profiling-in-golang-gophercon-india-2016-talk-874c8b4dc3c5
+ ** https://dave.cheney.net/2013/06/30/how-to-write-benchmarks-in-go
+ ** https://docs.google.com/presentation/d/1Wcblp3jpfeKwA0Y4FOmj63PW52M_qmNqlQkNaLj0P5o/edit#slide=id.p << Things just get faster from release to release.
  * ``defer``
  * Transactions
  * CLI flags and arg parsing
+ ** spf13/cobra
  * Environment variables
  * Tracing
  * Metrics
@@ -241,9 +258,10 @@ write. Feel free to request more.
  * Secrets and Secrets Management
  * ``map`` and ``array`` Initialization
  * Immutable Applications
- * Mutexes
+ * Locking and Mutexes
  * ``sync.Atomic``
  * Use of ``interface{}``
+ * When to use `go generate`
  * Type Assertions
  * Behavior vs Data (``interface`` vs ``interface{}``)
  * Build Tags
@@ -261,11 +279,14 @@ write. Feel free to request more.
  * Agent
  * Use of verbs when calling Formatters
  * Object Composition
+ * Appropriate use of goroutines
  * Thread Worker Pools
+ ** https://geeks.uniplaces.com/building-a-worker-pool-in-golang-1e6c0fdfd78c
  * Appropriate use of ``chan``
  ** https://medium.com/@matryer/golang-advent-calendar-day-two-starting-and-stopping-things-with-a-signal-channel-f5048161018
  ** https://geeks.uniplaces.com/building-a-worker-pool-in-golang-1e6c0fdfd78c
  * Use of `cgo`
+ ** Linking to cgo: https://open.dgraph.io/post/badger/ (see cgo section)
  * Use of Go tooling
  * Productivity
  * Recommended Reading and References
@@ -313,7 +334,9 @@ write. Feel free to request more.
 3. The latest version of Go SHOULD be used for release engineering.
 4. https://github.com/golang/go/tree/master[`master`] MAY be used for
    development and is RECOMMENDED for ((Continuous Integration)) (CI) testing.
-5. Every time the version of `{go-1}` changes the contents of `$GOPATH/pkg` MUST
+5. Use of `{gobin-1}` is RECOMMENDED in order to keep ``$GOPATH/bin``'s binaries
+   in sync with that of the Go compiler.
+6. Every time the version of `{go-1}` changes the contents of `$GOPATH/pkg` MAY
    be cleaned out:
 +
 [source,shell]
@@ -338,17 +361,29 @@ aversion frequently have a higher cost (e.g. security, correctness, performance,
 or stability) than absorbing the cost of any incremental upgrade.
 
 Use of https://github.com/golang/go/tree/master[`master`] is not peril free,
-however it is good way of staying current and doesn't cause much grief during
-development, but frequently does improve both correctness and quality.
+however it does provide a good way of staying current and doesn't typically
+cause much grief during development.  Use of
+https://github.com/golang/go/tree/master[`master`] MAY improve correctness and
+quality.
 
-The version of `{go-1}` is tightly coupled to the cached object files in
-`$GOPATH/pkg` and there is no stability contract.  Cleaning out `$GOPATH/pkg`
-periodically is an ounce of prevention whose tiny cost is worth more than the
-pound of debugging.footnoteref:[gopath-tmp,While not an official recommendation,
-one could easily be forgiven for symlinking `$GOPATH/pkg` to someplace in `/tmp/`
-in order to take advantage of the automatic pruning of old `.a` files that
-happens periodically and after every reboot on many *NIX platforms (including
-macOS).]
+The version of `{go-1}` may be tightly coupled with binaries located in
+`$GOPATH/bin` (especially those binaries who either walk the Go AST or interact
+with other `{go-1}` tooling).  `{gobin-1}` automatically rebuilds `$GOPATH/bin`
+binaries who are out of date with respect to the version of the `{go-1}`
+compiler used.  Because Go developer tools tend to be written in Go and
+necessarily coupled to the version of `{go-1}`, rebuilding `$GOPATH/bin`
+binaries every time `{go-1}` is updated is RECOMMENDED.
+
+The cached archive files in `$GOPATH/pkg` are explicitly tightly coupled with
+`{go-1}` but starting in Go 1.5, `{go-1}` now maintains a
+https://github.com/golang/go/commit/7b87631e8c41b7919a3a3a845b61cb7c240efff9[package
+version] in order to automatically detect and trigger the rebuild
+packages.footnoteref:[gopath-tmp,Cleaning out `$GOPATH/pkg` is an ounce of
+prevention whose tiny cost is worth more than the pound of debugging.  Post Go
+1.5 I've heard a handful of anecdotal reports of this fixing some extremely
+unlikely and inexplicable panics that gets cleared up after `$GOPATH/pkg` has
+been preened.  It's unclear if this is true, rare, a myth, or a scapegopher for
+something else.]
 
 Use of tools like `{vg-1}` MAY be useful or considered in the future but are NOT
 REQUIRED: most of these recommendations are intended to aid productivity and
@@ -361,6 +396,9 @@ Project Structure
 [discrete]
 === Recommendation
 
+////
+Add repository naming convention: go- for libraries, cmd/cmdname for sub-commands
+////
 1. `$GOPATH` SHOULD be set to `$HOME/go` and SHOULD be incorporated into your
    shell's environment.
 2. All development SHOULD be done within `$GOPATH/src`.
@@ -379,6 +417,10 @@ $ export PATH=$GOPATH/bin:$PATH
 
 [discrete]
 === Rationale
+
+////
+wtf is vendoring/.  Define that files are being vendor/'ed.
+////
 
 Starting in Go 1.8, `{go-1}` defaulted to `$HOME/go` as its default `GOPATH`.  It
 is not strictly necessary to set `GOPATH`, however it is still advised to make
@@ -435,6 +477,11 @@ Workflow
 
 [discrete]
 === Recommendation
+
+////
+Explain explicitly why the Gerrit workflow is there and what's internal vs
+external.
+////
 
 Engineer workflow changes based on whether or not you have write-privileges to
 the target repository.
@@ -726,6 +773,12 @@ $ go get -u golang.org/x/tools/cmd/gorename
 ----
 $ go get -u golang.org/x/tools/cmd/gomvpkg
 ----
+6. `{gobin-1}`:
++
+[source,shell]
+----
+$ go get -u github.com/rjeczalik/bin/cmd/gobin
+----
 
 [discrete]
 === Rationale
@@ -881,6 +934,68 @@ https://en.wikipedia.org/wiki/Network_effect[network effect]).
 
 While less commonly needed, `{gomvpkg-1}` SHOULD be used when moving packages
 around because it updates the necessary `import` declarations in a given scope.
+
+
+[discrete]
+==== `{gobin-1-name}`
+
+Use `{gobin-1}` to rebuild ``$GOPATH/bin`` is RECOMMENDED after every upgrade of
+`{go-1}`.  Rebuilding `$GOPATH/bin` by hand is equally acceptable but tedius and
+error prone.
+
+[source]
+----
+$ gobin -u
+ok	/Users/seanc/go/bin/goflymake	(github.com/dougm/goflymake)	2.674s
+ok	/Users/seanc/go/bin/http-echo	(github.com/hashicorp/http-echo)	3.133s
+ok	/Users/seanc/go/bin/codecgen	(github.com/ugorji/go/codec/codecgen)	3.827s
+ok	/Users/seanc/go/bin/misspell	(github.com/client9/misspell/cmd/misspell)	4.531s
+ok	/Users/seanc/go/bin/licenseok	(github.com/golang/dep/hack/licenseok)	5.001s
+ok	/Users/seanc/go/bin/go-erd	(github.com/gmarik/go-erd)	1.871s
+ok	/Users/seanc/go/bin/humanlog	(github.com/aybabtme/humanlog/cmd/humanlog)	5.879s
+ok	/Users/seanc/go/bin/goconst	(github.com/jgautheron/goconst/cmd/goconst)	1.804s
+ok	/Users/seanc/go/bin/git-codereview	(golang.org/x/review/git-codereview)	3.299s
+ok	/Users/seanc/go/bin/stringer	(golang.org/x/tools/cmd/stringer)	6.001s
+ok	/Users/seanc/go/bin/tomll	(github.com/golang/dep/vendor/github.com/pelletier/go-toml/cmd/tomll)	3.838s
+ok	/Users/seanc/go/bin/smoke	(github.com/MediaMath/keryxlib/smoke)	9.568s
+ok	/Users/seanc/go/bin/gocyclo	(github.com/fzipp/gocyclo)	1.493s
+ok	/Users/seanc/go/bin/cmd	(github.com/golang/dep/vendor/github.com/pelletier/go-toml/cmd)	4.757s
+ok	/Users/seanc/go/bin/unused	(honnef.co/go/tools/cmd/unused)	12.658s
+ok	/Users/seanc/go/bin/keyify	(honnef.co/go/tools/cmd/keyify)	9.188s
+ok	/Users/seanc/go/bin/structcheck	(github.com/opennota/check/cmd/structcheck)	9.794s
+ok	/Users/seanc/go/bin/varcheck	(github.com/opennota/check/cmd/varcheck)	13.938s
+ok	/Users/seanc/go/bin/gotype	(golang.org/x/tools/cmd/gotype)	8.968s
+ok	/Users/seanc/go/bin/gorename	(golang.org/x/tools/cmd/gorename)	10.470s
+ok	/Users/seanc/go/bin/set	(github.com/ncw/gotemplate/examples/set)	2.191s
+ok	/Users/seanc/go/bin/vendorfmt	(github.com/magiconair/vendorfmt/cmd/vendorfmt)	2.557s
+ok	/Users/seanc/go/bin/ineffassign	(github.com/gordonklaus/ineffassign)	2.097s
+ok	/Users/seanc/go/bin/unparam	(github.com/mvdan/unparam)	15.957s
+ok	/Users/seanc/go/bin/aligncheck	(github.com/opennota/check/cmd/aligncheck)	11.086s
+ok	/Users/seanc/go/bin/gox	(github.com/mitchellh/gox)	3.246s
+ok	/Users/seanc/go/bin/deadcode	(github.com/remyoudompheng/go-misc/deadcode)	10.044s
+ok	/Users/seanc/go/bin/gotemplate	(github.com/ncw/gotemplate)	1.678s
+ok	/Users/seanc/go/bin/tomljson	(github.com/golang/dep/vendor/github.com/pelletier/go-toml/cmd/tomljson)	3.557s
+ok	/Users/seanc/go/bin/interfacer	(github.com/mvdan/interfacer/cmd/interfacer)	17.489s
+ok	/Users/seanc/go/bin/lll	(github.com/walle/lll/cmd/lll)	2.962s
+ok	/Users/seanc/go/bin/godo	(gopkg.in/godo.v2/cmd/godo)	22.895s
+ok	/Users/seanc/go/bin/dep	(github.com/golang/dep/cmd/dep)	7.762s
+ok	/Users/seanc/go/bin/cover	(golang.org/x/tools/cmd/cover)	8.697s
+ok	/Users/seanc/go/bin/safesql	(github.com/stripe/safesql)	10.935s
+ok	/Users/seanc/go/bin/gocode	(github.com/nsf/gocode)	4.424s
+ok	/Users/seanc/go/bin/staticcheck	(honnef.co/go/tools/cmd/staticcheck)	16.404s
+ok	/Users/seanc/go/bin/goimports	(golang.org/x/tools/cmd/goimports)	5.515s
+ok	/Users/seanc/go/bin/golint	(github.com/golang/lint/golint)	8.446s
+ok	/Users/seanc/go/bin/gosimple	(honnef.co/go/tools/cmd/gosimple)	15.178s
+ok	/Users/seanc/go/bin/unconvert	(github.com/mdempsky/unconvert)	16.471s
+
+Time spent in user mode   (CPU seconds) : 113.222s
+Time spent in kernel mode (CPU seconds) : 52.636s
+Total time                              : 0:49.03s
+CPU utilization (percentage)            : 338.2%
+Times the process was swapped           : 0
+Times of major page faults              : 8981
+Times of minor page faults              : 8560363
+----
 
 
 [[editor-integration]]
@@ -1532,6 +1647,8 @@ richer markup like https://en.wikipedia.org/wiki/AsciiDoc[`asciidoc`].]
 1. Projects MUST the https://golang.org/pkg/context/[context] pattern for
    passing state along request-scoped state information (e.g. `deadlines`,
    `cancelation signals`, or request-specific information).
+2. Instances of `{stdlib-context-type}` SHOULD use the identifier name `ctxt`,
+   however `ctx` MAY be used.
 
 [discrete]
 === Rationale
@@ -1539,9 +1656,67 @@ richer markup like https://en.wikipedia.org/wiki/AsciiDoc[`asciidoc`].]
 Read the https://blog.golang.org/context[Go Concurrency Patterns: Context] blog
 post.
 
+`ctxt` is the most common identifier for `{stdlib-context-type}` in use.  Unless
+there is a good naming conflict, `ctxt` is a good identifier to use that
+unambiguously communicates intent.
+
+[source]
+----
+$ git branch
+* (HEAD detached at go1.9rc2)
+  master
+$ git status -s
+$ git grep ctxt | wc -l
+    5149
+$ git grep ctx | grep -v ctxt | wc -l
+    1360
+----
+
 .Misc Resources
 * https://rakyll.org/leakingctx/
-* https://medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff
+* https://medium.com/@cep21/how-to-correctly-use-context-context-in-go-1-7-8f2c0fafdf39
+
+[[signals-context]]
+== Signal Handling and `{stdlib-context-pkg-name}`
+
+[discrete]
+=== Recommendation
+
+1. Signal handling SHOULD incorporate `{stdlib-context-pkg}` where possible.
+
+[discrete]
+=== Rationale
+
+`{stdlib-context-pkg}` is a good way to handle signals from the OS.  Go handles the
+`sigprocmask(2)` and `sigaction(2)` so that signals are delivered to a single OS
+thread.
+
+[source,go]
+----
+include::examples/main/main.go[]
+----
+<1> Create a https://golang.org/pkg/context/#Background[`Background`]
+    `{stdlib-context-pkg}`.
+<2> Save the newly created `{stdlib-context-type}` and its cancelation function.
+<3> Create a buffered channel in order to prevent the OS thread from blocking.
+<4> Wire up ``SIGINT`` to be delivered to `sigCh`.
+<5> Push a `defer` handler onto the stack to shutdown the signal handler and
+    cancel anything hanging off of the `{stdlib-context-type}`.
+<6> Disable the delivery of new signals to `sigCh`.
+<7> Cancel the `{stdlib-context-type}` instance. Cancelation operations are
+    idempotent (which makes the cancelation at callout #7 safe).
+<8> Spin off a goroutine to catch and handle signals delivered to `sigCh`.
+<9> Drain the signal from `sigCh`.
+<10> Switch on the signal type (not necessary for this simple example, but
+     imagine a single signal hanler that is also capable of responding to
+     `SIGHUP`).
+<11> Handle the `SIGINT`
+<12> Cancellation handler for `powerNap()`
+
+Credit for this idiom and example:
+
+* https://medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff[Make Ctrl+C cancel the context.Context]
+* {stdlib-context-pkg-url}#WithDeadline[`{stdlib-context-pkg-name}.WithDeadline`]
 
 [[deadline-timers-and-timeouts]]
 == Deadline Timers and Timeouts
@@ -1560,6 +1735,12 @@ post.
 [discrete]
 === Rationale
 
+////
+TL;DR: Duration uses the monotonic clock, time.Time is wall-clock time.
+Communicating across processes and over the network is best done using wall
+clock time.  If you don't need to communicate it or don't need precision, use
+time.Duration for timeouts.
+////
 Starting in https://github.com/golang/go/issues/12914[Go]
 https://github.com/golang/go/issues/12914[1.9], Go's
 https://golang.org/pkg/time/#hdr-Monotonic_Clocks[`time.Time` package uses
@@ -2206,7 +2387,9 @@ resources that exist, but they haven't been reviewed (pull requests welcome).
 dialect is not universally supported.  If you use GNU
 ``{make-gnu-1-name}``-specific extensions, you MUST spell the `Makefile` like
 `GNUmakefile`.  The same rule applies to {make-bsd-1-url}[BSD
-`{make-bsd-1-name}`] and `BSDmakefile`.  It is unfortunate that there is poor
+`{make-bsd-1-name}`] and `Makefile`.footnoteref:[bmake-makefile,Irritatingly
+enough, `.MAKE.MAKEFILE_PREFERENCE` does not default to using `BSDmakefile` in
+its preference list by default.] It is unfortunate that there is poor
 interopoerability between the various `{make-1}` implementations and it's
 equally unfortunate that the prevailing attitudes is to be conformist (versus
 taking a zero-cost principled stand for correctness).
