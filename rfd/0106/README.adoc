@@ -1,3 +1,4 @@
+
 ---
 authors: Sean Chittenden <seanc@joyent.com>
 state: predraft
@@ -978,6 +979,24 @@ CPU utilization (percentage)            : 338.2%
 Times the process was swapped           : 0
 Times of major page faults              : 8981
 Times of minor page faults              : 8560363
+# Update go1.9rc1 to go1.9rc2 but *forgot* to copy bin/go{,fmt} to ~/go/bin/
+$ gobin -u
+fail	/Users/seanc/go/bin/goconst	(github.com/jgautheron/goconst/cmd/goconst)
+	error: exit status 2
+	# github.com/jgautheron/goconst
+	compile: version "go1.9rc2" does not match go tool version "go1.9rc1"
+
+fail	/Users/seanc/go/bin/goflymake	(github.com/dougm/goflymake)
+	error: exit status 2
+	# github.com/dougm/goflymake
+	compile: version "go1.9rc2" does not match go tool version "go1.9rc1"
+[snip]
+$ cp -pf ~/go1.9/bin/* $GOPATH/bin/
+$ gobin -u
+ok	/Users/seanc/go/bin/set	(github.com/ncw/gotemplate/examples/set)	1.723s
+ok	/Users/seanc/go/bin/vendorfmt	(github.com/magiconair/vendorfmt/cmd/vendorfmt)	1.758s
+ok	/Users/seanc/go/bin/gocyclo	(github.com/fzipp/gocyclo)	1.793s
+[snip]
 ----
 
 
