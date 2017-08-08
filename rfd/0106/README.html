@@ -5,9 +5,7 @@
 <!--[if IE]><meta http-equiv="X-UA-Compatible" content="IE=edge"><![endif]-->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 1.5.6.1">
-<meta name="keywords" content="rfd 106, go, golang, best practices, joyent, engineering, software">
-<meta name="author" content="Sean Chittenden">
-<title>RFD 106 Engineering Guide - Go Best Practices</title>
+<title>Introduction</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
 /* Asciidoctor default stylesheet | MIT License | http://asciidoctor.org */
@@ -426,164 +424,52 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 .hide-for-print{display:none!important}
 .show-for-print{display:inherit!important}}
 </style>
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css">
-<style>
-.listingblock .pygments .hll { background-color: #ffffcc }
-.listingblock .pygments, .listingblock .pygments code { background: #f8f8f8; }
-.listingblock .pygments .tok-c { color: #408080; font-style: italic } /* Comment */
-.listingblock .pygments .tok-err { border: 1px solid #FF0000 } /* Error */
-.listingblock .pygments .tok-k { color: #008000; font-weight: bold } /* Keyword */
-.listingblock .pygments .tok-o { color: #666666 } /* Operator */
-.listingblock .pygments .tok-ch { color: #408080; font-style: italic } /* Comment.Hashbang */
-.listingblock .pygments .tok-cm { color: #408080; font-style: italic } /* Comment.Multiline */
-.listingblock .pygments .tok-cp { color: #BC7A00 } /* Comment.Preproc */
-.listingblock .pygments .tok-cpf { color: #408080; font-style: italic } /* Comment.PreprocFile */
-.listingblock .pygments .tok-c1 { color: #408080; font-style: italic } /* Comment.Single */
-.listingblock .pygments .tok-cs { color: #408080; font-style: italic } /* Comment.Special */
-.listingblock .pygments .tok-gd { color: #A00000 } /* Generic.Deleted */
-.listingblock .pygments .tok-ge { font-style: italic } /* Generic.Emph */
-.listingblock .pygments .tok-gr { color: #FF0000 } /* Generic.Error */
-.listingblock .pygments .tok-gh { color: #000080; font-weight: bold } /* Generic.Heading */
-.listingblock .pygments .tok-gi { color: #00A000 } /* Generic.Inserted */
-.listingblock .pygments .tok-go { color: #888888 } /* Generic.Output */
-.listingblock .pygments .tok-gp { color: #000080; font-weight: bold } /* Generic.Prompt */
-.listingblock .pygments .tok-gs { font-weight: bold } /* Generic.Strong */
-.listingblock .pygments .tok-gu { color: #800080; font-weight: bold } /* Generic.Subheading */
-.listingblock .pygments .tok-gt { color: #0044DD } /* Generic.Traceback */
-.listingblock .pygments .tok-kc { color: #008000; font-weight: bold } /* Keyword.Constant */
-.listingblock .pygments .tok-kd { color: #008000; font-weight: bold } /* Keyword.Declaration */
-.listingblock .pygments .tok-kn { color: #008000; font-weight: bold } /* Keyword.Namespace */
-.listingblock .pygments .tok-kp { color: #008000 } /* Keyword.Pseudo */
-.listingblock .pygments .tok-kr { color: #008000; font-weight: bold } /* Keyword.Reserved */
-.listingblock .pygments .tok-kt { color: #B00040 } /* Keyword.Type */
-.listingblock .pygments .tok-m { color: #666666 } /* Literal.Number */
-.listingblock .pygments .tok-s { color: #BA2121 } /* Literal.String */
-.listingblock .pygments .tok-na { color: #7D9029 } /* Name.Attribute */
-.listingblock .pygments .tok-nb { color: #008000 } /* Name.Builtin */
-.listingblock .pygments .tok-nc { color: #0000FF; font-weight: bold } /* Name.Class */
-.listingblock .pygments .tok-no { color: #880000 } /* Name.Constant */
-.listingblock .pygments .tok-nd { color: #AA22FF } /* Name.Decorator */
-.listingblock .pygments .tok-ni { color: #999999; font-weight: bold } /* Name.Entity */
-.listingblock .pygments .tok-ne { color: #D2413A; font-weight: bold } /* Name.Exception */
-.listingblock .pygments .tok-nf { color: #0000FF } /* Name.Function */
-.listingblock .pygments .tok-nl { color: #A0A000 } /* Name.Label */
-.listingblock .pygments .tok-nn { color: #0000FF; font-weight: bold } /* Name.Namespace */
-.listingblock .pygments .tok-nt { color: #008000; font-weight: bold } /* Name.Tag */
-.listingblock .pygments .tok-nv { color: #19177C } /* Name.Variable */
-.listingblock .pygments .tok-ow { color: #AA22FF; font-weight: bold } /* Operator.Word */
-.listingblock .pygments .tok-w { color: #bbbbbb } /* Text.Whitespace */
-.listingblock .pygments .tok-mb { color: #666666 } /* Literal.Number.Bin */
-.listingblock .pygments .tok-mf { color: #666666 } /* Literal.Number.Float */
-.listingblock .pygments .tok-mh { color: #666666 } /* Literal.Number.Hex */
-.listingblock .pygments .tok-mi { color: #666666 } /* Literal.Number.Integer */
-.listingblock .pygments .tok-mo { color: #666666 } /* Literal.Number.Oct */
-.listingblock .pygments .tok-sa { color: #BA2121 } /* Literal.String.Affix */
-.listingblock .pygments .tok-sb { color: #BA2121 } /* Literal.String.Backtick */
-.listingblock .pygments .tok-sc { color: #BA2121 } /* Literal.String.Char */
-.listingblock .pygments .tok-dl { color: #BA2121 } /* Literal.String.Delimiter */
-.listingblock .pygments .tok-sd { color: #BA2121; font-style: italic } /* Literal.String.Doc */
-.listingblock .pygments .tok-s2 { color: #BA2121 } /* Literal.String.Double */
-.listingblock .pygments .tok-se { color: #BB6622; font-weight: bold } /* Literal.String.Escape */
-.listingblock .pygments .tok-sh { color: #BA2121 } /* Literal.String.Heredoc */
-.listingblock .pygments .tok-si { color: #BB6688; font-weight: bold } /* Literal.String.Interpol */
-.listingblock .pygments .tok-sx { color: #008000 } /* Literal.String.Other */
-.listingblock .pygments .tok-sr { color: #BB6688 } /* Literal.String.Regex */
-.listingblock .pygments .tok-s1 { color: #BA2121 } /* Literal.String.Single */
-.listingblock .pygments .tok-ss { color: #19177C } /* Literal.String.Symbol */
-.listingblock .pygments .tok-bp { color: #008000 } /* Name.Builtin.Pseudo */
-.listingblock .pygments .tok-fm { color: #0000FF } /* Name.Function.Magic */
-.listingblock .pygments .tok-vc { color: #19177C } /* Name.Variable.Class */
-.listingblock .pygments .tok-vg { color: #19177C } /* Name.Variable.Global */
-.listingblock .pygments .tok-vi { color: #19177C } /* Name.Variable.Instance */
-.listingblock .pygments .tok-vm { color: #19177C } /* Name.Variable.Magic */
-.listingblock .pygments .tok-il { color: #666666 } /* Literal.Number.Integer.Long */
-</style>
 </head>
-<body class="article toc2 toc-left">
+<body class="article">
 <div id="header">
-<h1>RFD 106 Engineering Guide - Go Best Practices</h1>
-<div class="details">
-<span id="author" class="author">Sean Chittenden</span><br>
-<span id="email" class="email"><a href="mailto:seanc@joyent.com">seanc@joyent.com</a></span><br>
-<span id="revnumber">version 0.1.0,</span>
-<span id="revdate">2017-08-04</span>
-<br><span id="revremark">State: predraft</span>
-</div>
-<div id="toc" class="toc2">
-<div id="toctitle">Table of Contents</div>
-<ul class="sectlevel1">
-<li><a href="#introduction">Introduction</a>
-<ul class="sectlevel2">
-<li><a href="#core-beliefs">Core Beliefs</a></li>
-</ul>
-</li>
-<li><a href="#version-of-go">1. Version of Go</a></li>
-<li><a href="#project-structure">2. Project Structure</a></li>
-<li><a href="#workflow">3. Workflow</a></li>
-<li><a href="#style">4. Style</a></li>
-<li><a href="#developer-tools">5. Developer Tools</a></li>
-<li><a href="#editor-integration">6. <code>$EDITOR</code> Integration</a></li>
-<li><a href="#vendor-management">7. <code>vendor/</code> Management</a></li>
-<li><a href="#naming-conventions">8. Naming Conventions</a></li>
-<li><a href="#api-stability">9. API Stability</a></li>
-<li><a href="#static-analysis">10. Static Analysis</a></li>
-<li><a href="#explicit-types">11. Explicit Types</a></li>
-<li><a href="#return-parameters">12. Return Parameters</a></li>
-<li><a href="#interface-receivers">13. Interface Receivers</a></li>
-<li><a href="#const">14. <code>const</code></a></li>
-<li><a href="#bitmasks">15. Bitmasks</a></li>
-<li><a href="#documentation">16. Documentation</a></li>
-<li><a href="#context">17. Context</a></li>
-<li><a href="#deadline-timers-and-timeouts">18. Deadline Timers and Timeouts</a></li>
-<li><a href="#grpc">19. gRPC</a></li>
-<li><a href="#pprof">20. <code>pprof</code> and <code>gops(1)</code></a></li>
-<li><a href="#external-resources">21. External Resources</a></li>
-<li><a href="#go-intro">Appendix A: Go 101 Resources</a>
-<ul class="sectlevel2">
-<li><a href="#five-minute-jump-start">Five Minute Jump Start</a></li>
-<li><a href="#books">Books</a></li>
-<li><a href="#make"><code>make(1)</code></a></li>
-</ul>
-</li>
-<li><a href="#glossary">Glossary</a></li>
-<li><a href="#bibliography">Bibliography</a></li>
-</ul>
-</div>
 </div>
 <div id="content">
-<div id="preamble">
-<div class="sectionbody">
-<div class="quoteblock">
-<blockquote>
+<hr>
 <div class="paragraph">
-<p>"Go is efficient, scalable, and productive. Some programmers find it fun to work
-in; others find it unimaginative, even boring. In this article we will explain
-why those are not contradictory positions. Go was designed to address the
-problems faced in software development at Google, which led to a language that
-is not a breakthrough research language but is nonetheless an excellent tool for
-engineering large software projects."</p>
-</div>
-<div class="paragraph">
-<p>— <a href="https://talks.golang.org/2012/splash.article">Rob Pike, 2012</a></p>
-</div>
-</blockquote>
-</div>
-</div>
+<p>authors: Sean Chittenden &lt;<a href="mailto:seanc@joyent.com">seanc@joyent.com</a>&gt;
+state: predraft
+---
+= RFD 106 Engineering Guide - Go Best Practices
+:author: Sean Chittenden
+:email: <a href="mailto:seanc@joyent.com">seanc@joyent.com</a>
+:state: predraft
+:revnumber: 0.1.0
+:keywords: rfd 106, go, golang, best practices, joyent, engineering, software
+:bibtex-order: alphabetical
+:bibtex-style: ieee-with-url
+:bibtex-format: asciidoc
+:revremark: State: {state}
+:attribute-missing: warn
+:docinfo:
+:doctype: article
+:hide-uri-scheme:
+:icons: font
+:idprefix:
+:idseparator: -
+:imagesdir: images
+:numbered:
+:sectanchors:
+:sectlinks:
+:sectnums:
+:sectnumlevels: 1
+:showtitle:
+:source-highlighter: pygments
+:toc: left
+:xrefstyle: full</p>
 </div>
 <div class="sect1">
-<h2 id="introduction"><a class="anchor" href="#introduction"></a><a class="link" href="#introduction">Introduction</a></h2>
+<h2 id="introduction">Introduction</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Joyent has <a href="http://dtrace.org/blogs/wesolows/2014/12/29/fin/">a</a>
-<a href="http://dtrace.org/blogs/wesolows/2014/12/29/golang-is-trash/">storied</a>
-<a href="https://golang.org/pkg/net/#hdr-Name_Resolution">history</a> with regards to
-<a href="https://github.com/golang/go/issues/20603">Go</a>. Without providing modern
-treatment to past issues, it is undeniable that many, if not most (as of
-2017) distributed systems are being written in Go. To that extent,
-Joyent is embracing of Go&#8217;s contribution to distributed, enterprise,
+<p>Joyent is embracing of Go&#8217;s contribution to distributed, enterprise,
 production-grade computing and celebrates the software engineering ethos held by
 many in the Go community because their beliefs are aligned with our
-<a href="https://gist.github.com/davepacheco/1878bad488053093348d9ec9967f5b06">principles</a>.</p>
+<a href="https://github.com/joyent/rfd/tree/master/rfd/0104">General Principles</a>.</p>
 </div>
 <div class="paragraph">
 <p>In this document we will define and articulate Joyent&#8217;s evolving set of
@@ -617,7 +503,7 @@ i.e.  "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD", "SHOULD
 NOT", "RECOMMENDED", "MAY", and "OPTIONAL").</p>
 </div>
 <div class="sect2">
-<h3 id="core-beliefs"><a class="anchor" href="#core-beliefs"></a><a class="link" href="#core-beliefs">Core Beliefs</a></h3>
+<h3 id="core-beliefs">Core Beliefs</h3>
 <div class="paragraph">
 <p>At Joyent we have the following beliefs regarding software:</p>
 </div>
@@ -715,9 +601,9 @@ ordered from philosophical to practical):</p>
 </ul>
 </div>
 <div class="sect3">
-<h4 id="beliefs"><a class="anchor" href="#beliefs"></a><a class="link" href="#beliefs">Beliefs</a></h4>
+<h4 id="beliefs">Beliefs</h4>
 <div class="sect4">
-<h5 id="build-robust-trusted-systems"><a class="anchor" href="#build-robust-trusted-systems"></a><a class="link" href="#build-robust-trusted-systems">Build Robust, Trusted Systems</a></h5>
+<h5 id="build-robust-trusted-systems">Build Robust, Trusted Systems</h5>
 <div class="ulist">
 <ul>
 <li>
@@ -733,23 +619,23 @@ ordered from philosophical to practical):</p>
 </div>
 </div>
 <div class="sect4">
-<h5 id="operability"><a class="anchor" href="#operability"></a><a class="link" href="#operability">Operability</a></h5>
+<h5 id="operability">Operability</h5>
 
 </div>
 <div class="sect4">
-<h5 id="maintainability"><a class="anchor" href="#maintainability"></a><a class="link" href="#maintainability">Maintainability</a></h5>
+<h5 id="maintainability">Maintainability</h5>
 
 </div>
 <div class="sect4">
-<h5 id="availability"><a class="anchor" href="#availability"></a><a class="link" href="#availability">Availability</a></h5>
+<h5 id="availability">Availability</h5>
 
 </div>
 <div class="sect4">
-<h5 id="debuggablity"><a class="anchor" href="#debuggablity"></a><a class="link" href="#debuggablity">Debuggablity</a></h5>
+<h5 id="debuggablity">Debuggablity</h5>
 
 </div>
 <div class="sect4">
-<h5 id="principles"><a class="anchor" href="#principles"></a><a class="link" href="#principles">Principles</a></h5>
+<h5 id="principles">Principles</h5>
 
 </div>
 </div>
@@ -757,9 +643,9 @@ ordered from philosophical to practical):</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="version-of-go"><a class="anchor" href="#version-of-go"></a><a class="link" href="#version-of-go">1. Version of Go</a></h2>
+<h2 id="version-of-go">1. Version of Go</h2>
 <div class="sectionbody">
-<h3 id="recommendation" class="discrete">Recommendation</h3>
+<h3 id="_recommendation" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -780,17 +666,21 @@ for building released binaries.</p>
 development and is RECOMMENDED for Continuous Integration (CI) testing.</p>
 </li>
 <li>
-<p>Every time the version of <code><a href="https://golang.org/cmd/go/">go(1)</a></code> changes the contents of <code>$GOPATH/pkg</code> MUST
+<p>Use of <code><a href="https://godoc.org/github.com/rjeczalik/bin/cmd/gobin">gobin(1)</a></code> is RECOMMENDED in order to keep <code>$GOPATH/bin</code>'s binaries
+in sync with that of the Go compiler.</p>
+</li>
+<li>
+<p>Every time the version of <code><a href="https://golang.org/cmd/go/">go(1)</a></code> changes the contents of <code>$GOPATH/pkg</code> MAY
 be cleaned out:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ rm -rf $GOPATH/pkg/</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ rm -rf $GOPATH/pkg/</code></pre>
 </div>
 </div>
 </li>
 </ol>
 </div>
-<h3 id="rationale" class="discrete">Rationale</h3>
+<h3 id="_rationale" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>The Go team and project are consistently advancing the state of the Go compiler
 and standard library.  Released versions and release candidates are considered
@@ -809,14 +699,26 @@ or stability) than absorbing the cost of any incremental upgrade.</p>
 </div>
 <div class="paragraph">
 <p>Use of <a href="https://github.com/golang/go/tree/master"><code>master</code></a> is not peril free,
-however it is good way of staying current and doesn&#8217;t cause much grief during
-development, but frequently does improve both correctness and quality.</p>
+however it does provide a good way of staying current and doesn&#8217;t typically
+cause much grief during development.  Use of
+<a href="https://github.com/golang/go/tree/master"><code>master</code></a> MAY improve correctness and
+quality.</p>
 </div>
 <div class="paragraph">
-<p>The version of <code><a href="https://golang.org/cmd/go/">go(1)</a></code> is tightly coupled to the cached object files in
-<code>$GOPATH/pkg</code> and there is no stability contract.  Cleaning out <code>$GOPATH/pkg</code>
-periodically is an ounce of prevention whose tiny cost is worth more than the
-pound of debugging.<sup class="footnote" id="_footnote_gopath-tmp">[<a id="_footnoteref_1" class="footnote" href="#_footnote_1" title="View footnote.">1</a>]</sup></p>
+<p>The version of <code><a href="https://golang.org/cmd/go/">go(1)</a></code> may be tightly coupled with binaries located in
+<code>$GOPATH/bin</code> (especially those binaries who either walk the Go AST or interact
+with other <code><a href="https://golang.org/cmd/go/">go(1)</a></code> tooling).  <code><a href="https://godoc.org/github.com/rjeczalik/bin/cmd/gobin">gobin(1)</a></code> automatically rebuilds <code>$GOPATH/bin</code>
+binaries who are out of date with respect to the version of the <code><a href="https://golang.org/cmd/go/">go(1)</a></code>
+compiler used.  Because Go developer tools tend to be written in Go and
+necessarily coupled to the version of <code><a href="https://golang.org/cmd/go/">go(1)</a></code>, rebuilding <code>$GOPATH/bin</code>
+binaries every time <code><a href="https://golang.org/cmd/go/">go(1)</a></code> is updated is RECOMMENDED.</p>
+</div>
+<div class="paragraph">
+<p>The cached archive files in <code>$GOPATH/pkg</code> are explicitly tightly coupled with
+<code><a href="https://golang.org/cmd/go/">go(1)</a></code> but starting in Go 1.5, <code><a href="https://golang.org/cmd/go/">go(1)</a></code> now maintains a
+<a href="https://github.com/golang/go/commit/7b87631e8c41b7919a3a3a845b61cb7c240efff9">package
+version</a> in order to automatically detect and trigger the rebuild
+packages.<sup class="footnote" id="_footnote_gopath-tmp">[<a id="_footnoteref_1" class="footnote" href="#_footnote_1" title="View footnote.">1</a>]</sup></p>
 </div>
 <div class="paragraph">
 <p>Use of tools like <code><a href="https://github.com/GetStream/vg">vg(1)</a></code> MAY be useful or considered in the future but are NOT
@@ -826,9 +728,9 @@ decrease friction, not constrain how someone goes about working.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="project-structure"><a class="anchor" href="#project-structure"></a><a class="link" href="#project-structure">2. Project Structure</a></h2>
+<h2 id="project-structure">2. Project Structure</h2>
 <div class="sectionbody">
-<h3 id="recommendation-2" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_2" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -859,7 +761,7 @@ codebase.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-2" class="discrete">Rationale</h3>
+<h3 id="_rationale_2" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Starting in Go 1.8, <code><a href="https://golang.org/cmd/go/">go(1)</a></code> defaulted to <code>$HOME/go</code> as its default <code>GOPATH</code>.  It
 is not strictly necessary to set <code>GOPATH</code>, however it is still advised to make
@@ -921,9 +823,9 @@ Golang in a Monorepo</a></p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="workflow"><a class="anchor" href="#workflow"></a><a class="link" href="#workflow">3. Workflow</a></h2>
+<h2 id="workflow">3. Workflow</h2>
 <div class="sectionbody">
-<h3 id="recommendation-3" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_3" class="discrete">Recommendation</h3>
 <div class="paragraph">
 <p>Engineer workflow changes based on whether or not you have write-privileges to
 the target repository.</p>
@@ -937,7 +839,7 @@ the target repository.</p>
 <p>Checkout the repository:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -d my.git.server/my_org/my_project</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -d my.git.server/my_org/my_project</code></pre>
 </div>
 </div>
 </li>
@@ -945,7 +847,7 @@ the target repository.</p>
 <p>Create a branch for your change:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ cd $GOPATH/src/my.git.server/my_org/my_project
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ cd $GOPATH/src/my.git.server/my_org/my_project
 $ git checkout -b my-branch-name</code></pre>
 </div>
 </div>
@@ -954,7 +856,7 @@ $ git checkout -b my-branch-name</code></pre>
 <p>Commit your change(s):</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git commit</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git commit</code></pre>
 </div>
 </div>
 </li>
@@ -962,7 +864,7 @@ $ git checkout -b my-branch-name</code></pre>
 <p>Push your change to <code>origin</code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git push -u origin my-branch-name</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git push -u origin my-branch-name</code></pre>
 </div>
 </div>
 </li>
@@ -1021,7 +923,7 @@ except you MUST create a fork of the repository:</p>
 <p>Checkout the original repository:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -d -v my.git.server/my_org/my_project</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -d -v my.git.server/my_org/my_project</code></pre>
 </div>
 </div>
 </li>
@@ -1032,7 +934,7 @@ except you MUST create a fork of the repository:</p>
 <p>Add the remote for your repository:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ cd $GOPATH/src/my.git.server/my_org/my_project
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ cd $GOPATH/src/my.git.server/my_org/my_project
 $ git remote add me my.git.server/my_user/my_project</code></pre>
 </div>
 </div>
@@ -1041,7 +943,7 @@ $ git remote add me my.git.server/my_user/my_project</code></pre>
 <p>Create a branch for your change:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git checkout -b my-branch-name</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git checkout -b my-branch-name</code></pre>
 </div>
 </div>
 </li>
@@ -1052,7 +954,7 @@ $ git remote add me my.git.server/my_user/my_project</code></pre>
 <p>Push your change to <code>me</code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git push -u me my-branch-name</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git push -u me my-branch-name</code></pre>
 </div>
 </div>
 </li>
@@ -1070,7 +972,7 @@ project will write the <code>CHANGELOG</code> entry for you.</p>
 <p>Pull the latest changes:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git checkout master
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git checkout master
 $ git pull origin master</code></pre>
 </div>
 </div>
@@ -1079,7 +981,7 @@ $ git pull origin master</code></pre>
 <p>Delete your local branch:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git branch -d my-branch-name</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git branch -d my-branch-name</code></pre>
 </div>
 </div>
 </li>
@@ -1089,7 +991,7 @@ $ git pull origin master</code></pre>
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-important" title="Important"></i>
+<div class="title">Important</div>
 </td>
 <td class="content">
 <div class="paragraph">
@@ -1112,7 +1014,7 @@ upstream source, but use a different <code>git remote</code> URL.</p>
 <p>Checkout the repository:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git clone --origin gerrit https://my.git.server/my_org/my_project.git</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git clone --origin gerrit https://my.git.server/my_org/my_project.git</code></pre>
 </div>
 </div>
 </li>
@@ -1120,7 +1022,7 @@ upstream source, but use a different <code>git remote</code> URL.</p>
 <p>Create a branch for your change:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git checkout -b my-branch-name</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git checkout -b my-branch-name</code></pre>
 </div>
 </div>
 </li>
@@ -1128,7 +1030,7 @@ upstream source, but use a different <code>git remote</code> URL.</p>
 <p>Commit your change(s):</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git commit</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git commit</code></pre>
 </div>
 </div>
 </li>
@@ -1136,7 +1038,7 @@ upstream source, but use a different <code>git remote</code> URL.</p>
 <p>Push your change to <code>origin</code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git push gerrit HEAD:refs/for/master</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git push gerrit HEAD:refs/for/master</code></pre>
 </div>
 </div>
 </li>
@@ -1161,7 +1063,7 @@ outlined in code comments.</p>
 <p>Pull the latest changes:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git checkout master
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git checkout master
 $ git pull origin master</code></pre>
 </div>
 </div>
@@ -1170,7 +1072,7 @@ $ git pull origin master</code></pre>
 <p>Delete your local branch:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ git branch -d my-branch-name</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ git branch -d my-branch-name</code></pre>
 </div>
 </div>
 </li>
@@ -1179,9 +1081,9 @@ $ git pull origin master</code></pre>
 </div>
 </div>
 <div class="sect1">
-<h2 id="style"><a class="anchor" href="#style"></a><a class="link" href="#style">4. Style</a></h2>
+<h2 id="style">4. Style</h2>
 <div class="sectionbody">
-<h3 id="recommendation-4" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_4" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -1193,7 +1095,7 @@ the <code>-s</code> flag.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-3" class="discrete">Rationale</h3>
+<h3 id="_rationale_3" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>The particular brand of <a href="https://blog.golang.org/go-fmt-your-code">tribal fascism
 that extends from <code>gofmt(1)</code></a> increases the overall productivity of the
@@ -1216,7 +1118,7 @@ tangible hurdle to overcome.</p>
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<div class="title">Note</div>
 </td>
 <td class="content">
 <div class="paragraph">
@@ -1285,9 +1187,9 @@ Cultural Evolution of gofmt</a>.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="developer-tools"><a class="anchor" href="#developer-tools"></a><a class="link" href="#developer-tools">5. Developer Tools</a></h2>
+<h2 id="developer-tools">5. Developer Tools</h2>
 <div class="sectionbody">
-<h3 id="recommendation-5" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_5" class="discrete">Recommendation</h3>
 <div class="paragraph">
 <p>The following tools are RECOMMENDED for development:</p>
 </div>
@@ -1297,7 +1199,7 @@ Cultural Evolution of gofmt</a>.</p>
 <p><code><a href="https://godoc.org/golang.org/x/tools/cmd/goimports">goimports(1)</a></code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/goimports</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -u golang.org/x/tools/cmd/goimports</code></pre>
 </div>
 </div>
 </li>
@@ -1305,7 +1207,7 @@ Cultural Evolution of gofmt</a>.</p>
 <p><code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/guru</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -u golang.org/x/tools/cmd/guru</code></pre>
 </div>
 </div>
 </li>
@@ -1313,7 +1215,7 @@ Cultural Evolution of gofmt</a>.</p>
 <p><code><a href="https://golang.org/cmd/godoc/">godoc(1)</a></code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/godoc</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -u golang.org/x/tools/cmd/godoc</code></pre>
 </div>
 </div>
 </li>
@@ -1321,7 +1223,7 @@ Cultural Evolution of gofmt</a>.</p>
 <p><code><a href="https://godoc.org/golang.org/x/tools/cmd/gorename">gorename(1)</a></code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/gorename</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -u golang.org/x/tools/cmd/gorename</code></pre>
 </div>
 </div>
 </li>
@@ -1329,14 +1231,22 @@ Cultural Evolution of gofmt</a>.</p>
 <p><code><a href="https://godoc.org/golang.org/x/tools/cmd/gomvpkg">gomvpkg(1)</a></code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u golang.org/x/tools/cmd/gomvpkg</code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -u golang.org/x/tools/cmd/gomvpkg</code></pre>
+</div>
+</div>
+</li>
+<li>
+<p><code><a href="https://godoc.org/github.com/rjeczalik/bin/cmd/gobin">gobin(1)</a></code>:</p>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -u github.com/rjeczalik/bin/cmd/gobin</code></pre>
 </div>
 </div>
 </li>
 </ol>
 </div>
-<h3 id="rationale-4" class="discrete">Rationale</h3>
-<h4 id="code-goimports-1-code" class="discrete"><code>goimports(1)</code></h4>
+<h3 id="_rationale_4" class="discrete">Rationale</h3>
+<h4 id="_code_goimports_1_code" class="discrete"><code>goimports(1)</code></h4>
 <div class="paragraph">
 <p>Manually maintaining <a href="https://golang.org/ref/spec#Import_declarations"><code>import</code>
 declarations</a> is a tedious waste of time.  <code><a href="https://godoc.org/golang.org/x/tools/cmd/goimports">goimports(1)</a></code> gets this right 99% of
@@ -1360,7 +1270,7 @@ much more sophisticated.</p>
 </div>
 <div class="paragraph">
 <p>The list of <code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code>s functionality includes (as of July 2017, and taken
-from <a href="https://golang.org/x/tools/cmd/guru" class="bare">golang.org/x/tools/cmd/guru</a>):</p>
+from <a href="https://golang.org/x/tools/cmd/guru" class="bare">https://golang.org/x/tools/cmd/guru</a>):</p>
 </div>
 <div class="dlist">
 <div class="title">Identifier Queries</div>
@@ -1529,7 +1439,7 @@ token.</p>
 </dd>
 </dl>
 </div>
-<h4 id="code-godoc-1-code" class="discrete"><code>godoc(1)</code></h4>
+<h4 id="_code_godoc_1_code" class="discrete"><code>godoc(1)</code></h4>
 <div class="paragraph">
 <p><code><a href="https://golang.org/cmd/godoc/">godoc(1)</a></code> SHOULD be installed in order to have quick access to formatted
 documentation.  Before committing a new body of work, the documentation for the
@@ -1537,7 +1447,7 @@ package should be inspected.  A strong cofactor in determining the reusable
 value of software is its documentation (see also:
 <a href="https://en.wikipedia.org/wiki/Network_effect">network effect</a>).</p>
 </div>
-<h4 id="code-gorename-1-code-and-code-gomvpkg-1-code" class="discrete"><code>gorename(1)</code> and <code>gomvpkg(1)</code></h4>
+<h4 id="_code_gorename_1_code_and_code_gomvpkg_1_code" class="discrete"><code>gorename(1)</code> and <code>gomvpkg(1)</code></h4>
 <div class="paragraph">
 <p><code><a href="https://godoc.org/golang.org/x/tools/cmd/gorename">gorename(1)</a></code> SHOULD be used for renaming package, function, and method members
 (i.e. <code>const</code>, <code>func</code>, <code>var</code>, and <code>type</code>).</p>
@@ -1546,10 +1456,88 @@ value of software is its documentation (see also:
 <p>While less commonly needed, <code><a href="https://godoc.org/golang.org/x/tools/cmd/gomvpkg">gomvpkg(1)</a></code> SHOULD be used when moving packages
 around because it updates the necessary <code>import</code> declarations in a given scope.</p>
 </div>
+<h4 id="_code_gobin_1_code" class="discrete"><code>gobin(1)</code></h4>
+<div class="paragraph">
+<p>Use <code><a href="https://godoc.org/github.com/rjeczalik/bin/cmd/gobin">gobin(1)</a></code> to rebuild <code>$GOPATH/bin</code> is RECOMMENDED after every upgrade of
+<code><a href="https://golang.org/cmd/go/">go(1)</a></code>.  Rebuilding <code>$GOPATH/bin</code> by hand is equally acceptable but tedius and
+error prone.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>$ gobin -u
+ok	/Users/seanc/go/bin/goflymake	(github.com/dougm/goflymake)	2.674s
+ok	/Users/seanc/go/bin/http-echo	(github.com/hashicorp/http-echo)	3.133s
+ok	/Users/seanc/go/bin/codecgen	(github.com/ugorji/go/codec/codecgen)	3.827s
+ok	/Users/seanc/go/bin/misspell	(github.com/client9/misspell/cmd/misspell)	4.531s
+ok	/Users/seanc/go/bin/licenseok	(github.com/golang/dep/hack/licenseok)	5.001s
+ok	/Users/seanc/go/bin/go-erd	(github.com/gmarik/go-erd)	1.871s
+ok	/Users/seanc/go/bin/humanlog	(github.com/aybabtme/humanlog/cmd/humanlog)	5.879s
+ok	/Users/seanc/go/bin/goconst	(github.com/jgautheron/goconst/cmd/goconst)	1.804s
+ok	/Users/seanc/go/bin/git-codereview	(golang.org/x/review/git-codereview)	3.299s
+ok	/Users/seanc/go/bin/stringer	(golang.org/x/tools/cmd/stringer)	6.001s
+ok	/Users/seanc/go/bin/tomll	(github.com/golang/dep/vendor/github.com/pelletier/go-toml/cmd/tomll)	3.838s
+ok	/Users/seanc/go/bin/smoke	(github.com/MediaMath/keryxlib/smoke)	9.568s
+ok	/Users/seanc/go/bin/gocyclo	(github.com/fzipp/gocyclo)	1.493s
+ok	/Users/seanc/go/bin/cmd	(github.com/golang/dep/vendor/github.com/pelletier/go-toml/cmd)	4.757s
+ok	/Users/seanc/go/bin/unused	(honnef.co/go/tools/cmd/unused)	12.658s
+ok	/Users/seanc/go/bin/keyify	(honnef.co/go/tools/cmd/keyify)	9.188s
+ok	/Users/seanc/go/bin/structcheck	(github.com/opennota/check/cmd/structcheck)	9.794s
+ok	/Users/seanc/go/bin/varcheck	(github.com/opennota/check/cmd/varcheck)	13.938s
+ok	/Users/seanc/go/bin/gotype	(golang.org/x/tools/cmd/gotype)	8.968s
+ok	/Users/seanc/go/bin/gorename	(golang.org/x/tools/cmd/gorename)	10.470s
+ok	/Users/seanc/go/bin/set	(github.com/ncw/gotemplate/examples/set)	2.191s
+ok	/Users/seanc/go/bin/vendorfmt	(github.com/magiconair/vendorfmt/cmd/vendorfmt)	2.557s
+ok	/Users/seanc/go/bin/ineffassign	(github.com/gordonklaus/ineffassign)	2.097s
+ok	/Users/seanc/go/bin/unparam	(github.com/mvdan/unparam)	15.957s
+ok	/Users/seanc/go/bin/aligncheck	(github.com/opennota/check/cmd/aligncheck)	11.086s
+ok	/Users/seanc/go/bin/gox	(github.com/mitchellh/gox)	3.246s
+ok	/Users/seanc/go/bin/deadcode	(github.com/remyoudompheng/go-misc/deadcode)	10.044s
+ok	/Users/seanc/go/bin/gotemplate	(github.com/ncw/gotemplate)	1.678s
+ok	/Users/seanc/go/bin/tomljson	(github.com/golang/dep/vendor/github.com/pelletier/go-toml/cmd/tomljson)	3.557s
+ok	/Users/seanc/go/bin/interfacer	(github.com/mvdan/interfacer/cmd/interfacer)	17.489s
+ok	/Users/seanc/go/bin/lll	(github.com/walle/lll/cmd/lll)	2.962s
+ok	/Users/seanc/go/bin/godo	(gopkg.in/godo.v2/cmd/godo)	22.895s
+ok	/Users/seanc/go/bin/dep	(github.com/golang/dep/cmd/dep)	7.762s
+ok	/Users/seanc/go/bin/cover	(golang.org/x/tools/cmd/cover)	8.697s
+ok	/Users/seanc/go/bin/safesql	(github.com/stripe/safesql)	10.935s
+ok	/Users/seanc/go/bin/gocode	(github.com/nsf/gocode)	4.424s
+ok	/Users/seanc/go/bin/staticcheck	(honnef.co/go/tools/cmd/staticcheck)	16.404s
+ok	/Users/seanc/go/bin/goimports	(golang.org/x/tools/cmd/goimports)	5.515s
+ok	/Users/seanc/go/bin/golint	(github.com/golang/lint/golint)	8.446s
+ok	/Users/seanc/go/bin/gosimple	(honnef.co/go/tools/cmd/gosimple)	15.178s
+ok	/Users/seanc/go/bin/unconvert	(github.com/mdempsky/unconvert)	16.471s
+
+Time spent in user mode   (CPU seconds) : 113.222s
+Time spent in kernel mode (CPU seconds) : 52.636s
+Total time                              : 0:49.03s
+CPU utilization (percentage)            : 338.2%
+Times the process was swapped           : 0
+Times of major page faults              : 8981
+Times of minor page faults              : 8560363
+# Update go1.9rc1 to go1.9rc2 but *forgot* to copy bin/go{,fmt} to ~/go/bin/
+$ gobin -u
+fail	/Users/seanc/go/bin/goconst	(github.com/jgautheron/goconst/cmd/goconst)
+	error: exit status 2
+	# github.com/jgautheron/goconst
+	compile: version "go1.9rc2" does not match go tool version "go1.9rc1"
+
+fail	/Users/seanc/go/bin/goflymake	(github.com/dougm/goflymake)
+	error: exit status 2
+	# github.com/dougm/goflymake
+	compile: version "go1.9rc2" does not match go tool version "go1.9rc1"
+[snip]
+$ cp -pf ~/go1.9/bin/* $GOPATH/bin/
+$ gobin -u
+ok	/Users/seanc/go/bin/set	(github.com/ncw/gotemplate/examples/set)	1.723s
+ok	/Users/seanc/go/bin/vendorfmt	(github.com/magiconair/vendorfmt/cmd/vendorfmt)	1.758s
+ok	/Users/seanc/go/bin/gocyclo	(github.com/fzipp/gocyclo)	1.793s
+[snip]</code></pre>
+</div>
+</div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="editor-integration"><a class="anchor" href="#editor-integration"></a><a class="link" href="#editor-integration">6. <code>$EDITOR</code> Integration</a></h2>
+<h2 id="editor-integration">6. <code>$EDITOR</code> Integration</h2>
 <div class="sectionbody">
 <h3 id="editor-integration-recommendation" class="discrete">Recommendation</h3>
 <div class="paragraph">
@@ -1562,7 +1550,7 @@ order to aid in maximal productivity:</p>
 <ol class="arabic">
 <li>
 <p><code><a href="https://godoc.org/golang.org/x/tools/cmd/goimports">goimports(1)</a></code> is SHOULD be added as a save hook. <code>$EDITOR</code> instructions are
-found at: <a href="https://godoc.org/golang.org/x/tools/cmd/goimports" class="bare">godoc.org/golang.org/x/tools/cmd/goimports</a>.</p>
+found at: <a href="https://godoc.org/golang.org/x/tools/cmd/goimports" class="bare">https://godoc.org/golang.org/x/tools/cmd/goimports</a>.</p>
 </li>
 <li>
 <p><code><a href="https://golang.org/x/tools/cmd/guru">guru(1)</a></code> SHOULD be integrated into your <code>$EDITOR</code> as a plugin. Binding
@@ -1614,45 +1602,40 @@ welcome</a>.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="vendor-management"><a class="anchor" href="#vendor-management"></a><a class="link" href="#vendor-management">7. <code>vendor/</code> Management</a></h2>
+<h2 id="vendor-management">7. <code>vendor/</code> Management</h2>
 <div class="sectionbody">
-<h3 id="recommendation-6" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_6" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
 <p>Forked and cached libraries in <a href="https://docs.google.com/document/d/1Bz5-UB7g2uPBdOx-rw5t9MxJwkfpx90cqG9AFL0JAYo/edit#!"><code>vendor/</code></a> MUST be managed via the <code><a href="https://github.com/golang/dep">dep(1)</a></code> tool:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u github.com/golang/dep/cmd/dep   <i class="conum" data-value="1"></i><b>(1)</b>
-$ dep status                                <i class="conum" data-value="2"></i><b>(2)</b>
-$ dep ensure                                <i class="conum" data-value="3"></i><b>(3)</b>
-$ dep ensure -update                        <i class="conum" data-value="4"></i><b>(4)</b>
-$ dep init                                  <i class="conum" data-value="5"></i><b>(5)</b></code></pre>
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -u github.com/golang/dep/cmd/dep   <b class="conum">(1)</b>
+$ dep status                                <b class="conum">(2)</b>
+$ dep ensure                                <b class="conum">(3)</b>
+$ dep ensure -update                        <b class="conum">(4)</b>
+$ dep init                                  <b class="conum">(5)</b></code></pre>
 </div>
 </div>
 <div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Install <code><a href="https://github.com/golang/dep">dep(1)</a></code></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td><a href="https://github.com/golang/dep#checking-the-status-of-dependencies">Checking the status of dependencies</a></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td><a href="https://github.com/golang/dep#usage"><code>ensure</code>, the main subcommand</a></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="4"></i><b>4</b></td>
-<td><a href="https://github.com/golang/dep#updating-dependencies">Update Dependencies</a></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="5"></i><b>5</b></td>
-<td><a href="https://github.com/golang/dep#setup"><code>dep(1)</code> Setup</a></td>
-</tr>
-</table>
+<ol>
+<li>
+<p>Install <code><a href="https://github.com/golang/dep">dep(1)</a></code></p>
+</li>
+<li>
+<p><a href="https://github.com/golang/dep#checking-the-status-of-dependencies">Checking the status of dependencies</a></p>
+</li>
+<li>
+<p><a href="https://github.com/golang/dep#usage"><code>ensure</code>, the main subcommand</a></p>
+</li>
+<li>
+<p><a href="https://github.com/golang/dep#updating-dependencies">Update Dependencies</a></p>
+</li>
+<li>
+<p><a href="https://github.com/golang/dep#setup"><code>dep(1)</code> Setup</a></p>
+</li>
+</ol>
 </div>
 </li>
 <li>
@@ -1710,7 +1693,7 @@ the difference between the <code>Gopkg.toml</code> and <code>Gopkg.lock</code> f
 </li>
 </ol>
 </div>
-<h3 id="rationale-5" class="discrete">Rationale</h3>
+<h3 id="_rationale_5" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>As of Gophercon 2017, <a href="https://www.youtube.com/watch?v=5LtMb090AZI"><code>dep(1)</code>
 is on track to becoming the community defacto <code>vendor/</code> management tool</a> (this
@@ -1721,7 +1704,7 @@ either <a href="https://github.com/tools/godep"><code>godep(1)</code></a> or
 upgrade to <code><a href="https://github.com/golang/dep">dep(1)</a></code>.</p>
 </div>
 <div class="paragraph">
-<p>See also <a href="https://github.com/golang/dep/issues/281" class="bare">github.com/golang/dep/issues/281</a> and the
+<p>See also <a href="https://github.com/golang/dep/issues/281" class="bare">https://github.com/golang/dep/issues/281</a> and the
 <a href="https://github.com/golang/dep/blob/master/docs/FAQ.md"><code>dep(1)</code>
 FAQ</a>. <a href="https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md"><code>Gopkg.toml</code>
 documentation</a> is RECOMMENDED reading, too.</p>
@@ -1736,7 +1719,7 @@ prone than large "#yolo updates."</p>
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
+<div class="title">Warning</div>
 </td>
 <td class="content">
 Confusingly named, <code><a href="https://github.com/golang/dep">dep(1)</a></code> is not the same as <code>godep(1)</code>.  <code><a href="https://github.com/golang/dep">dep(1)</a></code>
@@ -1749,7 +1732,7 @@ is the future, not <code>godep(1)</code>.
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-caution" title="Caution"></i>
+<div class="title">Caution</div>
 </td>
 <td class="content">
 CI systems can only run <code>dep ensure -update</code> if the CI systems are
@@ -1762,9 +1745,9 @@ is in place).
 </div>
 </div>
 <div class="sect1">
-<h2 id="naming-conventions"><a class="anchor" href="#naming-conventions"></a><a class="link" href="#naming-conventions">8. Naming Conventions</a></h2>
+<h2 id="naming-conventions">8. Naming Conventions</h2>
 <div class="sectionbody">
-<h3 id="recommendations" class="discrete">Recommendations</h3>
+<h3 id="_recommendations" class="discrete">Recommendations</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -1812,32 +1795,30 @@ with the same package name.</p>
 identifier (i.e. a package&#8217;s <code>init()</code> MUST run). For example:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">import</span> <span class="tok-p">(</span>
-	<span class="tok-s">&quot;database/sql&quot;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-	<span class="tok-s">&quot;fmt&quot;</span>
+<pre class="highlight"><code class="language-go" data-lang="go">import (
+	"database/sql" <b class="conum">(1)</b>
+	"fmt"
 
-	<span class="tok-nx">_</span> <span class="tok-s">&quot;github.com/lib/pq&quot;</span> <i class="conum" data-value="2"></i><b>(2)</b>
-<span class="tok-p">)</span></code></pre>
+	_ "github.com/lib/pq" <b class="conum">(2)</b>
+)</code></pre>
 </div>
 </div>
 <div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td><code>import</code>s <code>database/sql</code></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Invoke&#8217;s <code>github.com/lib/pq</code>'s <code>init()</code> method because it
+<ol>
+<li>
+<p><code>import</code>s <code>database/sql</code></p>
+</li>
+<li>
+<p>Invoke&#8217;s <code>github.com/lib/pq</code>'s <code>init()</code> method because it
 <a href="https://github.com/lib/pq/blob/dd1fe2071026ce53f36a39112e645b4d4f5793a4/conn.go#L44-L46">registers
-itself</a> with the <code>sql</code> package.</td>
-</tr>
-</table>
+itself</a> with the <code>sql</code> package.</p>
+</li>
+</ol>
 </div>
 </li>
 </ol>
 </div>
-<h3 id="rationale-6" class="discrete">Rationale</h3>
+<h3 id="_rationale_6" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Naming is one of the hard things in software. The package semantics of Go help
 with this dilemma and minimize the blast-radius of poorly chosen names.  With
@@ -1849,9 +1830,9 @@ for good naming and exported functions falls on library authors</a>.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="api-stability"><a class="anchor" href="#api-stability"></a><a class="link" href="#api-stability">9. API Stability</a></h2>
+<h2 id="api-stability">9. API Stability</h2>
 <div class="sectionbody">
-<h3 id="recommendation-7" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_7" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -1866,15 +1847,15 @@ to migrate function signatures.</p>
 unstable SHOULD use <code>struct</code> inputs. For example:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">package</span> <span class="tok-nx">mypkg</span>
-<span class="tok-kd">struct</span> <span class="tok-nx">MyFuncInputs</span> <span class="tok-p">{</span>
-  <span class="tok-nx">ArgA</span> <span class="tok-kt">string</span>
-  <span class="tok-nx">ArgB</span> <span class="tok-kt">int</span>
-  <span class="tok-nx">ArgC</span> <span class="tok-kt">bool</span>
-<span class="tok-p">}</span>
-<span class="tok-kd">func</span> <span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">args</span> <span class="tok-nx">MyFuncInputs</span><span class="tok-p">)</span> <span class="tok-p">{</span>
-  <span class="tok-c1">// ...</span>
-<span class="tok-p">}</span></code></pre>
+<pre class="highlight"><code class="language-go" data-lang="go">package mypkg
+struct MyFuncInputs {
+  ArgA string
+  ArgB int
+  ArgC bool
+}
+func MyFunc(args MyFuncInputs) {
+  // ...
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1882,11 +1863,11 @@ unstable SHOULD use <code>struct</code> inputs. For example:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-nx">mypkg</span><span class="tok-p">.</span><span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">MyFuncInput</span><span class="tok-p">{</span>
-  <span class="tok-nx">ArgA</span><span class="tok-p">:</span> <span class="tok-s">&quot;foo&quot;</span><span class="tok-p">,</span>
-  <span class="tok-nx">ArgB</span><span class="tok-p">:</span> <span class="tok-mh">0xba72</span><span class="tok-p">,</span>
-  <span class="tok-nx">Argc</span><span class="tok-p">:</span> <span class="tok-kc">true</span><span class="tok-p">,</span>
-<span class="tok-p">})</span></code></pre>
+<pre class="highlight"><code class="language-go" data-lang="go">mypkg.MyFunc(MyFuncInput{
+  ArgA: "foo",
+  ArgB: 0xba72,
+  Argc: true,
+})</code></pre>
 </div>
 </div>
 </li>
@@ -1905,7 +1886,7 @@ heap initialized, e.g. <code>&amp;MyFuncInput{}</code>).</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-7" class="discrete">Rationale</h3>
+<h3 id="_rationale_7" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Tightly coupled interfaces within the same project SHOULD be treated as local
 where possible. The onus for maintaining the API MUST be on the author changing
@@ -1935,7 +1916,7 @@ independently</p>
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<div class="title">Note</div>
 </td>
 <td class="content">
 <div class="paragraph">
@@ -1946,7 +1927,7 @@ independently</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kd">func</span> <span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">a</span> <span class="tok-kt">string</span><span class="tok-p">,</span> <span class="tok-nx">b</span> <span class="tok-kt">int</span><span class="tok-p">)</span> <span class="tok-p">{</span> <span class="tok-cm">/* ... */</span> <span class="tok-p">}</span></code></pre>
+<pre class="highlight"><code class="language-go" data-lang="go">func MyFunc(a string, b int) { /* ... */ }</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1955,7 +1936,7 @@ to:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kd">func</span> <span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">a</span> <span class="tok-kt">string</span><span class="tok-p">,</span> <span class="tok-nx">b</span> <span class="tok-kt">int</span><span class="tok-p">,</span> <span class="tok-nx">c</span> <span class="tok-kt">bool</span><span class="tok-p">)</span> <span class="tok-p">{</span> <span class="tok-cm">/* ... */</span> <span class="tok-p">}</span></code></pre>
+<pre class="highlight"><code class="language-go" data-lang="go">func MyFunc(a string, b int, c bool) { /* ... */ }</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1973,7 +1954,7 @@ minimize the maintenance cost incurred by consumers.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">a</span> <span class="tok-kt">string</span><span class="tok-p">,</span> <span class="tok-nx">b</span> <span class="tok-kt">int</span><span class="tok-p">,</span> <span class="tok-nx">args</span> <span class="tok-o">...</span><span class="tok-kd">interface</span><span class="tok-p">{})</span> <span class="tok-p">{</span> <span class="tok-cm">/* ... */</span> <span class="tok-p">}</span></code></pre>
+<pre class="highlight"><code class="language-go" data-lang="go">MyFunc(a string, b int, args ...interface{}) { /* ... */ }</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -1989,10 +1970,10 @@ interface to match the new function signature.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kd">type</span> <span class="tok-nx">MyFuncInputs</span> <span class="tok-kd">struct</span> <span class="tok-p">{}</span>
-<span class="tok-kd">func</span> <span class="tok-nx">MyFunc</span><span class="tok-p">(</span><span class="tok-nx">ctxt</span> <span class="tok-nx">context</span><span class="tok-p">,</span> <span class="tok-nx">dnode</span> <span class="tok-kt">uint64</span><span class="tok-p">,</span> <span class="tok-nx">MyFuncInputs</span><span class="tok-p">{})</span> <span class="tok-p">{</span>
-  <span class="tok-c1">//</span>
-<span class="tok-p">}</span></code></pre>
+<pre class="highlight"><code class="language-go" data-lang="go">type MyFuncInputs struct {}
+func MyFunc(ctxt context, dnode uint64, MyFuncInputs{}) {
+  //
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2059,9 +2040,9 @@ maintenance (most notably engineering time or runtime breakage).</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="static-analysis"><a class="anchor" href="#static-analysis"></a><a class="link" href="#static-analysis">10. Static Analysis</a></h2>
+<h2 id="static-analysis">10. Static Analysis</h2>
 <div class="sectionbody">
-<h3 id="recommendations-2" class="discrete">Recommendations</h3>
+<h3 id="_recommendations_2" class="discrete">Recommendations</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2076,7 +2057,7 @@ throws false-positives").</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-8" class="discrete">Rationale</h3>
+<h3 id="_rationale_8" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p><code>reviewdog</code> stands out as a pragmatic way to
 <a href="https://medium.com/@haya14busa/reviewdog-a-code-review-dog-who-keeps-your-codebase-healthy-d957c471938b">programmatically
@@ -2090,7 +2071,7 @@ check and incorporate it into <code>reviewdog</code>.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ go get -u github.com/alecthomas/gometalinter
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ go get -u github.com/alecthomas/gometalinter
 $ gometalinter --install</code></pre>
 </div>
 </div>
@@ -2189,9 +2170,9 @@ wasted pointing out nits that could be identified consistently by bots
 </div>
 </div>
 <div class="sect1">
-<h2 id="explicit-types"><a class="anchor" href="#explicit-types"></a><a class="link" href="#explicit-types">11. Explicit Types</a></h2>
+<h2 id="explicit-types">11. Explicit Types</h2>
 <div class="sectionbody">
-<h3 id="recommendation-8" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_8" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2220,7 +2201,7 @@ method members (i.e. <code>const</code>, <code>func</code>, <code>var</code>, an
 </li>
 </ol>
 </div>
-<h3 id="rationale-9" class="discrete">Rationale</h3>
+<h3 id="_rationale_9" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Go is an <a href="https://golang.org/ref/spec#Types">explicitly typed language</a>.  The
 compiler does not perform any implicit type conversions of
@@ -2263,44 +2244,34 @@ runtime cost. Use types.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><table class="pyhltable"><tr><td class="linenos"><div class="linenodiv">1
-2
-3
-4
-5
-6
-7
-8</div></td><td class="code"><span></span><span class="tok-kd">type</span> <span class="tok-nx">ID</span> <span class="tok-kt">string</span>                <i class="conum" data-value="1"></i><b>(1)</b>
-<span class="tok-kd">type</span> <span class="tok-nx">ID</span> <span class="tok-kt">uint64</span>                <i class="conum" data-value="2"></i><b>(2)</b>
-<span class="tok-kd">type</span> <span class="tok-nx">CookieID</span> <span class="tok-kt">string</span>
-<span class="tok-kd">type</span> <span class="tok-nx">UUID</span> <span class="tok-p">[]</span><span class="tok-kt">byte</span>
-<span class="tok-kd">type</span> <span class="tok-nx">Index</span> <span class="tok-kt">uint</span>
-<span class="tok-kd">type</span> <span class="tok-nx">Key</span> <span class="tok-kt">string</span>
-<span class="tok-kd">type</span> <span class="tok-nx">Value</span> <span class="tok-kt">string</span>
-<span class="tok-kd">type</span> <span class="tok-nx">Lookup</span> <span class="tok-kd">map</span><span class="tok-p">[</span><span class="tok-nx">Key</span><span class="tok-p">]</span><span class="tok-nx">Value</span>
-</td></tr></table></code></pre>
+<pre class="highlight"><code class="language-go" data-lang="go">type ID string                <b class="conum">(1)</b>
+type ID uint64                <b class="conum">(2)</b>
+type CookieID string
+type UUID []byte
+type Index uint
+type Key string
+type Value string
+type Lookup map[Key]Value</code></pre>
 </div>
 </div>
 <div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td><code>ID</code> may have started out as a <code>string</code></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td><code>ID</code> could be easily changed to a <code>uint64</code> and the consequences easily
+<ol>
+<li>
+<p><code>ID</code> may have started out as a <code>string</code></p>
+</li>
+<li>
+<p><code>ID</code> could be easily changed to a <code>uint64</code> and the consequences easily
 observed.  NOTE: this wouldn&#8217;t compile due to the <code>ID</code> identifier being reused
-in the same package.</td>
-</tr>
-</table>
+in the same package.</p>
+</li>
+</ol>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="return-parameters"><a class="anchor" href="#return-parameters"></a><a class="link" href="#return-parameters">12. Return Parameters</a></h2>
+<h2 id="return-parameters">12. Return Parameters</h2>
 <div class="sectionbody">
-<h3 id="recommendation-9" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_9" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2327,7 +2298,7 @@ variable&#8217;s life.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-10" class="discrete">Rationale</h3>
+<h3 id="_rationale_10" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Go uses pass-by-value semantics and employs
 <a href="http://www.agardner.me/golang/garbage/collection/gc/escape/analysis/2015/10/18/go-escape-analysis.html">variable
@@ -2368,9 +2339,9 @@ Overflow article</a> which is a good read on its own merits.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="interface-receivers"><a class="anchor" href="#interface-receivers"></a><a class="link" href="#interface-receivers">13. Interface Receivers</a></h2>
+<h2 id="interface-receivers">13. Interface Receivers</h2>
 <div class="sectionbody">
-<h3 id="recommendation-10" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_10" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2391,33 +2362,23 @@ receiver.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-11" class="discrete">Rationale</h3>
+<h3 id="_rationale_11" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>This is simple: use a pointer to a receiver in nearly all cases. Item <code>1b</code> is
 very rare in practice.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><table class="pyhltable"><tr><td class="linenos"><div class="linenodiv"> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10</div></td><td class="code"><span></span><span class="tok-kd">type</span> <span class="tok-nx">Foo</span> <span class="tok-kd">struct</span> <span class="tok-p">{</span>
-  <span class="tok-nx">bar</span> <span class="tok-kt">string</span>
-<span class="tok-p">}</span>
+<pre class="highlight"><code class="language-go" data-lang="go">type Foo struct {
+  bar string
+}
 
-<span class="tok-c1">// Baz assigns &quot;bur&quot; to f.bar.  Without the pointer, this the instance of Foo</span>
-<span class="tok-c1">// would have been copied and the assignment would have been not visible to</span>
-<span class="tok-c1">// the caller (a nice source of frustration when first learning Go).</span>
-<span class="tok-kd">func</span> <span class="tok-p">(</span><span class="tok-nx">f</span> <span class="tok-o">*</span><span class="tok-nx">Foo</span><span class="tok-p">)</span> <span class="tok-nx">Baz</span><span class="tok-p">()</span> <span class="tok-p">{</span>
-  <span class="tok-nx">f</span><span class="tok-p">.</span><span class="tok-nx">bar</span> <span class="tok-p">=</span> <span class="tok-s">&quot;bur&quot;</span>
-<span class="tok-p">}</span>
-</td></tr></table></code></pre>
+// Baz assigns "bur" to f.bar.  Without the pointer, this the instance of Foo
+// would have been copied and the assignment would have been not visible to
+// the caller (a nice source of frustration when first learning Go).
+func (f *Foo) Baz() {
+  f.bar = "bur"
+}</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2425,36 +2386,21 @@ very rare in practice.</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><table class="pyhltable"><tr><td class="linenos"><div class="linenodiv"> 1
- 2
- 3
- 4
- 5
- 6
- 7
- 8
- 9
-10
-11
-12
-13
-14
-15</div></td><td class="code"><span></span><span class="tok-kd">type</span> <span class="tok-nx">MyEnum</span> <span class="tok-kt">int</span>
+<pre class="highlight"><code class="language-go" data-lang="go">type MyEnum int
 
-<span class="tok-kd">func</span> <span class="tok-p">(</span><span class="tok-nx">e</span> <span class="tok-nx">MyEnum</span><span class="tok-p">)</span> <span class="tok-nx">String</span><span class="tok-p">()</span> <span class="tok-kt">string</span> <span class="tok-p">{</span>
-  <span class="tok-k">switch</span> <span class="tok-nx">e</span> <span class="tok-p">{</span>
-  <span class="tok-k">case</span> <span class="tok-mi">0</span><span class="tok-p">:</span>
-    <span class="tok-k">return</span> <span class="tok-s">&quot;zero&quot;</span>
-  <span class="tok-k">case</span> <span class="tok-mi">1</span><span class="tok-p">:</span>
-    <span class="tok-k">return</span> <span class="tok-s">&quot;one&quot;</span>
-  <span class="tok-k">default</span><span class="tok-p">:</span>
-    <span class="tok-k">return</span> <span class="tok-s">&quot;something not one or zero&quot;</span>
-  <span class="tok-p">}</span>
-<span class="tok-p">}</span>
+func (e MyEnum) String() string {
+  switch e {
+  case 0:
+    return "zero"
+  case 1:
+    return "one"
+  default:
+    return "something not one or zero"
+  }
+}
 
-<span class="tok-kd">var</span> <span class="tok-nx">myEnum</span> <span class="tok-nx">MyEnum</span> <span class="tok-p">=</span> <span class="tok-mi">0</span>
-<span class="tok-nx">fmt</span><span class="tok-p">.</span><span class="tok-nx">Println</span><span class="tok-p">(</span><span class="tok-s">&quot;%s&quot;</span><span class="tok-p">,</span> <span class="tok-nx">myEnum</span><span class="tok-p">)</span>
-</td></tr></table></code></pre>
+var myEnum MyEnum = 0
+fmt.Println("%s", myEnum)</code></pre>
 </div>
 </div>
 <div class="paragraph">
@@ -2464,9 +2410,9 @@ value is copied.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="const"><a class="anchor" href="#const"></a><a class="link" href="#const">14. <code>const</code></a></h2>
+<h2 id="const">14. <code>const</code></h2>
 <div class="sectionbody">
-<h3 id="recommendation-11" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_11" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2485,7 +2431,7 @@ the <code>const</code> values).</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-12" class="discrete">Rationale</h3>
+<h3 id="_rationale_12" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>By creating a <code>const</code>, you give the Go tooling an identifier which you can
 search for referrers of the given <code>const</code>. See the <code>referrers</code> section of the
@@ -2495,9 +2441,9 @@ reading).</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="bitmasks"><a class="anchor" href="#bitmasks"></a><a class="link" href="#bitmasks">15. Bitmasks</a></h2>
+<h2 id="bitmasks">15. Bitmasks</h2>
 <div class="sectionbody">
-<h3 id="recommendation-12" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_12" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2524,49 +2470,37 @@ named bits.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-13" class="discrete">Rationale</h3>
+<h3 id="_rationale_13" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Go provides a convenient trick to automatically creating bitmasks:</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><table class="pyhltable"><tr><td class="linenos"><div class="linenodiv">1
-2
-3
-4
-5
-6
-7
-8</div></td><td class="code"><span></span><span class="tok-kd">type</span> <span class="tok-nx">MyBitmask</span> <span class="tok-kt">int</span>
+<pre class="highlight"><code class="language-go" data-lang="go">type MyBitmask int
 
-<span class="tok-kd">const</span> <span class="tok-p">(</span>
-      <span class="tok-nx">FlagA</span> <span class="tok-nx">MyBitmask</span> <span class="tok-p">=</span> <span class="tok-mi">1</span> <span class="tok-o">&lt;&lt;</span> <span class="tok-kc">iota</span>  <i class="conum" data-value="1"></i><b>(1)</b>
-      <span class="tok-nx">FlagB</span>                        <i class="conum" data-value="2"></i><b>(2)</b>
-      <span class="tok-nx">FlagC</span>                        <i class="conum" data-value="3"></i><b>(3)</b>
-      <span class="tok-nx">FlagD</span>                        <i class="conum" data-value="4"></i><b>(4)</b>
-<span class="tok-p">)</span>
-</td></tr></table></code></pre>
+const (
+      FlagA MyBitmask = 1 &lt;&lt; iota  <b class="conum">(1)</b>
+      FlagB                        <b class="conum">(2)</b>
+      FlagC                        <b class="conum">(3)</b>
+      FlagD                        <b class="conum">(4)</b>
+)</code></pre>
 </div>
 </div>
 <div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td><code>FlagA</code> == <code>0x01</code></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td><code>FlagB</code> == <code>0x02</code></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td><code>FlagC</code> == <code>0x04</code></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="4"></i><b>4</b></td>
-<td><code>FlagD</code> == <code>0x08</code></td>
-</tr>
-</table>
+<ol>
+<li>
+<p><code>FlagA</code> == <code>0x01</code></p>
+</li>
+<li>
+<p><code>FlagB</code> == <code>0x02</code></p>
+</li>
+<li>
+<p><code>FlagC</code> == <code>0x04</code></p>
+</li>
+<li>
+<p><code>FlagD</code> == <code>0x08</code></p>
+</li>
+</ol>
 </div>
 <div class="paragraph">
 <p>Leverage this trick.</p>
@@ -2574,9 +2508,9 @@ named bits.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="documentation"><a class="anchor" href="#documentation"></a><a class="link" href="#documentation">16. Documentation</a></h2>
+<h2 id="documentation">16. Documentation</h2>
 <div class="sectionbody">
-<h3 id="recommendation-13" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_13" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2584,7 +2518,7 @@ named bits.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-14" class="discrete">Rationale</h3>
+<h3 id="_rationale_14" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Read the <a href="https://blog.golang.org/godoc-documenting-go-code">Godoc: documenting Go
 code</a> blog post.<sup class="footnote">[<a id="_footnoteref_6" class="footnote" href="#_footnote_6" title="View footnote.">6</a>]</sup></p>
@@ -2592,9 +2526,9 @@ code</a> blog post.<sup class="footnote">[<a id="_footnoteref_6" class="footnote
 </div>
 </div>
 <div class="sect1">
-<h2 id="context"><a class="anchor" href="#context"></a><a class="link" href="#context">17. Context</a></h2>
+<h2 id="context">17. Context</h2>
 <div class="sectionbody">
-<h3 id="recommendation-14" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_14" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2602,30 +2536,201 @@ code</a> blog post.<sup class="footnote">[<a id="_footnoteref_6" class="footnote
 passing state along request-scoped state information (e.g. <code>deadlines</code>,
 <code>cancelation signals</code>, or request-specific information).</p>
 </li>
+<li>
+<p>Instances of <code><a href="https://golang.org/pkg/context/#Context">context.Context</a></code> SHOULD use the identifier name <code>ctxt</code>,
+however <code>ctx</code> MAY be used.</p>
+</li>
 </ol>
 </div>
-<h3 id="rationale-15" class="discrete">Rationale</h3>
+<h3 id="_rationale_15" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Read the <a href="https://blog.golang.org/context">Go Concurrency Patterns: Context</a> blog
 post.</p>
+</div>
+<div class="paragraph">
+<p><code>ctxt</code> is the most common identifier for <code><a href="https://golang.org/pkg/context/#Context">context.Context</a></code> in use.  Unless
+there is a good naming conflict, <code>ctxt</code> is a good identifier to use that
+unambiguously communicates intent.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code>$ git branch
+* (HEAD detached at go1.9rc2)
+  master
+$ git status -s
+$ git grep ctxt | wc -l
+    5149
+$ git grep ctx | grep -v ctxt | wc -l
+    1360</code></pre>
+</div>
 </div>
 <div class="ulist">
 <div class="title">Misc Resources</div>
 <ul>
 <li>
-<p><a href="https://rakyll.org/leakingctx/" class="bare">rakyll.org/leakingctx/</a></p>
+<p><a href="https://rakyll.org/leakingctx/" class="bare">https://rakyll.org/leakingctx/</a></p>
 </li>
 <li>
-<p><a href="https://medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff" class="bare">medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff</a></p>
+<p><a href="https://medium.com/@cep21/how-to-correctly-use-context-context-in-go-1-7-8f2c0fafdf39" class="bare">https://medium.com/@cep21/how-to-correctly-use-context-context-in-go-1-7-8f2c0fafdf39</a></p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="deadline-timers-and-timeouts"><a class="anchor" href="#deadline-timers-and-timeouts"></a><a class="link" href="#deadline-timers-and-timeouts">18. Deadline Timers and Timeouts</a></h2>
+<h2 id="signals-context">18. Signal Handling and <code>context</code></h2>
 <div class="sectionbody">
-<h3 id="recommendation-15" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_15" class="discrete">Recommendation</h3>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Signal handling SHOULD incorporate <code><a href="https://golang.org/pkg/context/">context</a></code> where possible.</p>
+</li>
+</ol>
+</div>
+<h3 id="_rationale_16" class="discrete">Rationale</h3>
+<div class="paragraph">
+<p><code><a href="https://golang.org/pkg/context/">context</a></code> is a good way to handle signals from the OS.  Go handles the
+<code>sigprocmask(2)</code> and <code>sigaction(2)</code> so that signals are delivered to a single OS
+thread.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlight"><code class="language-go" data-lang="go">package main
+
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+	"time"
+)
+
+func main() {
+	os.Exit(realMain())
+}
+
+func realMain() int {
+	var exitCode int
+
+	ctxt := context.Background() <b class="conum">(1)</b>
+
+	// Trap SIGINT and call cancel on the context
+	ctxt, cancel := context.WithCancel(ctxt) <b class="conum">(2)</b>
+	sigCh := make(chan os.Signal, 1)         <b class="conum">(3)</b>
+	signal.Notify(sigCh, os.Interrupt)       <b class="conum">(4)</b>
+
+	// Cancel any pending operations on exit of main()
+	defer func() { <b class="conum">(5)</b>
+		signal.Stop(sigCh) <b class="conum">(6)</b>
+		cancel()           <b class="conum">(7)</b>
+	}()
+
+	go func() { <b class="conum">(8)</b>
+		select {
+		case sig := &lt;-sigCh: <b class="conum">(9)</b>
+			switch sig { <b class="conum">(10)</b>
+			case os.Interrupt: <b class="conum">(11)</b>
+				fmt.Println("interrupt received")
+				cancel()
+				exitCode = 1
+			default:
+				panic(fmt.Sprintf("unsupported signal: %v", sig))
+			}
+		case &lt;-ctxt.Done(): <b class="conum">(11)</b>
+		}
+	}()
+
+	const defaultNap = 5 * time.Second
+	if err := powerNap(ctxt, defaultNap); err != nil {
+		fmt.Printf("power nap error: %v\n", err)
+	}
+
+	return exitCode
+}
+
+// powerNap sleeps for time.Duration or returns early if the context is
+// cancelled.
+func powerNap(ctxt context.Context, d time.Duration) error {
+	fmt.Printf("About to power nap for %s\n", d)
+	select {
+	case &lt;-time.After(d):
+		// time.After is used for example purposes only.  To apply a timeout to a
+		// context use context.WithTimeout().
+		fmt.Printf("Finished %s power nap\n", d)
+	case &lt;-ctxt.Done(): <b class="conum">(12)</b>
+		// Cancellation is not an error
+		fmt.Printf("context done: %v\n", ctxt.Err())
+	}
+
+	return nil
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<ol>
+<li>
+<p>Create a <a href="https://golang.org/pkg/context/#Background"><code>Background</code></a>
+<code><a href="https://golang.org/pkg/context/">context</a></code>.</p>
+</li>
+<li>
+<p>Save the newly created <code><a href="https://golang.org/pkg/context/#Context">context.Context</a></code> and its cancelation function.</p>
+</li>
+<li>
+<p>Create a buffered channel in order to prevent the OS thread from blocking.</p>
+</li>
+<li>
+<p>Wire up <code>SIGINT</code> to be delivered to <code>sigCh</code>.</p>
+</li>
+<li>
+<p>Push a <code>defer</code> handler onto the stack to shutdown the signal handler and
+cancel anything hanging off of the <code><a href="https://golang.org/pkg/context/#Context">context.Context</a></code>.</p>
+</li>
+<li>
+<p>Disable the delivery of new signals to <code>sigCh</code>.</p>
+</li>
+<li>
+<p>Cancel the <code><a href="https://golang.org/pkg/context/#Context">context.Context</a></code> instance. Cancelation operations are
+idempotent (which makes the cancelation at callout #7 safe).</p>
+</li>
+<li>
+<p>Spin off a goroutine to catch and handle signals delivered to <code>sigCh</code>.</p>
+</li>
+<li>
+<p>Drain the signal from <code>sigCh</code>.</p>
+</li>
+<li>
+<p>Switch on the signal type (not necessary for this simple example, but
+imagine a single signal hanler that is also capable of responding to
+<code>SIGHUP</code>).</p>
+</li>
+<li>
+<p>Handle the <code>SIGINT</code></p>
+</li>
+<li>
+<p>Cancellation handler for <code>powerNap()</code></p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Credit for this idiom and example:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><a href="https://medium.com/@matryer/make-ctrl-c-cancel-the-context-context-bd006a8ad6ff">Make Ctrl+C cancel the context.Context</a></p>
+</li>
+<li>
+<p><a href="https://golang.org/pkg/context/#WithDeadline"><code>context.WithDeadline</code></a></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="deadline-timers-and-timeouts">19. Deadline Timers and Timeouts</h2>
+<div class="sectionbody">
+<h3 id="_recommendation_16" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2645,7 +2750,7 @@ reference using <code>time.Time</code>.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-16" class="discrete">Rationale</h3>
+<h3 id="_rationale_17" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Starting in <a href="https://github.com/golang/go/issues/12914">Go</a>
 <a href="https://github.com/golang/go/issues/12914">1.9</a>, Go&#8217;s
@@ -2655,9 +2760,9 @@ monotonic time</a>.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="grpc"><a class="anchor" href="#grpc"></a><a class="link" href="#grpc">19. gRPC</a></h2>
+<h2 id="grpc">20. gRPC</h2>
 <div class="sectionbody">
-<h3 id="recommendation-16" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_17" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2670,7 +2775,7 @@ non- <a href="https://grpc.io/">gRPC</a> clients.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-17" class="discrete">Rationale</h3>
+<h3 id="_rationale_18" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>Read the <a href="https://blog.golang.org/context">Go Concurrency Patterns: Context</a> blog
 post.</p>
@@ -2678,9 +2783,9 @@ post.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="pprof"><a class="anchor" href="#pprof"></a><a class="link" href="#pprof">20. <code>pprof</code> and <code>gops(1)</code></a></h2>
+<h2 id="pprof">21. <code>pprof</code> and <code>gops(1)</code></h2>
 <div class="sectionbody">
-<h3 id="recommendation-17" class="discrete">Recommendation</h3>
+<h3 id="_recommendation_18" class="discrete">Recommendation</h3>
 <div class="olist arabic">
 <ol class="arabic">
 <li>
@@ -2692,28 +2797,26 @@ considered a secure endpoint).</p>
 <p>The <code><a href="https://github.com/google/gops">gops(1)</a></code> endpoint is RECOMMENDED and can be added to code like:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">import</span> <span class="tok-p">(</span>
-	<span class="tok-s">&quot;github.com/google/gops/agent&quot;</span> <i class="conum" data-value="1"></i><b>(1)</b>
-<span class="tok-p">)</span>
+<pre class="highlight"><code class="language-go" data-lang="go">import (
+	"github.com/google/gops/agent" <b class="conum">(1)</b>
+)
 
-	<span class="tok-c1">// Somewhere after configuration, start the agent listener.  Exit if the agent</span>
-	<span class="tok-c1">// is unable to listen.</span>
-	<span class="tok-k">if</span> <span class="tok-nx">err</span> <span class="tok-o">:=</span> <span class="tok-nx">agent</span><span class="tok-p">.</span><span class="tok-nx">Listen</span><span class="tok-p">(</span><span class="tok-kc">nil</span><span class="tok-p">);</span> <span class="tok-nx">err</span> <span class="tok-o">!=</span> <span class="tok-kc">nil</span> <span class="tok-p">{</span> <i class="conum" data-value="2"></i><b>(2)</b>
-		<span class="tok-nx">log</span><span class="tok-p">.</span><span class="tok-nx">Fatal</span><span class="tok-p">(</span><span class="tok-nx">err</span><span class="tok-p">)</span>
-	<span class="tok-p">}</span></code></pre>
+	// Somewhere after configuration, start the agent listener.  Exit if the agent
+	// is unable to listen.
+	if err := agent.Listen(nil); err != nil { <b class="conum">(2)</b>
+		log.Fatal(err)
+	}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Import the <code>agent</code></td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Listen early on after configuration</td>
-</tr>
-</table>
+<ol>
+<li>
+<p>Import the <code>agent</code></p>
+</li>
+<li>
+<p>Listen early on after configuration</p>
+</li>
+</ol>
 </div>
 </li>
 <li>
@@ -2727,65 +2830,59 @@ used, the following fragment is sub-optimal SHOULD NOT be used to create a
 local listener:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span><span class="tok-kn">import</span> <span class="tok-p">(</span>
-	<span class="tok-s">&quot;fmt&quot;</span>
-	<span class="tok-s">&quot;net/http&quot;</span>         <i class="conum" data-value="1"></i><b>(1)</b>
-	<span class="tok-nx">_</span> <span class="tok-s">&quot;net/http/pprof&quot;</span> <i class="conum" data-value="2"></i><b>(2)</b>
-	<span class="tok-s">&quot;time&quot;</span>
-<span class="tok-p">)</span>
+<pre class="highlight"><code class="language-go" data-lang="go">import (
+	"fmt"
+	"net/http"         <b class="conum">(1)</b>
+	_ "net/http/pprof" <b class="conum">(2)</b>
+	"time"
+)
 
-<span class="tok-c1">// In a goroutine listener somewhere downstream of main() </span><i class="conum" data-value="3"></i><b>(3)</b>
-<span class="tok-kd">var</span> <span class="tok-nx">pprofErr</span> <span class="tok-kt">error</span>
-<span class="tok-k">go</span> <span class="tok-kd">func</span><span class="tok-p">()</span> <span class="tok-p">{</span> <i class="conum" data-value="4"></i><b>(4)</b>
-	<span class="tok-c1">// Listen on port 6060 for `localhost`.  This could be [::] or `127.0.0.1`</span>
-	<span class="tok-nx">pprofErr</span> <span class="tok-p">=</span> <span class="tok-nx">http</span><span class="tok-p">.</span><span class="tok-nx">ListenAndServe</span><span class="tok-p">(</span><span class="tok-s">&quot;localhost:6060&quot;</span><span class="tok-p">,</span> <span class="tok-kc">nil</span><span class="tok-p">)</span> <i class="conum" data-value="5"></i><b>(5)</b>
-<span class="tok-p">}()</span>
+// In a goroutine listener somewhere downstream of main() <b class="conum">(3)</b>
+var pprofErr error
+go func() { <b class="conum">(4)</b>
+	// Listen on port 6060 for `localhost`.  This could be [::] or `127.0.0.1`
+	pprofErr = http.ListenAndServe("localhost:6060", nil) <b class="conum">(5)</b>
+}()
 
-<span class="tok-c1">// Sleep for 1s to give the backend a chance to fail.</span>
-<span class="tok-nx">time</span><span class="tok-p">.</span><span class="tok-nx">Sleep</span><span class="tok-p">(</span><span class="tok-mi">1</span> <span class="tok-o">*</span> <span class="tok-nx">time</span><span class="tok-p">.</span><span class="tok-nx">Second</span><span class="tok-p">)</span> <i class="conum" data-value="6"></i><b>(6)</b>
-<span class="tok-k">if</span> <span class="tok-nx">pprofErr</span> <span class="tok-o">!=</span> <span class="tok-kc">nil</span> <span class="tok-p">{</span>
-	<span class="tok-k">return</span> <span class="tok-nx">fmt</span><span class="tok-p">.</span><span class="tok-nx">Errorf</span><span class="tok-p">(</span><span class="tok-s">&quot;pprof endpoint failed to initialize: %v&quot;</span><span class="tok-p">,</span> <span class="tok-nx">pprofErr</span><span class="tok-p">)</span>
-<span class="tok-p">}</span></code></pre>
+// Sleep for 1s to give the backend a chance to fail.
+time.Sleep(1 * time.Second) <b class="conum">(6)</b>
+if pprofErr != nil {
+	return fmt.Errorf("pprof endpoint failed to initialize: %v", pprofErr)
+}</code></pre>
 </div>
 </div>
 <div class="colist arabic">
-<table>
-<tr>
-<td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>The <code>net/http</code> package is only needed for the standalone listener used in
-callout 5.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Initialize the <code>net/http/pprof</code> package.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="3"></i><b>3</b></td>
-<td><code>init()</code> SHOULD NOT be used to spawn this listener in order to allow for
+<ol>
+<li>
+<p>The <code>net/http</code> package is only needed for the standalone listener used in
+callout 5.</p>
+</li>
+<li>
+<p>Initialize the <code>net/http/pprof</code> package.</p>
+</li>
+<li>
+<p><code>init()</code> SHOULD NOT be used to spawn this listener in order to allow for
 proper configuration to take place <strong>and</strong> to allow the program to respond to
 errors in the event the <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoint fails to initialie.  The
 <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> endpoint SHOULD be initialized before this service enters its
-duty-cycle.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="4"></i><b>4</b></td>
-<td>Start a detached thread to handle <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> requests.</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="5"></i><b>5</b></td>
-<td>Listen on a local endpoint and port</td>
-</tr>
-<tr>
-<td><i class="conum" data-value="6"></i><b>6</b></td>
-<td>"One second ought to be enough time for any service to fail."</td>
-</tr>
-</table>
+duty-cycle.</p>
+</li>
+<li>
+<p>Start a detached thread to handle <code><a href="https://golang.org/pkg/runtime/pprof">pprof</a></code> requests.</p>
+</li>
+<li>
+<p>Listen on a local endpoint and port</p>
+</li>
+<li>
+<p>"One second ought to be enough time for any service to fail."</p>
+</li>
+</ol>
 </div>
 <div class="admonitionblock warning">
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-warning" title="Warning"></i>
+<div class="title">Warning</div>
 </td>
 <td class="content">
 <div class="paragraph">
@@ -2804,7 +2901,7 @@ aforementioned reasons.</p>
 </li>
 </ol>
 </div>
-<h3 id="rationale-18" class="discrete">Rationale</h3>
+<h3 id="_rationale_19" class="discrete">Rationale</h3>
 <div class="paragraph">
 <p>TODO.</p>
 </div>
@@ -2812,29 +2909,29 @@ aforementioned reasons.</p>
 <div class="title">Misc Resources</div>
 <ul>
 <li>
-<p><a href="https://blog.golang.org/profiling-go-programs" class="bare">blog.golang.org/profiling-go-programs</a></p>
+<p><a href="https://blog.golang.org/profiling-go-programs" class="bare">https://blog.golang.org/profiling-go-programs</a></p>
 </li>
 <li>
-<p><a href="https://rakyll.org/profiler-labels/" class="bare">rakyll.org/profiler-labels/</a></p>
+<p><a href="https://rakyll.org/profiler-labels/" class="bare">https://rakyll.org/profiler-labels/</a></p>
 </li>
 <li>
-<p><a href="https://rakyll.org/mutexprofile/" class="bare">rakyll.org/mutexprofile/</a></p>
+<p><a href="https://rakyll.org/mutexprofile/" class="bare">https://rakyll.org/mutexprofile/</a></p>
 </li>
 <li>
-<p><a href="https://rakyll.org/coredumps/" class="bare">rakyll.org/coredumps/</a></p>
+<p><a href="https://rakyll.org/coredumps/" class="bare">https://rakyll.org/coredumps/</a></p>
 </li>
 <li>
-<p><a href="https://github.com/uber/go-torch" class="bare">github.com/uber/go-torch</a></p>
+<p><a href="https://github.com/uber/go-torch" class="bare">https://github.com/uber/go-torch</a></p>
 </li>
 <li>
-<p><a href="https://github.com/google/pprof/blob/master/doc/pprof.md" class="bare">github.com/google/pprof/blob/master/doc/pprof.md</a></p>
+<p><a href="https://github.com/google/pprof/blob/master/doc/pprof.md" class="bare">https://github.com/google/pprof/blob/master/doc/pprof.md</a></p>
 </li>
 </ul>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="external-resources"><a class="anchor" href="#external-resources"></a><a class="link" href="#external-resources">21. External Resources</a></h2>
+<h2 id="external-resources">22. External Resources</h2>
 <div class="sectionbody">
 <div class="olist arabic">
 <ol class="arabic">
@@ -2919,7 +3016,7 @@ aforementioned reasons.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="go-intro"><a class="anchor" href="#go-intro"></a><a class="link" href="#go-intro">Appendix A: Go 101 Resources</a></h2>
+<h2 id="go-intro">Appendix A: Go 101 Resources</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>If you are completely new to Go, "I haven&#8217;t written a line of Go in my life
@@ -2927,7 +3024,7 @@ before today," this section is a quick primmer to get you up and running in a
 hurry.</p>
 </div>
 <div class="sect2">
-<h3 id="five-minute-jump-start"><a class="anchor" href="#five-minute-jump-start"></a><a class="link" href="#five-minute-jump-start">Five Minute Jump Start</a></h3>
+<h3 id="_five_minute_jump_start">A.1. Five Minute Jump Start</h3>
 <div class="paragraph">
 <p>Suppose you know nothing and just need to get started.  The following steps
 SHOULD get you to a functioning "Hello World" in ~5min.</p>
@@ -2958,8 +3055,8 @@ Download Page</a> or via your preferred package management system:</p>
 of this step how you get this done doesn&#8217;t matter):</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ echo &#39;export GOPATH=$HOME/go&#39; &gt;&gt; ~/.profile
-$ echo &#39;export PATH=$GOPATH/bin:$PATH&#39; &gt;&gt; ~/.profile
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ echo 'export GOPATH=$HOME/go' &gt;&gt; ~/.profile
+$ echo 'export PATH=$GOPATH/bin:$PATH' &gt;&gt; ~/.profile
 $ export GOPATH=$HOME/go
 $ export PATH=$GOPATH/bin:$PATH</code></pre>
 </div>
@@ -2997,39 +3094,39 @@ PATH=$PATH:$GOPATH/github.com/brendangregg/FlameGraph</code></p>
 <p>Edit <code>main.go</code> and make the following edits:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="go"><span></span> <span class="tok-kn">package</span> <span class="tok-nx">main</span>
+<pre class="highlight"><code class="language-go" data-lang="go"> package main
 
- <span class="tok-kn">import</span> <span class="tok-p">(</span>
-<span class="tok-o">+</span>       <span class="tok-s">&quot;fmt&quot;</span>
-        <span class="tok-s">&quot;log&quot;</span>
-<span class="tok-o">-</span>       <span class="tok-s">&quot;time&quot;</span>
+ import (
++       "fmt"
+        "log"
+-       "time"
 
-        <span class="tok-s">&quot;github.com/google/gops/agent&quot;</span>
- <span class="tok-p">)</span>
+        "github.com/google/gops/agent"
+ )
 
-<span class="tok-o">+</span><span class="tok-kd">func</span> <span class="tok-nx">getFactorial</span><span class="tok-p">(</span><span class="tok-nx">n</span> <span class="tok-kt">int</span><span class="tok-p">)</span> <span class="tok-kt">int</span> <span class="tok-p">{</span>
-<span class="tok-o">+</span>       <span class="tok-k">if</span> <span class="tok-nx">n</span> <span class="tok-p">&lt;</span> <span class="tok-mi">0</span> <span class="tok-p">{</span>
-<span class="tok-o">+</span>               <span class="tok-k">return</span> <span class="tok-mi">0</span>
-<span class="tok-o">+</span>       <span class="tok-p">}</span>
-<span class="tok-o">+</span>
-<span class="tok-o">+</span>       <span class="tok-k">if</span> <span class="tok-nx">n</span> <span class="tok-o">&lt;=</span> <span class="tok-mi">1</span> <span class="tok-p">{</span>
-<span class="tok-o">+</span>               <span class="tok-k">return</span> <span class="tok-mi">1</span>
-<span class="tok-o">+</span>       <span class="tok-p">}</span>
-<span class="tok-o">+</span>
-<span class="tok-o">+</span>       <span class="tok-k">return</span> <span class="tok-nx">n</span> <span class="tok-o">*</span> <span class="tok-nx">getFactorial</span><span class="tok-p">(</span><span class="tok-nx">n</span><span class="tok-o">-</span><span class="tok-mi">1</span><span class="tok-p">)</span>
-<span class="tok-o">+</span><span class="tok-p">}</span>
-<span class="tok-o">+</span>
- <span class="tok-kd">func</span> <span class="tok-nx">main</span><span class="tok-p">()</span> <span class="tok-p">{</span>
-        <span class="tok-k">if</span> <span class="tok-nx">err</span> <span class="tok-o">:=</span> <span class="tok-nx">agent</span><span class="tok-p">.</span><span class="tok-nx">Listen</span><span class="tok-p">(</span><span class="tok-kc">nil</span><span class="tok-p">);</span> <span class="tok-nx">err</span> <span class="tok-o">!=</span> <span class="tok-kc">nil</span> <span class="tok-p">{</span>
-                <span class="tok-nx">log</span><span class="tok-p">.</span><span class="tok-nx">Fatal</span><span class="tok-p">(</span><span class="tok-nx">err</span><span class="tok-p">)</span>
-        <span class="tok-p">}</span>
-<span class="tok-o">-</span>       <span class="tok-nx">time</span><span class="tok-p">.</span><span class="tok-nx">Sleep</span><span class="tok-p">(</span><span class="tok-nx">time</span><span class="tok-p">.</span><span class="tok-nx">Hour</span><span class="tok-p">)</span>
-<span class="tok-o">+</span>
-<span class="tok-o">+</span>       <span class="tok-nx">fmt</span><span class="tok-p">.</span><span class="tok-nx">Println</span><span class="tok-p">(</span><span class="tok-s">&quot;Hello World!  Please debug me.&quot;</span><span class="tok-p">)</span>
-<span class="tok-o">+</span>       <span class="tok-k">for</span> <span class="tok-nx">i</span> <span class="tok-o">:=</span> <span class="tok-mi">1000000</span><span class="tok-p">;</span> <span class="tok-nx">i</span> <span class="tok-p">&gt;</span> <span class="tok-mi">0</span><span class="tok-p">;</span> <span class="tok-nx">i</span><span class="tok-o">--</span> <span class="tok-p">{</span>
-<span class="tok-o">+</span>               <span class="tok-nx">getFactorial</span><span class="tok-p">(</span><span class="tok-nx">i</span><span class="tok-p">)</span>
-<span class="tok-o">+</span>       <span class="tok-p">}</span>
- <span class="tok-p">}</span></code></pre>
++func getFactorial(n int) int {
++       if n &lt; 0 {
++               return 0
++       }
++
++       if n &lt;= 1 {
++               return 1
++       }
++
++       return n * getFactorial(n-1)
++}
++
+ func main() {
+        if err := agent.Listen(nil); err != nil {
+                log.Fatal(err)
+        }
+-       time.Sleep(time.Hour)
++
++       fmt.Println("Hello World!  Please debug me.")
++       for i := 1000000; i &gt; 0; i-- {
++               getFactorial(i)
++       }
+ }</code></pre>
 </div>
 </div>
 </li>
@@ -3040,7 +3137,7 @@ PATH=$PATH:$GOPATH/github.com/brendangregg/FlameGraph</code></p>
 <p>Run the program:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ ./hello
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ ./hello
 Hello World!  Please debug me.</code></pre>
 </div>
 </div>
@@ -3053,7 +3150,7 @@ the program (e.g. <code>ctrl+c</code>).</p>
 <p>The program is available to be inspected via <code><a href="https://github.com/google/gops">gops(1)</a></code>:</p>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ gops
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ gops
 44326	gops	(/Users/seanc/go/bin/gops)
 44319*	hello	(/Users/seanc/go/src/github.com/google/gops/examples/hello/hello)
 $ gops stats 44319
@@ -3331,14 +3428,14 @@ Trace dump saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/trace90295
 2017/08/03 14:17:23 Splitting trace...
 2017/08/03 14:17:23 Opening browser
 # gops will block in the foreground - push ctrl+c when done
-# This program is uneventful so there&#39;s nothing to see
+# This program is uneventful so there's nothing to see
 $ gops pprof-heap 44319
 Profiling dump saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
 Binary file saved to: /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/binary663659615
 File: binary663659615
 Type: inuse_space
 Time: Aug 3, 2017 at 2:19pm (PDT)
-Entering interactive mode (type &quot;help&quot; for commands, &quot;o&quot; for options)
+Entering interactive mode (type "help" for commands, "o" for options)
 (pprof) help
   Commands:
     callgrind        Outputs a graph in callgrind format
@@ -3400,14 +3497,14 @@ Entering interactive mode (type &quot;help&quot; for commands, &quot;o&quot; for
       cum              Sort entries based on cumulative weight
       flat             Sort entries based on own weight granularity
       addresses        Aggregate at the function level.
-      addressnoinlines Aggregate at the function level, including functions&#39; addresses in the output.
+      addressnoinlines Aggregate at the function level, including functions' addresses in the output.
       files            Aggregate at the file level.
       functionnameonly Aggregate at the function level.
       functions        Aggregate at the function level.
       lines            Aggregate at the source code line level.
       noinlines        Aggregate at the function level.
 
-  type &quot;help &lt;cmd|option&gt;&quot; for more information
+  type "help &lt;cmd|option&gt;" for more information
 (pprof) exit
 $ go-torch -b /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
 INFO[18:44:38] Run pprof command: go tool pprof -raw /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile786664192
@@ -3421,7 +3518,7 @@ File: binary771063221
 Type: cpu
 Time: Aug 3, 2017 at 6:46pm (PDT)
 Duration: 30.16s, Total samples = 26.21s (86.90%)
-Entering interactive mode (type &quot;help&quot; for commands, &quot;o&quot; for options)
+Entering interactive mode (type "help" for commands, "o" for options)
 (pprof) exit
 $ go-torch -b /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile127087150
 INFO[18:47:35] Run pprof command: go tool pprof -raw /var/folders/w0/tf58slqj3rs5mklbnvp5k7vh0000gp/T/profile127087150
@@ -3438,7 +3535,7 @@ $ cat $HOME/.config/gops/${PID_OF_HELLO_PROCESS} ; echo
 <div class="content">
 <div id="img-trace-sched-latency" class="imageblock">
 <div class="content">
-<img src="images/scheduler-latency-profile.png" alt="Scheduler Latency">
+<img src="scheduler-latency-profile.png" alt="Scheduler Latency">
 </div>
 <div class="title">Figure 1. Output from <code>gops trace</code> and the scheduler latency profile</div>
 </div>
@@ -3452,7 +3549,7 @@ information is covered in the section on <a href="#pprof"><code>pprof</code></a>
 </div>
 </div>
 <div class="sect2">
-<h3 id="books"><a class="anchor" href="#books"></a><a class="link" href="#books">Books</a></h3>
+<h3 id="_books">A.2. Books</h3>
 <div class="paragraph">
 <p>The following is a list of books that people have found helpful for getting
 started.  One of the problems with learning by dead tree is the disparity
@@ -3462,7 +3559,7 @@ sometimes at length - doesn&#8217;t mean it is a primary concern or something yo
 to become a subject-matter expert on.</p>
 </div>
 <div class="sect3">
-<h4 id="recommended-resources"><a class="anchor" href="#recommended-resources"></a><a class="link" href="#recommended-resources">Recommended Resources</a></h4>
+<h4 id="_recommended_resources">A.2.1. Recommended Resources</h4>
 <div class="paragraph">
 <p>The following are "approved" resources ("approved" in this context only means
 "this wasn&#8217;t awful and will point you in the right direction" and doesn&#8217;t
@@ -3475,17 +3572,17 @@ resources that exist, but they haven&#8217;t been reviewed (pull requests welcom
 <p><a href="http://www.gopl.io/">The Go Programming</a> [<a href="#go-lang">1 pp.&#160;27-282</a>, <a href="#go-lang">1 pp.&#160;353-366</a>]</p>
 </li>
 <li>
-<p>Programming in Go [<a href="#prog-in-go">3 pp.&#160;1-250</a>, <a href="#prog-in-go">3 pp.&#160;265-424</a>]</p>
+<p>Programming in Go [<a href="#prog-in-go">2 pp.&#160;1-250</a>, <a href="#prog-in-go">2 pp.&#160;265-424</a>]</p>
 </li>
 <li>
-<p>An Introduction to Programming in Go [<a href="#intro-to-prog-go">2</a>] (now available
+<p>An Introduction to Programming in Go [<a href="#intro-to-prog-go">3</a>] (now available
 as a PDF as it is now longer in print).</p>
 </li>
 </ul>
 </div>
 </div>
 <div class="sect3">
-<h4 id="extra-resources"><a class="anchor" href="#extra-resources"></a><a class="link" href="#extra-resources">Extra Resources</a></h4>
+<h4 id="_extra_resources">A.2.2. Extra Resources</h4>
 <div class="ulist">
 <ul>
 <li>
@@ -3507,7 +3604,7 @@ interesting.</p>
 </div>
 </div>
 <div class="sect2">
-<h3 id="make"><a class="anchor" href="#make"></a><a class="link" href="#make"><code>make(1)</code></a></h3>
+<h3 id="make">A.3. <code>make(1)</code></h3>
 <div class="paragraph">
 <p><code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code> comes in many shapes and forms.  <a href="https://www.gnu.org/software/make/">GNU
 <code>make(1)</a></code> is the predominant <code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code> implementation.
@@ -3515,14 +3612,14 @@ interesting.</p>
 dialect is not universally supported.  If you use GNU
 <code>make(1)</code>-specific extensions, you MUST spell the <code>Makefile</code> like
 <code>GNUmakefile</code>.  The same rule applies to <a href="https://www.freebsd.org/doc/en/books/pmake/book.html">BSD
-<code>make(1)</code></a> and <code>BSDmakefile</code>.  It is unfortunate that there is poor
+<code>make(1)</code></a> and <code>Makefile</code>.<sup class="footnote" id="_footnote_bmake-makefile">[<a id="_footnoteref_7" class="footnote" href="#_footnote_7" title="View footnote.">7</a>]</sup> It is unfortunate that there is poor
 interopoerability between the various <code><a href="https://en.wikipedia.org/wiki/Make_(software)">make(1)</a></code> implementations and it&#8217;s
 equally unfortunate that the prevailing attitudes is to be conformist (versus
 taking a zero-cost principled stand for correctness).</p>
 </div>
 <div class="listingblock">
 <div class="content">
-<pre class="pygments highlight"><code data-lang="shell"><span></span>$ cat GNUmakefile
+<pre class="highlight"><code class="language-shell" data-lang="shell">$ cat GNUmakefile
 test:
     echo $(shell echo bar)
 $ bsdmake -f GNUmakefile
@@ -3542,7 +3639,7 @@ human UX and system interoperability layer to front tools like <code><a href="ht
 <table>
 <tr>
 <td class="icon">
-<i class="fa icon-note" title="Note"></i>
+<div class="title">Note</div>
 </td>
 <td class="content">
 <div class="paragraph">
@@ -3560,7 +3657,7 @@ consequences.  In software it most oftens in deferred cost.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="glossary"><a class="anchor" href="#glossary"></a><a class="link" href="#glossary">Glossary</a></h2>
+<h2 id="_glossary">Glossary</h2>
 <div class="sectionbody">
 <div class="dlist">
 <dl>
@@ -3573,18 +3670,18 @@ consequences.  In software it most oftens in deferred cost.</p>
 </div>
 </div>
 <div class="sect1">
-<h2 id="bibliography"><a class="anchor" href="#bibliography"></a><a class="link" href="#bibliography">Bibliography</a></h2>
+<h2 id="_bibliography">Bibliography</h2>
 <div class="sectionbody">
 <div class="olist arabic">
 <ol class="arabic">
 <li>
-<p><a id="go-lang"></a>A. A. A. Donovan and B. W. Kernighan, <em>The Go Programming Language (Addison-Wesley Professional Computing Series)</em>. Addison-Wesley Professional, 2015 [Online]. Available: <a href="https://smile.amazon.com/Programming-Language-Addison-Wesley-Professional-Computing-ebook/dp/B0184N7WWS" class="bare">smile.amazon.com/Programming-Language-Addison-Wesley-Professional-Computing-ebook/dp/B0184N7WWS</a></p>
+<p><a id="go-lang"></a>A. A. A. Donovan and B. W. Kernighan, <em>The Go Programming Language (Addison-Wesley Professional Computing Series)</em>. Addison-Wesley Professional, 2015.</p>
 </li>
 <li>
-<p><a id="intro-to-prog-go"></a>C. Doxsey, <em>An Introduction to Programming in Go</em>. CreateSpace Independent Publishing Platform, 2012 [Online]. Available: <a href="http://www.golang-book.com/public/pdf/gobook.0.pdf" class="bare">www.golang-book.com/public/pdf/gobook.0.pdf</a></p>
+<p><a id="prog-in-go"></a>M. Summerfield, <em>Programming in Go: Creating Applications for the 21st Century (Developer’s Library)</em>. Addison-Wesley Professional, 2012.</p>
 </li>
 <li>
-<p><a id="prog-in-go"></a>M. Summerfield, <em>Programming in Go: Creating Applications for the 21st Century (Developer’s Library)</em>. Addison-Wesley Professional, 2012 [Online]. Available: <a href="https://smile.amazon.com/Programming-Go-Creating-Applications-Developers-ebook/dp/B007Y6KDTG" class="bare">smile.amazon.com/Programming-Go-Creating-Applications-Developers-ebook/dp/B007Y6KDTG</a></p>
+<p><a id="intro-to-prog-go"></a>C. Doxsey, <em>An Introduction to Programming in Go</em>. CreateSpace Independent Publishing Platform, 2012.</p>
 </li>
 </ol>
 </div>
@@ -3594,7 +3691,7 @@ consequences.  In software it most oftens in deferred cost.</p>
 <div id="footnotes">
 <hr>
 <div class="footnote" id="_footnote_1">
-<a href="#_footnoteref_1">1</a>. While not an official recommendation, one could easily be forgiven for symlinking <code>$GOPATH/pkg</code> to someplace in <code>/tmp/</code> in order to take advantage of the automatic pruning of old <code>.a</code> files that happens periodically and after every reboot on many *NIX platforms (including macOS).
+<a href="#_footnoteref_1">1</a>. Cleaning out <code>$GOPATH/pkg</code> is an ounce of prevention whose tiny cost is worth more than the pound of debugging.  Post Go 1.5 I&#8217;ve heard a handful of anecdotal reports of this fixing some extremely unlikely and inexplicable panics that gets cleared up after <code>$GOPATH/pkg</code> has been preened.  It&#8217;s unclear if this is true, rare, a myth, or a scapegopher for something else.
 </div>
 <div class="footnote" id="_footnote_2">
 <a href="#_footnoteref_2">2</a>. Tools similar to <a href="https://bazel.build/">bazel</a> could influence this recommendation in the future however there are no plans to augment the workflow presented by the <code><a href="https://golang.org/cmd/go/">go(1)</a></code> tool.
@@ -3611,11 +3708,13 @@ consequences.  In software it most oftens in deferred cost.</p>
 <div class="footnote" id="_footnote_6">
 <a href="#_footnoteref_6">6</a>. It would be nice, however, if <code><a href="https://golang.org/cmd/godoc/">godoc(1)</a></code> supported a richer markup like <a href="https://en.wikipedia.org/wiki/AsciiDoc"><code>asciidoc</code></a>.
 </div>
+<div class="footnote" id="_footnote_7">
+<a href="#_footnoteref_7">7</a>. Irritatingly enough, <code>.MAKE.MAKEFILE_PREFERENCE</code> does not default to using <code>BSDmakefile</code> in its preference list by default.
+</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Version 0.1.0<br>
-Last updated 2017-08-04 10:47:57 PDT
+Last updated 2017-08-08 09:46:11 PDT
 </div>
 </div>
 </body>
