@@ -201,6 +201,7 @@ ordered from philosophical to practical):
 * `$EDITOR` Integration
 * `vendor/` Management
 * Naming Conventions
+* Repository Names
 * API stability
 * Static Analysis
 * Explicit Types
@@ -225,6 +226,7 @@ write. Feel free to request more.
  ** https://github.com/google/go-cmp/
  ** https://mijailovic.net/2017/07/29/go-fuzz/
  ** https://www.youtube.com/watch?v=8hQG7QlcLBk
+ ** code coverage
  * Benchmarking
  ** https://medium.com/@hackintoshrao/daily-code-optimization-using-benchmarks-and-profiling-in-golang-gophercon-india-2016-talk-874c8b4dc3c5
  ** https://dave.cheney.net/2013/06/30/how-to-write-benchmarks-in-go
@@ -379,9 +381,6 @@ Project Structure
 [discrete]
 === Recommendation
 
-////
-Add repository naming convention: go- for libraries, cmd/cmdname for sub-commands
-////
 1. `$GOPATH` SHOULD be set to `$HOME/go` and SHOULD be incorporated into your
    shell's environment.
 2. All development SHOULD be done within `$GOPATH/src`.
@@ -1163,6 +1162,48 @@ tools like `{guru-1}` commonly in use, the practice of encoding extraneous type
 and package information into variable names is non-idiomatic and frowned upon.
 https://github.com/joyent/triton-go/pull/19#issuecomment-308860337[The burden
 for good naming and exported functions falls on library authors].
+
+[[repository-names]]
+Repository Names
+----------------
+
+[discrete]
+=== Recommendations
+
+1. Repositories that contain Go libraries that wrap APIs or where there are
+   competing libraries written in different langauges MUST be prefixed with
+   `go-`.
+2. Repositories that house libraries whose only consumers are internal to Go
+   SHOULD be prefixed with `go-`.
+3. Go repositories whose primary consumer is a library, but who also contain a
+   binary, SHOULD conform to the `go-mylib/cmd/mycmdname`.
+
+[discrete]
+=== Rationale
+
+Repositories where the distinct possibility of a name conflict may arise should
+be prefixed with the primary language in order to create a unique namespace.
+Examples of this at Joyent include:
+
+* https://github.com/joyent/node-manta[`node-manta`]
+* https://github.com/joyent/python-manta[`python-manta`]
+* https://github.com/joyent/java-manta[`java-manta`]
+
+In a different example where a library also contains a binary, such as
+https://github.com/hashicorp/go-sockaddr[`go-sockaddr`].
+https://github.com/hashicorp/go-sockaddr[`go-sockaddr`] the repository contains:
+
+1. Two libraries/packages:
+   https://github.com/hashicorp/go-sockaddr/blob/master/sockaddr.go#L1-L45[`sockaddr`]
+   and its
+   https://github.com/hashicorp/go-sockaddr/tree/master/template[`template`]
+   package.
+2. One binary:
+   https://github.com/hashicorp/go-sockaddr/tree/master/cmd/sockaddr[`sockaddr(1)`]
+
+Standalone binaries such as those referenced in the <<static-analysis>> section
+are examples of standalone commands that do not need to be nested under a `cmd/`
+subdirectory nor do they need to be prefixed with `go-` because of their domain.
 
 [[api-stability]]
 API Stability
