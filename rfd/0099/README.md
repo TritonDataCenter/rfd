@@ -1,6 +1,6 @@
 ---
 authors: Kody Kantor <kody.kantor@joyent.com>
-state: draft
+state: publish
 ---
 
 <!--
@@ -41,8 +41,12 @@ state: draft
 services composing Triton and Manta.
 
 This document will be a general overview of how this library is different
-from other metric client libraries. To learn how the code is organized,
-and for details on the user-facing API, see [DESIGN.md](./DESIGN.md).
+from other metric client libraries.
+
+This RFD is no longer being updated. All of this information (and more!) is
+available in the
+[node-artedi GitHub repository](https://github.com/joyent/node-artedi) in the
+`docs/` directory. node-artedi is an implementation of this RFD.
 
 ## Intro and Background
 Having access to live metrics is very valuable to operations teams. It
@@ -116,71 +120,6 @@ Due to our desire for a parent/child metric client, we have decided to
 create our own metric client library to use in Node.js. This is a
 description of some of the design decisions made (and why), and an
 overview of some things to watch out for in using the library.
-
-## Example Usage
-Here is a simple example usage of counters and histograms.
-```javascript
-var artedi = require('artedi');
-
-// collectors are the 'parent' collector.
-var collector = artedi.createCollector();
-
-// counters are a 'child' collector.
-// This call is idempotent.
-var counter = collector.counter({
-    name: 'http_requests_completed',
-    help: 'count of muskie http requests completed',
-    labels: {
-        zone: ZONENAME
-    }
-});
-
-// Add 1 to the counter with the labels 'method=getobject,code=200'.
-counter.increment({
-    method: 'getobject',
-    code: '200'
-});
-
-collector.collect(artedi.FMT_PROM, function (err, metrics) {
-    console.log(metrics);
-    // Prints:
-    // http_requests_completed{zone="e5d3",method="getobject",code="200"} 1
-});
-
-var histogram = collector.histogram({
-    name: 'http_request_latency_ms',
-    help: 'latency of muskie http requests'
-});
-
-// Observe a latency of 998ms for a 'putobjectdir' request.
-histogram.observe(998, {
-    method: 'putobjectdir'
-});
-
-// For each bucket, we get a count of the number of requests that fall
-// below or at the latency upper-bound of the bucket.
-// This output is defined by Prometheus.
-collector.collect(artedi.FMT_PROM, function (err, metrics) {
-    if (err) {
-        throw new VError(err, 'could not collect metrics');
-    }
-    console.log(metrics);
-    // Prints:
-    // # HELP http_requests_completed count of muskie http requests completed
-    // # TYPE http_requests_completed counter
-    // http_requests_completed{zone="e5d3",method="getobject",code="200"} 1
-    // # HELP http_request_latency_ms latency of muskie http requests
-    // # TYPE http_request_latency_ms histogram
-    // http_request_latency_ms{le="729"} 0
-    // http_request_latency_ms{le="2187"} 1
-    // http_request_latency_ms{le="3645"} 0
-    // http_request_latency_ms{le="5103"} 0
-    // http_request_latency_ms{le="6561"} 0
-    // http_request_latency_ms{le="+Inf"} 1
-    // http_request_latency_ms_count{} 1
-    // http_request_latency_ms_sum{} 998
-});
-```
 
 ## Unique Design Elements
 ### Parent/Child Relationship
@@ -617,11 +556,7 @@ to call the proper fast RPC endpoint to access the metrics and print them to the
 terminal. This portion is out of the scope of this document, but it is good to
 keep in mind, and is related to the previous idea.
 
-### Biggish TODOs
-* Performance fixes:
-    * Histogram: Change from map of Counters to a single Counter
-    * A lot of nested for-in loops
-    * Actually do performance measurements
+### Other things
 * We can potentially use DTrace to do some cool things here, like to help
     determine what values are really coming in through Histograms so we can
     make more intelligent decisions when creating buckets (thanks, Chris!).
