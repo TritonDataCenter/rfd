@@ -260,11 +260,11 @@ Here are a number of quicker conveniences we can implement for operators
 to handle agent updates, which are a common sore point in Triton updates.
 
 - [TOOLS-1648](https://smartos.org/bugview/TOOLS-1648): 'sdcadm post-setup cmon' should create cmon-agent instances
-  This will enable TOOLS-1631 for 'cmon-agent'.
-- [TOOLS-1651](https://smartos.org/bugview/TOOLS-1651): 'sdcadm create should support agent instances'.
-- [TOOLS-1770](https://smartos.org/bugview/TOOLS-1770): for multiple-server support for 'sdcadm create'
-- [TOOLS-1771](https://smartos.org/bugview/TOOLS-1771): Add "--skip-latest-symlink" option to `sdcadm experimental update-agents` 
-- [TOOLS-1772](https://smartos.org/bugview/TOOLS-1772): Add "--just-update-symlink" option to `sdcadm experimental update-agents`
+  This will enable TOOLS-1631 for 'cmon-agent'. Done.
+- [TOOLS-1651](https://smartos.org/bugview/TOOLS-1651): 'sdcadm create should support agent instances'. Done.
+- [TOOLS-1770](https://smartos.org/bugview/TOOLS-1770): for multiple-server support for 'sdcadm create'. Done.
+- [TOOLS-1771](https://smartos.org/bugview/TOOLS-1771): Add "--skip-latest-symlink" option to `sdcadm experimental update-agents`. Done. 
+- [TOOLS-1772](https://smartos.org/bugview/TOOLS-1772): Add "--just-update-symlink" option to `sdcadm experimental update-agents`. Done.
 
 
 ## M2: Improved agent instance tracking
@@ -280,7 +280,7 @@ necessarily having to have fully moved off the agentsshar.
 - Include `params.image_uuid` in all SAPI instances (since we can have more than one instance for a given service and
   these could be using different images).
 - [SAPI-285](https://smartos.org/bugview/SAPI-285): 'Create Service should not validate presence of provide image_uuid
-  into local IMGAPI'
+  into local IMGAPI'. Done.
 - Update SAPI to index and provide search options for instances image_uuid and
   server_uuid.
 - Any call to CNAPI factory-reset or delete for a given server should remove
@@ -344,8 +344,8 @@ This section is optional for this RFD.
 The following quick notes should be cleaned up, discussed, agreed upon, and
 ticketed:
 
-- cn-agent agent_install needs to support installation of a new agent.
-  AGENT-1053. Done.
+- [AGENT-1053](https://smartos.org/bugview/AGENT-1053) cn-agent agent_install needs to support installation of a new agent.
+  Done.
 
 * * *
 
@@ -367,11 +367,6 @@ ticketed:
 - Does SAPI ListInstances support paging? It'll need to.
   Answer: No, it does not support pagging. Indeed, it attempts to load
   every existing instance by looping on moray findObjects in batches of 1000.
-
-Some current tickets:
-
-- AGENT-1053: "Note that my plan is to provide support for new agent setup by
-  cn-agent and use it for cmon-agent update this week" --pedro
 
 ## M5: gz-tools, dockerlogger and sdcadm
 
