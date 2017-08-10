@@ -1,6 +1,6 @@
 :author: Alex Wilson
 :email: alex.wilson@joyent.com
-:state: predraft
+:state: draft
 :revremark: State: {state}
 
 :showtitle:
@@ -13,7 +13,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Copyright 2017 Alex Wilson
+    Copyright 2017 Joyent Inc
 ////
 
 # RFD 77 Hardware-backed per-zone crypto tokens
