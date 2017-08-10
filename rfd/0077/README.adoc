@@ -1051,10 +1051,10 @@ where a special subset of the L3 cache capacity on the system is set aside for
 transient use in cryptography, and dedicated pages for this purpose pinned into
 cache so they cannot be flushed out.
 
-This prevents known mechanisms of memory timing side-channel leakage from the
-cryptographic algorithms run in the soft-token, including Flush+Reload and other
-related attacks. We are also aided here by the fact that KSM (kernel same-page
-merging) is not implemented or supported by illumos (and will not be).
+This prevents most known mechanisms of memory timing side-channel leakage from
+the cryptographic algorithms run in the soft-token, including Flush+Reload and
+other related attacks. We are also aided here by the fact that KSM (kernel same-
+page merging) is not implemented or supported by illumos (and will not be).
 
 As well as this direct mitigation, the algorithms chosen (see the
 <<crypto-algos>> section) for soft-token usage are chosen with side-channel
