@@ -79,7 +79,7 @@ state: draft
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
-      - [New `nfserver` `smartdc_role`](#new-nfserver-smartdc_role)
+      - [New `nfsvolumestorage` `smartdc_role`](#new-nfsvolumestorage-smartdc_role)
       - [New internal `required_nfs_volumes` property on VM objects](#new-internal-required_nfs_volumes-property-on-vm-objects)
       - [New `mounting_volume` parameter for the `ListVms` endpoint](#new-mounting_volume-parameter-for-the-listvms-endpoint)
         - [Input](#input)
@@ -166,7 +166,7 @@ state: draft
     - [Allocation/placement](#allocationplacement)
       - [What happens when mounting of a volume fails?](#what-happens-when-mounting-of-a-volume-fails)
     - [Security](#security)
-    - [Can we limit the number of NFS volumes a single container can mount?](#can-we-limit-the-number-of-nfs-volumes-a-single-container-can-mount)
+    - [Should we limit the number of NFS volumes a single container can mount?](#should-we-limit-the-number-of-nfs-volumes-a-single-container-can-mount)
     - [Granularity of available volume sizes](#granularity-of-available-volume-sizes)
     - [NFS volume packages' settings](#nfs-volume-packages-settings)
       - [CPU and RAM](#cpu-and-ram)
@@ -430,7 +430,7 @@ deleted.
 #### Adding a new `triton report` command (MVP milestone)
 
 Creating a shared volume results in creating a VM object and an instance with
-`smartdc_role: 'nfsserver'`. As such, a user could list all their "resources"
+`smartdc_role: 'nfsvolumestorage'`. As such, a user could list all their "resources"
 (including instances _and_ shared volumes) by listing instances.
 
 However, the fact that shared volumes have a 1 to 1 relationship with their
@@ -868,15 +868,15 @@ that should not be exposed to end users. As such, they need to be filtered out
 from any of the `*Machines` endpoints (e.g `ListMachines`, `GetMachine`, etc.).
 
 Filtering out NFS volumes' storage VMs will be done by filtering on the
-`smartdc_role` tag: VMs with the `nfsserver` `smartdc_role` tag will be filtered
-out.
+`smartdc_role` tag: VMs with the `nfsvolumestorage` `smartdc_role` tag will be
+filtered out.
 
 For instance, CloudAPI's `ListMachines` endpoint will always pass -- in addition
 to any other search predicate set due to other `ListMachines` parameters -- the
 following predicate to VMAPI's ListVms endpoint:
 
 ```
-{ne: ['tags', '*smartdc_role=nfsserver*']}
+{ne: ['tags', '*smartdc_role=nfsvolumestorage*']}
 ```
 
 #### Volume objects representation
@@ -1267,10 +1267,14 @@ an appropriate error message when used on shared volumes zones.
 
 ### Changes to VMAPI
 
-#### New `nfserver` `smartdc_role`
+#### New `nfsvolumestorage` `smartdc_role`
 
-Machines acting as shared volumes' storage zones will have the value `nfsserver`
-for their `smartdc_role` property. To know of this new `smartdc_role` value is used by CloudAPI to prevent users from performing operations on these storage VMs, refer to
+Machines acting as shared volumes' storage zones will have the value
+`nfsvolumestorage` for their `smartdc_role` property. To know of this new
+`smartdc_role` value is used by CloudAPI to prevent users from performing
+operations on these storage VMs, refer to the section [Not exposing NFS volumes'
+storage VMs via any of the `Machines`
+endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
 
 #### New internal `required_nfs_volumes` property on VM objects
 
@@ -1538,6 +1542,7 @@ or "VOLAPI".
 | state           | String             | master-integration | Allows to filter volumes by state, e.g `state=failed`. |
 | predicate       | String             | master-integration | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
 | tag.key (mvp milestone)        | String             | mvp                | A string representing the value for the tag with key `key` to match. More details below. |
+| vm_uuid      | String             | mvp | Allows to get the volume whose storage VM's uuid is `vm_uuid`. This applies to NFS volumes, and may not apply to other types of volumes in the future |
 
 ###### Searching by name
 
@@ -2348,7 +2353,7 @@ At this point sdc-nfs does not support anything other than restricting to a
 specific list of IPs, so we're planning to leave it open to any networks
 assigned to the container. Is this a acceptable?
 
-### Can we limit the number of NFS volumes a single container can mount?
+### Should we limit the number of NFS volumes a single container can mount?
 
 If so: how many?
 
