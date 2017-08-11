@@ -3,6 +3,7 @@ authors: Angela Fong <angela.fong@joyent.com>, Casey Bisson <casey.bisson@joyent
 state: draft
 ---
 
+<!-- to update doctoc, use: `doctoc.js --maxlevel 5 rfd/0026/README.md` -->
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 **Table of Contents**
@@ -59,6 +60,7 @@ state: draft
     - [Changes to CloudAPI](#changes-to-cloudapi)
       - [Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
       - [Volume objects representation](#volume-objects-representation)
+      - [New `volumes` parameter/property for CreateMachine](#new-volumes-parameterproperty-for-createmachine)
       - [New `/volumes` endpoints](#new-volumes-endpoints)
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
@@ -80,8 +82,8 @@ state: draft
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
       - [New `nfsvolumestorage` `smartdc_role`](#new-nfsvolumestorage-smartdc_role)
-      - [New internal `required_nfs_volumes` property on VM objects](#new-internal-required_nfs_volumes-property-on-vm-objects)
-      - [New `mounting_volume` parameter for the `ListVms` endpoint](#new-mounting_volume-parameter-for-the-listvms-endpoint)
+      - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
+      - [New `volume` parameter for the `ListVms` endpoint](#new-volume-parameter-for-the-listvms-endpoint)
         - [Input](#input)
         - [Output](#output)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
@@ -162,7 +164,7 @@ state: draft
     - [Setting up a DC to support NFS volumes](#setting-up-a-dc-to-support-nfs-volumes)
       - [Turning it off](#turning-it-off)
     - [Integration of the "master integration" milestone](#integration-of-the-master-integration-milestone)
-  - [Open questions](#open-questions)
+  - [Open Questions](#open-questions)
     - [Allocation/placement](#allocationplacement)
       - [What happens when mounting of a volume fails?](#what-happens-when-mounting-of-a-volume-fails)
     - [Security](#security)
@@ -174,6 +176,7 @@ state: draft
     - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
     - [Networking](#networking-1)
       - [Impact of networking changes](#impact-of-networking-changes)
+    - [Automatic mounting for non-docker containers](#automatic-mounting-for-non-docker-containers)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -888,6 +891,20 @@ exception is that the `uuid` field is named `id` to adhere to current
 conventions between the representation of Triton objects in CloudAPI and
 internal APIs.
 
+#### New `volumes` parameter/property for CreateMachine
+
+When creating a machine via CloudAPI, the new `volumes` parameter will allow
+one to specify a list of volumes to mount in the new machine. This would look
+as follows in the CreateMachine payload:
+
+```
+"volumes": ["volume-name-1", "volume-name-2", ...]
+```
+
+and the new machine would then have the specified volumes mounted when it
+starts, and the appropriate volume references will be added to indicate that
+this machine uses the listed volumes.
+
 #### New `/volumes` endpoints
 
 Users need to be able to manage their shared volumes from CloudAPI. Most of the
@@ -1276,34 +1293,32 @@ operations on these storage VMs, refer to the section [Not exposing NFS volumes'
 storage VMs via any of the `Machines`
 endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
 
-#### New internal `required_nfs_volumes` property on VM objects
+#### New `volumes` property on VM objects
 
-A VM object that represents a Docker container mounting a shared volumes will
-store a reference to that volume in a new _indexable_ property named
-`required_nfs_volumes`.
+A VM object that represents a container mounting a shared volumes will store a
+reference to that volume in a new _indexable_ property named `volumes`.
 
-This property is _internal_ and is not exposed to VMAPI and CloudAPI users. It
-is used by VMAPI's `ListVms` endpoint to implement support for its new
-[`mounting_volume` input
-parameter](#new-mounting_volume-parameter-for-the-listvms-endpoint).
+This property will also be exposed both at VMAPI and CloudAPI where it can be
+passed in as part of a VM payload to mount specified volumes on VM creation.
 
-#### New `mounting_volume` parameter for the `ListVms` endpoint
+#### New `volume` parameter for the `ListVms` endpoint
 
-While the [`required_nfs_volumes`
-property](#new-internal-required_nfs_volumes-property-on-vm-objects) on VM
-objects is internal, the `ListVms` API endpoint allows users to list _active_
-VMs that mount a given volume.
+Note: This feature is not in the master-integration milestone.
+
+The ListVms endpoint will include the [`volume`
+property](#new-volume-property-on-vm-objects) in order to view the list of
+_active_ VMs that mount a given volume.
 
 ##### Input
 
-| Param           | Type         | Description                              |
-| --------------- | ------------ | ---------------------------------------- |
-| mounting_volume | String       | A string representing _one_ volume UUID for which to list _active_ VMs that reference it. |
+| Param   | Type         | Description                              |
+| ------- | ------------ | ---------------------------------------- |
+| volume | String       | A string representing _one_ volume UUID for which to list _active_ VMs that reference it. |
 
 ##### Output
 
 A list of VMs that represent all active VMs that reference the volume
-represented by UUIDs represented by `mounting_volumes`, such as:
+represented by UUIDs represented by `volume`, such as:
 
 ```
 [
@@ -2019,7 +2034,7 @@ A volume is considered to be "in use" if the
 [`GetVolumeReferences`](#getvolumereferences-get-volumesvolume-uuidreferences-1)
 endpoint doesn't return an empty list of objects UUIDs. When a Docker container
 is created, it adds any of its mounted volumes to [an internal
-property](#new-internal-required_nfs_volumes-property-on-vm-objects). A
+property](#new-volumes-property-on-vm-objects). A
 container referencing a shared volume is considered to be using it when it's in
 any state except `failed` and `destroyed` -- in other words in any state that
 cannot transition to `running`.
@@ -2330,7 +2345,7 @@ IMGAPI, it is possible to get to a point where sdcadm won’t be able to determi
 whether it’s safe to enable the NFS volumes feature flag. In this case, it will
 be possible for users to “force enable” it.
 
-## Open questions
+## Open Questions
 
 ### Allocation/placement
 
@@ -2494,3 +2509,31 @@ communicate it in some way (e.g in the API documentation or by making changes to
 the API/command line tools so that the impact on shared volumes is more
 obvious).
 
+### Automatic mounting for non-docker containers
+
+While docker containers can automatically mount NFS volumes thanks to
+[DOCKER-754](https://smartos.org/bugview/DOCKER-754), for non-docker containers
+to be able to mount these volumes on boot we'll need both the API changes
+described in [PUBAPI-1420](https://smartos.org/bugview/PUBAPI-1420) and some
+changes to the platform to actually perform the mounting. Since the mounting
+will need to happen within the zone (because it needs to be on the zone's
+network) the current best idea of how this could be implemented would be to
+modify the mdata-fetch service's start script to do the mounting. [That
+script](https://github.com/joyent/smartos-live/blob/master/overlay/generic/lib/svc/method/mdata-fetch)
+already looks at metadata and does somewhat similar things.
+
+What we would want to happen here is that on zone startup, the zone would read
+the list of NFS volumes via something like:
+
+```
+mdata-get triton:volumes
+```
+
+and it would then mount each of these volumes. The script would have to be
+changed, but we'd also need to ensure that metadata is available one way or
+another. This would need to include at least the remote host and path and local
+path for each NFS volume.
+
+Note: the above would only work with `joyent` and `joyent-minimal` brands. For
+`lx` we would likely want to add the mounting to lxinit, and for `kvm` we would
+either need to do something different or not support this feature.
