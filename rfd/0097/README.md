@@ -127,18 +127,18 @@ this that we would like to implement, but have not.
 
 ### Hardware Ring Polling on VLANs
 
-The MAC driver (aka GLDv3) allows polling on hardware rings that are fully
-classified. The polling on a ring is important because of the current
-design of MAC. MAC has an inherent high watermark for incoming packets.
-If it exceeds that number of outstanding packets on a per-ring basis, it
-will transition to polling mode. However, if it cannot transition to
-polling mode, then it will drop packets.
+The MAC driver (aka GLDv3) allows polling for incoming packets on
+hardware rings that are fully classified. Polling on a ring is important
+because of the current design of MAC. MAC has an inherent high watermark
+for incoming packets.  If it exceeds that number of outstanding packets
+on a per-ring basis, it will transition to polling mode. However, if it
+cannot transition to polling mode, then it will drop packets.
 
 This high watermark is intended to make sure that the system does not
 end up running out of memory due to filling it with packets faster than
-the system can process them. Once you drop a packet, transports like TCP
-do not react well and back pressure is applied to the system, thus
-slowing down certain aspects of the system.
+the system can process them. Although TCP tolerates occasional packet
+loss or reordering, these events often induce retransmits and associated
+latency, so it's preferable to avoid unnecessary drops or reordering.
 
 This ends up creating an artificial limiter on performance of the system
 as we end up dealing with dropped packets, which leads to retransmits,
@@ -165,8 +165,10 @@ This is generally only enabled for IPv4 TCP and UDP rings when VLANs are
 not on the scene. This just adds another unnecessary cost for using
 VLANs.
 
-Most of the time this comes from us enabling the poll capability. For
-example, see the following stack trace:
+DLS bypass is enabled as part of IP enabling the poll capability on the
+data link that it has. This poll capability is only noted by the kernel
+for a device, if has a fully classified ring. When the ip kernel module
+enables polling, dls bypass is enable through the following stack:
 
 ```
 mac`mac_soft_ring_dls_bypass()
@@ -196,7 +198,7 @@ going to a slow path. It may also be possible that we can rig this up
 with most drivers such that it'll still end up being accepted in the
 general ring rather than the specific one. So, we'll need to figure that
 out, but it shouldn't be too bad. One way that we may end up being able
-to do this is to basically force the underlying datalink to be
+to do this is to basically force the underlying data link to be
 promiscuous so that way we don't have to interfere with the normal data
 path and treat this as a variant to someone running snoop or other
 operations.
@@ -398,11 +400,11 @@ Project Tiresias](../0089).
 
 In addition, we've gone ahead and reserved a uint_t of flags as the
 second member of each structure to allow us to have a more capabilities
-like set of flags if we want to indicat that they support various
+like set of flags if we want to indicate that they support various
 features along the way. One example of this would be having a driver
 declare that it supports VLAN tagging and stripping.
 
-This impacts the `MAC_CAPAB_RINGS` capabililty structure, the
+This impacts the `MAC_CAPAB_RINGS` capability structure, the
 `mac_group_info_t` structure and the `mac_ring_info_t` structure. These
 are discussed in [mac_capab_rings(9E)](./man/mac_capab_rings.9e.pdf),
 [mac_group_info(9S)](./man/mac_group_info.9s.pdf), and
@@ -479,7 +481,7 @@ indicates the total number of bytes that should be polled.
 It is still an open question as to whether or not we should introduce
 the third argument; however, changing the function signature seems like
 an important change. While there's no intention at this time of
-supporting a larger than INT32\_MAX value, it might elimiate a class of
+supporting a larger than INT32\_MAX value, it might eliminate a class of
 things that drivers writers may worry about to be truly defensive.
 
 ##### mac_register_t changes
@@ -489,7 +491,7 @@ used to try and determine whether or not it should even ask the driver
 about caps and shares. This member doesn't seem to provide any value as
 something that a driver has to specify. I propose that drivers should
 not have to specify it and it should be ignored. Drivers will simply be
-asked about both `MAC_CAPAB_RIONGS` and `MAC_CAPAB_SHARES` which was the
+asked about both `MAC_CAPAB_RINGS` and `MAC_CAPAB_SHARES` which was the
 other thing that this was intended to support.
 
 ##### Dynamic MAC Groups
@@ -497,7 +499,7 @@ other thing that this was intended to support.
 The existing MAC framework has a notion of both static and dynamic
 groups. Static groups have a fixed mapping between rings and groups.
 Most drivers that support rings use the static mapping. The only
-expection is the `nxge` driver. Dynamic groups baiscally allow a ring to
+exception is the `nxge` driver. Dynamic groups basically allow a ring to
 be placed in any group and in fact require that every ring be able to be
 placed in every group.
 
@@ -521,18 +523,18 @@ sooner rather than later.
 
 ##### mac_intr_t
 
-The mac_ring_info_t structure presents an interesting conundrum as its a
-fixed size structure that is embedded inside of the mac_ring_info_t and
-mac_group_info_t structures. There are a few different options here.
+The `mac_intr_t` structure presents an interesting conundrum as it is a
+fixed size structure that is embedded inside of the `mac_ring_info_t` and
+`mac_group_info_t` structures. There are a few different options here.
 
-1. Transform the mac_ring_info_t and mac_group_info_t structures into
-having pointers to the mac_intr_t structures.
+1. Transform the `mac_ring_info_t` and `mac_group_info_t` structures into
+having pointers to the `mac_intr_t` structures.
 
 2. Deal with them in the same extensibility format as we described
 above as part of the other structures.
 
 I believe option one will be better in the long-term. It will cause more
-churn in existing drivers in the gate; hwoever, now seems the time to
+churn in existing drivers in the gate; however, now seems the time to
 pay this cost.
 
 ##### MAC ring driver argument normalization
