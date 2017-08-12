@@ -25,7 +25,7 @@ authenticating *users* and authorizing their actions, there are quite a
 few contexts in which authenticating individual instances (zones) on the system
 is useful.
 
-This particularly applies in the context of headnode service zones in Triton,
+This particularly applies in the context of core service zones in Triton,
 where it would be desirable for each service to be able to authenticate itself
 to any other service, giving a path forward to eliminate the special "trusted"
 status of all hosts on the admin VLAN.
@@ -52,10 +52,17 @@ implementing the on-disk data encryption is delegated to ZFS).
 CN:: A "CN" here is any physical node in the Triton system.
 Trusted CN:: A "trusted" CN is one that is trusted to run components of the
 Triton system itself (e.g. VMAPI, NAPI, CloudAPI etc)
+
 Self-booting CN:: A "self-booting" CN is one that can boot entirely standalone,
 without any other machine in the datacenter or network access being available.
+
 Headnode:: A "headnode" is a term for a CN that is both trusted and
 self-booting. Any Triton datacenter needs to have at least one such node.
+
+Core service:: A "core service" is an internal Triton service which runs in a
+zone, such as VMAPI or CNAPI. These are often referred to as "headnode services"
+today, but we will avoid that term here to reduce confusion with the last
+definition.
 
 ## Threat models and goals
 
@@ -84,7 +91,7 @@ credentials of the CN, they cannot extract any long-lived key material, and
 cannot take any actions that would escalate or allow sideways movement into
 other CNs.
 
-Threat 3:: An intruder has taken control of a public-facing headnode service
+Threat 3:: An intruder has taken control of a public-facing core service
 (e.g. CloudAPI), by making use of a vulnerability in that service.
 Goal 3:: The goal is to give this attacker only the minimum access required by
 the normal operation of that service. This means, for example, that CloudAPI
@@ -130,7 +137,15 @@ protected by this mechanism, they should have no choice but to make N individual
 round trips through a (rate-limited) hardware module in order to decrypt them.
 If the attacker compromises an entire live Triton CN (including the contents of
 RAM) with M zones on it, they should have no choice but to make at least M round
-trips through a hardware module in order to access customer data so protected.
+trips through a hardware module (or perform computation taking at least as long)
+in order to access customer data so protected.
+
+NOTE:: Goal 3 explicitly does not include absolute defense of this data against
+an attacker who has complete control of the OS kernel for an abitrarily long
+period. It *does*, however, set a minimum amount of time an attacker must be
+present with such control in order to break the security of protected storage on
+the machine: the attacker must spend at least as long there as it would take to
+make N trips through the hardware module.
 
 ## Design
 
@@ -193,7 +208,7 @@ The primitive used to combine these pieces of data is the HMAC (see also
 passed to the token. The token will compute the HMAC of the challenge data with
 its secret key (without revealing that secret key to the host).
 
-Then, a secret key stored in a headnode service will be retrieved over a
+Then, a secret key stored in a core service will be retrieved over a
 TLS-protected authenticated channel and used as the secret key for another HMAC
 operation on the output of the first one.
 
@@ -208,7 +223,7 @@ condition to successfully decrypt the data on the disks is to have all 3 of:
 
  * The disks themselves,
  * The key stored in the CN's Yubikey, and
- * Access to the headnode service.
+ * Access to the core service.
 
 If any one of these 3 is missing, the key cannot be recomputed, and the data
 cannot be decrypted.
@@ -233,17 +248,22 @@ for the entire server population.
 
 ### Overview: authentication
 
-Authentication of a CN to a headnode service (e.g. to join the cluster, and
+Authentication of a CN to a core service (e.g. to join the cluster, and
 then to report data about running zones etc) is done by signing existing
 protocol units (e.g. HTTP requests) using the asymmetric keys stored in the CN's
 Yubikey. This is relatively straightforward.
 
-Authentication of one headnode service zone to another is also done by signing
-existing protocol units using asymmetric keys. Unfortunately, hardware tokens
-are generally only capable of storing a small number of asymmetric keys, and the
-number of zones on a CN or headnode may be quite large by comparison. So the
-keys used for zone-to-zone authentication cannot reside directly on the hardware
-tokens.
+Authentication of one core service zone to another is also done by signing
+existing protocol units using asymmetric keys. Existing protocols in use between
+core services are mostly variants of HTTP REST, and these will use the same HTTP
+signature method used by public Triton APIs. Non-HTTP core services will be
+expected to use TLS client certificates (the details of which will be explained
+shortly).
+
+Unfortunately, hardware tokens are generally only capable of storing a small
+number of asymmetric keys, and the number of zones on a CN or headnode may be
+quite large by comparison. So the keys used for zone-to-zone authentication
+cannot reside directly on the hardware tokens.
 
 Instead, a "soft token" design will be used. A second HMAC secret stored on the
 token is used as an HMAC key, along with an input randomly generated for each
@@ -253,8 +273,8 @@ with and without ZFS level storage encryption available.
 
 The encrypted key store is managed by the global zone on behalf of the zones,
 and exposed to them via a socket that processes in the zone can connect to. The
-non-global zone cannot add or remove keys from the key store; it only holds keys
-that the global zone has generated and assigned to it.
+non-global zone cannot add or remove keys from the key store; it only holds a
+fixed set of keys that the global zone has pre-generated and assigned to it.
 
 The socket is designed to make use of the OpenSSH agent protocol. This protocol
 is designed to be simple and straightforward to parse in a secure manner, and
@@ -279,6 +299,13 @@ As is typical with any chain of trust, we must begin with a set of keys known
 as "root keys", which are ultimately trusted. What we propose here is to use
 a single root key which is only ever stored offline, broken into pieces.
 
+It is a key part of this design that the root key is not ever kept "on-line" in
+the datacenter. If trusted CNs were ever given access to a secret like a root
+key, and we ever needed to dispose of that trusted CN, we would be forced to
+change the root key -- not just on that CN but on all CNs in the cluster. This
+creates severe administrative burden which we seek here to avoid: disposing of
+a trusted CN should not require revoking any credentials on *other* CNs.
+
 This root key will sign an initial statement stating that certain nodes in the
 cluster are to be Trusted CNs, detailing their public keys, as well as a
 timestamp and serial number. It will then (barring exceptional circumstances)
@@ -291,7 +318,11 @@ statements, with certain restrictions:
    and all previous statements in the chain; and
  * The appended statement must be signed by the keys of all Trusted CNs in the
    datacenter at the time of appending, except one (N-1 out of N, unless there
-   is only one Trusted CN at the time, in which case its signature is required).
+   is only one Trusted CN at the time, in which case its signature is required
+   footnoteref:[,It is also worth noting that with this rule, there is no real
+   advantage to permanently having exactly 2 trusted CNs -- it will cost in
+   terms of overhead without increasing security, since a single signature is
+   still all that is required to update the trusted set.]).
 
 The statement may declare that a new node (with corresponding key etc) is now
 a Trusted CN, or it may declare that an existing Trusted CN is no longer such.
@@ -321,7 +352,7 @@ in online storage for signing.
 Once the gossip process has stabilized, all CNs in the system are aware of the
 identities and keys of nodes that are authorized to act as Trusted CNs (hosting
 core Triton services). This means that zone certificates presented by zones on
-these CNs can be validated, authenticating headnode services to each other.
+these CNs can be validated, authenticating core services to each other.
 
 It is important to note that changes to the set of Trusted CNs are expected to be
 infrequent, so it is not important to use a distributed system here that offers
@@ -390,7 +421,7 @@ such that clients can establish a trusted relationship with binder, and binder
 can then take over the role of validating certificates on clients' behalf.
 
 As the client half this relationship can be maintained from within a library
-such as `cueball`, this will ease integration for headnode services -- they will
+such as `cueball`, this will ease integration for core services -- they will
 merely need to use the `cueball` library to manage their connections and will
 then get identity validation on their outgoing connections "for free".
 
@@ -402,11 +433,22 @@ Binder will validate the signature and certificate provided, and then serve
 DNS records about the registrant. These records will include public key records
 containing the registered public key they supplied.
 
-Traffic between binder and clients will be secured using DNS Transaction
-Signatures (TSIG), signed using the binder instance's zone key. The client must
-validate the binder instance's key against its certificate and the gossiped list
-of Trusted CNs, but thereafter it can trust signed responses from that binder
-about other services in lieu of performing full validation itself.
+Traffic between binder and clients will be secured using the public-key
+modification of DNS Transaction Signatures (TSIG) known as SIG(0) (RFC2931),
+signed using the binder instance's zone key. The client must validate the binder
+instance's key against its certificate and the gossiped list of Trusted CNs, but
+thereafter it can trust signed responses from that binder about other services
+in lieu of performing full validation itself.
+
+The SIG(0) mechanism provides authentication of data in the DNS packet using a
+cryptographic signature, but not confidentiality (the traffic is not encrypted).
+As binder is not serving information that needs to be kept secret, this is a
+suitable trade-off. It is transaction-oriented (signs the transactional message,
+not just the data inside), relatively simple, requires minimal modification of
+existing DNS software, is backwards-compatible and is also algorithm-agile
+(allowing us to change the precise algorithm in use over time). For these
+reasons, it is the proposed choice here over other alternative mechanisms like
+DNSCurve or full DNSSEC.
 
 Binder will also have to transition away from using the raw ZooKeeper direct
 access for registration that it uses today, as the authentication schemes
@@ -571,12 +613,17 @@ should hopefully also be able to take advantage of the Soft HSM key system.
 To fully protect the Triton admin VLAN against IP and MAC spoofing attacks from
 rogue network hardware, it will be necessary to begin protecting all connections
 with TLS. Part of establishing a TLS connection is verifying the identity of
-both parties to the connection, using X.509 certificates.
+at least one party to the connection, using X.509 certificates.
 
-The zone TLS certificate signing key is set aside for this purpose. Headnode
-services will generate local keys for use by TLS servers, protected at rest by
-the Soft HSM key. A signed certificate and chain will be obtained through the
-soft token interface to allow these to be validated to others.
+Note that while TLS server authentication is expected to always be in use, the
+providing and verifying of client certificates will be limited to those cases
+where HTTP signature authentication cannot be reasonably used.
+
+The zone TLS certificate signing key is set aside for the purpose of producing
+TLS credentials. Core services will generate local keys (which may be rotated)
+for use by TLS servers, protected at rest by the Soft HSM key. A signed
+certificate and chain will be obtained through the soft token interface to allow
+these to be validated to others.
 
 It is the responsibility of any Triton service to ensure that it obtains a
 new certificate chain for its TLS server endpoints before the expiry of a
