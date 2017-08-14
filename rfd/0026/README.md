@@ -60,7 +60,10 @@ state: draft
     - [Changes to CloudAPI](#changes-to-cloudapi)
       - [Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
       - [Volume objects representation](#volume-objects-representation)
-      - [New `volumes` parameter/property for CreateMachine](#new-volumes-parameterproperty-for-createmachine)
+      - [New `volumes` parameter for `CreateMachine` endpoint](#new-volumes-parameter-for-createmachine-endpoint)
+      - [New `volume` parameter for the `ListMachines` endpoint (mvp milestone)](#new-volume-parameter-for-the-listmachines-endpoint-mvp-milestone)
+        - [Input](#input)
+        - [Output](#output)
       - [New `/volumes` endpoints](#new-volumes-endpoints)
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
@@ -83,9 +86,7 @@ state: draft
     - [Changes to VMAPI](#changes-to-vmapi)
       - [New `nfsvolumestorage` `smartdc_role`](#new-nfsvolumestorage-smartdc_role)
       - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
-      - [New `volume` parameter for the `ListVms` endpoint](#new-volume-parameter-for-the-listvms-endpoint)
-        - [Input](#input)
-        - [Output](#output)
+      - [New `volumes` parameter for `CreateVm` endpoint](#new-volumes-parameter-for-createvm-endpoint)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
     - [Changes to PAPI](#changes-to-papi)
       - [Introduction of volume packages (Volume packages milestone)](#introduction-of-volume-packages-volume-packages-milestone)
@@ -161,9 +162,9 @@ state: draft
       - [Volume packages](#volume-packages)
       - [Snapshots](#snapshots)
       - [Affinity](#affinity)
-    - [Setting up a DC to support NFS volumes](#setting-up-a-dc-to-support-nfs-volumes)
+    - [Setting up a Triton DC to support NFS volumes](#setting-up-a-triton-dc-to-support-nfs-volumes)
       - [Turning it off](#turning-it-off)
-    - [Integration of the "master integration" milestone](#integration-of-the-master-integration-milestone)
+    - [Integration of the "master integration" milestone into code repositories](#integration-of-the-master-integration-milestone-into-code-repositories)
   - [Open Questions](#open-questions)
     - [Allocation/placement](#allocationplacement)
       - [What happens when mounting of a volume fails?](#what-happens-when-mounting-of-a-volume-fails)
@@ -891,19 +892,66 @@ exception is that the `uuid` field is named `id` to adhere to current
 conventions between the representation of Triton objects in CloudAPI and
 internal APIs.
 
-#### New `volumes` parameter/property for CreateMachine
+#### New `volumes` parameter for `CreateMachine` endpoint
 
 When creating a machine via CloudAPI, the new `volumes` parameter will allow
 one to specify a list of volumes to mount in the new machine. This would look
 as follows in the CreateMachine payload:
 
 ```
-"volumes": ["volume-name-1", "volume-name-2", ...]
+"volumes": [
+  {
+    "name": "volume-name-1",
+    "type": "tritonnfs",
+    "mode": "rw",
+    "mountpoint": "/foo"
+  },
+  {
+    "name": "volume-name-2",
+    "mode": "ro",
+    "mountpoint": "/bar"
+  }
+]
 ```
 
 and the new machine would then have the specified volumes mounted when it
 starts, and the appropriate volume references will be added to indicate that
 this machine uses the listed volumes.
+
+The `type` property of each object of the `volumes` array is optional. Its
+default and only currently valid value is `'tritonnfs'`.
+
+The `mode` property of each object of the `volumes` array is also optional. Its
+default value is `'rw'`, and valid values for volumes of type `'tritonnfs'` are
+`'rw'` and `'ro'`.
+
+#### New `volume` parameter for the `ListMachines` endpoint (mvp milestone)
+
+The `ListMachines` endpoint will support a new `volume` input parameter in order
+to output the list of active machines that mount a given volume.
+
+##### Input
+
+| Param   | Type         | Description                              |
+| ------- | ------------ | ---------------------------------------- |
+| volume | String       | A string representing _one_ volume UUID for which to list _active_ machines that reference it. |
+
+##### Output
+
+A list of VMs that represent all active VMs that reference the volume
+represented by UUIDs represented by `volume`, such as:
+```
+[
+   {
+    "uuid": "vm-uuid-1",
+    "alias": ...
+   },
+   {
+    "uuid": "vm-uuid-2",
+    "alias": ...
+  },
+]
+```
 
 #### New `/volumes` endpoints
 
@@ -1301,37 +1349,38 @@ reference to that volume in a new _indexable_ property named `volumes`.
 This property will also be exposed both at VMAPI and CloudAPI where it can be
 passed in as part of a VM payload to mount specified volumes on VM creation.
 
-#### New `volume` parameter for the `ListVms` endpoint
+#### New `volumes` parameter for `CreateVm` endpoint
 
-Note: This feature is not in the master-integration milestone.
-
-The ListVms endpoint will include the [`volume`
-property](#new-volume-property-on-vm-objects) in order to view the list of
-_active_ VMs that mount a given volume.
-
-##### Input
-
-| Param   | Type         | Description                              |
-| ------- | ------------ | ---------------------------------------- |
-| volume | String       | A string representing _one_ volume UUID for which to list _active_ VMs that reference it. |
-
-##### Output
-
-A list of VMs that represent all active VMs that reference the volume
-represented by UUIDs represented by `volume`, such as:
+When creating a VM via VMAPI, the new `volumes` parameter will allow one to
+specify a list of volumes to mount in the new VM. This would look as follows in
+the CreateVM payload:
 
 ```
-[
+"volumes": [
   {
-    "uuid": "vm-uuid-1",
-    "alias": ...
+    "name": "volume-name-1",
+    "type": "tritonnfs",
+    "mode": "rw",
+    "mountpoint": "/foo"
   },
   {
-    "uuid": "vm-uuid-2",
-    "alias": ...
-  },
+    "name": "volume-name-2",
+    "mode": "ro",
+    "mountpoint": "/bar"
+  }
 ]
 ```
+
+and the new VM would then have the specified volumes mounted when it starts, and
+the appropriate volume references will be added to indicate that this VM
+uses the listed volumes.
+
+The `type` property of each object of the `volumes` array is optional. Its
+default and only valid value is `'tritonnfs'`.
+
+The `mode` property of each object of the `volumes` array is also optional. Its
+default value is `'rw'`, and valid values for volumes of type `'tritonnfs'` are
+`'rw'` and `'ro'`.
 
 #### Naming of shared volumes zones
 
@@ -2230,12 +2279,16 @@ available that lists all its open tickets.
 
 #### Master integration
 
+JIRA filter: https://devhub.joyent.com/jira/issues/?filter=11233
+
 The first milestone represents the set of changes that tackles the major design
 issues and establishes the technical foundations. It also provides basic
 features to end users so that they can use NFS volumes in a way that is useful
 and fulfill the original goal of this RFD.
 
 #### MVP
+
+JIRA filter: https://devhub.joyent.com/jira/issues/?filter=11128
 
 The MVP milestone builds on the first "master integration" milestone and
 implements features and changes that are part of the core functionality of NFS
@@ -2262,46 +2315,80 @@ The "snapshots" milestone groups changes that allow users to create and manage s
 The affinity milestone groups changes that allow users to provision volumes and
 specify locality constraints against other volumes or VMs.
 
-### Setting up a DC to support NFS volumes
+### Setting up a Triton DC to support NFS volumes
 
 In order to setup support for NFS volumes in a given DC, operators need to run
-the following two commands:
+the following commands:
 
 ```
 $ sdcadm post-setup volapi
-$ sdcadm experimental nfs-volumes
+$ sdcadm experimental nfs-volumes docker
+$ sdcadm experimental nfs-volumes docker-automount
+$ sdcadm experimental nfs-volumes cloudapi
+$ sdcadm experimental nfs-volumes cloudapi-automount (mvp milestone)
 ```
 
-The first one creates a new VOLAPI service and its associated zone on the
-headnode, the second sets a flag in SAPI that indicates that the "NFS volumes"
-feature is turned on.
+`sdcadm post-setup volapi` creates a new VOLAPI core service and its associated
+zone on the headnode.
 
-`sdcadm experimental nfs-volumes` checks whether all core services that provide
-part of the NFS volumes support are deployed with a version that supports NFS
-volumes. If it is not the case, the command reports what services and their
-image versions do not meet the requirements.
+`sdcadm experimental nfs-volumes docker` sets a flag in SAPI that indicates that
+the "NFS volumes" feature is turned on for the Triton docker API, but not for
+any other external API. It checks that the core services that have changes that
+this feature depends on (VMAPI, workflow, sdc-docker) are upgraded to a version
+that ships those changes.
 
-Operators who would still want to proceed with enabling the feature flag in SAPI
-could use the `--force` flag to bypass that check.
+`sdcadm experimental nfs-volumes docker-automount` sets a flag in SAPI that
+indicates that the "NFS volumes automount" feature is turned on for docker
+containers. This means that docker containers that are set to depend on shared
+volumes when they're created mount those volumes automatically on startup.
+Turning on this feature flag depends on all servers running a platform at
+version >= 20160613T123039Z, which is the platform that ships the required
+dockerinit changes.
+
+Turning on `sdcadm experimental nfs-volumes docker-automount` requires turning
+on `sdcadm experimental nfs-volumes docker`, but does not do that automatically.
+
+`sdcadm experimental nfs-volumes cloudapi` sets a flag in SAPI that indicates
+that the "NFS volumes" feature is turned on for the Triton CloudAPI API, but not
+for any other external API. It checks that the other core services that have
+changes that this feature depends on (VMAPI, workflow, cloudapi) are upgraded to
+a version that ships those changes.
+
+`sdcadm experimental nfs-volumes cloudapi-automount` is similar to
+`sdcadm experimental nfs-volumes docker-automount`. It sets a flag in SAPI that
+indicates that the "NFS volumes automount" feature is turned on for non-docker
+VMs. This means that non-docker VMs that are set to depend on shared volumes
+when they're created mount those volumes automatically on startup. Turning on
+this feature flag will depend on all servers running a platform that doesn't
+exist yet (See [PUBAPI-1420](https://smartos.org/bugview/PUBAPI-1420)).
+
+In case enabling one of those feature flags failed on any of the prerequisites
+mentioned above, operators who would still want to proceed with enabling them
+could use the `--force` flag to bypass checks.
 
 #### Turning it off
 
-Operators may want to turn the experimental "nfs-volumes" SAPI flag off when,
-for instance, it was been enabled but caused issues in a given deployment.
+Operators may want to turn any of the experimental "nfs-volumes" SAPI flags off
+when, for instance, it was enabled but caused issues in a given deployment.
 
-They can do that by running the following command:
+They can do that by running the same commands as in the previous section after
+appending a `-d` command line option to them:
 
 ```
-$ sdcadm experimental nfs-volumes -d
+$ sdcadm experimental nfs-volumes docker -d
+$ sdcadm experimental nfs-volumes docker-automount -d
+$ sdcadm experimental nfs-volumes cloudapi -d
 ```
 
-### Integration of the "master integration" milestone
+### Integration of the "master integration" milestone into code repositories
 
 The first milestone to have its changes merged to the master branches of
-relevant code repositories is the "master integration milestone.
+relevant code repositories is the "master integration" milestone.
 
-The list of repositories with changes that need to be integrated as part of that milestone is:
+The list of repositories with changes that need to be integrated as part of that
+milestone is:
 
+* joyent/sdc-volapi
 * joyent/sdcadm
 * joyent/sdc-workflow
 * joyent/sdc-vmapi
@@ -2310,7 +2397,11 @@ The list of repositories with changes that need to be integrated as part of that
 * joyent/sdc-sdc
 * joyent/sdc-headnode
 
-For all these repositories, all changes relevant to this RFD are in a branch
+The joyent/sdc-volapi repository is different from the others in the sense that
+it's a _new_ repository. As such, development took place in its "master" branch,
+and so all relevant changes have already been merged.
+
+For all other repositories, all changes relevant to this RFD are in a branch
 named “tritonnfs”. They can be integrated into their respective master branch in
 the following sequence:
 
@@ -2326,24 +2417,10 @@ volumes is enabled, operability suffers, but end users can use NFS volumes. If
 the command is present but support of volumes is not enabled, then the command
 will output a clear error message when it’s used.
 
-However, once the changes in sdcadm are integrated, any user could in theory
-enable support for NFS shared volumes. After doing that, but without upgrading
-all images of core Triton services that have changes related to RFD 26, a user
-could start using the new support for NFS shared volumes and not get expected
-results.
-
-Thus, once all changes in sdc-workflow, sdc-headnode, sdc-sdc, sdc-docker,
-sdc-cloudapi and sdc-vmapi are integrated into their respective master branch
-and images with these changes are built and published, a check will be added to
-sdcadm experimental volapi to allow enabling the experimental NFS shared volumes
-flag only if the relevant core Triton services have been upgraded to a version
-that support NFS shared volumes, otherwise a clear error message will be
-outputted.
-
-However, because that check will rely on images information being present in
-IMGAPI, it is possible to get to a point where sdcadm won’t be able to determine
-whether it’s safe to enable the NFS volumes feature flag. In this case, it will
-be possible for users to “force enable” it.
+Then, because `sdcadm experimental nfs-volumes` commands check that the core
+services mentioned in point 2) with changes in their respective `tritonnfs`
+branches are provisioned with an image that ships those changes, ideally changes
+in `sdcadm` would be integrated after the changes made to those repositories.
 
 ## Open Questions
 
