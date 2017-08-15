@@ -27,6 +27,7 @@ state: draft
       - [List](#list)
       - [Get](#get)
       - [Delete](#delete)
+      - [list-sizes](#list-sizes)
       - [Adding a new `triton report` command (MVP milestone)](#adding-a-new-triton-report-command-mvp-milestone)
     - [Docker](#docker)
       - [Interaction with local volumes](#interaction-with-local-volumes)
@@ -174,7 +175,7 @@ state: draft
     - [NFS volume packages' settings](#nfs-volume-packages-settings)
       - [CPU and RAM](#cpu-and-ram)
       - [ZFS I/O priority](#zfs-io-priority)
-    - [Monitoring NFS server zones](#monitoring-nfs-server-zones)
+    - [Monitoring NFS server zones (operators milestone)](#monitoring-nfs-server-zones-operators-milestone)
     - [Networking](#networking-1)
       - [Impact of networking changes](#impact-of-networking-changes)
     - [Automatic mounting for non-docker containers](#automatic-mounting-for-non-docker-containers)
@@ -213,21 +214,22 @@ A prototype for what this RFD describes is available at
 https://github.com/joyent/sdc-volapi. It implements [a new Volumes API
 service](#new-volapi-service-and-api).
 
-Its [`tools/setup/coal-setup.sh` script](https://github.com/joyent/sdc-volapi/blob/master/tools/setup/coal-setup.sh)
-also installs:
+Its [`tools/setup/coal-setup.sh`
+script](https://github.com/joyent/sdc-volapi/blob/master/tools/setup/coal-setup.sh)
+installs an image of:
 
-* an image of the sdc-docker service that contains changes to support the
-  `tritonnfs` Docker volume driver to allow Docker users to create and mount NFS
-  shared volumes
+* all the core services that are relevant to the implementation of this RFD
+  (sdc-docker, CloudAPI, VMAPI, workflow, etc.)
 
-* an image of the CloudAPI service that contains changes to support creating NFS
-  volumes using CloudAPI
+* the `sdcadm` tool that implements the "experimental" commands that can be used
+  to enable/disable features related to NFS volumes.
 
-In addition to that, joyent/node-triton's master branch has support for creating
-and managing NFS volumes.
+In addition to that, node-triton at cersion 5.3.1 added support for creating and
+managing NFS volumes with the `volume` subcommands. Note however that these
+subcommands are hidden for now, and thus don't show up when running `triton --help`.
 
-This prototype is _not_ meant to be used in a production environment, or any
-environment where data integrity matters.
+Please also note that this prototype is _not_ meant to be used in a production
+environment, or any environment where data integrity matters.
 
 See its [README](https://github.com/joyent/sdc-volapi/blob/master/README.md) for
 more details on how to install and use it.
@@ -348,7 +350,7 @@ Docker API.
 
 ```
 triton volumes
-triton volume create|list|get|delete
+triton volume create|list|get|delete|list-sizes
 
 triton volume create --opt network=mynetwork --name wp-uploads --size 100g
 triton volume create -n wp-uploads -s 100g
@@ -430,6 +432,103 @@ $ triton volume rm volume-name
 
 This command _fails_ if one or more VMs are referencing the volume to be
 deleted.
+
+#### list-sizes
+
+```
+$ triton volume list-sizes -j
+[
+  {
+    "description": "10 GiB",
+    "size": 10240
+  },
+  {
+    "description": "20 GiB",
+    "size": 20480
+  },
+  {
+    "description": "30 GiB",
+    "size": 30720
+  },
+  {
+    "description": "40 GiB",
+    "size": 40960
+  },
+  {
+    "description": "50 GiB",
+    "size": 51200
+  },
+  {
+    "description": "60 GiB",
+    "size": 61440
+  },
+  {
+    "description": "70 GiB",
+    "size": 71680
+  },
+  {
+    "description": "80 GiB",
+    "size": 81920
+  },
+  {
+    "description": "90 GiB",
+    "size": 92160
+  },
+  {
+    "description": "100 GiB",
+    "size": 102400
+  },
+  {
+    "description": "200 GiB",
+    "size": 204800
+  },
+  {
+    "description": "300 GiB",
+    "size": 307200
+  },
+  {
+    "description": "400 GiB",
+    "size": 409600
+  },
+  {
+    "description": "500 GiB",
+    "size": 512000
+  },
+  {
+    "description": "600 GiB",
+    "size": 614400
+  },
+  {
+    "description": "700 GiB",
+    "size": 716800
+  },
+  {
+    "description": "800 GiB",
+    "size": 819200
+  },
+  {
+    "description": "900 GiB",
+    "size": 921600
+  },
+  {
+    "description": "1000 GiB",
+    "size": 1024000
+  }
+]
+$ triton volume list-sizes
+SIZE  DESCRIPTION
+10240 10 GiB
+20480 20 GiB
+[...]
+$ 
+```
+
+This command lists valid volume sizes. Trying to create a volume with a
+different size results in an error.
+
+It will be implemented using the `ListVolumeSizes` CloudAPI endpoint for the
+master integration milestone, and using volume packages when those become
+available (currently once the "volume packages" milestone is completed).
 
 #### Adding a new `triton report` command (MVP milestone)
 
@@ -1331,6 +1430,11 @@ endpoints](https://apidocs.joyent.com/cloudapi/#machines) will need to fail with
 an appropriate error message when used on shared volumes zones.
 
 ### Changes to VMAPI
+
+#### New `triton:volumes` metadata property (mvp milestone)
+
+A new `triton:volumes` metadata property will be added that will contain all the
+data needed for an instance to determine what volumes it requires/mounts.
 
 #### New `nfsvolumestorage` `smartdc_role`
 
@@ -2532,7 +2636,7 @@ least the `max_physical_memory` value.
 It's not clear then whether NFS volume packages, which currently have a constant
 `max_physical_memory` value, should have different `zfs_io_priority` values.
 
-### Monitoring NFS server zones
+### Monitoring NFS server zones (operators milestone)
 
 When NFS server zones or the services they run become severely degraded, usage
 of associated shared volumes is directly impacted. NFS server zones and their
