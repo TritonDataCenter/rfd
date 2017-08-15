@@ -85,6 +85,7 @@ state: draft
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
+      - [New `triton:volumes` metadata property (mvp milestone)](#new-tritonvolumes-metadata-property-mvp-milestone)
       - [New `nfsvolumestorage` `smartdc_role`](#new-nfsvolumestorage-smartdc_role)
       - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
       - [New `volumes` parameter for `CreateVm` endpoint](#new-volumes-parameter-for-createvm-endpoint)
