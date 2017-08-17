@@ -1,6 +1,6 @@
 ---
 authors: Joshua M. Clulow <jmc@joyent.com>
-state: predraft
+state: draft
 ---
 
 <!--
