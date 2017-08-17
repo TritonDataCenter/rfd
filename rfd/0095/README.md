@@ -1,6 +1,7 @@
 ---
 authors: Joshua M. Clulow <jmc@joyent.com>
 state: draft
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+95%22
 ---
 
 <!--
