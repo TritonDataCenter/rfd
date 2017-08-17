@@ -10,7 +10,7 @@ state: predraft
 
 Various resource limits can be set on a zone to control how much of a specific
 system resource the zone can consume. Almost all of these limits are defined in
-terms of an rctl (see the resource_controls(5) man page) and set a hard cap on
+terms of an rctl (see the resource\_controls(5) man page) and set a hard cap on
 the amount of the resource the zone can consume. However, the consumption of
 physical memory falls into a separate category.
 
@@ -185,7 +185,7 @@ to inject an 'MS_INVALIDATE' onto the victim process. Later this was changed
 to an 'MS_INVALCURPROC'. Both of these required the memory capper to 'Pgrab'
 the victim process via proc. This stops the process, which can cause the latency
 issues described earlier. Later 'zoneadmd' was changed so that it now uses a
-private _RUSAGESYS_INVALMAP kernel syscall to minimize the disruption to the
+private \_RUSAGESYS_INVALMAP kernel syscall to minimize the disruption to the
 victim process, although locking still has to occur while invalidating the
 pages.
 
@@ -211,10 +211,9 @@ physical memory, although once in this state, the system is likely to be
 thrashing. On a modern system with a large memory, swapping is normally not
 seen.
 
-## High Level Approach
+## High Level Summary
 
-Many details in this section are still TBD, but we can describe a high-level
-approach which is modeled on the system's page scanner and which attempts
+Our approach is based on the system's page scanner and attempts
 to be minimally invasive in the VM system.
 
    1. We will ignore pages shared across zones. By the very definition of
@@ -230,66 +229,86 @@ to be minimally invasive in the VM system.
       improvements in capping. This accounting mechanism should work in
       conjunction with the next item. The count is used to determine when the
       page scanner runs for the zone. We will track page "ownership" by zone.
-      We need to determine how disruptive adding a pointer onto onto each
-      page_t will be.
 
    3. We should leverage the system's approach for the page scanner when the
-      zone is approaching its memory cap and start freeing pages from within
+      zone is over its memory cap and start freeing pages from within
       the kernel. In particular, we want to scan pages bottom-up, and not have
       to go top-down from processes inside the zone. We want to avoid the
       process locking the top-down approach entails, since it causes the
       latency issues described earlier. We will use the traditional two-handed
-      approach for the scanner and scan the page list associated with the
-      zone to determine which pages are candidates to be freed.
+      approach for the scanner to determine which pages are candidates to be
+      freed.
 
 ## High-Level Design Outline
 
 We want to keep the VM changes as simple and as low-overhead as possible.
+This outline describes a design with minimal impact on the VM system.
+There are also some more complex options, described later in this document,
+which can be considered for future work, if we determine it is necessary.
 
-   1. We will add one pointer to each page\_t to track the page's zone
-      ownership. We want to minimize additions to the page_t since that space
-      adds up.  The current size of the page\_t is 120 bytes and a 128GB
-      machine has 33 million pages. Adding one pointer consumes 8 additional
-      bytes. That is an additional 256MB on a 128GB machine. (TBD: can we
-      reclaim p\_sharepad out of page\_t? That would save 4 bytes/page)
+   1. We will add a zoneid to each page\_t to track the page's zone ownership
+      (p\_zoneid). We want to minimize additions to the page\_t since that space
+      adds up.  The current size of the page\_t is 120 bytes and a 128GB machine
+      has 33 million pages. Adding p\_zoneid adds either 4 bytes, or 0 bytes if
+      we repurpose p\_sharepad.
 
-   2. The new pointer will be set to NULL for pages that are in use by
-      the kernel, that are free, or that are in use by multiple zones.
-      Otherwise, it will reference the zone\_t that is using the page.
+   2. The new p\_zoneid member will be set to ALL\_ZONES for pages that are in
+      use by the kernel, that are free, or that are in use by multiple zones.
+      Otherwise, it will be set to the zoneid that is using the page.
 
-   3. It looks like hment\_insert(), hment\_remove(), hment\_assign() and
-      hment\_remove() are where we would hook in for zone ownership tracking.
+   3. hment\_insert(), hment\_remove() and hment\_assign() are where we
+      hook in for zone ownership tracking.
 
-   4. We track the total number of unshared pages (pages used only by that
-      zone) within the zone\_t.
+   4. We keep a count of the total number of unshared pages (pages used only by
+      that zone) within the zone\_t.
 
-   5. When a zone first gets a new page, we set the page ownership
-      pointer to the zone and increment the zone's page counter.
+   5. When a process first gets a new page, we set the page's p\_zoneid to the
+      current zoneid and increment the zone's page counter.
 
    6. If another zone gets the same page, we decrement the owning zone's
-      page counter and  set the page ownership pointer to NULL.
+      page counter and reset p\_zoneid to ALL\_ZONES.
+
+   7. There will be two new functions to hook into hment\_insert(),
+      hment\_remove() and hment\_assign().
+
+          add_page_mapping(page_t *pp)
+              if p_share is 0 (i.e. 1st mapping), set p_zoneid and incr zone cnt
+              else if p_zoneid matches current zone, do nothing
+              else decr zone cnt and set p_zoneid to ALL_ZONES
+
+          rm_page_mapping(page_t *pp)
+              if p_zoneid == ALL_ZONES, do nothing
+              else if p_share is 0 decr zone cnt and set p_zoneid to ALL_ZONES
+
+      Since we're using a zoneid for p\_zoneid, add\_page\_mapping() will have
+      to do a zone lookup by id for the 3rd condition (page now being shared
+      with a different zone). The cost for this is probably fine since
+      cross-zone sharing is less common.
 
    7. When a zone's page counter hits the zone's physical memory cap we must
-      add that zone to a list of zones for page scanning. This might be an
-      AVL tree for quicker lookup. We must also make sure the page scanner
-      knows it has to run.
+      add the zoneid to a list of zoneid's for page scanning. We will use a
+      boolean array indexed by zoneid for direct lookup by the scanner. We
+      also keep a count of how many zones are over their cap and we must
+      also make sure the page scanner knows it has to run.
 
-   8. We will modify pageout\_scanner() so that it does its current work when
-      the entire machine is low on memory, but otherwise, if there are any
-      zones in the list of zones to pageout, then it will also scan and check
-      pages against the ones in the AVL tree. This will continue to use the
+   8. The pageout\_scanner() continues to do its current work when the entire
+      machine is low on memory. Otherwise, if there are any zones in the list
+      of zones to pageout (based on the array counter), then it will also scan.
+
+      For zone-related scanning, the scanner will check the page's p\_zoneid
+      against the entry in the over-memory array. If that bit is set, the page
+      is a candidate for being reclaimed. The scanner continues to use the
       normal two-handed algorithm so that checkpage() on the backhand will
       reclaim pages that haven't been used recently. The logic for when
-      the pageout scanner runs will need to be updated and we need to change
-      some of the tunables around keeping this going when we have zones over
-      their cap.
+      the pageout scanner runs will need to be updated to check the zoneid
+      array counter and we need to change some of the tunables around keeping
+      this going when we have zones over their cap (based on the counter).
 
-   9. Once a zone goes below its physical memory cap, we remove it from the
-      pageout AVL tree.
+   9. Once a zone goes below its physical memory cap, we clear the zoneid bit
+      in the zone pageout array and decrement the counter. If the array counter
+      is 0, the scanner can stop running.
 
-   10. If there are no zones in the AVL tree, the scanner can stop running.
-
-   11. The zone physical memory cap will still be a soft cap. That is, we
+   10. The zone physical memory cap will still be a soft cap. That is, we
        won't change page\_create\_throttle() or do anything to prevent new
        pages being used by a zone that is over its cap. We can revisit this
        later, once the core work is complete.
@@ -298,8 +317,109 @@ The benefits of this approach is that we have an accurate and relatively
 inexpensive value for a zone's RSS and we integrate with the existing and
 stable pageout\_scanner(). There is still only a single pageout scanner
 running and it uses the tried and true technique to reclaim pages.
+Handling a zone halt is easy since processes will release their
+page reference as they terminate (so zone cleanup happens in hment\_remove).
+We can also verify the page scanner array entry for that zoneid is clear on
+zone halt.
 
 The downside is that we'll be hooking in zone-awareness down at the page level.
 A secondary issue is memory capping for projects. I think projects are not
 widely used and not worth adding even more complexity here for that.
 Existing project memory capping can be used for anyone who cares about that.
+However, see `Alternative 3` below.
+
+### Alternative 1
+
+Track a list of pages that are in-use by the zone. Use a
+zone-specific pageout scanner for when the zone is over its cap.
+
+This would modify the design above so that in add\_page\_mapping() we would add
+the page to a new AVL tree on the zone. We also remove it from the AVL tree as
+necessary. We need insert and removal for this zone list to be fast since this
+is in the hment\_insert(), hment\_remove() and hment\_assign() code paths, so
+an AVL tree on the zone makes the most sense. Non-zone pages (kernel, free,
+shared across zones, etc.) won't be in any zone AVL tree.
+
+We would add a new avl\_node\_t element to each page\_t so that the page can be
+maintained on the zone's tree. This would add 24 bytes to each page\_t in
+addition to the p\_zoneid we're already going to be adding.
+
+When a zone hits its memory cap we would create a kernel task to perform
+page scanning on the list of pages associated with the zone. This scanning
+would behave in essentially the same way as the system pageout scanner, using
+the two-handed mark and sweep algorithm
+
+Locking for this task is complex. We can't simply lock the zone's AVL tree
+while we scan the pages since that would block all normal activity for the
+zone through hment\_insert(), hment\_remove() and hment\_assign(). The
+scanner would have to periodically release the AVL tree lock and figure out
+where to resume scanning when it reaquired the lock.  There are also additional
+locking concerns around interaction with the system's pageout\_scanner() if
+both are running. All of this has the potential to reintroduce the latency
+bubbles that we've worked hard to eliminate in the existing memory capping code.
+
+Because of the additional cost (memory/page) and complexity of this alternative,
+it is not being considered for the initial implemenation. This approach
+could be revisited at a later date if it is determined that the single system
+pageout\_scanner() is inadequate.
+
+### Alternative 2
+
+Multiple page scanners.
+
+If we determine that the single set of "clock hands" that we use for the
+pageout scanner is not sufficient to handle the additional zone-oriented memory
+capping, a straightforward extension would be to support multiple pairs of
+hands that start out spread evenly around the "clock face" of memory.
+If the front hand of one pair runs into the back hand of a different pair,
+we would rebalance all of the hands around the clock again.
+
+This approach is not part of the current design, but could be added later
+if necessary.
+
+### Alternative 3
+
+Track a page's membership in multiple hierarchical containers. At
+a minimum this would be for a zone and a project, but could be extended to
+other kinds of containers in the future.
+
+A fundamental limitation with handling multiple containers is that there is
+only a single set of MMU access/modify bits per page, so the page scanner
+cannot fully cope with page activity across multiple containers.
+
+We could add a level of indirection to the reference on a page. Instead of
+simply storing a zoneid in p\_zoneid, we would add a pointer to an intermediate
+"container" object into each page\_t. This "container" object would be a
+set of references to all of the entities that the page belongs to. For
+example, it could have a zoneid, a projectid, and any other references we
+might want.
+
+For our current usage where we never use projects, there would be a single
+intermediate "container" object for each page our zone is using. If we did
+have two different projects in the zone, there would be two intermediate
+"container" objects, both with the same zoneid but with different projectids.
+Some of the zone's pages would reference one of these "container" objects while
+other pages would reference the other "container" object.
+
+We could track a page count per entity (zone, project, etc.) but we can
+still only do pageout scanning using mark/sweep for one entity. If we
+assume that these different entities are strictly hierarchical (zone,
+project, etc.) then the pageout scanner could be modified to handle
+the lowest entity in the hierarchy. For example, if a project was
+over its memory cap, the scanner would only consider pages which belonged
+to the specific intermedate "container" that described the zone/project.
+If all of the projects were under their memory cap, but the total for the
+zone was over the cap, then all of the "container" objects for that zone
+would need to be considered by the scanner.
+
+The scanner could not use a simple zoneid array in this case. We would need
+an AVL tree in which we would add the appropriate "container" pointers
+when we're over a cap. The scanner would then have check the page's pointer
+against the AVL tree to see if that page is a candidate to be reclaimed.
+
+At this time it does not appear that there is enough justification to warrant
+tracking page membership in multiple entities vs. the additional complexity
+to the code.  In the future, if we need better handling for memory caps on
+multiple hierarchical containers, we could extend the implementation to support
+this kind of indirection. Also, this approach will break down if we ever have
+to deal with a set of containers which is not strictly hierarchical.
