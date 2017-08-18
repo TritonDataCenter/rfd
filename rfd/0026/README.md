@@ -160,6 +160,7 @@ state: draft
     - [Milestones](#milestones-1)
       - [Master integration](#master-integration)
       - [MVP](#mvp)
+      - [CloudAPI volumes automount](#cloudapi-volumes-automount)
       - [Operators](#operators)
       - [Volume packages](#volume-packages)
       - [Snapshots](#snapshots)
@@ -380,15 +381,11 @@ ListVolumeSizes endpoint](#listvolumesizes-get-volumessizes).
 
 If a size is provided and it is not one of those listed as available by sending
 a request to [CloudAPI's ListVolumeSizes
-endpoint](#listvolumesizes-get-volumessizes), the creation fails and outputs the
-list of available sizes.
+endpoint](#listvolumesizes-get-volumessizes), the creation fails and users can
+list available sizes using the [list-sizes](#list-sizes) subcommand.
 
-Specifying a unit in the size parameter is required. Available unit suffixes are
-`m`, `M`, `g` and `G`. These suffixes are assumed to be expressed in terms of
-[ISO/IEC
-80000](https://en.wikipedia.org/wiki/ISO/IEC_80000#Units_of_ISO.2FIEC_80000)
-"power of two" units. That is: `10g` and `10G` both mean `10 Gibibytes` (2^30
-bytes). `10m` and `10M` both mean `10 Mebibytes` (2^20 bytes).
+Specifying a unit in the size parameter is required. The only unit suffix
+available is `G`. `10G` means `10 Gibibytes` (2^30 bytes).
 
 Later, users will also be able to specify volume sizes via [volume packages](#introduction-of-volume-packages)'
 UUIDs and list available volume sizes with [CloudAPI's ListVolumePackages
@@ -440,87 +437,103 @@ deleted.
 $ triton volume list-sizes -j
 [
   {
-    "description": "10 GiB",
+    "type": "tritonnfs",
     "size": 10240
   },
   {
-    "description": "20 GiB",
+    "type": "tritonnfs",
     "size": 20480
   },
   {
-    "description": "30 GiB",
+    "type": "tritonnfs",
     "size": 30720
   },
   {
-    "description": "40 GiB",
+    "type": "tritonnfs",
     "size": 40960
   },
   {
-    "description": "50 GiB",
+    "type": "tritonnfs",
     "size": 51200
   },
   {
-    "description": "60 GiB",
+    "type": "tritonnfs",
     "size": 61440
   },
   {
-    "description": "70 GiB",
+    "type": "tritonnfs",
     "size": 71680
   },
   {
-    "description": "80 GiB",
+    "type": "tritonnfs",
     "size": 81920
   },
   {
-    "description": "90 GiB",
+    "type": "tritonnfs",
     "size": 92160
   },
   {
-    "description": "100 GiB",
+    "type": "tritonnfs",
     "size": 102400
   },
   {
-    "description": "200 GiB",
+    "type": "tritonnfs",
     "size": 204800
   },
   {
-    "description": "300 GiB",
+    "type": "tritonnfs",
     "size": 307200
   },
   {
-    "description": "400 GiB",
+    "type": "tritonnfs",
     "size": 409600
   },
   {
-    "description": "500 GiB",
+    "type": "tritonnfs",
     "size": 512000
   },
   {
-    "description": "600 GiB",
+    "type": "tritonnfs",
     "size": 614400
   },
   {
-    "description": "700 GiB",
+    "type": "tritonnfs",
     "size": 716800
   },
   {
-    "description": "800 GiB",
+    "type": "tritonnfs",
     "size": 819200
   },
   {
-    "description": "900 GiB",
+    "type": "tritonnfs",
     "size": 921600
   },
   {
-    "description": "1000 GiB",
+    "type": "tritonnfs",
     "size": 1024000
   }
 ]
 $ triton volume list-sizes
-SIZE  DESCRIPTION
-10240 10 GiB
-20480 20 GiB
-[...]
+TYPE        SIZE
+tritonnfs    10G
+tritonnfs    20G
+tritonnfs    30G
+tritonnfs    40G
+tritonnfs    50G
+tritonnfs    60G
+tritonnfs    70G
+tritonnfs    80G
+tritonnfs    90G
+tritonnfs   100G
+tritonnfs   200G
+tritonnfs   300G
+tritonnfs   400G
+tritonnfs   500G
+tritonnfs   600G
+tritonnfs   700G
+tritonnfs   800G
+tritonnfs   900G
+tritonnfs  1000G
 $ 
 ```
 
@@ -616,12 +629,8 @@ a request to [CloudAPI's ListVolumeSizes
 endpoint](#listvolumesizes-get-volumessizes), the creation fails and outputs the
 list of available sizes.
 
-Specifying a unit in the size parameter is required. Available unit suffixes are
-`m`, `M`, `g` and `G`. These suffixes are assumed to be expressed in terms of
-[ISO/IEC
-80000](https://en.wikipedia.org/wiki/ISO/IEC_80000#Units_of_ISO.2FIEC_80000)
-"power of two" units. That is: `10g` and `10G` both mean `10 Gibibytes` (2^30
-bytes). `10m` and `10M` both mean `10 Mebibytes` (2^20 bytes).
+Specifying a unit in the size parameter is required. The only available unit
+suffix is `G`. `10G` means `10 Gibibytes` (2^30 bytes).
 
 Later, users will also be able to specify volume sizes via [volume packages](#introduction-of-volume-packages)'
 UUIDs and list available volume sizes with [CloudAPI's ListVolumePackages
@@ -1298,10 +1307,7 @@ The response is an array of objects having two properties:
 
 * `size`: a number in mebibytes that represents the size of a volume
 
-* `description`: another representation of the value `size` that would be
-  clearer for a human to understand. For instance, for a `size` value of
-  `10240`, which would mean `10240 mebibytes`, the value of the `description`
-  property would be `10GiB`
+* `type`: the type of volume for which the size is available
 
 ##### AttachVolumeToNetwork POST /volumes/id/attachtonetwork (MVP milestone)
 
@@ -1916,10 +1922,7 @@ The response is an array of objects having two properties:
 
 * `size`: a number in mebibytes that represents the size of a volume
 
-* `description`: another representation of the value `size` that would be
-  clearer for a human to understand. For instance, for a `size` value of
-  `10240`, which would mean `10240 mebibytes`, the value of the `description`
-  property would be `10GiB`
+* `type`: the type of volume for which the size is available
 
 #### GetVolumeReferences GET /volumes/uuid/references
 
@@ -2399,6 +2402,13 @@ The MVP milestone builds on the first "master integration" milestone and
 implements features and changes that are part of the core functionality of NFS
 volumes but that did not make it into the master integration milestone because
 they did not represent major design risks.
+
+#### CloudAPI volumes automount
+
+JIRA filter: https://devhub.joyent.com/jira/issues/?filter=11360
+
+This milestone groups tickets related to allowing users to mount volumes from
+non-Docker containers using CloudAPI (and other tools such as node-triton).
 
 #### Operators
 
