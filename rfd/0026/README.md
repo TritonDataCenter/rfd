@@ -85,7 +85,7 @@ state: draft
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
-      - [New `triton:volumes` metadata property (mvp milestone)](#new-tritonvolumes-metadata-property-mvp-milestone)
+      - [New `sdc:volumes` metadata property (mvp milestone)](#new-tritonvolumes-metadata-property-mvp-milestone)
       - [New `nfsvolumestorage` `smartdc_role`](#new-nfsvolumestorage-smartdc_role)
       - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
       - [New `volumes` parameter for `CreateVm` endpoint](#new-volumes-parameter-for-createvm-endpoint)
@@ -1438,9 +1438,9 @@ an appropriate error message when used on shared volumes zones.
 
 ### Changes to VMAPI
 
-#### New `triton:volumes` metadata property (mvp milestone)
+#### New `sdc:volumes` metadata property (mvp milestone)
 
-A new `triton:volumes` metadata property will be added that will contain all the
+A new `sdc:volumes` metadata property will be added that will contain all the
 data needed for an instance to determine what volumes it requires/mounts.
 
 #### New `nfsvolumestorage` `smartdc_role`
@@ -2718,7 +2718,7 @@ What we would want to happen here is that on zone startup, the zone would read
 the list of NFS volumes via something like:
 
 ```
-mdata-get triton:volumes
+mdata-get sdc:volumes
 ```
 
 and it would then mount each of these volumes. The script would have to be
