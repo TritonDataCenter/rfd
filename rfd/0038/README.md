@@ -1,7 +1,7 @@
 ---
 authors: Jerry Jelinek <jerry@joyent.com>
 contributors: Joshua Clulow <jclulow@joyent.com>
-state: predraft
+state: draft
 ---
 
 # RFD 38 Zone Physical Memory Capping
@@ -271,12 +271,12 @@ which can be considered for future work, if we determine it is necessary.
    7. There will be two new functions to hook into hment\_insert(),
       hment\_remove() and hment\_assign().
 
-          add_page_mapping(page_t *pp)
+          zone_add_page(page_t *pp)
               if p_share is 0 (i.e. 1st mapping), set p_zoneid and incr zone cnt
               else if p_zoneid matches current zone, do nothing
               else decr zone cnt and set p_zoneid to ALL_ZONES
 
-          rm_page_mapping(page_t *pp)
+          zone_rm_page(page_t *pp)
               if p_zoneid == ALL_ZONES, do nothing
               else if p_share is 0 decr zone cnt and set p_zoneid to ALL_ZONES
 
@@ -299,7 +299,7 @@ which can be considered for future work, if we determine it is necessary.
       against the entry in the over-memory array. If that bit is set, the page
       is a candidate for being reclaimed. The scanner continues to use the
       normal two-handed algorithm so that checkpage() on the backhand will
-      reclaim pages that haven't been used recently. The logic for when
+      free pages that haven't been used recently. The logic for when
       the pageout scanner runs will need to be updated to check the zoneid
       array counter and we need to change some of the tunables around keeping
       this going when we have zones over their cap (based on the counter).
@@ -323,10 +323,10 @@ We can also verify the page scanner array entry for that zoneid is clear on
 zone halt.
 
 The downside is that we'll be hooking in zone-awareness down at the page level.
-A secondary issue is memory capping for projects. I think projects are not
+A secondary issue is memory capping for projects. However, projects are not
 widely used and not worth adding even more complexity here for that.
 Existing project memory capping can be used for anyone who cares about that.
-However, see `Alternative 3` below.
+See also `Alternative 3` below.
 
 ### Alternative 1
 
@@ -423,3 +423,34 @@ to the code.  In the future, if we need better handling for memory caps on
 multiple hierarchical containers, we could extend the implementation to support
 this kind of indirection. Also, this approach will break down if we ever have
 to deal with a set of containers which is not strictly hierarchical.
+
+### Alternative 4
+
+Since zone memory will typically be capped well before the system is low
+on memory, it could be advantageous to use an Adaptive Replacement Cache (ARC -
+similar to what ZFS does) to manage pageout for a zone.
+
+An ARC for zone memory is difficult to implement because once a page is mapped
+there is no further kernel involvment and no easy way to know how hot a page
+is.
+
+To implement this, we would have to change the page scanner so that it
+repeatedly scanned the pages and then build up a profile of which pages
+are being accessed most often. While this might be a useful solution for
+zone memory capping, it is not clear if we need this additional complexity
+at this time. We can revisit this later if necessary.
+
+## Debugging and Monitoring
+
+The existing mdb support should be fine for working with this new approach.
+We may want to add additional kstats to track page scanning and page-free
+activity on a per-zone basis. The current zone memory capping kstats may
+suffice here.
+
+## Interaction With Other Parts of the System
+
+The user-level per-zone memory capping should be removed. The support
+for getting an accurate RSS via the vm_getusage() syscall should be changed
+to use the accurate value on the zone. The -V option on prstat can become
+a no-op. There may be additional opportunities for code cleanup as a result
+of this project.

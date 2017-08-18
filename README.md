@@ -81,7 +81,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
 | draft    | [RFD 36 Mariposa](./rfd/0036/README.md) |
 | draft    | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
-| predraft | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
+| draft    | [RFD 38 Zone Physical Memory Capping](./rfd/0038/README.md) |
 | draft    | [RFD 39 VM Attribute Cache (vminfod)](./rfd/0039/README.md) |
 | publish  | [RFD 40 Standalone IMGAPI deployment](./rfd/0040/README.md) |
 | draft    | [RFD 41 Improved JavaScript errors](./rfd/0041/README.md) |
