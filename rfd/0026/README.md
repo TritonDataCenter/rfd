@@ -27,7 +27,7 @@ state: draft
       - [List](#list)
       - [Get](#get)
       - [Delete](#delete)
-      - [list-sizes](#list-sizes)
+      - [sizes](#sizes)
       - [Adding a new `triton report` command (MVP milestone)](#adding-a-new-triton-report-command-mvp-milestone)
     - [Docker](#docker)
       - [Interaction with local volumes](#interaction-with-local-volumes)
@@ -85,7 +85,7 @@ state: draft
       - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
       - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
-      - [New `sdc:volumes` metadata property (mvp milestone)](#new-tritonvolumes-metadata-property-mvp-milestone)
+      - [New `sdc:volumes` metadata property (mvp milestone)](#new-sdcvolumes-metadata-property-mvp-milestone)
       - [New `nfsvolumestorage` `smartdc_role`](#new-nfsvolumestorage-smartdc_role)
       - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
       - [New `volumes` parameter for `CreateVm` endpoint](#new-volumes-parameter-for-createvm-endpoint)
@@ -194,10 +194,9 @@ This document describes features and changes that are not meant to be integrated
 at the same time, but instead progressively, in stages. Each stage is
 represented by a milestone that has a name.
 
-When no milestone is mentioned when describing a change or new feature, readers
-should assume that they belong to the default milestone that will be integrated
-first (named "master integration"). Otherwise, the name of the milestone should
-be mentioned clearly.
+When no milestone is mentioned when describing a change or new feature, they
+belong to the default milestone that will be integrated first (named "master
+integration"). Otherwise, the name of the milestone should be mentioned clearly.
 
 See the [integration plan](#integration-plan) for more details about milestones
 and when they are planned to be integrated.
@@ -216,17 +215,18 @@ A prototype for what this RFD describes is available at
 https://github.com/joyent/sdc-volapi. It implements [a new Volumes API
 service](#new-volapi-service-and-api).
 
-Its [`tools/setup/coal-setup.sh`
-script](https://github.com/joyent/sdc-volapi/blob/master/tools/setup/coal-setup.sh)
+Its [`tools/setup/setup.sh`
+script](https://github.com/joyent/sdc-volapi/blob/master/tools/setup/setup.sh)
 installs an image of:
 
 * all the core services that are relevant to the implementation of this RFD
   (sdc-docker, CloudAPI, VMAPI, workflow, etc.)
 
-* the `sdcadm` tool that implements the "experimental" commands that can be used
-  to enable/disable features related to NFS volumes.
+* the `sdcadm` tool that implements [the "experimental" commands that can be
+  used to enable/disable features related to NFS
+  volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#setting-up-a-triton-dc-to-support-nfs-volumes).
 
-In addition to that, node-triton at cersion 5.3.1 added support for creating and
+In addition to that, node-triton at version 5.3.1 added support for creating and
 managing NFS volumes with the `volume` subcommands. Note however that these
 subcommands are hidden for now, and thus don't show up when running `triton --help`.
 
@@ -234,7 +234,9 @@ Please also note that this prototype is _not_ meant to be used in a production
 environment, or any environment where data integrity matters.
 
 See its [README](https://github.com/joyent/sdc-volapi/blob/master/README.md) for
-more details on how to install and use it.
+more details on [how to
+install](https://github.com/joyent/sdc-volapi/blob/master/README.md#installation)
+and use it.
 
 ## Use cases
 
@@ -352,9 +354,9 @@ Docker API.
 
 ```
 triton volumes
-triton volume create|list|get|delete|list-sizes
+triton volume create|list|get|delete|sizes
 
-triton volume create --opt network=mynetwork --name wp-uploads --size 100g
+triton volume create --opt network=mynetwork --name wp-uploads --size 100G
 triton volume create -n wp-uploads -s 100g
 triton volume create -n wp-uploads nfs1-100g (volume packages milestone)
 ```
@@ -362,8 +364,8 @@ triton volume create -n wp-uploads nfs1-100g (volume packages milestone)
 #### Create
 
 ```
-triton volume create --opt network=mynetwork --name wp-uploads --size 100g
-triton volume create --opt network=mynetwork --name wp-uploads --size 100g -e affinity:container!=wp-server (affinity milestone)
+triton volume create --opt network=mynetwork --name wp-uploads --size 100G
+triton volume create --opt network=mynetwork --name wp-uploads --size 100G -e affinity:container!=wp-server (affinity milestone)
 ```
 
 ##### Options
@@ -376,13 +378,11 @@ generated.
 ###### Size
 
 The size of the shared volume. If no size is provided, the volume will be
-created with the smallest size available as specified by [CloudAPI's
-ListVolumeSizes endpoint](#listvolumesizes-get-volumessizes).
+created with the smallest size available as outputted by [the triton volume
+sizes command](#sizes).
 
-If a size is provided and it is not one of those listed as available by sending
-a request to [CloudAPI's ListVolumeSizes
-endpoint](#listvolumesizes-get-volumessizes), the creation fails and users can
-list available sizes using the [list-sizes](#list-sizes) subcommand.
+If a size is provided and it is not one of those listed as available in triton's
+volume sizes' output, the creation fails.
 
 Specifying a unit in the size parameter is required. The only unit suffix
 available is `G`. `10G` means `10 Gibibytes` (2^30 bytes).
@@ -393,7 +393,8 @@ endpoint](#listvolumepackages-get-volumepackages).
 
 ###### Network
 
-The network to which this shared volume will be attached.
+The network to which this shared volume will be attached. Only fabric networks
+can be attached to shared volumes.
 
 ###### Affinity (Affinity milestone)
 
@@ -417,11 +418,6 @@ $ triton volume get volume-name
 { id: ... name: ... size: ... network: ... resource: ... compute_node: ... }
 ```
 
-Including the amount of space used/amount of space available is a nice to
-have. It might be possible to use the upcoming container monitoring service to
-have quick metrics cache for a VM available and add that to the 'metrics'
-field in cloudapi.
-
 #### Delete
 
 ```
@@ -431,10 +427,10 @@ $ triton volume rm volume-name
 This command _fails_ if one or more VMs are referencing the volume to be
 deleted.
 
-#### list-sizes
+#### sizes
 
 ```
-$ triton volume list-sizes -j
+$ triton volume sizes -j
 [
   {
     "type": "tritonnfs",
@@ -513,7 +509,7 @@ $ triton volume list-sizes -j
     "size": 1024000
   }
 ]
-$ triton volume list-sizes
+$ triton volume sizes
 TYPE        SIZE
 tritonnfs    10G
 tritonnfs    20G
@@ -540,15 +536,15 @@ $
 This command lists valid volume sizes. Trying to create a volume with a
 different size results in an error.
 
-It will be implemented using the `ListVolumeSizes` CloudAPI endpoint for the
-master integration milestone, and using volume packages when those become
-available (currently once the "volume packages" milestone is completed).
+It is implemented using the `ListVolumeSizes` CloudAPI endpoint for the master
+integration milestone, and will use volume packages when those become available
+(currently once the "volume packages" milestone is completed).
 
 #### Adding a new `triton report` command (MVP milestone)
 
 Creating a shared volume results in creating a VM object and an instance with
-`smartdc_role: 'nfsvolumestorage'`. As such, a user could list all their "resources"
-(including instances _and_ shared volumes) by listing instances.
+`smartdc_role: 'nfsvolumestorage'`. As such, a user could list all their
+"resources" (including instances _and_ shared volumes) by listing instances.
 
 However, the fact that shared volumes have a 1 to 1 relationship with their
 underlying containers is an implementation detail that should not be publicly
@@ -569,37 +565,23 @@ volumes](https://docs.docker.com/engine/reference/commandline/volume_create/).
 This section describes what commands and command line options will be used by
 Triton users to manage their shared volumes on Triton.
 
-#### Interaction with local volumes
-
-Local volumes, created with e.g `docker run -v /foo...` are already supported by
-Triton. A container will be able to mount both local and NFS shared volumes.
-When mounting local and shared NFS volumes on the same mountpoint, e.g with:
-
-````
-docker run -v /bar -v foo:/bar...
-````
-
-the command will result in an error. Otherwise, the NFS volume would be
-implicitly mounted over the `lofs` filesystem created with `-v /bar`, which is
-likely not what the user expects.
-
 #### Overview
 
 ```
 docker network create mynetwork ...
 docker volume create --driver tritonnfs --name wp-uploads \
-    --opt size=100g --opt network=mynetwork
+    --opt size=100G --opt network=some-fabric-network
 docker run -d -v wp-uploads:/var/wp-uploads wp-server
 ```
 
 The `tritonnfs` driver is the default driver on Triton. If not specified, the
-network to which a newly created volume is attached is the default fabric
+network to which a newly created volume is attached is the user's default fabric
 network.
 
 Creating a shared volume can be done using the following shorter command line:
 
 ```
-docker volume create --name wp-uploads --opt size=100g
+docker volume create --name wp-uploads
 ```
 
 #### Create
@@ -617,7 +599,7 @@ The size of the shared volume. This option is passed using docker's CLI's
 `--opt` command line switch:
 
 ```
-docker volume create --name wp-uploads --opt size=100g
+docker volume create --name wp-uploads --opt size=100G
 ```
 
 The size of the shared volume. If no size is provided, the volume will be
@@ -645,6 +627,8 @@ passed using docker's CLI's `--opt` command line switch:
 docker volume create --name wp-uploads --opt network=mynetwork
 ```
 
+Shared volumes only support being attached to fabric networks.
+
 ###### Driver
 
 The Triton shared volume driver is named `tritonnfs`. It is the default driver
@@ -653,12 +637,19 @@ client.
 
 #### Run
 
-Users need to be able to mount shared volumes in read-only mode using the
-`:ro` command line suffix for the `-v` option:
+##### Interaction with local volumes
 
-```
-docker run -d -v wp-uploads:/var/wp-uploads:ro wp-server
-```
+Local volumes, created with e.g `docker run -v /foo...` are already supported by
+Triton. A container will be able to mount both local and NFS shared volumes.
+When mounting local and shared NFS volumes on the same mountpoint, e.g with:
+
+````
+docker run -v /bar -v foo:/bar...
+````
+
+the command will result in an error. Otherwise, the NFS volume would be
+implicitly mounted over the `lofs` filesystem created with `-v /bar`, which is
+likely not what the user expects.
 
 ## Shared storage implementation
 
@@ -691,12 +682,13 @@ The current design has a one-to-one mapping between shared volumes and NFS
 server zones, but this is an implementation detail: it is not impossible that
 in the future more than one volumes be served from one NFS server zone.
 
-Serving NFS from within a zone is not currently supported by SmartOS, although
-we have reason to believe that we could fix this in the future. Instead, a
-user-mode NFS server will be deployed within the zone. Because the server runs
-as a user-level process, it will be subject to all of the normal resource
-controls that are applicable to any zone. The user-mode solution can be
-deployed without the need for a new platform or a CN reboot.
+Serving NFS from within a zone using the in-kernel NFS implementation is not
+currently supported by SmartOS, although we have reason to believe that we could
+fix this in the future. Instead, a user-mode NFS server will be deployed within
+the NFS server zone. Because the server runs as a user-level process, it will be
+subject to all of the normal resource controls that are applicable to any zone.
+The user-mode solution can be deployed without the need for a new platform or a
+CN reboot (but other features of this RFD require new platforms and/or reboots).
 
 The NFS server will serve files out of a ZFS delegated dataset, which allow
 for the following use cases:
@@ -712,11 +704,10 @@ The user-mode server must be installed in the zone and configured to export
 the appropriate file system. The Triton docker tools must support the mapping
 of the user's logical volume name to the zone name and share.
 
-When a Docker container uses a shared volume, the NFS file system is mounted
-in the container from the shared volume zone automatically at startup.
-However, when a non-Docker container uses a shared volume, mounting of the NFS
-file system is not automatic: users need to use command line tools to mount it
-manually using the appropriate NFS path.
+When a container uses a shared volume, and if the platform where the container
+runs is updated to a platform that supports it, the NFS file system is
+automatically mounted in the container from the shared volume zone automatically
+at startup.
 
 ### Other Considerations
 
@@ -907,9 +898,7 @@ three (non-exclusive) solutions:
   slotted in on servers which have one or more volumes. It's uncertain how much
   the demand for RAM-heavy packages can compensate for volume containers.
 
-#### Expressing locality with affinity filters
-
-_This functionality is not required for the MVP._
+#### Expressing locality with affinity filters (affinity milestone)
 
 In order to have better control on performance and availability, Triton users
 need to be able to express where in the data center their shared volumes are
@@ -980,9 +969,9 @@ Machines acting as shared volumes' storage zones are an implementation detail
 that should not be exposed to end users. As such, they need to be filtered out
 from any of the `*Machines` endpoints (e.g `ListMachines`, `GetMachine`, etc.).
 
-Filtering out NFS volumes' storage VMs will be done by filtering on the
-`smartdc_role` tag: VMs with the `nfsvolumestorage` `smartdc_role` tag will be
-filtered out.
+For the `ListMachines` endpoint, filtering out NFS volumes' storage VMs will be
+done by filtering on the `smartdc_role` tag: VMs with the `nfsvolumestorage`
+`smartdc_role` tag will be filtered out.
 
 For instance, CloudAPI's `ListMachines` endpoint will always pass -- in addition
 to any other search predicate set due to other `ListMachines` parameters -- the
@@ -992,20 +981,28 @@ following predicate to VMAPI's ListVms endpoint:
 {ne: ['tags', '*smartdc_role=nfsvolumestorage*']}
 ```
 
+For all other endpoints, they will result in an error when used on an NFS
+volume's storage VM.
+
 #### Volume objects representation
 
-Volume objects are represented in CloudAPI the same way as their internal
+Volume objects are represented in CloudAPI in a way similar as their internal
 representation in VOLAPI for both their [common properties](#common-layout) as
-well as their [type specific ones](#type-specific-properties). The only
-exception is that the `uuid` field is named `id` to adhere to current
-conventions between the representation of Triton objects in CloudAPI and
-internal APIs.
+well as their [type specific ones](#type-specific-properties).
+
+The only differences are:
+
+* the `uuid` field is named `id` to adhere to current conventions between the
+  representation of Triton objects in CloudAPI and internal APIs
+
+* the `vm_uuid`  property that represents the UUID of a volume's storage VM is
+  not exposed to CloudAPI users
 
 #### New `volumes` parameter for `CreateMachine` endpoint
 
-When creating a machine via CloudAPI, the new `volumes` parameter will allow
-one to specify a list of volumes to mount in the new machine. This would look
-as follows in the CreateMachine payload:
+When creating a machine via CloudAPI, the new `volumes` parameter allows one to
+specify a list of volumes to mount in the new machine. This would look as
+follows in the `CreateMachine` payload:
 
 ```
 "volumes": [
@@ -1023,9 +1020,9 @@ as follows in the CreateMachine payload:
 ]
 ```
 
-and the new machine would then have the specified volumes mounted when it
-starts, and the appropriate volume references will be added to indicate that
-this machine uses the listed volumes.
+The new machine has the specified volumes mounted when it starts, and the
+appropriate volume references are added to indicate that this machine uses the
+listed volumes.
 
 The `type` property of each object of the `volumes` array is optional. Its
 default and only currently valid value is `'tritonnfs'`.
@@ -1082,7 +1079,7 @@ parameter that corresponds to the user making the request.
 | tag.key         | String       | mvp                | A string representing the value for the tag with key `key` to match. More details below. |
 | type            | String       | master-integration | Allows to filter volumes by type, e.g `tritonnfs`. |
 
-####### Searching by name
+###### Searching by name
 
 `name` is a string containing either a full volume name or a partial volume name
 prefixed and/or suffixed with a `*` character. For example:
@@ -1099,7 +1096,7 @@ are all valid `name=` searches which will match respectively:
  * any name that ends with `foo` such as `barfoo`
  * any name that contains `foo` such as `barfoobar`
 
-####### Searching by predicate
+###### Searching by predicate
 
 The `predicate` parameter is a JSON string that can be used to build a LDAP
 filter to search on the following indexed properties:
@@ -1115,7 +1112,7 @@ the predicate and the non-predicate query parameters. For example, if your
 predicate includes any checks on the `name` field, passing the `name=` query
 paramter is an error.
 
-####### Searching by tags (MVP milestone)
+###### Searching by tags (MVP milestone)
 
 Note: searching for tags is to be implemented as part of the mvp milestone.
 
@@ -1262,10 +1259,11 @@ The output is empty and the status code is 204 if the deletion was scheduled
 successfully.
 
 A volume is always deleted asynchronously. In order to determine when the volume
-is actually deleted, users need to poll the volume's `state` property.
+is actually deleted, users need to poll the volume using the `GetVolume`
+endpoint until it returns a 404 response.
 
-If resources are using the volume to be deleted, the request results in an error
-and the error contains a list of resources that are using the volume.
+If resources are using the volume to be deleted, the request results in a
+`VolumeInUse` error.
 
 ##### UpdateVolume POST /volumes/id
 
@@ -1348,7 +1346,7 @@ A [volume object](#volume-objects) representing the volume with ID `id`.
 
 | Param         | Type         | Description                     |
 | ------------- | ------------ | --------------------------------|
-| name          | String       | The desired name for the snapshot to create. The name must be unique per user. |
+| name          | String       | The desired name for the snapshot to create. The name must be unique per volume. |
 
 ###### Output
 
@@ -1366,7 +1364,8 @@ volume with ID `id`.
 ##### RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot (Snapshot milestone)
 
 Note that rolling back a NFS shared volume to a given snapshot requires its
-underlying storage VM to be stopped and restarted.
+underlying storage VM to be stopped and restarted, making the storage provided
+by that volume unavailable for some time.
 
 ###### Input
 
@@ -1380,19 +1379,6 @@ underlying storage VM to be stopped and restarted.
 The volume object that represents the volume with ID `id` with its state
 property set to `rolling_back`. When the volume has been rolled back to the
 snapshot with name `name`, the volume's `state` property is `ready`.
-
-##### ListVolumeSnapshots GET /volume/id/snapshots (Snapshot milestone)
-
-###### Input
-
-| Param         | Type         | Description                              |
-| ------------- | ------------ | ---------------------------------------- |
-| name          | String       | The new name of the snapshot object with uuid `snapshot-uuid`. |
-
-###### Output
-
-A list of [snapshot objects](#snapshot-objects) that were created from the
-volume with ID `id`.
 
 ##### DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name (Snapshot milestone)
 
@@ -1423,18 +1409,6 @@ type set to `type`.
 An object representing the [volume package](#introduction-of-volume-packages) with UUID
 `volume-package-uuid`.
 
-#### Filtering shared volumes zones from the ListMachines endpoint
-
-Zones acting as shared volumes hosts need to [_not_ be included in
-`ListMachines`'s output](#new-internal_role-property-on-vm-objects). CloudAPI's
-`ListMachines`' implementation will add a filter to filter out VMs with the
-value `tritonnfs_server` for their `internal_role` property.
-
-#### Failing for other machine-related endpoints used on shared volumes zones
-
-All other ["Machines" related CloudAPI
-endpoints](https://apidocs.joyent.com/cloudapi/#machines) will need to fail with
-an appropriate error message when used on shared volumes zones.
 
 ### Changes to VMAPI
 
@@ -1446,7 +1420,7 @@ data needed for an instance to determine what volumes it requires/mounts.
 #### New `nfsvolumestorage` `smartdc_role`
 
 Machines acting as shared volumes' storage zones will have the value
-`nfsvolumestorage` for their `smartdc_role` property. To know of this new
+`nfsvolumestorage` for their `smartdc_role` property. To know how this new
 `smartdc_role` value is used by CloudAPI to prevent users from performing
 operations on these storage VMs, refer to the section [Not exposing NFS volumes'
 storage VMs via any of the `Machines`
@@ -1454,17 +1428,27 @@ endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoin
 
 #### New `volumes` property on VM objects
 
-A VM object that represents a container mounting a shared volumes will store a
-reference to that volume in a new _indexable_ property named `volumes`.
+A VM object that represents a container mounting shared volumes will store a
+reference to these volumes in a new property named `volumes`. This property will
+have the following form:
 
-This property will also be exposed both at VMAPI and CloudAPI where it can be
-passed in as part of a VM payload to mount specified volumes on VM creation.
+```
+[
+  {
+    "name": "volume-name-1",
+    "type": "tritonnfs",
+    "mode": "rw",
+    "mountpoint": "/foo"
+  },
+  ...
+]
+```
 
 #### New `volumes` parameter for `CreateVm` endpoint
 
 When creating a VM via VMAPI, the new `volumes` parameter will allow one to
 specify a list of volumes to mount in the new VM. This would look as follows in
-the CreateVM payload:
+the `CreateVM` payload:
 
 ```
 "volumes": [
@@ -2189,26 +2173,26 @@ extra properties:
 
 A volume is considered to be "in use" if the
 [`GetVolumeReferences`](#getvolumereferences-get-volumesvolume-uuidreferences-1)
-endpoint doesn't return an empty list of objects UUIDs. When a Docker container
-is created, it adds any of its mounted volumes to [an internal
-property](#new-volumes-property-on-vm-objects). A
-container referencing a shared volume is considered to be using it when it's in
-any state except `failed` and `destroyed` -- in other words in any state that
-cannot transition to `running`.
+endpoint doesn't return an empty list of VM UUIDs. When a container which mounts
+shared volumes is created and becomes "active", it is added as a "reference" to
+those shared volumes.
 
-For instance, even if a _stopped_ Docker container is the only remaining Docker
-container that references a given shared volume, it won't be possible to delete
-that volume until that container is _deleted_.
+A container is considered to be active when it's in any state except `failed`
+and `destroyed` -- in other words in any state that can transition to `running`.
 
-Deleting a shared volume when there's still at least one active Docker container
-that references it will result in an error listing active Docker containers
-referencing it and a 409 HTTP response. This is in line with [Docker's API's
-documentation about deleting volumes](https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#remove-a-volume).
+For instance, even if a _stopped_ container is the only remaining container that
+references a given shared volume, it won't be possible to delete that volume
+until that container is _deleted_.
+
+Deleting a shared volume when there's still at least one active container that
+references it will result in an error. This is in line with [Docker's API's
+documentation about deleting
+volumes](https://docs.docker.com/engine/reference/api/docker_remote_api_v1.23/#remove-a-volume).
 
 However, a shared volume can be deleted if its only users are not mounting it
-via the Docker API (e.g by using the `mount` command manually from within a VM),
-because currently there doesn't seem to be any way to track that usage cleanly
-and efficiently.
+via the Triton APIs (e.g by using the `mount` command manually from within a
+VM), because currently there doesn't seem to be any way to track that usage
+cleanly and efficiently.
 
 ##### Persistent storage
 
@@ -2234,17 +2218,21 @@ Indexes are setup for the following searchable properties:
 
 ##### Reaping failed volumes
 
-Volumes in state `failed` are stored in Moray, but they do not need to be
-present in persistent storage forever. Not deleting these entries has an impact
-on performance. For instance, searches take longer and responses are larger,
-which tends to increase response latency. Maintenance is also impacted. For
-instance, migrations take longer as there are more objects to handle.
+Contrary to VMAPI's VM objects, moray objects are not stored for deleted
+volumes.
 
-A separate process running in the VOLAPI service's zone will delete these
-entries from persistent storage after some time. This period will need to be
-chosen so that staled volume objects are still kept in persistent storage for
-long enough and most debugging tasks that require inspecting them can still take
-place. For instance, IMGAPI reaps stalled images after a week.
+On the other hand, volumes in state `failed` are stored in Moray, but they do
+not need to be present in persistent storage forever. Not deleting these entries
+has an impact on performance. For instance, searches take longer and responses
+are larger, which tends to increase response latency. Maintenance is also
+impacted. For instance, migrations take longer as there are more objects to
+handle.
+
+Eventually, a separate process running in the VOLAPI service's zone might be
+added to archive these entries after some time. The delay after which a volume
+object is archived would need to be chosen so that staled volume objects are
+still kept in persistent storage for long enough and most debugging tasks that
+require inspecting them could still take place.
 
 ## Snapshots (Snapshots milestone)
 
