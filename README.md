@@ -151,6 +151,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 105 Engineering Guide - Node.js Best Practices](./rfd/0105/README.md) |
 | predraft | [RFD 106 Engineering Guide - Go Best Practices](./rfd/0106/README.adoc) |
 | predraft | [RFD 107 Self assigned IP's on fabric network](./rfd/0107/README.md) |
+| predraft | [RFD 108 Operator-Configurable Throttles for Manta](./rfd/0108/README.md) |
 
 
 ## Contents of an RFD
