@@ -153,6 +153,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 107 Self assigned IP's and reservations](./rfd/0107/README.md) |
 | draft    | [RFD 108 Remove Support for Memory/CPU Dynamic Reconfiguration (DR)](./rfd/0108/README.md) |
 | predraft | [RFD 109 Run Operator-Script Earlier during Image Creation](./rfd/0109/README.md) |
+| predraft | [RFD 110 Operator-Configurable Throttles for Manta](./rfd/0110/README.md) |
 
 
 ## Contents of an RFD
