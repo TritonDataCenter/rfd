@@ -23,6 +23,26 @@ code in ways which will benefit all illumos derivatives.
 
 ## High-Level Changes
 
+### User-Level Commands
+
+The `cfgadm` command is the primary user-interface for DR operations. This
+command is still important for some operations, such as disk replacement,
+but there is likely some opportunity for cleanup here.
+
+It is also possible that there is opportunity to cleanup some of the
+hotplug-related code and the hotplug SMF service.
+
+    cmd/hotplug/*
+    cmd/hotplugd/*
+
+### Kernel-Wide Data and Functions
+
+See all usage of `plat_dr_options`, `PLAT_DR_FEATURE_CPU` and
+`PLAT_DR_FEATURE_MEMORY`.
+
+The `lgrp` and cross-call code makes use of functions like `plat_dr_support_cpu`
+and `plat_dr_support_memory`. This could all be cleaned up.
+
 ### Files
 
 At least the following are candidates for removal.
@@ -42,6 +62,7 @@ At least the following are candidates for removal.
 
 At least the following can be trimmed down or removed.
 
+    cmd/acpihpd/notify.c
     cmd/fm/fmd/common/fmd_dr.c
     cmd/picl/plugins/sun4v/mdesc/dr.c
     lib/cfgadm_plugins/sbd/common/ap_sbd.c
