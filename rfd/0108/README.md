@@ -3,14 +3,14 @@ authors: Jerry Jelinek <jerry@joyent.com>
 state: predraft
 ---
 
-# RFD 108 Remove Support for Dynamic Reconfiguration (DR)
+# RFD 108 Remove Support for Memory/CPU Dynamic Reconfiguration (DR)
 
 ## Overview
 
-The support for DR was added by Sun in the late '90s to support dynamic
-hardware reconfiguration for some niche, high-end SPARC platforms. The
-intention is to allow the addition/removal of hardware boards containing
-memory and/or CPUs while the system is running.
+The support for Memory/CPU DR was initially added by Sun in the late '90s to
+support dynamic hardware reconfiguration for some niche, high-end SPARC
+platforms. The intention is to allow the addition/removal of hardware boards
+containing memory and/or CPUs while the system is running.
 
 This concept is dubious at best for the modern hardware landscape, and certainly
 does not apply to the hardware on which illumos will run for the forseeable

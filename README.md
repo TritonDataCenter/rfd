@@ -151,7 +151,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 105 Engineering Guide - Node.js Best Practices](./rfd/0105/README.md) |
 | predraft | [RFD 106 Engineering Guide - Go Best Practices](./rfd/0106/README.adoc) |
 | predraft | [RFD 107 Self assigned IP's on fabric network](./rfd/0107/README.md) |
-| predraft | [RFD 108 Remove Support for Dynamic Reconfiguration (DR)](./rfd/0108/README.md) |
+| predraft | [RFD 108 Remove Support for Memory/CPU Dynamic Reconfiguration (DR)](./rfd/0108/README.md) |
 | predraft | [RFD 109 Run Operator-Script Earlier during Image Creation](./rfd/0109/README.md) |
 
 
