@@ -56,6 +56,7 @@ state: draft
       - [General characteristics of storage VMs packages](#general-characteristics-of-storage-vms-packages)
       - [Package names](#package-names)
       - [Packages sizes](#packages-sizes)
+      - [ZFS I/O priority](#zfs-io-priority)
     - [Placement of volume containers](#placement-of-volume-containers)
       - [Using dedicated hardware](#using-dedicated-hardware)
       - [Mixing compute containers and volume containers](#mixing-compute-containers-and-volume-containers)
@@ -175,7 +176,6 @@ state: draft
     - [Allocation/placement](#allocationplacement)
     - [NFS volume packages' settings](#nfs-volume-packages-settings)
       - [CPU and RAM](#cpu-and-ram)
-      - [ZFS I/O priority](#zfs-io-priority)
     - [Monitoring NFS server zones (operators milestone)](#monitoring-nfs-server-zones-operators-milestone)
     - [Networking](#networking-1)
       - [Impact of networking changes](#impact-of-networking-changes)
@@ -210,12 +210,13 @@ deployed on different compute nodes.
 ## Current prototype
 
 A prototype for what this RFD describes is available at
-https://github.com/joyent/sdc-volapi. It implements [a new Volumes API
-service](#new-volapi-service-and-api).
+https://github.com/joyent/sdc-volapi. It implements all the new features and
+changes described in this document that belong to the default (master
+integration) milestone.
 
-Its [`tools/setup/setup.sh`
-script](https://github.com/joyent/sdc-volapi/blob/master/tools/setup/setup.sh)
-installs an image of:
+It provides:
+
+* [a new Volumes API core service](#new-volapi-service-and-api).
 
 * all the core services that are relevant to the implementation of this RFD
   (sdc-docker, CloudAPI, VMAPI, workflow, etc.)
@@ -224,11 +225,15 @@ installs an image of:
   used to enable/disable features related to NFS
   volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#setting-up-a-triton-dc-to-support-nfs-volumes).
 
+* a [`tools/setup/setup.sh`
+  script](https://github.com/joyent/sdc-volapi/blob/master/tools/setup/setup.sh)
+  that installs all of these components in a given DC.
+
 In addition to that, node-triton at version 5.3.1 added support for creating and
 managing NFS volumes with the `volume` subcommands. Note however that these
 subcommands are hidden for now, and thus don't show up when running `triton --help`.
 
-Please also note that this prototype is _not_ meant to be used in a production
+Please note that this prototype is _not_ meant to be used in a production
 environment, or any environment where data integrity matters.
 
 See its [README](https://github.com/joyent/sdc-volapi/blob/master/README.md) for
@@ -354,18 +359,19 @@ Docker API.
 triton volumes
 triton volume create|list|get|delete|sizes
 
-triton volume create --opt network=mynetwork --name wp-uploads --size 100G
-triton volume create -n wp-uploads -s 100g
-triton volume create -n wp-uploads nfs1-100g (volume packages milestone)
+triton volume create --network mynetwork --name wp-uploads --size 100G
+triton volume create --name wp-uploads -s 100g
+triton volume create --name wp-uploads nfs1-100g (volume packages milestone)
 
+# Mounting the volume wp-uploads from an instance
 triton instance create -v wp-uploads:/uploads ...
 ```
 
 #### Create
 
 ```
-triton volume create --opt network=mynetwork --name wp-uploads --size 100G
-triton volume create --opt network=mynetwork --name wp-uploads --size 100G -e affinity:container!=wp-server (affinity milestone)
+triton volume create --network mynetwork --name wp-uploads --size 100G
+triton volume create --network mynetwork --name wp-uploads --size 100G -e affinity:container!=wp-server (affinity milestone)
 ```
 
 ##### Options
@@ -818,9 +824,6 @@ include at least the following information for each shared volume:
 * mount point
 * volume type (currently only `tritonnfs`)
 
-, and for `kvm` we would
-either need to do something different or not support this feature.
-
 #### Automatic mounting for LX containers
 
 For LX containers, `lxinit` is responsible for gettting the `sdc:volumes`
@@ -850,7 +853,7 @@ thus won't be available to end users when provisioning compute instances.
     max_physical_memory: 256,
     max_swap: 256,
     version: '1.0.0',
-    zfs_io_priority: 1,
+    zfs_io_priority: 100,
     default: false
 }
 ```
@@ -898,6 +901,60 @@ As users provide feedback regarding package sizes during the first phase of
 deployment and testing, new packages may be created to better suit their needs,
 and previous packages will be retired (not necessarily deleted, but they won't
 be used to create storage VMs anymore).
+
+#### ZFS I/O priority
+
+The current prototype makes NFS server zones have a `zfs_io_priority` of `100`,
+which seems to be the default value. However, there is a wide spectrum of values
+for this property in TPC, ranging from `1` to `16383`.
+
+If we consider only 4th generation packages (g4, k4 and t4), we can run the
+following command:
+
+```
+sdc-papi /packages | json -Ha zfs_io_priority name | egrep (g4-|k4-|t4-) | awk '{pkgs[$1]=pkgs[$1]" "$2} END{for (pkg_size in pkgs) print pkg_size","pkgs[pkg_size]}' | sort -n -k1,1`
+```
+
+in east1 to obtain the following distribution:
+
+|zfs_io_priority|package names|
+|------|---|
+| 8    | t4-standard-128M |
+| 16   | t4-standard-256M g4-highcpu-128M |
+| 32   | t4-standard-512M g4-highcpu-256M |
+| 64   | t4-standard-1G g4-highcpu-512M k4-highcpu-kvm-250M |
+| 128  | t4-standard-2G g4-highcpu-1G k4-highcpu-kvm-750M |
+| 256  | t4-standard-4G g4-general-4G g4-highcpu-2G k4-general-kvm-3.75G k4-highcpu-kvm-1.75G |
+| 512  | t4-standard-8G g4-bigdisk-16G g4-general-8G g4-highcpu-4G g4-highram-16G k4-general-kvm-7.75G k4-highcpu-kvm-3.75G k4-highram-kvm-15.75G k4-bigdisk-kvm-15.75G |
+| 1024 | t4-standard-16G g4-bigdisk-32G g4-fastdisk-32G g4-general-16G g4-highcpu-8G g4-highram-32G k4-bigdisk-kvm-31.75G k4-fastdisk-kvm-31.75G k4-general-kvm-15.75G k4-highcpu-kvm-7.75G k4-highram-kvm-31.75G |
+| 2048 | t4-standard-32G g4-bigdisk-64G g4-fastdisk-64G g4-general-32G g4-highcpu-16G g4-highram-64G k4-bigdisk-kvm-63.75G k4-fastdisk-kvm-63.75G k4-general-kvm-31.75G k4-highcpu-kvm-15.75G k4-highram-kvm-63.75G |
+| 4096 | t4-standard-64G g4-bigdisk-110G g4-fastdisk-110G g4-highcpu-32G g4-highram-110G |
+| 6144 | t4-standard-96G |
+| 8192 | t4-standard-128G g4-highcpu-110G g4-highcpu-160G g4-highcpu-192G g4-highcpu-64G g4-highcpu-96G g4-highram-222G g4-fastdisk-222G |
+| 10240 | t4-standard-160G |
+| 12288 | t4-standard-192G g4-highcpu-222G |
+| 14336 | t4-standard-224G |
+
+It seems that for compute VMs, the `zfs_io_priority` value is proportional to at
+least the `max_physical_memory` value.
+
+What should NFS volume packages' `zfs_io_priority` value be? And since those
+packages currently have a constant `max_physical_memory` value, should they have
+different `zfs_io_priority` values?
+
+It seems the answers to these questions would depend on the placement of NFS
+volumes (or more precisely, of their storage VMs). Since the placement strategy
+can change over time for a given deployment, the `zfs_io_priority` value of
+packages used by storage VMs must be able to change. However, `zfs_io_priority`
+is an immutable property of packages.
+
+Thus, when operators need to change the `zfs_io_priority` value for storage VMs
+used by NFS volumes of a given size, they'll need to:
+
+1. deactivate the current package used by NFS volumes' storage VMs
+2. create a _new_ package with the same quota value, the desired
+   `zfs_io_priority` value and a name that matches the pattern
+   `sdc_nfs_volumes*`.
 
 ### Placement of volume containers
 
@@ -2452,13 +2509,7 @@ uuids so that the operator knows which containers are still using them.
 Development of features and changes presented in this document will happen in
 milestones so that they can be integrated progressively.
 
-Development progress is tracked in JIRA and each milestone corresponds to a
-JIRA label. For each milestone for which development started, a JIRA filter is
-available that lists all its open tickets.
-
 #### Master integration
-
-JIRA filter: https://devhub.joyent.com/jira/issues/?filter=11233
 
 The first milestone represents the set of changes that tackles the major design
 issues and establishes the technical foundations. It also provides basic
@@ -2467,16 +2518,12 @@ and fulfill the original goal of this RFD.
 
 #### MVP
 
-JIRA filter: https://devhub.joyent.com/jira/issues/?filter=11128
-
 The MVP milestone builds on the first "master integration" milestone and
 implements features and changes that are part of the core functionality of NFS
 volumes but that did not make it into the master integration milestone because
 they did not represent major design risks.
 
 #### CloudAPI volumes automount
-
-JIRA filter: https://devhub.joyent.com/jira/issues/?filter=11360
 
 This milestone groups tickets related to allowing users to mount volumes from
 non-Docker containers using CloudAPI (and other tools such as node-triton).
@@ -2528,8 +2575,8 @@ indicates that the "NFS volumes automount" feature is turned on for docker
 containers. This means that docker containers that are set to depend on shared
 volumes when they're created mount those volumes automatically on startup.
 Turning on this feature flag depends on all servers running a platform at
-version >= 20160613T123039Z, which is the platform that ships the required
-dockerinit changes.
+`version >= 20160613T123039Z`, which is the platform that ships the required
+`dockerinit` changes.
 
 Turning on `sdcadm experimental nfs-volumes docker-automount` requires turning
 on `sdcadm experimental nfs-volumes docker`, but does not do that automatically.
@@ -2651,46 +2698,6 @@ be chosen based on two different criteria:
    I/O, etc.), which is not possible to predict
 
 2. the ability to perform optimal placement
-
-#### ZFS I/O priority
-
-The current prototype makes NFS server zones have a `zfs_io_priority` of `100`,
-which seems to be the default value. However, there is a wide spectrum of values
-for this property in TPC, ranging from `1` to `16383`.
-
-If we consider only 4th generation packages (g4, k4 and t4), we can run the
-following command:
-
-```
-sdc-papi /packages | json -Ha zfs_io_priority name | egrep (g4-|k4-|t4-) | awk '{pkgs[$1]=pkgs[$1]" "$2} END{for (pkg_size in pkgs) print pkg_size","pkgs[pkg_size]}' | sort -n -k1,1`
-```
-
-in east1 to obtain the following distribution:
-
-|zfs_io_priority|package names|
-|------|---|
-| 8    | t4-standard-128M |
-| 16   | t4-standard-256M g4-highcpu-128M |
-| 32   | t4-standard-512M g4-highcpu-256M |
-| 64   | t4-standard-1G g4-highcpu-512M k4-highcpu-kvm-250M |
-| 128  | t4-standard-2G g4-highcpu-1G k4-highcpu-kvm-750M |
-| 256  | t4-standard-4G g4-general-4G g4-highcpu-2G k4-general-kvm-3.75G k4-highcpu-kvm-1.75G |
-| 512  | t4-standard-8G g4-bigdisk-16G g4-general-8G g4-highcpu-4G g4-highram-16G k4-general-kvm-7.75G k4-highcpu-kvm-3.75G k4-highram-kvm-15.75G k4-bigdisk-kvm-15.75G |
-| 1024 | t4-standard-16G g4-bigdisk-32G g4-fastdisk-32G g4-general-16G g4-highcpu-8G g4-highram-32G k4-bigdisk-kvm-31.75G k4-fastdisk-kvm-31.75G k4-general-kvm-15.75G k4-highcpu-kvm-7.75G k4-highram-kvm-31.75G |
-| 2048 | t4-standard-32G g4-bigdisk-64G g4-fastdisk-64G g4-general-32G g4-highcpu-16G g4-highram-64G k4-bigdisk-kvm-63.75G k4-fastdisk-kvm-63.75G k4-general-kvm-31.75G k4-highcpu-kvm-15.75G k4-highram-kvm-63.75G |
-| 4096 | t4-standard-64G g4-bigdisk-110G g4-fastdisk-110G g4-highcpu-32G g4-highram-110G |
-| 6144 | t4-standard-96G |
-| 8192 | t4-standard-128G g4-highcpu-110G g4-highcpu-160G g4-highcpu-192G g4-highcpu-64G g4-highcpu-96G g4-highram-222G g4-fastdisk-222G |
-| 10240 | t4-standard-160G |
-| 12288 | t4-standard-192G g4-highcpu-222G |
-| 14336 | t4-standard-224G |
-
-It seems that for compute VMs, the `zfs_io_priority` value is proportional to at
-least the `max_physical_memory` value.
-
-What should NFS volume packages' `zfs_io_priority` value be? And since those
-packages currently have a constant `max_physical_memory` value, should they have
-different `zfs_io_priority` values?
 
 ### Monitoring NFS server zones (operators milestone)
 
