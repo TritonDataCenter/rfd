@@ -30,11 +30,11 @@ state: draft
       - [sizes](#sizes)
       - [Adding a new `triton report` command (MVP milestone)](#adding-a-new-triton-report-command-mvp-milestone)
     - [Docker](#docker)
-      - [Interaction with local volumes](#interaction-with-local-volumes)
       - [Overview](#overview-1)
       - [Create](#create-1)
         - [Options](#options-1)
       - [Run](#run)
+        - [Interaction with local volumes](#interaction-with-local-volumes)
   - [Shared storage implementation](#shared-storage-implementation)
     - [Non-Requirements](#non-requirements)
     - [Approach](#approach)
@@ -53,10 +53,14 @@ state: draft
     - [Placement of volume containers](#placement-of-volume-containers)
       - [Using dedicated hardware](#using-dedicated-hardware)
       - [Mixing compute containers and volume containers](#mixing-compute-containers-and-volume-containers)
-      - [Expressing locality with affinity filters](#expressing-locality-with-affinity-filters)
+      - [Expressing locality with affinity filters (affinity milestone)](#expressing-locality-with-affinity-filters-affinity-milestone)
     - [Resizing volume containers](#resizing-volume-containers)
   - [Networking](#networking)
     - [NFS volumes reachable only on fabric networks](#nfs-volumes-reachable-only-on-fabric-networks)
+  - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone)
+    - [Use case](#use-case)
+    - [Implementation](#implementation)
+      - [Limits](#limits)
   - [REST APIs](#rest-apis)
     - [Changes to CloudAPI](#changes-to-cloudapi)
       - [Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
@@ -78,12 +82,9 @@ state: draft
         - [CreateVolumeSnapshot POST /volumes/id/snapshot (Snapshot milestone)](#createvolumesnapshot-post-volumesidsnapshot-snapshot-milestone)
         - [GetVolumeSnapshot GET /volumes/id/snapshots/snapshot-name](#getvolumesnapshot-get-volumesidsnapshotssnapshot-name)
         - [RollbackToVolumeSnapshot POST /volumes/id/rollbacktosnapshot (Snapshot milestone)](#rollbacktovolumesnapshot-post-volumesidrollbacktosnapshot-snapshot-milestone)
-        - [ListVolumeSnapshots GET /volume/id/snapshots (Snapshot milestone)](#listvolumesnapshots-get-volumeidsnapshots-snapshot-milestone)
         - [DeleteVolumeSnapshot DELETE /volumes/id/snapshots/snapshot-name (Snapshot milestone)](#deletevolumesnapshot-delete-volumesidsnapshotssnapshot-name-snapshot-milestone)
         - [ListVolumePackages GET /volumepackages (Volume packages milestone)](#listvolumepackages-get-volumepackages-volume-packages-milestone)
         - [GetVolumePackage GET /volumepackages/volume-package-uuid (Volume packages milestone)](#getvolumepackage-get-volumepackagesvolume-package-uuid-volume-packages-milestone)
-      - [Filtering shared volumes zones from the ListMachines endpoint](#filtering-shared-volumes-zones-from-the-listmachines-endpoint)
-      - [Failing for other machine-related endpoints used on shared volumes zones](#failing-for-other-machine-related-endpoints-used-on-shared-volumes-zones)
     - [Changes to VMAPI](#changes-to-vmapi)
       - [New `sdc:volumes` metadata property (mvp milestone)](#new-sdcvolumes-metadata-property-mvp-milestone)
       - [New `nfsvolumestorage` `smartdc_role`](#new-nfsvolumestorage-smartdc_role)
@@ -127,7 +128,7 @@ state: draft
       - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork (MVP milestone)](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-mvp-milestone)
         - [Input](#input-9)
         - [Output](#output-11)
-      - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone)
+      - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone-1)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
         - [GetVolumeSnapshot GET /volumes/volume-uuid/snapshots/snapshot-name](#getvolumesnapshot-get-volumesvolume-uuidsnapshotssnapshot-name)
@@ -143,10 +144,6 @@ state: draft
       - [Volumes state machine](#volumes-state-machine)
       - [Data retention policy](#data-retention-policy)
         - [Reaping failed volumes](#reaping-failed-volumes)
-  - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone-1)
-    - [Use case](#use-case)
-    - [Implementation](#implementation)
-      - [Limits](#limits)
   - [Support for operating shared volumes](#support-for-operating-shared-volumes)
     - [New sdc-pkgadm command (Volume packages milestone)](#new-sdc-pkgadm-command-volume-packages-milestone)
       - [Adding new volume packages](#adding-new-volume-packages)
@@ -359,6 +356,8 @@ triton volume create|list|get|delete|sizes
 triton volume create --opt network=mynetwork --name wp-uploads --size 100G
 triton volume create -n wp-uploads -s 100g
 triton volume create -n wp-uploads nfs1-100g (volume packages milestone)
+
+triton instance create -v wp-uploads:/uploads ...
 ```
 
 #### Create
@@ -751,6 +750,88 @@ current configurations.
 Concurrent access use cases need to be supported, but support for robust high
 concurrency ones (such as database storage) is not critical.
 
+## Relationship between shared volumes and VMs
+
+The dependency of a VM on a given set of shared volumes can only be specified at
+the VM's creation time. Once a VM is created, it is not possible to change the
+set of shared volumes it uses/depends on.
+
+With the docker client, users can specify that a docker container uses shared
+volumes with the following commands:
+
+```
+$ docker create -v volume-1:/mountpoint-1 -v volume-2:/mountpoint-2:ro ...
+$ docker run -v volume-1:/mountpoint-1 -v volume-2:/mountpoint-2:ro ...
+```
+
+With the node-triton client, users are able to do the same using the `triton
+instance create` command:
+
+```
+$ triton create -v volume-1:/mountpount-1 -v volume-2:/mountpount-2:ro ...
+```
+
+Using CloudAPI's REST API, clients can specify that a VM uses a given set of
+volumes by using [`CreateMachine`'s `volumes`input
+parameter](new-volumes-parameter-for-createmachine-endpoint).
+
+When a VM uses shared volumes and that VM becomes "active", a reference is added
+to each volume it uses so that these volumes can't be deleted until no VM
+references them.
+
+### Automatic mounting of volumes
+
+In addition to preventing referenced volumes from being deleted, a VM that uses
+shared volumes automatically mounts them when it starts.
+
+How the mounting operation is performed depends on what initialization system
+the VM uses, and is different for different types of VMs.
+
+#### Automatic mounting for Docker containers
+
+Docker containers are initialized by the `dockerinit` program. This program gets
+the `docker:nfsvolumes` metadata to determine what NFS volumes it needs to mount
+and mounts them.
+
+Later, it will use the `sdc:volumes` metadata instead of `docker:nfsvolumes`,
+but providing the relevant metadata in `docker:nfsvolumes` will still be
+supported for backward compatibility.
+
+#### Automatic mounting for infrastructure (non-KVM) containers ()
+
+Making infrastructure containers automatically mount shared volumes requires
+changes to the platform. Since the mounting needs to happen within the zone
+(because it needs to be on the zone's network) the `mdata-fetch` service's start
+script is modified so that, on zone startup, the zone reads the list of
+required NFS volumes using:
+
+```
+mdata-get sdc:volumes
+```
+
+It then mounts each of these volumes. The `sdc:volumes` metadata needs to
+include at least the following information for each shared volume:
+
+* remote host
+* remote path
+* mount point
+* volume type (currently only `tritonnfs`)
+
+, and for `kvm` we would
+either need to do something different or not support this feature.
+
+#### Automatic mounting for LX containers
+
+For LX containers, `lxinit` is responsible for gettting the `sdc:volumes`
+metadata and mounting the relevant volumes, in a way that is similar to
+`dockerinit`.
+
+#### Automatic mounting of KVM VMs
+
+Users of KVM containers will need to user custom user-scripts in order to mount
+shared volumes on boot. They will be able to query the `sdc:volumes` metadata
+and manually mount volumes.
+
 ## Allocation (DAPI, packages, etc.)
 
 ### Packages for volume containers
@@ -954,6 +1035,45 @@ make their NFS volumes available on selected _fabric_ networks.
 Making NFS volumes available on non-fabric networks would, without the ability
 for users to set firewall rules, potentially make them reachable by other users.
 
+## Snapshots (Snapshots milestone)
+
+### Use case
+
+Triton users need to be able to snapshot the content of their shared volumes,
+and roll back to any of these snapshots at any time. The typical use case that
+needs to be supported is a user who needs to be able to make changes to the
+data in a shared volume while being able to roll back to a known snapshot.
+Snapshot backups are out of scope.
+
+### Implementation
+
+Shared volumes' user data is stored in a delegated dataset. This gives the
+nice property of being able to update the underlying zone's software (such as
+the NFS server) without having to recreate the shared volume.
+
+Snapshotting a shared volume involves snapshotting only the delegated dataset
+that contains the actual user data, not the whole root filesystem of the
+underlying zone.
+
+Snapshotting a shared volume is done by using VOLAPI's [`CreateVolumeSnapshot`
+endpoint](#createvolumesnapshot-post-volumesvolume-uuidsnapshot). See the
+section about [REST APIs changes](#rest-apis) for more details on APIs that
+allow users to manage volume snapshots.
+
+#### Limits
+
+As snapshots consume storage space even if no file is present in the delegated
+dataset, limiting the number of snapshots that a user can create may be
+needed. This limit could be implemented at various levels:
+
+* In the Shared Volume API (VOLAPI): VOLAPI could maintain a count of how many
+snapshots of a given volume exist and a maximum number of snapshots, and send
+a request error right away without even reaching the compute node to try and
+create a new snapshot.
+
+* At the zfs level: snapshotting operation results would bubble up to VOLAPI,
+  which would result in a request error in case of a failure.
+
 ## REST APIs
 
 Several existing APIs are directly involved when manipulating shared volumes:
@@ -1152,12 +1272,12 @@ A list of volume objects of the following form:
     "snapshots": [
       {
         "name": "my-first-snapshot",
-        "create_timestamp": "1562802062480",
+        "create_timestamp": "2017-08-22T00:11:44.123Z",
         "state": "created"
       },
       {
         "name": "my-second-snapshot",
-        "create_timestamp": "1572802062480",
+        "create_timestamp": "2017-08-22T00:11:54.123Z",
         "state": "created"
       }
     ],
@@ -1985,12 +2105,13 @@ A snapshot object has the following properties:
 
 ###### Output
 
-An object that allows for polling the state of the snapshot being created:
+An [snapshot object](#snapshot-objects) with the state `'creating'`:
 
 ```
 {
-  "job_uuid": "job-uuid",
-  "volume_uuid": "volume-uuid"
+  "name": "input-name",
+  "state": "creating",
+  "create_timestamp": "2017-08-22T00:11:44.123Z"
 }
 ```
 
@@ -2234,45 +2355,6 @@ object is archived would need to be chosen so that staled volume objects are
 still kept in persistent storage for long enough and most debugging tasks that
 require inspecting them could still take place.
 
-## Snapshots (Snapshots milestone)
-
-### Use case
-
-Triton users need to be able to snapshot the content of their shared volumes,
-and roll back to any of these snapshots at any time. The typical use case that
-needs to be supported is a user who needs to be able to make changes to the
-data in a shared volume while being able to roll back to a known snapshot.
-Snapshot backups are out of scope.
-
-### Implementation
-
-Shared volumes' user data are stored in a delegated dataset. This gives the
-nice property of being able to update the underlying zone's software (such as
-the NFS server) without having to recreate the shared volume.
-
-Snapshotting a shared volume involves snapshotting only the delegated dataset
-that contains the actual user data, not the whole root filesystem of the
-underlying zone.
-
-Snapshotting a shared volume is done by using VOLAPI's [`CreateVolumeSnapshot`
-endpoint](#createvolumesnapshot-post-volumesvolume-uuidsnapshot). See the
-section about [REST APIs changes](#rest-apis) for more details on APIs that
-allow users to manage volume snapshots.
-
-#### Limits
-
-As snapshots consume storage space even if no file is present in the delegated
-dataset, limiting the number of snapshots that a user can create may be
-needed. This limit could be implemented at various levels:
-
-* In the Shared Volume API (VOLAPI): VOLAPI could maintain a count of how many
-snapshots of a given volume exist and a maximum number of snapshots, and send
-a request error right away without even reaching the compute node to try and
-create a new snapshot.
-
-* At the zfs level: snapshotting operation results would bubble up to VOLAPI,
-  which would result in a request error in case of a failure.
-
 ## Support for operating shared volumes
 
 Shared volumes are hosted on zones that need to be operated in a way similar
@@ -2328,7 +2410,7 @@ shared volume is actually owned by the owner.
 sdc-voladm restart-volume-zone [--owner owner-uuid] shared-volume-uuid]
 ```
 
-If Docker containers use the shared volumes that need to be restarted,
+If active containers reference the shared volumes that need to be restarted,
 `sdc-voladm` doesn't restart the shared volume zones and instead outputs the
 containers' uuids so that the operator knows which containers are still using
 them.
@@ -2535,32 +2617,6 @@ in `sdcadm` would be integrated after the changes made to those repositories.
 * Do volume packages have to be sized in multiples of disk quota in compute
   packages, assuming that bin-packing will be more efficient?
 
-#### What happens when mounting of a volume fails?
-
-The current recommendation is to fail the provisioning request with an error
-message that is as clear as possible.
-
-### Security
-
-What are the NFS security requirements?
-
-At this point sdc-nfs does not support anything other than restricting to a
-specific list of IPs, so we're planning to leave it open to any networks
-assigned to the container. Is this a acceptable?
-
-### Should we limit the number of NFS volumes a single container can mount?
-
-If so: how many?
-
-### Granularity of available volume sizes
-
-Currently, NFS shared volumes packages are available in sizes from 10 GiB to
-1000 GiB, with gaps of 10 GiB from 10 to 100 GiB, and then of 100 GiB from 100
-to 1000 GiB.
-
-Is the current list of available volume sizes granular enough to cover most use
-cases?
-
 ### NFS volume packages' settings
 
 In order to allow for both optimal utilization of hardware and good performance
@@ -2595,10 +2651,9 @@ be chosen based on two different criteria:
 
 2. the ability to perform optimal placement
 
-
 #### ZFS I/O priority
 
-The current prototype makes NFS server zones have a `zfs_io_priority` of `1`,
+The current prototype makes NFS server zones have a `zfs_io_priority` of `100`,
 which seems to be the default value. However, there is a wide spectrum of values
 for this property in TPC, ranging from `1` to `16383`.
 
@@ -2632,8 +2687,9 @@ in east1 to obtain the following distribution:
 It seems that for compute VMs, the `zfs_io_priority` value is proportional to at
 least the `max_physical_memory` value.
 
-It's not clear then whether NFS volume packages, which currently have a constant
-`max_physical_memory` value, should have different `zfs_io_priority` values.
+What should NFS volume packages' `zfs_io_priority` value be? And since those
+packages currently have a constant `max_physical_memory` value, should they have
+different `zfs_io_priority` values?
 
 ### Monitoring NFS server zones (operators milestone)
 
@@ -2688,32 +2744,3 @@ shared volumes' availability. If there's nothing we can do, we should probably
 communicate it in some way (e.g in the API documentation or by making changes to
 the API/command line tools so that the impact on shared volumes is more
 obvious).
-
-### Automatic mounting for non-docker containers
-
-While docker containers can automatically mount NFS volumes thanks to
-[DOCKER-754](https://smartos.org/bugview/DOCKER-754), for non-docker containers
-to be able to mount these volumes on boot we'll need both the API changes
-described in [PUBAPI-1420](https://smartos.org/bugview/PUBAPI-1420) and some
-changes to the platform to actually perform the mounting. Since the mounting
-will need to happen within the zone (because it needs to be on the zone's
-network) the current best idea of how this could be implemented would be to
-modify the mdata-fetch service's start script to do the mounting. [That
-script](https://github.com/joyent/smartos-live/blob/master/overlay/generic/lib/svc/method/mdata-fetch)
-already looks at metadata and does somewhat similar things.
-
-What we would want to happen here is that on zone startup, the zone would read
-the list of NFS volumes via something like:
-
-```
-mdata-get sdc:volumes
-```
-
-and it would then mount each of these volumes. The script would have to be
-changed, but we'd also need to ensure that metadata is available one way or
-another. This would need to include at least the remote host and path and local
-path for each NFS volume.
-
-Note: the above would only work with `joyent` and `joyent-minimal` brands. For
-`lx` we would likely want to add the mounting to lxinit, and for `kvm` we would
-either need to do something different or not support this feature.
