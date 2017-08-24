@@ -24,6 +24,7 @@ state: draft
       - [Overview](#overview)
       - [Create](#create)
         - [Options](#options)
+      - [Mount (CloudAPI volumes automount milestone)](#mount-cloudapi-volumes-automount-milestone)
       - [List](#list)
       - [Get](#get)
       - [Delete](#delete)
@@ -48,8 +49,8 @@ state: draft
   - [Relationship between shared volumes and VMs](#relationship-between-shared-volumes-and-vms)
     - [Automatic mounting of volumes](#automatic-mounting-of-volumes)
       - [Automatic mounting for Docker containers](#automatic-mounting-for-docker-containers)
-      - [Automatic mounting for infrastructure (non-KVM) containers ()](#automatic-mounting-for-infrastructure-non-kvm-containers-)
-      - [Automatic mounting for LX containers](#automatic-mounting-for-lx-containers)
+      - [Automatic mounting for infrastructure (non-KVM) containers (CloudAPI volumes automount milestone)](#automatic-mounting-for-infrastructure-non-kvm-containers-cloudapi-volumes-automount-milestone)
+      - [Automatic mounting for LX containers (CloudAPI volumes automount milestone)](#automatic-mounting-for-lx-containers-cloudapi-volumes-automount-milestone)
       - [Automatic mounting of KVM VMs](#automatic-mounting-of-kvm-vms)
   - [Allocation (DAPI, packages, etc.)](#allocation-dapi-packages-etc)
     - [Packages for volume containers](#packages-for-volume-containers)
@@ -72,10 +73,7 @@ state: draft
     - [Changes to CloudAPI](#changes-to-cloudapi)
       - [Not exposing NFS volumes' storage VMs via any of the `Machines` endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
       - [Volume objects representation](#volume-objects-representation)
-      - [New `volumes` parameter for `CreateMachine` endpoint](#new-volumes-parameter-for-createmachine-endpoint)
-      - [New `volume` parameter for the `ListMachines` endpoint (mvp milestone)](#new-volume-parameter-for-the-listmachines-endpoint-mvp-milestone)
-        - [Input](#input)
-        - [Output](#output)
+      - [New `volumes` parameter for `CreateMachine` endpoint (CloudAPI volumes automount milestone)](#new-volumes-parameter-for-createmachine-endpoint-cloudapi-volumes-automount-milestone)
       - [New `/volumes` endpoints](#new-volumes-endpoints)
         - [ListVolumes GET /volumes](#listvolumes-get-volumes)
         - [CreateVolume](#createvolume)
@@ -103,38 +101,38 @@ state: draft
         - [Storage of volume packages](#storage-of-volume-packages)
         - [Naming conventions](#naming-conventions)
       - [CreateVolumePackage POST /volumepackages (Volume packages milestone)](#createvolumepackage-post-volumepackages-volume-packages-milestone)
-        - [Input](#input-1)
-        - [Output](#output-1)
+        - [Input](#input)
+        - [Output](#output)
       - [GetVolumePackage (Volume packages milestone)](#getvolumepackage-volume-packages-milestone)
-        - [Output](#output-2)
+        - [Output](#output-1)
       - [DeleteVolumePackage (Volume packages milestone)](#deletevolumepackage-volume-packages-milestone)
     - [New `VOLAPI` service and API](#new-volapi-service-and-api)
       - [ListVolumes GET /volumes](#listvolumes-get-volumes-1)
+        - [Input](#input-1)
+        - [Output](#output-2)
+      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid)
         - [Input](#input-2)
         - [Output](#output-3)
-      - [GetVolume GET /volumes/volume-uuid](#getvolume-get-volumesvolume-uuid)
+      - [CreateVolume POST /volumes](#createvolume-post-volumes)
         - [Input](#input-3)
         - [Output](#output-4)
-      - [CreateVolume POST /volumes](#createvolume-post-volumes)
+      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid)
         - [Input](#input-4)
         - [Output](#output-5)
-      - [DeleteVolume DELETE /volumes/volume-uuid](#deletevolume-delete-volumesvolume-uuid)
+      - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid)
         - [Input](#input-5)
         - [Output](#output-6)
-      - [UpdateVolume POST /volumes/volume-uuid](#updatevolume-post-volumesvolume-uuid)
+      - [ListVolumeSizes GET /volumesizes](#listvolumesizes-get-volumesizes-1)
         - [Input](#input-6)
         - [Output](#output-7)
-      - [ListVolumeSizes GET /volumesizes](#listvolumesizes-get-volumesizes-1)
-        - [Input](#input-7)
-        - [Output](#output-8)
       - [GetVolumeReferences GET /volumes/uuid/references](#getvolumereferences-get-volumesuuidreferences)
-        - [Output](#output-9)
+        - [Output](#output-8)
       - [AttachVolumeToNetwork POST /volumes/volume-uuid/attachtonetwork (MVP milestone)](#attachvolumetonetwork-post-volumesvolume-uuidattachtonetwork-mvp-milestone)
+        - [Input](#input-7)
+        - [Output](#output-9)
+      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork (MVP milestone)](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-mvp-milestone)
         - [Input](#input-8)
         - [Output](#output-10)
-      - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork (MVP milestone)](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-mvp-milestone)
-        - [Input](#input-9)
-        - [Output](#output-11)
       - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone-1)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
@@ -201,11 +199,10 @@ and when they are planned to be integrated.
 
 ## Introduction
 
-In general, support for network shared storage is antithetical to the Triton
-(formerly SmartDataCenter or SDC) philosophy. However, for some customers and
-applications it is a requirement. In particular, network shared storage is
-needed to support Docker volumes in configurations where the Triton zones are
-deployed on different compute nodes.
+In general, support for network shared storage is antithetical to Triton's
+philosophy. However, for some customers and applications it is a requirement. In
+particular, network shared storage is needed to support Docker volumes in
+configurations where the Triton zones are deployed on different compute nodes.
 
 ## Current prototype
 
@@ -388,14 +385,15 @@ created with the smallest size available as outputted by [the triton volume
 sizes command](#sizes).
 
 If a size is provided and it is not one of those listed as available in triton's
-volume sizes' output, the creation fails.
+`volume sizes`' output, the creation fails.
 
 Specifying a unit in the size parameter is required. The only unit suffix
 available is `G`. `10G` means `10 Gibibytes` (2^30 bytes).
 
-Later, users will also be able to specify volume sizes via [volume packages](#introduction-of-volume-packages)'
-UUIDs and list available volume sizes with [CloudAPI's ListVolumePackages
-endpoint](#listvolumepackages-get-volumepackages).
+Later, users will also be able to specify volume sizes via [volume
+packages](#introduction-of-volume-packages-volume-packages-milestone)' UUIDs and
+list available volume sizes with [CloudAPI's ListVolumePackages
+endpoint](#listvolumepackages-get-volumepackages-volume-packages-milestone).
 
 ###### Network
 
@@ -405,7 +403,34 @@ can be attached to shared volumes.
 ###### Affinity (Affinity milestone)
 
 See [Expressing locality with affinity
-filters](#expressing-locality-with-affinity-filters) below.
+filters](#expressing-locality-with-affinity-filters-affinity-milestone) below.
+
+#### Mount (CloudAPI volumes automount milestone)
+
+Mounting a volume from an instance is done via the new `-v` or `--volume`
+comamnd line option of the `triton instance create` subcommand:
+
+```
+$ triton volume create --name my-volume
+$ triton instance create --name my-instance -v my-volume:/mountpoint
+```
+
+It supports specifying mode flags that represent read and write permissions:
+`ro` for "read-only" and `rw` for "read-write":
+
+```
+$ triton instance create --name my-instance -v my-volume:/mountpoint-read-only:ro
+```
+
+`rw` (read-write permissions) is the default mode.
+
+More than one volume can be mounted from an instance:
+
+```
+$ triton volume create --name my-volume-1
+$ triton volume create --name my-volume-2
+$ triton instance create --name my-instance -v my-volume-1:/mountpoint-1 -v my-volume-2:/mountpoint-2
+```
 
 #### List
 
@@ -413,29 +438,77 @@ filters](#expressing-locality-with-affinity-filters) below.
 $ triton volume create -n foo ...
 $ triton volume list
 NAME  SIZE  NETWORK             RESOURCE
-foo   100g  My Default Network  nfs://10.0.0.1/foo # nfs://host[:port]/pathname
+foo   100G  My Default Network  nfs://10.0.0.1/foo # nfs://host[:port]/pathname
 $
 ```
 
 #### Get
 
 ```
-$ triton volume get volume-name
-{ id: ... name: ... size: ... network: ... resource: ... compute_node: ... }
+$ triton volume get my-volume
+{
+    "name": "my-volume",
+    "owner_uuid": "a08085c4-1624-45c1-a004-c16e91efae1e",
+    "size": 20480,
+    "type": "tritonnfs",
+    "create_timestamp": "2017-08-24T22:35:03.109Z",
+    "state": "creating",
+    "networks": [
+        "c5d34272-afae-41e5-b014-a204b05435f6"
+    ],
+    "id": "24b90e7a-cd55-e706-cfe6-8d9146b2414c"
+}
 ```
 
 #### Delete
 
 ```
-$ triton volume rm volume-name
+$ triton volume create --name my-volume
+$ triton volume rm my-volume
+Delete volume my-volume? [y/n] y
+Deleting volume my-volume
+$ 
 ```
 
 This command _fails_ if one or more VMs are referencing the volume to be
-deleted.
+deleted:
+
+```
+$ triton volume create --name my-volume
+$ triton instance create --name my-instance -v my-volume:/mountpoint
+$ triton volume rm my-volume
+Delete volume my-volume? [y/n] y
+Deleting volume my-volume
+triton volume rm: error: first of 1 error: Error when deleting volume: Volume with name my-volume is used
+$ echo $?
+1
+$ 
+```
 
 #### sizes
 
 ```
+$ triton volume sizes
+TYPE        SIZE
+tritonnfs    10G
+tritonnfs    20G
+tritonnfs    30G
+tritonnfs    40G
+tritonnfs    50G
+tritonnfs    60G
+tritonnfs    70G
+tritonnfs    80G
+tritonnfs    90G
+tritonnfs   100G
+tritonnfs   200G
+tritonnfs   300G
+tritonnfs   400G
+tritonnfs   500G
+tritonnfs   600G
+tritonnfs   700G
+tritonnfs   800G
+tritonnfs   900G
+tritonnfs  1000G
 $ triton volume sizes -j
 [
   {
@@ -515,32 +588,17 @@ $ triton volume sizes -j
     "size": 1024000
   }
 ]
-$ triton volume sizes
-TYPE        SIZE
-tritonnfs    10G
-tritonnfs    20G
-tritonnfs    30G
-tritonnfs    40G
-tritonnfs    50G
-tritonnfs    60G
-tritonnfs    70G
-tritonnfs    80G
-tritonnfs    90G
-tritonnfs   100G
-tritonnfs   200G
-tritonnfs   300G
-tritonnfs   400G
-tritonnfs   500G
-tritonnfs   600G
-tritonnfs   700G
-tritonnfs   800G
-tritonnfs   900G
-tritonnfs  1000G
 $ 
 ```
 
-This command lists valid volume sizes. Trying to create a volume with a
-different size results in an error.
+This command lists available volume sizes. Trying to create a volume with a
+different size results in an error:
+
+```
+$ triton -i volume create --name my-volume --size 21G
+triton volume create: error: volume size not available, use triton volume sizes command for available sizes
+$ 
+```
 
 It is implemented using the `ListVolumeSizes` CloudAPI endpoint for the master
 integration milestone, and will use volume packages when those become available
@@ -576,8 +634,8 @@ Triton users to manage their shared volumes on Triton.
 ```
 docker network create mynetwork ...
 docker volume create --driver tritonnfs --name wp-uploads \
-    --opt size=100G --opt network=some-fabric-network
-docker run -d -v wp-uploads:/var/wp-uploads wp-server
+    --opt size=100G --opt network=mynetwork
+docker run -d --network mynetwork -v wp-uploads:/var/wp-uploads wp-server
 ```
 
 The `tritonnfs` driver is the default driver on Triton. If not specified, the
@@ -615,14 +673,20 @@ ListVolumeSizes endpoint](#listvolumesizes-get-volumessizes).
 If a size is provided and it is not one of those listed as available by sending
 a request to [CloudAPI's ListVolumeSizes
 endpoint](#listvolumesizes-get-volumessizes), the creation fails and outputs the
-list of available sizes.
+list of available sizes:
+
+```
+$ docker volume create --name my-volume --opt size=21G
+Error response from daemon: Volume size not available. Available sizes: 10G, 20G, 30G, 40G, 50G, 60G, 70G, 80G, 90G, 100G, 200G, 300G, 400G, 500G, 600G, 700G, 800G, 900G, 1000G (a95e7141-9783-41da-908f-302811323fcf)
+$ 
+```
 
 Specifying a unit in the size parameter is required. The only available unit
 suffix is `G`. `10G` means `10 Gibibytes` (2^30 bytes).
 
-Later, users will also be able to specify volume sizes via [volume packages](#introduction-of-volume-packages)'
+Later, users will also be able to specify volume sizes via [volume packages](#introduction-of-volume-packages-volume-packages-milestone)'
 UUIDs and list available volume sizes with [CloudAPI's ListVolumePackages
-endpoint](#listvolumepackages-get-volumepackages).
+endpoint](#listvolumepackages-get-volumepackages-volume-packages-milestone).
 
 ###### Network
 
@@ -804,7 +868,7 @@ Later, it will use the `sdc:volumes` metadata instead of `docker:nfsvolumes`,
 but providing the relevant metadata in `docker:nfsvolumes` will still be
 supported for backward compatibility.
 
-#### Automatic mounting for infrastructure (non-KVM) containers ()
+#### Automatic mounting for infrastructure (non-KVM) containers (CloudAPI volumes automount milestone)
 
 Making infrastructure containers automatically mount shared volumes requires
 changes to the platform. Since the mounting needs to happen within the zone
@@ -824,7 +888,7 @@ include at least the following information for each shared volume:
 * mount point
 * volume type (currently only `tritonnfs`)
 
-#### Automatic mounting for LX containers
+#### Automatic mounting for LX containers (CloudAPI volumes automount milestone)
 
 For LX containers, `lxinit` is responsible for gettting the `sdc:volumes`
 metadata and mounting the relevant volumes, in a way that is similar to
@@ -899,8 +963,7 @@ be:
 
 As users provide feedback regarding package sizes during the first phase of
 deployment and testing, new packages may be created to better suit their needs,
-and previous packages will be retired (not necessarily deleted, but they won't
-be used to create storage VMs anymore).
+and previous packages will be retired (not deleted, but deactivated).
 
 #### ZFS I/O priority
 
@@ -1176,7 +1239,7 @@ The only differences are:
 * the `vm_uuid`  property that represents the UUID of a volume's storage VM is
   not exposed to CloudAPI users
 
-#### New `volumes` parameter for `CreateMachine` endpoint
+#### New `volumes` parameter for `CreateMachine` endpoint (CloudAPI volumes automount milestone)
 
 When creating a machine via CloudAPI, the new `volumes` parameter allows one to
 specify a list of volumes to mount in the new machine. This would look as
@@ -1208,34 +1271,6 @@ default and only currently valid value is `'tritonnfs'`.
 The `mode` property of each object of the `volumes` array is also optional. Its
 default value is `'rw'`, and valid values for volumes of type `'tritonnfs'` are
 `'rw'` and `'ro'`.
-
-#### New `volume` parameter for the `ListMachines` endpoint (mvp milestone)
-
-The `ListMachines` endpoint will support a new `volume` input parameter in order
-to output the list of active machines that mount a given volume.
-
-##### Input
-
-| Param   | Type         | Description                              |
-| ------- | ------------ | ---------------------------------------- |
-| volume | String       | A string representing _one_ volume UUID for which to list _active_ machines that reference it. |
-
-##### Output
-
-A list of VMs that represent all active VMs that reference the volume
-represented by UUIDs represented by `volume`, such as:
-```
-[
-   {
-    "uuid": "vm-uuid-1",
-    "alias": ...
-   },
-   {
-    "uuid": "vm-uuid-2",
-    "alias": ...
-  },
-]
-```
 
 #### New `/volumes` endpoints
 
@@ -1577,14 +1612,16 @@ snapshot was deleted successfully.
 
 ###### Output
 
-An array of objects representing [volume packages](#introduction-of-volume-packages) with the
+An array of objects representing [volume
+packages](#introduction-of-volume-packages-volume-packages-milestone) with the
 type set to `type`.
 
 ##### GetVolumePackage GET /volumepackages/volume-package-uuid (Volume packages milestone)
 
 ###### Output
 
-An object representing the [volume package](#introduction-of-volume-packages) with UUID
+An object representing the [volume
+package](#introduction-of-volume-packages-volume-packages-milestone) with UUID
 `volume-package-uuid`.
 
 
@@ -2282,11 +2319,13 @@ Volumes are be represented as objects that share a common set of properties:
   create` command.
 
 * `billing_id` (volume packages milestone): the UUID of the [volume
-  package](#introduction-of-volume-packages) used when creating the volume.
+  package](#introduction-of-volume-packages-volume-packages-milestone) used when
+  creating the volume.
 
 * `name`: the volume's name. It must be unique for a given user. This is similar
   to the `alias` property of VMAPI's VM objects. It must match the regular
-  expression `/^[a-zA-Z0-9][a-zA-Z0-9_\.\-]+$/`. There is no limit on the length of a volume's name.
+  expression `/^[a-zA-Z0-9][a-zA-Z0-9_\.\-]+$/`. There is no limit on the length
+  of a volume's name.
 
 * `type`: identifies the volume's type. There is currently one possible value
   for this property: `tritonnfs`. Additional types can be added in the future,
