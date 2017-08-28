@@ -1,4 +1,3 @@
-
 ---
 authors: Trent Mick <trent.mick@joyent.com>
 state: draft
