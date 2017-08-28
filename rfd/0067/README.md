@@ -594,18 +594,39 @@ Feeling out the restoration process.
     binder
     assets (NEW)
     dhcpd (NEW)
-
-- sapi
+- sapi: Need to break sapi's silly circular dep on config-agent.
 - amonredis: Why this here? Is this following headnode.sh order?
 - ufds
+  - TODO: We'd want docs about possible need to update FW rules to allow
+    replication to continue.
+  - TODO: amon alarm for ufds-replication failing and/or falling behind.
 - workflow
 - amon
 - sdc
+  - Q: Consider doing the sdc key change thing (there is a ticket I think) to
+    (a) not have the sdc priv key in SAPI data and (b) to support rotation of
+    it. If not in SAPI we'd need to have that in a delegate dataset and
+    carry that.
+  - TODO: We'd want docs about possible need to update FW rules to allow
+    replication to continue.
 - papi
 - napi
 - rabbitmq
 - imgapi
-- ... TODO
+- cnapi: easy?
+- fwapi: easy?
+- vmapi: easy?
+- ca: easy?
+- mahi: easy?
+- adminui: easy?
+- ... then other zones that were on that HN and aren't here:
+    - manatee?
+    - moray?
+    - binder?
+    - assets?
+    - dhcpd?
+    - TODO: recover should warn about other zones that existed but were not
+      recovered (e.g. portal, sdcsso)
 
 
 ### M3: Surviving the dead headnode coming back
@@ -616,7 +637,11 @@ then it boots back up with the older instances?
 TODO: how do we guard against issues here?
 
 
-## TODOs
+## Scratch
+
+Trent's scratch area for impl. notes
+
+### TODOs
 
 See also the TODOs in each milestone section, and any "TODO" or "Q" in this doc.
 This section is a general list of things to not forget.
@@ -625,6 +650,51 @@ This section is a general list of things to not forget.
   that doesn't support that.
 
 - How does being a UFDS master or slave affect things here?
+
+- sdc-oneachnode: Consideration for '-c, --computeonly' option?
+
+- sdcadm: `sdcadm self-update` to update on all HNs
+
+- sdcadm: 'sdcadm platform install' to install to all usbkeys
+    - Perhaps deal with problems of having lots of OSes on usbkeys if
+      separate platform versions on separate HNs. Perhaps only subset specific
+      to that HN live on that HN's USB key?
+
+
+### Code
+
+Integrated to master:
+
+- sdc-headnode.git comitted to master
+    - HEAD-2343 allow headnode setup to work on a CN being converted to a headnode
+        requires gz-tools builds after 20170118
+- sdc-booter.git NET-371:
+    - builds on or after: master-20170518T212529Z
+
+In CR:
+
+- smartos-live.git branch "grr-OS-6160" (g live2)
+    - fs-joyent (method for filesystem/smartdc SMF service) update to work
+      properly for first boot of a CN being converted to a HN. It needs to
+      cope with the zones/usbkey dataset not yet existing (that comes later
+      when smartdc/init runs headnode.sh for the first time on this server).
+
+In progress:
+
+- sdc-headnode.git branch "rfd67" (g head)
+    - hostname=headnode0 in prompt-config default
+- smartos-live.git branch "rfd67" (g live)
+    - OS-6160
+    - root ~/.bashrc has "hn" PS1 marker on HNs
+      workaround if don't have latest "rfd67"-branch platform build:
+        g live
+        scp overlay/generic/root/.bashrc coal:/root/.bashrc
+        scp overlay/generic/root/.bashrc cn0:/root/.bashrc
+- sdcadm.git branch "rfd67" (g sa)
+    - sdcadm headnode list
+        TODO: -> sdcadm server list
+
+
 
 
 
@@ -717,3 +787,30 @@ Arguments for creating new zones:
   wasted effort. To reach the longer term goal of HA for all or most core
   Triton services, we need to move away from hardcoded IPs to using DNS names
   (for all but bootstrapping DNS/binder itself).
+
+
+### 'sdcadm server' notes
+
+From a discussion with some folks in YVR a while back, partly about
+having `sdcadm server` taking over most duties from `sdc-server`, plus
+possibly a `sdc-cnadm` replacement for lower-level stuff. Currently this
+RFD only proposes implementing some of the `sdcadm server` commands shown
+here.
+
+The general argument is that some server management isn't *just* about talking
+to CNAPI. That justifies putting it in `sdcadm server`. One example is
+`sdcadm server delete ...` which also involves talking to SAPI to cleanup
+zombie instances.
+
+    sdcadm server list ...          # sdc-server list
+    sdcadm server delete|rm ...     # sdc-server delete + SAPI inst cleanup
+    sdcadm server get SERVER
+    sdcadm server lookup FILTERS... # sdc-server lookup
+
+    sdcadm server cn-setup UUID ...    # sdc-server setup
+    sdcadm server headnode-setup UUID ...   # setup as a secondary headnode
+
+    sdcadm server bootparams SERVER     # maybe
+
+Not sure about 'sdcadm post-setup underlay-nics ...'
+and 'sdc-server [update|replace|delete]-nictags'.
