@@ -16,4 +16,4 @@ all: toc
 
 .PHONY: toc
 toc: | ./node_modules/.bin/doctoc
-	./node_modules/.bin/doctoc README.md
+	./node_modules/.bin/doctoc --notitle --maxlevel 3 README.md

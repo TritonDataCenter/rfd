@@ -4,47 +4,6 @@ state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+67%22
 ---
 
-
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**
-
-- [RFD 67 Triton headnode resilience](#rfd-67-triton-headnode-resilience)
-  - [Status](#status)
-  - [Goals](#goals)
-  - [Implementation Overview](#implementation-overview)
-  - [Operator Guide](#operator-guide)
-    - [Setting up secondary headnodes](#setting-up-secondary-headnodes)
-    - [Setting up HA instances](#setting-up-ha-instances)
-    - [Decommissioning a headnode server](#decommissioning-a-headnode-server)
-    - [Headnode recovery process](#headnode-recovery-process)
-    - [Other new commands](#other-new-commands)
-  - [Core services](#core-services)
-    - [imgapi](#imgapi)
-      - [consider limiting what local IMGAPI data is backed up](#consider-limiting-what-local-imgapi-data-is-backed-up)
-    - [dhcpd](#dhcpd)
-    - [assets](#assets)
-    - [sapi](#sapi)
-    - [ufds](#ufds)
-    - [sdc](#sdc)
-  - [Milestones](#milestones)
-    - [M0: secondary headnodes](#m0-secondary-headnodes)
-    - [M1: Controlled decommissioning of a headnode](#m1-controlled-decommissioning-of-a-headnode)
-    - [M2: Headnode recovery](#m2-headnode-recovery)
-      - [restore process](#restore-process)
-    - [M3: Surviving the dead headnode coming back](#m3-surviving-the-dead-headnode-coming-back)
-  - [TODOs](#todos)
-  - [Appendices](#appendices)
-    - [Relates Issues](#relates-issues)
-    - [data to save](#data-to-save)
-    - [Prior art](#prior-art)
-    - [Why 3 HNs and not 2?](#why-3-hns-and-not-2)
-    - [What does it mean to be a headnode?](#what-does-it-mean-to-be-a-headnode)
-    - [Why new zones instead of migrating same UUID?](#why-new-zones-instead-of-migrating-same-uuid)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
-
 # RFD 67 Triton headnode resilience
 
 Some core Triton services support HA deployments -- e.g. binder (which houses
@@ -61,6 +20,41 @@ backup/restore and resilience, and for controlled decommissioning of headnode
 hardware. The holy grail is support for fully redundant headnodes and HA
 services, so that no single node is "special" -- but that is a large project. We
 want someting workable sooner.
+
+
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Status](#status)
+- [Goals](#goals)
+- [Implementation Overview](#implementation-overview)
+- [Operator Guide](#operator-guide)
+  - [Setting up secondary headnodes](#setting-up-secondary-headnodes)
+  - [Setting up HA instances](#setting-up-ha-instances)
+  - [Decommissioning a headnode server](#decommissioning-a-headnode-server)
+  - [Headnode recovery process](#headnode-recovery-process)
+  - [Other new commands](#other-new-commands)
+- [Core services](#core-services)
+  - [imgapi](#imgapi)
+  - [dhcpd](#dhcpd)
+  - [assets](#assets)
+  - [sapi](#sapi)
+  - [ufds](#ufds)
+  - [sdc](#sdc)
+- [Milestones](#milestones)
+  - [M0: secondary headnodes](#m0-secondary-headnodes)
+  - [M1: Controlled decommissioning of a headnode](#m1-controlled-decommissioning-of-a-headnode)
+  - [M2: Headnode recovery](#m2-headnode-recovery)
+  - [M3: Surviving the dead headnode coming back](#m3-surviving-the-dead-headnode-coming-back)
+- [TODOs](#todos)
+- [Appendices](#appendices)
+  - [Prior art](#prior-art)
+  - [Why 3 HNs and not 2?](#why-3-hns-and-not-2)
+  - [What does it mean to be a headnode?](#what-does-it-mean-to-be-a-headnode)
+  - [Why new zones instead of migrating same UUID?](#why-new-zones-instead-of-migrating-same-uuid)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 
 ## Status
