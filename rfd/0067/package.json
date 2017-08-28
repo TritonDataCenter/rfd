@@ -1,0 +1,9 @@
+{
+  "name": "rfd67",
+  "version": "1.0.0",
+  "description": "RFD 67",
+  "private": true,
+  "devDependencies": {
+    "doctoc": "~1.3.0"
+  }
+}

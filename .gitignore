@@ -1,5 +1,7 @@
 # macos frustration
 .DS_Store
 
+/rfd/0067/node_modules
+
 # intellij frustration
 .idea
