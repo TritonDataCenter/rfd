@@ -853,7 +853,9 @@ references them.
 ### Automatic mounting of volumes
 
 In addition to preventing referenced volumes from being deleted, a VM that uses
-shared volumes automatically mounts them when it starts.
+shared volumes automatically mounts them when it starts. __There is one
+exception for KVM VMs: they cannot automatically mount volumes__ (more details
+on that [below](#automatic-mounting-of-kvn-vms)).
 
 How the mounting operation is performed depends on what initialization system
 the VM uses, and is different for different types of VMs.
@@ -896,9 +898,22 @@ metadata and mounting the relevant volumes, in a way that is similar to
 
 #### Automatic mounting of KVM VMs
 
-Users of KVM containers will need to user custom user-scripts in order to mount
-shared volumes on boot. They will be able to query the `sdc:volumes` metadata
-and manually mount volumes.
+For the master integration milestone, users of KVM containers will not be able
+to mount volumes. Using the `--volume` command line option of the `triton
+instance create` subcommand to create instances from KVM images will always
+generate an error.
+
+Eventually, this limitation might be addressed by updating the
+[sdc-vmtools](https://github.com/joyent/sdc-vmtools/) programs to automatically
+mount volumes when creating instances from KVM images provided by Joyent.
+
+KVM instances created from custom KVM images would still not support
+automatically mounting volumes, since it would not be possible to determine
+whether the image would include support for mounting NFS filesystems.
+
+For these instances of custom KVM images, users could still use user-scripts to
+query the `sdc:volumes` metadata and mount the relevant volumes however they'd
+like to.
 
 ## Allocation (DAPI, packages, etc.)
 
