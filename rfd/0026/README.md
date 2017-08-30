@@ -49,6 +49,7 @@ state: draft
   - [Relationship between shared volumes and VMs](#relationship-between-shared-volumes-and-vms)
     - [Automatic mounting of volumes](#automatic-mounting-of-volumes)
       - [Automatic mounting for Docker containers](#automatic-mounting-for-docker-containers)
+      - [New sdc:volumes key](#new-sdcvolumes-key)
       - [Automatic mounting for infrastructure (non-KVM) containers (CloudAPI volumes automount milestone)](#automatic-mounting-for-infrastructure-non-kvm-containers-cloudapi-volumes-automount-milestone)
       - [Automatic mounting for LX containers (CloudAPI volumes automount milestone)](#automatic-mounting-for-lx-containers-cloudapi-volumes-automount-milestone)
       - [Automatic mounting of KVM VMs](#automatic-mounting-of-kvm-vms)
@@ -866,9 +867,33 @@ Docker containers are initialized by the `dockerinit` program. This program gets
 the `docker:nfsvolumes` metadata to determine what NFS volumes it needs to mount
 and mounts them.
 
-Later, it will use the `sdc:volumes` metadata instead of `docker:nfsvolumes`,
-but providing the relevant metadata in `docker:nfsvolumes` will still be
-supported for backward compatibility.
+In the future, it will be changed to use the `sdc:volumes` metadata instead of
+`docker:nfsvolumes`, but for now we will continue to set the relevant metadata
+in `docker:nfsvolumes` for backward compatibility.
+
+#### New sdc:volumes key
+
+As part of this work, we'll modify the metadata agent to respond to metadata
+requests for the key `sdc:volumes`. It will respond by returning the value from
+internal\_metadata for the `sdc:volumes` key there. Since keys prefixed with
+`sdc:` are already reserved, we're not adding any additional restrictions on
+keys that can be used by containers.
+
+We'll add a stringified version of an array of volume objects each of which
+look like:
+
+```
+{
+    "mountpoint": "/data",
+    "name": "mydata",
+    "nfsvolume": "192.168.128.234:/exports/data",
+    "mode": "rw",
+    "type": "tritonnfs"
+}
+```
+
+the internal\_metadata will be set by vmapi when provisioning the container if
+volumes are used.
 
 #### Automatic mounting for infrastructure (non-KVM) containers (CloudAPI volumes automount milestone)
 
@@ -882,19 +907,49 @@ required NFS volumes using:
 mdata-get sdc:volumes
 ```
 
-It then mounts each of these volumes. The `sdc:volumes` metadata needs to
-include at least the following information for each shared volume:
+for which a typical response will look something like:
 
-* remote host
-* remote path
-* mount point
-* volume type (currently only `tritonnfs`)
+```
+[{"mountpoint":"/data","name":"mydata","nfsvolume":"192.168.128.234:/exports/data","mode":"rw","type":"tritonnfs"}]
+```
+
+It then ensures each of these volumes has an entry in /etc/vfstab, adding as
+necessary. The entries added will look like:
+
+```
+192.168.1.1:/exports/data - /data nfs - yes
+```
+
+If any of these entries are added, the following SMF services will also be
+enabled:
+
+```
+svc:/network/nfs/nlockmgr:default
+svc:/network/nfs/status:default
+svc:/network/rpc/bind:default
+svc:/network/nfs/client:default
+```
+
+which will cause the volumes to be mounted once networking has been started. On
+future boots, since the service will already be enabled and the entries will
+remain in vfstab, the volumes will continue to be mounted automatically.
 
 #### Automatic mounting for LX containers (CloudAPI volumes automount milestone)
 
 For LX containers, `lxinit` is responsible for gettting the `sdc:volumes`
 metadata and mounting the relevant volumes, in a way that is similar to
-`dockerinit`.
+`dockerinit`. However, unlike dockerinit, lxinit relies on a new program
+`volumeinfo` to return information about volumes. This volumeinfo tool reads the
+metadata and converts the results to `|` separated lines that look like:
+
+```
+tritonnfs|192.168.128.234:/exports/data|/data|mydata|rw
+```
+
+which are parsed by the lxinit tool which then calls the appropriate mount
+command for each volume found. This happens before the container's "real" init
+process is called, so the volumes will be mounted before the user's programs are
+running.
 
 #### Automatic mounting of KVM VMs
 
