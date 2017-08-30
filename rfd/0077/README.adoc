@@ -1014,9 +1014,12 @@ The soft token consists of a number of key components:
 
 Soft token key data will be stored in the `/zones/$uuid/softhsm` directory.
 Each key stored on behalf of the zone will be stored in a separate file,
-encrypted (and authenticated) using ChaCha20-Poly1305. The file format will
-include the challenge value that must be sent to the hardware token to derive
-the symmetric key to decrypt the file, followed by the encrypted data and MAC.
+encrypted (and authenticated) using ChaCha20-Poly1305.
+
+The file format will consist of an nvlist, including the challenge value that
+must be sent to the hardware token to derive the symmetric key to decrypt the
+rest of the data, as well as the MAC and details of the algorithms in use. The
+MAC will be constructed to cover the algorithm metadata fields.
 
 ### SSH agent socket
 
@@ -1086,7 +1089,17 @@ use of Intel SGX enclaves (and the analogous features on AMD platforms) to
 protect the key data and operating state of the soft token in memory.
 
 This will defend against a variety of attacks on the soft token from other parts
-of the system, as well as cold-boot attacks on system memory.
+of the system, as well as cold-boot attacks on system memory. Noting that, as
+the soft token is a signing oracle in regular operation anyway, the goal here
+is to prevent bulk fast access by an attacker to all the keys on a machine (a
+kind of "class break"), not absolute inviolability.
+
+SGX has been the subject of much industry discussion in recent months, and the
+results achieved by others with it have been mixed. However, as our goal here is
+not to achieve an impregnable enclave within a totally untrusted operating
+system, but instead to simply make sure that there is no method of obtaining
+keys faster than to ask the hardware to decrypt all the key files on disk, we
+should be well-placed to make use of it.
 
 #### Cache side-channel mitigation
 
@@ -1096,12 +1109,16 @@ be done along the lines of the
 http://palms.ee.princeton.edu/system/files/CATalyst_vfinal_correct.pdf["CATalyst" paper]
 where a special subset of the L3 cache capacity on the system is set aside for
 transient use in cryptography, and dedicated pages for this purpose pinned into
-cache so they cannot be flushed out.
+cache so they cannot be flushed out (containing both the code and data used
+in the sensitive operation).
 
 This prevents most known mechanisms of memory timing side-channel leakage from
 the cryptographic algorithms run in the soft-token, including Flush+Reload and
-other related attacks. We are also aided here by the fact that KSM (kernel same-
-page merging) is not implemented or supported by illumos (and will not be).
+other related attacks. We are also aided here by the fact that KSM (kernel
+same-page merging) is not implemented or supported by illumos (and will not be),
+and the fact that the soft-token binary will not be in any of the filesystems
+accessible to non-global zones (so they cannot `mmap` it, or any of its
+cryptographic libraries, which are statically linked into the binary).
 
 As well as this direct mitigation, the algorithms chosen (see the
 <<crypto-algos>> section) for soft-token usage are chosen with side-channel
