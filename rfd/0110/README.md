@@ -56,7 +56,7 @@ tunables:
 "throttle" : {
 	"concurrency": 50,
 	"requestRateCap": 5000,
-	"reqRateCheckIntervalSec": 5
+	"reqRateCheckIntervalSec": 5,
 	"queueTolerance": 10
 },
 ...
@@ -144,15 +144,11 @@ combinations of mlives and concurrencies. Average request latency, average queue
 size and average request rates for different mlive, concurrency pairs are
 reported in the table below:
 
-|-----------------------------------|------|-----|----|----|
-|number of mlives/concurrency values|1     |10   |100 |1000|
-|-----------------------------------|------|-----|----|----|
-|1                                  |2,1   |2,0  |2,0 |1,0 |
-|-----------------------------------|------|-----|----|----|
-|10                                 |112,6 |25,1 |25,0|20,0|
-|-----------------------------------|------|-----|----|----|
-|25                                 |220,16|45,2 |40,0|55,1|
-|-----------------------------------|------|-----|----|----|
+| number of mlives/concurrency | 1       | 10    | 100   | 1000  |
+|------------------------------|---------|-------|-------|-------|
+| 1                            | 2, 1    | 2, 0  | 2, 0  | 1, 0  |
+| 10                           | 112, 6  | 25, 1 | 25, 0 | 20, 0 |
+| 25                           | 220, 16 | 45, 2 | 40, 0 | 55, 1 |
 
 The the tuples in the matrix above correspond to (average request latency,
 average queue size). Request latencies are given in milliseconds. It seems that
