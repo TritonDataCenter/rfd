@@ -54,9 +54,10 @@ tunables:
 ```json
 ...
 "throttle" : {
-	"concurrency": int,
-	"requestRateCap": int,
-	"reqRateCheckIntervalSec": int
+	"concurrency": 50,
+	"requestRateCap": 5000,
+	"reqRateCheckIntervalSec": 5,
+	"queueTolerance": 10
 },
 ...
 ```
@@ -77,12 +78,16 @@ interval that muskie should wait before computing the request rate again.
 It's unclear currently what this value should be, but setting it too low
 risks capturing too few requests in the calculation, and setting it too
 high risks muskie not responding to a burst quickly enough. The default
-is 5 seconds. This is an arbitrary choice.
+is 5 seconds. This is an arbitrary choice.  As of now, the default values
+for the above parameters are set to be values that do not interfere with
+neither the concurrent operation of 10 mlive instances nor the muskie 
+test-suite. Further investigation based on real workloads is necessary.
 
-As of now, the default values for the above parameters are set to be
-values that do not interfere with neither the concurrent operation of
-10 mlive instances nor the muskie test-suite. Further investigation
-based on real workloads is necessary.
+Finally the "queueTolerance" tunable corresponds to the number of requests
+muskie will tolerate in the queue during periods in which the request rate
+goes above capacity before it starts throttling requests. The queueTolerance
+can be viewed as a "hard" capacity or buffer space for queueing requests
+during bursty traffic.
 
 ### Configuration & Instrumentation
 
@@ -105,22 +110,107 @@ even allow for the implementation of operator-defined throttling "rules"
 that impose rate limits for particular requests coming from particular
 ip addresses at particular times.
 
-### Dtrace Providers
+### Dtrace Probes
 
 The current iteration of the muskie-throttle exposes a dtrace provider
-called "muskie-throttle" with three probes: request_received, request_throttled,
-and request_handled.
+called "muskie-throttle" with four probes:
 
-The "request_received" probe fires when the throttling module received a new
-request. It passes two integers corresponding to observed request rate in the
-last check interval, followed by the current length of the request queue.
+- *request_received*. This probe passes the number of requests currently queued
+  on the request queue at the moment that it fired. Queued requests are
+  operations that are not running, but waiting for other requests to be
+  serviced. This number is used to decide whether, during periods of bursty
+  requests the next request is throttled or queued (according to whatever soft
+  capacity is decided upon).
+- *request_rate_checked*. This change exposes a configuration called
+  "reqRateCheckIntervalSec" which indicates the number of seconds muskie should
+  allow between checking subsequent request rates. Request rates are evaluated as
+  the number of requests that arrived during one of these intervals. This probe
+  fires at the end of one of these intervals, reporting the most recently
+  observed request rate.
+- *request_handled*. This probe fires after a request has been handled and
+  reports both *that* request's latency followed by the running average over all
+  latencies recorded during the most recent check interval.
+- *request_throttled*. This probe fires when a request is throttled. If this
+  probe fires the the client originating the offending request received a 429
+  status code. The probe returns the most recent request rate followed by the target
+  url and http method of the throttled request.
 
-The "request_handled" probe fires when the work for handling a specific request
-and sending it's response is complete. The probe passes two integers
-corresponding to the handled request's latency followed by the observed average
-latency as computed for the entire lifetime of the muskie process.
+### Testing
 
-The "request_throttled" probe firest when a request is throttled. This indicates
-that muskie has returned a 429 status code to the client. This probe passes
-three arguments: the request rate observed in the most recent check interval,
-the throttled request's target url, and the request's HTTP method.
+Initial testing for the muskie-throttle was done against a coal deployment using
+mlive to generate a uniform workload. The test was repeated for various
+combinations of mlives and concurrencies. Average request latency, average queue
+size and average request rates for different mlive, concurrency pairs are
+reported in the table below:
+
+| number of mlives/concurrency | 1       | 10    | 100   | 1000  |
+|------------------------------|---------|-------|-------|-------|
+| 1                            | 2, 1    | 2, 0  | 2, 0  | 1, 0  |
+| 10                           | 112, 6  | 25, 1 | 25, 0 | 20, 0 |
+| 25                           | 220, 16 | 45, 2 | 40, 0 | 55, 1 |
+
+The the tuples in the matrix above correspond to (average request latency,
+average queue size). Request latencies are given in milliseconds. It seems that
+the trend is as we increase concurrency muskie queues fewer requests and latency
+generally goes down. Looking at the actual latencies all the tests above show
+periodicity in terms or request latencies. It seems that there are periods of
+fewer low latency followed by periods of higher latency. The values during
+high/low latency periods are roughly constant.
+
+To see the throttle work in action, I used observed request rates from the
+experiments documented above. Since the experiment with concurrency 1 against 25
+mlive instances showed the most queueing I re-ran that experiment with a
+soft-cap of 10 requests and a request rate capacity of 20 requests/second (the
+rate I observed in my experiments was rougly 28 requests/second). I expected to
+find that the request_throttled probe fires when the most recent observed
+request rate is greater than 20 rps *and* there are 10 requests queued. For the
+purpose of this experiment alone I modified the request_throttled probe to
+additionally print the number of queued requests at the time the probe fired.
+
+Running the following probe:
+```
+muskie-throttle*:::request_throttled{
+        printf("queue: %d, rate: %d, url: %s, method: %s", arg0, arg1,
+				copyinstr(arg2), copyinstr(arg3));
+}
+```
+Generates the following output whenever the throttle observes a request rate
+higher than 20 rps with more than 10 requests queued:
+```
+CPU     ID                    FUNCTION:NAME
+  0  12190 request_throttled:request_throttled queue: 10, rate: 66, url:
+/notop/stor/mlive, method: PUT
+  4  12190 request_throttled:request_throttled queue: 10, rate: 66, url:
+/notop/stor/mlive, method: PUT
+  5  12190 request_throttled:request_throttled queue: 10, rate: 66, url:
+/notop/stor/mlive/mlive_21, method: PUT
+  4  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
+/notop/stor/mlive, method: PUT
+  4  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
+/notop/stor/mlive, method: PUT
+  2  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
+/notop/stor/mlive, method: PUT
+  2  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
+/notop/stor/mlive, method: PUT
+  3  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
+/notop/stor/mlive, method: PUT
+```
+
+We can also see the requests being throttle from the mlive output:
+```
+using base paths: /notop/stor/mlive
+time between requests: 50 ms
+maximum outstanding requests: 100
+environment:
+    MANTA_USER = notop
+    MANTA_KEY_ID = 9c:bc:f3:fa:47:0b:79:2b:e1:72:6f:91:09:f0:d2:d6
+    MANTA_URL = http://localhost:8080
+    MANTA_TLS_INSECURE = true
+creating test directory tree ... failed (manta throttled this request)
+creating test directory tree ... failed (manta throttled this request)
+creating test directory tree ... failed (manta throttled this request)
+creating test directory tree ... failed (manta throttled this request)
+```
+
+This is last output line is the message of the new `ThrottledError`
+added to muskie's error.js.
