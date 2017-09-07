@@ -80,9 +80,8 @@ risks capturing too few requests in the calculation, and setting it too
 high risks muskie not responding to a burst quickly enough. The default
 is 5 seconds. This is an arbitrary choice.  As of now, the default values
 for the above parameters are set to be values that do not interfere with
-neither the concurrent operation of
-10 mlive instances nor the muskie test-suite. Further investigation
-based on real workloads is necessary.
+neither the concurrent operation of 10 mlive instances nor the muskie 
+test-suite. Further investigation based on real workloads is necessary.
 
 Finally the "queueTolerance" tunable corresponds to the number of requests
 muskie will tolerate in the queue during periods in which the request rate

@@ -134,6 +134,12 @@ state: draft
       - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork (MVP milestone)](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-mvp-milestone)
         - [Input](#input-8)
         - [Output](#output-10)
+      - [Volume reservations](#volume-reservations)
+        - [Volume reservation objects](#volume-reservation-objects)
+        - [Volume reservations' lifecycle](#volume-reservations-lifecycle)
+        - [AddVolumeReservation POST /volumereservations](#addvolumereservation-post-volumereservations)
+        - [RemoveVolumeReservation DELETE /volumereservations/uuid](#removevolumereservation-delete-volumereservationsuuid)
+        - [ListVolumeReservations GET /volumereservations](#listvolumereservations-get-volumereservations)
       - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone-1)
         - [Snapshot objects](#snapshot-objects)
         - [CreateVolumeSnapshot POST /volumes/volume-uuid/snapshot](#createvolumesnapshot-post-volumesvolume-uuidsnapshot)
@@ -1981,7 +1987,7 @@ or "VOLAPI".
 | name            | String             | master-integration | Allows to filter volumes by name. |
 | size            | Stringified Number | master-integration | Allows to filter volumes by size. |
 | owner_uuid      | String             | master-integration | When not empty, only volume objects with an owner whose UUID is `owner_uuid` will be included in the output |
-| billing_id (volume packages milestone)      | String             | mvp                | When not empty, only volume objects with a billing\_id whose UUID is `billing_id` will be included in the output |
+| billing_id      | String             | volume packages    | When not empty, only volume objects with a billing\_id whose UUID is `billing_id` will be included in the output |
 | type            | String             | master-integration | Allows to filter volumes by type, e.g `type=tritonnfs`. |
 | state           | String             | master-integration | Allows to filter volumes by state, e.g `state=failed`. |
 | predicate       | String             | master-integration | URL encoded JSON string representing a JavaScript object that can be used to build a LDAP filter. This LDAP filter can search for volumes on arbitrary indexed properties. More details below. |
@@ -2102,11 +2108,11 @@ A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 | ------------- | ------------ | ---------------------------------------- |
 | name          | String       | The desired name for the volume. If missing, a unique name for the current user will be generated |
 | owner_uuid    | String       | The UUID of the volume's owner. |
-| size          | Number       | The desired minimum storage capacity for that volume in mebibytes. Default value is 10240 mebibytes (10 gibibytes). |
+| size          | Number       | The desired storage capacity for that volume in mebibytes. Default value is 10240 mebibytes (10 gibibytes). |
 | type          | String       | The type of volume. Currently only `'tritonnfs'` is supported. |
 | networks      | Array        | A list of UUIDs representing networks on which the volume will be reachable. These networks must be owned by the user with UUID `owner_uuid` and must be fabric networks. |
-| server_uuid   | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
-| ip_address    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
+| server_uuid  (mvp milestone) | String       | For `tritonnfs` volumes, a compute node (CN) UUID on which to provision the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations. |
+| ip_address (mvp milestone)    | String       | For `tritonnfs` volumes, the IP address to set for the VNIC of the underlying storage VM. Useful for operators when performing `tritonnfs` volumes migrations to reuse the IP address of the migrated volume. |
 | tags (mvp milestone)          | Object       | An object representing key/value pairs that correspond to tags names/values. Docker volumes' labels are implemented with tags. |
 
 ##### Output
@@ -2242,6 +2248,116 @@ on a given network not reachable on that network anymore.
 ##### Output
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
+
+#### Volume reservations
+
+When volumes are linked to the VM which mounts them at creation time, the
+volume(s) are created _before_ the VM that mounts them is created.
+
+Indeed, since the existence of the VM is tied to the existence of the volumes it
+mounts, it wouldn't make sense to create it before all of its volumes are ready
+to be used.
+
+However, having the volumes created _before_ the VM that mounts them means that
+there is a window of time during which the volumes are not referenced by any
+active VM. As such, they could be deleted before the provisioning workflow job
+of the VM that mounts them completes and the VM becomes active.
+
+_Volume reservations_ are the abstraction that allows a VM that does not exist
+yet to reference one or more volumes, and prevents those volumes from being
+deleted until the provisioning job fails or the VM becomes inactive.
+
+##### Volume reservation objects
+
+Volume reservations are composed of the following attributes:
+
+* vm_uuid: the UUID of the VM being created
+* job_uuid: the UUID of the job that creates the VM
+* owner_uuid: the UUID of the owner of the VM and the volumes
+* volume_name: the name of the volume being created
+
+##### Volume reservations' lifecycle
+
+The workfow of volume reservations can be described as following:
+
+1. The VM provisioning workflow determines the VM being provisioned mounts one
+   or more volume, so it creates those volumes
+
+2. Once all the volumes mounted by the VM being provisioned are created, the
+   provisoning workflow creates a separate volume reservation for each volume
+   mounted
+
+3. The VM starts being provisioned
+
+Once volume reservations are created, it is not possible to delete the volumes
+reserved unless one of this condition is valid:
+
+* the force flag is passed to the `DeleteVolume` request
+* the VM provisioning job that reserved the volumes completed its execution and failed
+* the VM mounting the volumes became inactive
+
+Volume reservations are cleaned up periodically by VOLAPI so that stalled VM
+provisioning workflows do not hold volume reservations forever.
+
+Volume reservations are also deleted when a _reference_ from the same VM to the
+same volume is created. This happens when:
+
+* the corresponding provisioning workflow job completes successfully
+* the VM that mounts reserved volumes becomes active
+
+##### AddVolumeReservation POST /volumereservations
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| volume_name          | String       | The name of the volume being reserved |
+| job_uuid          | UUID       | UUID of the job provisioning the VM that mounts the volume |
+| owner_uuid          | UUID       | UUID for the owner of the VM with UUID vm\_uuid and the volume with name volume\_name  |
+| vm\_uuid          | UUID       | UUID of the VM being provisioned that mounts the volume with name "volume_name" |
+
+###### Output
+
+An [snapshot object](#snapshot-objects) with the state `'creating'`:
+
+```
+{
+  "uuid": "1360ef7d-e831-4351-867a-ea350049a934",
+  "volume_name": "input-name",
+  "job_uuid": "1db9b975-bd8b-4ed5-9878-fa2a8e45a821",
+  "owner_uuid": "725624f8-53a9-4f0b-8f4f-3de8922fc4c8",
+  "vm_uuid": "e7bc54f4-00ea-42c3-90c6-c78ee541572d",
+  "create_timestamp": "2017-09-07T16:05:17.776Z"
+}
+```
+
+##### RemoveVolumeReservation DELETE /volumereservations/uuid
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| uuid          | String       | The name of the volume being reserved |
+| owner_uuid          | String       | The UUID of the owner associated to that volume reservation |
+
+
+###### Output
+
+Empty 204 HTTP response.
+
+##### ListVolumeReservations GET /volumereservations
+
+###### Input
+
+| Param         | Type         | Description                              |
+| ------------- | ------------ | ---------------------------------------- |
+| volume_name          | String       | The name of the volume being reserved |
+| job_uuid          | UUID       | UUID of the job provisioning the VM that mounts the volume |
+| owner_uuid          | UUID       | UUID for the owner of the VM with UUID vm\_uuid and the volume with name volume\_name  |
+
+###### Output
+
+An array of volume reservation objects.
 
 #### Snapshots (Snapshots milestone)
 
