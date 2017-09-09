@@ -1,6 +1,7 @@
 ---
 authors: Alex Wilson <alex.wilson@joyent.com>
 state: draft
+discussion: https://github.com/joyent/rfd/issues?q="RFD+14"
 ---
 
 <!--
