@@ -56,6 +56,20 @@ state is eventually processed. It may be useful to implement some sort of
 timeout for requests sitting in the pending state, opting to get clients to retry
 requests instead of allowing them to observe high request latencies.
 
+## Restify
+Restify has a throttling [plugin](http://restify.com/docs/plugins-api/#throttle)
+that was proposed at a manta call, but we came to the conclusion that we'd
+rather not use it because (1) not all services we want to throttle use restify
+and (2) we'd rather not depend on restify. Ultimately, we would like a modular
+npm package that we can plug in to any manta service with minimal change to the
+service's operation or configuration.
+
+Testing to compare the performance of a throttle that we roll on our own against
+the restify throttle later in the development process may be useful for ensuring
+that efficiency is up to par. We might also consider some of the options that
+the restify throttle exposes that might be useful for our throttle when
+designing the library.
+
 ## Proposal
 As an initial iteration, this RFD proposes the addition of a throttling
 module to the Muskie repo. Over a longer time horizon, we plan to implement a
