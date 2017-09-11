@@ -417,6 +417,7 @@ of workloads to consider are:
 - Bursty workloads interleaving small PUTs, GETs, and HEADs, with large PUTs.
 - Uniform workloads with large PUTs
 - Random workloads.
+
 Included in the above cases should be mmpu operations as well as non-mpu
 operations. We anticipate that the last type, random workloads, will be most
 difficult for the throttle to handle. The test results should show that for
