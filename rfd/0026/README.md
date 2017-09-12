@@ -134,6 +134,7 @@ state: draft
       - [DetachVolumeFromNetwork POST /volumes/volume-uuid/detachfromnetwork (MVP milestone)](#detachvolumefromnetwork-post-volumesvolume-uuiddetachfromnetwork-mvp-milestone)
         - [Input](#input-8)
         - [Output](#output-10)
+      - [Volume references](#volume-references)
       - [Volume reservations](#volume-reservations)
         - [Volume reservation objects](#volume-reservation-objects)
         - [Volume reservations' lifecycle](#volume-reservations-lifecycle)
@@ -2249,7 +2250,29 @@ on a given network not reachable on that network anymore.
 
 A [volume object](#volume-objects) representing the volume with UUID `uuid`.
 
+#### Volume references
+
+Volume references represent a relation of usage between VMs and volumes. A VM is
+considered to "use" a volume when it mounts it on startup. A VM can be made to
+mount a volume on startup by using he `volumes` input parameter of the
+`CreateVm` VMAPI API.
+
+References are represented in volume objects by a `refs` property. It is an
+array of VM UUIDs. All VM UUIDs in this array are said to reference the volume
+object.
+
+When a volume is referenced by at least one VM, it cannot be deleted, unless the
+`force` parameter of the `DeleteVolume` API is set to `true`.
+
+When a VM that references a volume becomes inactive, its reference to that
+volume is automatically removed. If it becomes active again, it is automatically
+added.
+
 #### Volume reservations
+
+Volume references are useful to represent a "usage" relationship between
+_existing_ VMs and volumes. However, sometimes there's a need to represent a
+_future_ usage relationship between volumes and VMs that do not exist yet.
 
 When volumes are linked to the VM which mounts them at creation time, the
 volume(s) are created _before_ the VM that mounts them is created.
