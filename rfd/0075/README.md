@@ -82,7 +82,7 @@ virtual CPU ID calculation into the comm page.  This is somewhat strange, given
 that it is effectively per-process information, unlike everything else in the
 page which is global to the system.  Despite that, it does not seem
 unreasonable to pull a 'virtual CPU ID limit' from the `kthread_t` or `proc_t`
-structure and place it in the approrpiate CPU slot in the comm page when
+structure and place it in the appropriate CPU slot in the comm page when
 performing a `swtch()`.
 
 ### Interposition Points
