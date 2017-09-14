@@ -19,20 +19,27 @@ dicussion: https://github.com/joyent/rfd/issues/52
 ## Overview
 
 The purpose of this RFD is to discuss possible directions for implementing
-general throttles for Manta. While the initial iteration of the throttle
-will be implemented in Muskie as a per-process rate-limiter, the intention
-is to create a general purpose throttling library that can used by any
-service with parameters that can be dynamically configured by the operator.
-This means that instead of just throttling client requests at the front
-door the operator would be able to, for example, select a particular moray
-process and set a request rate limit for just that moray process.
+general throttles for Manta. The initial iteration of this throttle was
+implemented as per-muskie-process rate limiter. The reason we chose to go this
+direction initially is that it was relatively simple to implement and could be
+used during incidents to quickly lighten the load on the entire system.
+
+The intention is to eventually create a general purpose throttling library
+that can used by any service with parameters that can be dynamically configured
+by the operator. This means that instead of just throttling client requests
+at the front door the operator would be able to, for example, select a
+particular moray process and set a request rate limit for just that moray
+process. This more complex throttle will also have a mechanism for making
+globally-aware throttling decisions by talking to multiple services that opt-in
+to throttle inbound requests. The later iteration will require a state-sharing
+mechanism that we will not attempt to describe yet in this RFD.
 
 A motivating [example](https://devhub.joyent.com/jira/browse/MANTA-3283)
 for throttling in manta is the observation that
 during Manta stress tests, the asynchronous peer in a Manatee cluster can
 fall arbitrarily far behind the primary because the application rate of
 postgres WAL records on the peer is slower than the rate at which they
-are being sent . In such a situation, it would be useful not only for the
+are being sent. In such a situation, it would be useful not only for the
 asynchronous peer to throttle incoming requests, but also for the sending
 peer to recognize this and either back off or queue outgoing requests to
 reduce the send rate.
@@ -70,14 +77,13 @@ that efficiency is up to par. We might also consider some of the options that
 the restify throttle exposes that might be useful for our throttle when
 designing the library.
 
-## Proposal
+## Initial Proposal
 As an initial iteration, this RFD proposes the addition of a throttling
 module to the Muskie repo. Over a longer time horizon, we plan to implement a
 generic throttling library that any node.js service in manta can require and add
 to middleware to any request-processing codepath.
 
 ### Parameters
-
 Currently, the muskie module is configured via the file
 etc/config.json in the "throttle" object. It exposes the following
 tunables:
@@ -318,6 +324,27 @@ To actually use the module, it would be ideal to plug in a single callback
 into a handler chain through which all incoming requests to the service pass.
 Identifying such a chain or codepath will require further investigation.
 
+#### Global Decisions
+In a more complex iteration of the throttle, we want to have a way to make
+throttling decisions with system-wide information. This means that we will want
+to either have a separate horizontally-scalable manta component that talks to
+all throttled services, tuning throttle parameters as necessary, or have the
+throttled services themselves communicate with each other to make the same
+decisions. For this reason, the per-muskie-process iteration of the throttle
+should be built with the possibility of sharing information concerning resources
+and various tunable parameters in mind.
+
+#### Throttle Types
+In different contexts, we will want to be able to throttle based on different
+request properties. For example, there is good motivation for throttling
+on a per-user basis in muskie. In other contexts, we might want to throttle on
+the type of request (for example on whether it's a read or write of a metadata
+or an object). With the initial throttle design it will be useful to consider
+how requests might be filtered/selected by these various properties. We'll
+probably want generic logic to handle throttle of a subset of requests, and then
+separate self-contained logic for selecting the appropriate subset based on
+whatever filters the throttle has been configured with.
+
 #### Configuration
 Two big open questions concerning the implementation of *operator-configurable*
 throttling are:
@@ -420,6 +447,13 @@ It would be nice to enforce parameter bounds with a JSON validation library like
 ajv.
 
 #### Testing
+It is important to determine as early as possible what the symptoms of a
+manta-component under heavy load are. What limits are hit? What failures crop up
+(if any)? Determining this will require testing under different types of
+realistic loads. Once the symptoms of heavy load are determined, we can build
+whatever interface is necessary for the throttle observed them and adapt to
+prevent brownout.
+
 The next logical step for testing the throttle would be to deploy it in some
 muskie instance on staging and generate different types of workloads. Some types
 of workloads to consider are:
