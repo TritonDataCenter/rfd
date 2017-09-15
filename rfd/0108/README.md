@@ -1,6 +1,7 @@
 ---
 authors: Jerry Jelinek <jerry@joyent.com>
 state: draft
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+108%22
 ---
 
 # RFD 108 Remove Support for Memory/CPU Dynamic Reconfiguration (DR)
