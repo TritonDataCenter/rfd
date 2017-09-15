@@ -304,6 +304,70 @@ creating test directory tree ... failed (manta throttled this request)
 This is last output line is the message of the new `ThrottledError`
 added to muskie's error.js.
 
+### Dynamic Configuration
+In the most recent version of the muskie throttle, I've added the ability for
+operators to dynamically change the values of the tunables described in the
+Parameters section by sending HTTP post/get requests to a restify server that
+the throttle manages.
+
+POST requests are directed to the `/updateConfig` url and expect a json payload
+where the key/value pairs in the root object correspond to tunable names and
+values. Any number of valid parameters can be included in the payload, and the
+configuration server will update those parameters to take on the values
+specified in the payload, provided that they pass validation. For example, if
+an operator wanted to enable throttling, it could be done by sending:
+```
+POST <ip-address>:<port>/updateConfig
+{
+    'enabled': true
+}
+```
+Here, `<ip-address>` is the manta-network NIC ip address of the zone on which
+the muskie instance is running, and `<port>` is the port that the throttle
+config server is listening on. `<port>` is currently set to 10081. This will
+change.
+
+GET requests are directed to the `/getConfig` url and expect url query
+parameters with the key "fields" and the corresponding values correspond to
+the names of the tunables that should be returned to the client json payload.
+GET requests do not affect the state of the throttle. If the root
+object has no members, the config server will return all the exposed tunables.
+For example, if a client wanted to see the requestRateCapacity and concurrency
+of a muskie throttle, it could be done by sending a request like this one:
+```
+GET <ip-address>:<port>/getConfig?fields=requestRateCapacity&fields=concurrency
+```
+The response to this request would have a payload that might look like this:
+```
+{
+    'requestRateCapacity': 1000,
+    'concurrency': 50
+}
+```
+I've designed the server to be extensible with respect to additions to the set
+of exposed tunables. Currently, the server has no way to persist configuration
+changes, but this will probably be useful to do in the future with a "persist"
+option.
+
+An obvious drawback of this scheme is that we might be trying to perform network
+operations on a manta that is already experiencing a lot of network stress
+(hence the throttle). It would probably be useful to give operators the ability
+to configure the tunables within the zone running muskie without going through
+the network. One option to explore for doing this might be to send a
+user-defined signal with a json payload from `manta-adm`.
+
+### Passive Mode
+With the adition of the "enabled" option, the muskie throttle can now run in a
+passive mode. A passive throttle will perform all the operations of a regular
+throttle without actually throttling the requests or queueing them. The passive
+throttle will still report statistics via dtrace, which makes it a useful tool
+for identifying symptoms of an overloaded manta on production systems.
+
+The initial throttle will be passive by default so as to be minimally invasive.
+It may be useful for a passive throttle to collect more statistics that an
+active one does to provide a more accurate picture of system resources that
+would be undesirably expensive otherwise.
+
 ### Future Work
 
 #### Generalizing
