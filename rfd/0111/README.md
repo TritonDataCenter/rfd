@@ -24,12 +24,13 @@ as quickly as possible.  As a team, our ability to respond reliably to
 incidents depends on many (or all) team members being comfortable with the
 process.  Effectively working through an incident involves a number of skills:
 
-- familiarity with the components involved, how they work, and how they
-  interact with each other
+- familiarity with the components involved, how they work, how they interact
+  with each other, and their various quirky behaviors and commonly-encountered
+  known issues
 - familiarity with the tools, log files, and other data sources that are
   available to help understand the system.  (In our case, this includes
   Manta-specific tools, Triton tools, operating system tools, and tools
-  specific to components like ZooKeeper and PostgreSQL.)
+  specific to third-party components like ZooKeeper and PostgreSQL.)
 - comfort learning more about components and tools on the fly: finding
   documentation and source code, understanding it quickly, and applying that
   knowledge
@@ -44,16 +45,16 @@ process.  Effectively working through an incident involves a number of skills:
   whole activity
 
 To help develop these skills and general experience debugging critical
-production issues, we propose Incident Response Practice sessions.  The basic
-idea is to induce scheduled outages in non-critical, production-like deployments
-(such as [the engineering staging
-environment](https://mo.joyent.com/docs/lab/master/staging.html) and have people
+production issues, this RFD proposes Incident Response Practice sessions.  The
+basic idea is to induce scheduled outages in non-critical, production-like
+deployments (such as [the engineering staging
+environment](https://mo.joyent.com/docs/lab/master/staging.html)) and have people
 respond to them the same way that we would respond to a production outage.
 
 
 ## Scope of the simulation
 
-There's an **enormous** spectrum of how far we could take this simulation.  Here
+There's an enormous spectrum of how far we could take this simulation.  Here
 are two relatively extreme options:
 
 1. **Simpler case:** an outage is induced at a specific, scheduled time.
@@ -82,7 +83,7 @@ notifications).
 ## Incident Response Practice sessions
 
 At this point, this is still a straw man for discussion.  See the Rationale
-section for reasons why we're proposing this the way we are.
+section for reasons for the specific details proposed here.
 
 **Scheduled.** On a regular basis or as requested, specific _practice sessions_
 will be scheduled at specific times.  (They will not be surprises.) Although
@@ -97,8 +98,8 @@ ahead of time to debug and resolve the incident.
 
 **The process:**
 
-1. The instigators will discuss ahead of time what type of outage to induce, how
-   to induce it.  They will test that process as needed.
+1. The instigators will discuss ahead of time what type of outage to induce and
+   how to induce it.  They will test that process as needed.
 2. The incident will begin at the scheduled time when the instigators induce the
    outage.
 3. Responders will be notified through the usual means of an outage: Amon alarm
@@ -118,8 +119,8 @@ ahead of time to debug and resolve the incident.
 **Guidelines for engagement:**
 
 All of these guidelines are designed to make the exercise most useful for
-responders.  These are not hard and fast rules, and there aren't penalties -- we
-just think that following these will help people get the most out of this
+responders.  These are not hard and fast rules, and there aren't penalties.  The
+expectation is that following these will help people get the most out of this
 experience.
 
 * All communication about the incident itself should happen in a public chat
@@ -143,12 +144,11 @@ experience.
 **Other guidelines**
 
 * There should be 1-3 instigators for each practice. Instigators should
-  generally be people with the most experience dealing with production
-  incidents.  They should be watching closely to see when help may be needed,
-  but they should offer help sparingly.  In particular, they should probably
-  remain quiet as long as forward progress is being made, even if it's not in
-  the right direction.  Blind alleys are part of debugging and incident
-  response.
+  generally be people very comfortable dealing with production incidents.  They
+  should be watching closely to see when help may be needed, but they should
+  offer help sparingly.  In particular, they should probably remain quiet as
+  long as forward progress is being made, even if it's not in the right
+  direction.  Blind alleys are part of debugging and incident response.
 * The makeup of the response team can have a significant impact on the
   usefulness of this experience.  We don't want a team where one or two
   experts can quickly solve the problem without anybody else's help, nor do
