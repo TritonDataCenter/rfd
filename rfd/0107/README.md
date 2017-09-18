@@ -80,6 +80,9 @@ address this issue we will need to modify `VMAPI`.
 
 ### VMAPI changes
 
+tl;dr No changes will be made to `VMAPI` for this RFD. Some notes below about
+future directions.
+
 The `VMAPI` endpoint already accepts a new Network Object type that is outlined
 [here](https://github.com/joyent/sdc-vmapi/blob/master/docs/index.md#specifying-networks-for-a-vm),
 in addition to being backwards compatible with a list of network UUID's.
@@ -117,6 +120,18 @@ proposal.
 The ongoing IPv6 work as well as [RFD 32 Multiple IP Addresses in
 NAPI](https://github.com/joyent/rfd/tree/master/rfd/0032) may introduce
 additional changes to `VMAPI` at some point in the future.
+
+### primaryIp changes
+
+The `primaryIp` is a fiction from `CloudAPI`'s point of view. It is commonly
+used by customers to determine what IP they should SSH in on.  Historically it
+has defaulted to a public IP. We should tell users to rely on `CNS` for this
+purpose, however there may be some users who do not enable `CNS` for their
+accounts.  When a user sets the primaryIp we really want the NIC to be primary,
+not the IP specified. When a NIC is primary it effects things like default
+route for the instance. For more information check out PUBAPI-1216. This
+becomes important when we start allowing users to have multiple IPs attached to
+the same NIC.
 
 ### CloudAPI changes
 
@@ -169,6 +184,26 @@ Future:
 ]
 ```
 
+###### output
+
+| Field			| Type		| Description				|
+| ---------------------	| ------------- | ------------------------------------- |
+| ip			| String	| NIC's IP Address			|
+| mac			| String	| NIC's Mac Address			|
+| primary		| Boolean	| Whether this is the instance's primary NIC |
+| netmask		| String	| IP netmask				|
+| gateway		| String	| IPv4 gateway				|
+| state			| String	| Describes the state of the NIC (most likely 'provisioning') |
+| network		| String	| Network UUID				|
+
+###### errors
+
+| Error Code		| Description						|
+| --------------------- | ----------------------------------------------------- |
+| ResourceNotFound	| If :login or :id does not exist			|
+| InvalidArgument	| If :id isn't a UUID, the network argument isn't a valid UUID, or the IP isn't valid |
+| MissingParameter	| If the network argument isn't present			|
+
 This future-proofs us for the additional ongoing work mentioned above, allowing
 to data to eaisly map to any `VMAPI` changes.
 
@@ -176,7 +211,30 @@ to data to eaisly map to any `VMAPI` changes.
 
 ##### ListNetworkIPs (GET /:login/networks/:id/ips)
 
-Only provisioned and reserved IP's will be returned.
+Only provisioned and reserved IP's will be returned.  In addition users will be
+able to list IPs on any network they are an owner of as well as public
+networks.  On public networks, only the users provisioned IPs will be returned.
+In order to support listing a public networks IPs we will have to add the
+`owner_uuid` filter to the `NAPI` request. This means `CloudAPI` will have a
+requirement on minimum `NAPI` version.
+
+Also since a user can get a fabric networks IPs, the following will be an alias
+for `ListNetworkIPs`: ` GET
+/:login/fabrics/default/vlans/:vlan_id/networks/:network/ips`
+
+###### output
+
+Returns and array of provisioned or reserved IP objects.
+
+| Field			| Type		| Description				|
+| ---------------------	| ------------- | ------------------------------------- |
+| ip			| String	| NIC's IP Address			|
+| reserved		| Boolean	| Whether this IP is reserved or not	|
+| free			| Boolean	| Whether this IP is assigned to an instance |
+| belongs_to_uuid	| String	| Optional UUID of the instance the IP is associated with |
+| nic			| String	| Optional MAC Address of the NIC the IP is attached to |
+
+###### output (example)
 
 ```
 GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips
@@ -197,6 +255,12 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips
  ...... elided
 ]
 ```
+
+###### errors
+
+| Error Code		| Description						|
+| --------------------- | ----------------------------------------------------- |
+| ResourceNotFound	| If :login or :id does not exist			|
 
 ##### GetNetworkIP (GET /:login/networks/:id/ips/:ip_address)
 
@@ -236,7 +300,17 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips/10.88.88.105
 }
 ```
 
+###### errors
+
+| Error Code		| Description						|
+| --------------------- | ----------------------------------------------------- |
+| ResourceNotFound	| If :login or :id does not exist			|
+
 ##### UpdateNetworkIP (PUT /:login/networks/:id/ips/:ip_address)
+
+It is worth noting that when you delete an instance that has a reserved IP the
+IP will remain reserved. This means that the IP will not be in the allocation
+pool of possible IPs when creating another instance.
 
 ###### input
 
@@ -259,9 +333,18 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips/10.88.88.105
 | belongs_to_uuid	| UUID		| optional Instance that owns the IP	|
 | nic			| String	| optional MAC address of the owning nic |
 
+###### errors
+
+| Error Code		| Description						|
+| --------------------- | ----------------------------------------------------- |
+| ResourceNotFound	| If :login, :id, or :ip_address does not exist		|
+| MissingParameter	| ip and or reserved are not set			|
+
 #### Instances
 
 ##### CreateMachine (POST /:login/machines)
+
+The only change here is to the networks array, it is now an array of objects.
 
 ###### input
 
@@ -282,5 +365,5 @@ See the relevant notes in the AddNic section.
 
 ### Docker Changes
 
-The `sdc-docker` endpoint should parse the users docker client payload into the
-new `VMAPI` format.
+There are no changes to `VMAPI` planed for this RFD.  There should be no
+changes in how docker operates for the time being.
