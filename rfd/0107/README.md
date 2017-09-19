@@ -143,6 +143,9 @@ like this.
 
 ##### AddNic (POST /:login/machines/:id/nics)
 
+Until we have support for multiple IPs per NIC, `CloudAPI` will restrict
+requests to only allow a count of 1 and an ips array with a single element.
+
 ###### input
 
 An array of network objects.
@@ -151,7 +154,7 @@ An array of network objects.
 | ---------------------	| ------------- | ------------------------------------- |
 | network		| UUID		| Network UUID				|
 | count			| Integer	| Number of IP's wanted. Optional	|
-| ip			| String	| Specific IP to assign to the NIC. Optional |
+| ips			| Array		| Specific IPs to assign to the NIC. Optional |
 | primary		| Boolean	| The ip should be the PrimaryIP	|
 
 Currently:
@@ -165,7 +168,7 @@ or
 [
   {
     "network": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2",
-    "ip": "192.168.1.234",
+    "ips": ["192.168.1.234"],
     "primary": true
   }
 ]
@@ -179,7 +182,7 @@ Future:
   { "network": "2fc14e44-3813-47c5-9eec-fd281cbc2dbe",  "count": 4 },
   {
     "network": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2",
-    "ip": "192.168.1.234"
+    "ips": ["192.168.1.234", "192.168.1.235"]
   }
 ]
 ```
