@@ -40,27 +40,29 @@ with all available context.
 
 ### Background
 
-Our current strategy for evenly splitting up load across the Manatee 
-peers that comprise our metadata tier is to create a mapping of vnodes
-(virtual database shards) to pnodes (physical database shards) using
-node-fash, a library that provides a modulo-based consistent hashing
-algorithm. This distributes responsibility for our metadata, and in
-theory, provides the flexibility to easily move the data assigned to
-any vnode to a new pnode if we need to.  Electric-moray is responsible
-for storing the hash ring that results from this operation, and for
-communicating with the postgres databases (moray shards) stored in
-Manatee instances within a deployment.
+Our current strategy for evenly splitting up load across the Manatee peers that
+comprise our metadata tier is to create a mapping of vnodes (virtual database
+shards) to pnodes (physical database shards) using node-fash, a library that
+provides a modulo-based consistent hashing algorithm. This distributes
+responsibility for our metadata, and in theory, provides the flexibility to
+easily move the data assigned to any vnode to a new pnode if we need to.
+Electric-moray is responsible for storing the hash ring that results from this
+operation, and for communicating with the postgres databases (moray shards)
+stored in Manatee instances within a deployment.
 
 ### Manual Resharding Step-By-Step
 
+This is a manual process for now, and will likely remain so until it has been
+performed multiple times.
+
 #### 1. Determine which vnodes to move.
 
-Go into the zone of the primary Manatee shard and run this command to
-display how many keys are stored on each vnode.
+Go into the zone of the primary Manatee shard and run this command to display
+how many keys are stored on each vnode.
 
-        $ psql moray -c 'select _vnode, count(*) from manta group by _vnode order by count desc;'
+        $ psql moray -c 'select _vnode, count(*) from manta group by _vnode order by count desc;''
 
-The output WLSLT:
+The output will look something like this (WLSLT):
 
         moray=# select _vnode, count(*) from manta group by _vnode order by count desc;
         _vnode | count
@@ -87,64 +89,91 @@ The output WLSLT:
         114 |     6
         539 |     6
 
-This is useful because you probably want to remap vnodes that have a lot of
-keys.  So we will be remapping vnodes 0, 106, and 943 in this example.
+This is how we're going to choose vnodes to reshard **only** as an example.  In
+reality our use case will be to split a pnode in half, moving 50% of its vnodes
+to a new pnode.  The query for selecting these in postgres is pending completion
+of MANTA-3389, which is meant to confirm (or refute) our expectations that this
+(splitting in half) is a sufficient selection mechanism to alleviate our issue,
+which is reaching capacity on a given pnode.  However, in the following
+walkthrough, we will just be remapping vnodes 0, 106, and 943.  This is because
+it is easier to follow along with a smaller number of vnodes, and to check your
+work if you are just running through this process as a test.  It is also a sane
+use-case (though not ours) to remap vnodes to pnodes by distribution of data on
+them as opposed to doing a split down the middle.
 
-#### 2. Create a canary file.
+#### 2. Create a canary directory.
 
-This step is only for testing out the resharding process, it is not meant to
-be carried out on production deployments, although it should cause no harm to
-do so.
+This step is only for testing out the resharding process, it is not meant to be
+carried out on production deployments.
 
 In this case, there will be one additional vnode that we remap, despite the
-fact that it will only have 1 key inside it.  That 1 key will be a canary file
-that we create purely for the purpose of easily tracking a file throughout the
-resharding process.  We aren't going to be able to control which vnode it goes
-into, because of the determinstic hashing algorithm, but we can look at which
-vnode it has been allocated to once we've created it.
+fact that it will only have one key inside it.  That one key will be a canary
+directory that we create purely for the purpose of easily tracking one file
+throughout the resharding process.  We aren't going to be able to control which
+vnode it goes into, because of the determinstic hashing algorithm, but we can
+look at which vnode it has been allocated to once we've created it.
 
 Generate a random uuid with the `uuid` command, and then run:
 
-        $ mmkdir -p /poseidon/stor/re-shard-canary-dir/{youruuid}
+        $ mmkdir -p /<your_user>/stor/re-shard-canary-dir/<your_uuid>
 
 Now we can log in to a muskie (webapi) zone and find the file via mlocate:
 
-        $ /opt/smartdc/muskie/bin/mlocate -f /opt/smartdc/muskie/etc/config.json /poseidon/stor/re-shard-canary-dir/{youruuid}
+        $ /opt/smartdc/muskie/bin/mlocate -f /opt/smartdc/muskie/etc/config.json /<your_user>/stor/re-shard-canary-dir/<your_uuid>
 
 The output WLSLT (assuming 2178ed56-ed9b-11e2-8370-d70455cbcdc2 was {youruuid}):
 
         {
             "dirname": "/5884dd74-949a-40ec-8d13-dd3151897343/stor/re-shard-canary-dir",
-            "key": "/5884dd74-949a-40ec-8d13-dd3151897343/stor/re-shard-canary-dir/2178ed56-ed9b-11e2-8370-d70455cbcdc2",
+            "key": "/5884dd74-949a-40ec-8d13-dd3151897343/stor/re-shard-canary-dir/<your_uuid>",
             "headers": {},
             "mtime": 1373926131745,
             "name": "2178ed56-ed9b-11e2-8370-d70455cbcdc2",
             "owner": "5884dd74-949a-40ec-8d13-dd3151897343",
             "type": "directory",
-            "_key": "/poseidon/stor/re-shard-canary-dir/2178ed56-ed9b-11e2-8370-d70455cbcdc2",
-            "_moray": "tcp://electric-moray.coal.joyent.us:2020",
+            "_key": "/<your_user>/stor/<your_uuid>",
+            "_moray": "tcp://electric-moray.emy-11.joyent.us:2020",
             "_node": {
-                "pnode": "tcp://1.moray.coal.joyent.us:2020",
+                "pnode": "tcp://1.moray.emy-11.joyent.us:2020",
                 "vnode": "689",
                 "data": 1
             }
         }
 
-Take note of the vnode key's value, in this case 689.  That will be the
-fourth node that we want to remap, along with 0, 106, and 943.  Before we
-do that, though, lets make a test file under this directory.
+Take note of the vnode key's value, in this case 689.  That will be the fourth
+node that we want to remap, along with 0, 106, and 943.  Before we do that,
+though, lets make a test file under this directory.
 
-        $ mput -f test.txt /poseidon/stor/re-shard-canary-dir/2178ed56-ed9b-11e2-8370-d70455cbcdc2/test
+        $ mput -f test.txt /<your_user>/stor/re-shard-canary-dir/<your_uuid>/test.txt
+
+Let's also store the vnode of this test file, we'll want it later for other
+tests.
+
+(In muskie):
+
+    $ /opt/smartdc/muskie/bin/mlocate -f /opt/smartdc/muskie/etc/config.json /<your_user>/stor/re-shard-canary-dir/<your_uuid>/test.txt
 
 #### 3. Set up a new async peer.
 
-The first thing we have to do is create the shard we are going to move
-data into.  We can do this by creating a new config file for Manta that
-bumps up the number of postgres instances in whichever Moray is holding
-the metadata information we want to reshard.  We can find out which ones
-these are by running `manta-shardadm list` in our manta zone and noting
-the name of shards that have the type "Index" -- the output will look
-something like this (WLSLT):
+The first thing we have to do is create the shard we are going to move data
+into.  In production, you will use a combination of `manta-adm show -sj` and `manta-adm update`
+to deploy new peers on the CNs where you want them to run, which is similar to
+what we would do in a lab environment.
+
+We would specifically, in production, not increment the counter of postgres
+instances, but instead create a new block in the configuration file with the new
+physical location for that new postgres instance.  See the Manta Operator Guide
+for details about recommended placement of services.
+
+In a lab deployment, we can do this by creating a new config file for Manta that
+bumps up the number of postgres instances in whichever Moray is holding the
+metadata information we want to reshard.  (The reason this is not possible in a
+production environment is because there is only one postgres zone on each
+physical server, so incrementing this counter would mean we are co-hosting
+postgres zones.)  In a lab environment, however, this is not a concern.  So as
+an exercise, we can find out which instances these are by running `manta-shardadm list`
+in our manta deployment zone (manta0) and noting the name of shards that have
+the type "Index" -- the output WLSLT:
 
         TYPE         SHARD NAME
         Index        1.moray.emy-11.joyent.us
@@ -152,10 +181,10 @@ something like this (WLSLT):
         Marlin       1.moray.emy-11.joyent.us
         Storage      1.moray.emy-11.joyent.us
 
-Then, if we go into any postgres shard and run `manatee-adm show`, the
-"cluster" field will say which moray it is.  This command will also let
-us know which Manatee shard is the primary for the given shard.  In this
-deployment, for example, it is the instance whose uuid begins 0beca041.
+Then, if we go into any postgres peer and run `manatee-adm show`, the "cluster"
+field will say which moray it is on.  This command will also let us know which
+Manatee is the primary for the given shard.  In this deployment, for example, it
+is the instance whose uuid begins `0beca041`.
 
         $ manatee-adm show
         zookeeper:   10.77.77.113
@@ -169,13 +198,15 @@ deployment, for example, it is the instance whose uuid begins 0beca041.
         sync     cd79bd3b ok   async 0/D225168     0/D225168     0/D225168     0m42s 
         async    2662e5ad ok   -     -             -             -             0m42s 
 
-Back on the headnode, we can use `manta-adm show -sj` to generate a
-JSON file of our current Manta configuration.  Copy-paste that into
-a new file and increment the value of the key that matches the postgres
-instance you are resharding.  Then, run `manta-adm update {name of
-your new file}` to apply your changes.  If you return to your postgres
-zone now and run `manatee-adm show` again, you should now see a second
-async peer trying to catch up.  You can run `manatee-adm pg-status 1`
+Back on the headnode, we can use `manta-adm show -sj` to generate a JSON file of
+our current Manta configuration:
+
+        manta-adm show -sj > my_config.json
+
+Open `my_config.json` and increment the value of the key that matches the
+postgres instance you are resharding.  Then, run `manta-adm update my_config.json`
+to apply your changes.  If you return to your postgres zone now and run `manatee-adm show`
+again, you should now see a second async peer trying to catch up.  You can run `manatee-adm pg-status 1`
 to view the running process.  This WLSLT:
 
         $ manatee-adm show
@@ -191,50 +222,63 @@ to view the running process.  This WLSLT:
         async    2662e5ad ok   async 0/D2B13A8     0/D2B13A8     0/D2B13A8     5m48s 
         async    85af8d74 ok   -     -             -             -             5m48s 
 
-It is a good idea to use manta-mlive to generate some load that you
-can watch if you are doing this in a test environment.  The important
-numbers to watch are the primary's SENT and the first async's REPLAY.
-When they are close together (at least the first 4 digits are the same)
-then the async shard is sufficiently caught up for us to reshard.
+It is a good idea to use manta-mlive to generate some load that you can watch if
+you are doing this in a test environment.  The important numbers to watch are
+the primary's SENT and the first async's REPLAY.  When they are close together
+(at least the first 4 digits are the same) then the async shard is sufficiently
+caught up for us to reshard. We can also look at the LAG -- it is a good sign
+when it is `-` for the primary and a small number for the other roles.
 
 #### 4. Put the vnodes you want to reshard into read-only mode.
 
-The vnode-to-pnode mapping is stored within a LevelDB directory stored in
-electric-moray. LevelDB only allows one process to access each db directory
-at once.  Since in our setup, there is always one process holding the db
-open for electric-moray, this means that as long as electric-moray is enabled,
-we will not be able to run any commands on the LevelDB -- not even to read
-data out.  So, we will need to disable each electric-moray instance before
-making any changes to the data mapping of its associated LevelDB.  We have 4
-copies of the directory structure, whcih correspond to electric-morays 2021
-through 2024.  So our next step will be to disable the first electric-moray:
+The vnode-to-pnode mapping is stored within four duplicate LevelDB directories
+stored in the electric-moray zone at `/electric-moray/chash/leveldb-202{1-4}`.
+LevelDB only allows one process to access each db directory at once, this is why
+we have four.  Usually, electric-moray holds the lock for the db, and you can
+check this with `svcs -p *electric-moray*`.  We can use `svcadm` to disable any
+of those processes in order to operate on the LevelDB topology directly.
+Otherwise, we will not be able to run any commands on the LevelDB -- not even to
+read data out.
+
+However, whatever we do to one LevelDB, we must do to all four in order to
+maintain consistency.  We can do these one at a time, which will result -- in a 
+4-process, one electric-moray setup -- in a 25% miss rate for reads and writes
+from Manta.  To mitigate this, we can go through this process one LevelDB at a
+time.  This may sacrifice consistency, and will need more testing.
+
+Erring on the side of consistency over availability, we will disable all four
+electric-moray-leveldb processes before making changes to the data mapping of
+its associated LevelDB.  However, we only need to change one LevelDB topology in
+order to generate a new hash ring image to upload to electric-moray. We will
+operate on electric-moray-2021 for this procedure.
 
         $ svcadm disable electric-moray-2021
 
-Then we're going to use the node-fash cli to set the vnodes we care about to
+Next we're going to use the node-fash cli to set the vnodes we care about to
 read-only.  If we try to write to them while moving them we will lose data.
 
-        $ /opt/smartdc/electric-moray/node_modules/fash/bin/fash.js add-data -v '0, 106, 943, 689' -l /var/tmp/hash_ring -b leveldb -d 'ro'
+        # Display information, such as which shard this vnode is on
+        $ /opt/smartdc/electric-moray/node_modules/fash/bin/fash.js get-vnode-pnode-and-data -v '<your_vnode_number(s)>' -l /electric-moray/chash/leveldb-2021/
+        # Put the vnode into read-only mode
+        $ /opt/smartdc/electric-moray/node_modules/fash/bin/fash.js add-data -v '<your_vnode_number(s)>' -l /electric-moray/chash/leveldb-2021/ -b leveldb -d 'ro'
 
 The -d flag in node-fash is destructive -- it will overwrite whatever data
 previously occupied the value on that key.  To start out, every key's value
-defaults to 1.  By setting the field to 'ro', we are telling electric-moray
-not to send writes to this vnode.  This puts this topology into a dirty state,
-which is why we will not be uploading this topology into electric moray. The
-purpose of this step is merely to enter a write-lock so that when we are in
-the process of moving the remapped topology between peers, we will not end
-up with data lost because it was written during the moving process.
-
-Make sure to put electric-moray back the way it was:
+defaults to 1.  By setting the field to 'ro', we are telling electric-moray not
+to send writes to this vnode.  This puts this topology into a dirty state, which
+is why we will not be uploading this topology into electric moray. The purpose
+of this step is merely to enter a write-lock so that when we are in the process
+of moving the remapped topology between peers, we will not end up with data lost
+because it was written during the moving process.  Once you have performed this
+operation on all 4 LevelDBs, make sure to give electric-moray back the lock:
 
         $ svcadm enable electric-moray-2021
 
 #### 5. Take a lock to prevent pg dumps.
 
-An ongoing pg dump will interfere with the resharding process, so we need
-to make sure that one is not happening during this time. This command will
-need to be run from any nameservice (zookeeper) zone in order to create a
-lock:
+An ongoing pg dump will interfere with the resharding process, so we need to
+make sure that one is not happening during this time. This command will need to
+be run from any nameservice (zookeeper) zone in order to create a lock:
 
         $ zkCli.sh create /pg_dump_lock whatever_you_want_to_call_the_lock
 
@@ -242,24 +286,24 @@ Check that you successfully created the lock:
 
         $ zkCli.sh get /pg_dump_lock
 
-You should see the name of your lock at the top of the output.  This is a
-coarse lock -- zookeeper will just check for the presence of a dump lock
-file and stop all dumps when it sees one.
+You should see the name of your lock at the top of the output.  This is a coarse
+lock -- Manatee will just check for the presence of a dump lock file and stop
+all dumps when it sees one.
 
 #### 6. Make sure Manatee dumps are not running.
 
-Log in to the postgres zone for the new shard you created in step 1, and run:
+Log in to the postgres zone for the new shard you created in step 3, and run:
 
         $ ptree | grep pg_dump.sh
 
-If anything is running, wait until it is finished (or kill it) before moving
-to the next step.
+If anything is running, wait until it is finished (or kill it) before moving to
+the next step.
 
 #### 7. Move the new Manatee peer into the new shard.
 
 This requires changes to SAPI metadata and rebooting the node to pick up the
 changes.  In this step, <zone_uuid> always refers to the zone of the new async
-peer we created in step 1.  First, we will have to disable the manatee-sitter:
+peer we created in step 3.  First, we will have to disable the manatee-sitter:
 
         $ svcadm disable manatee-sitter
 
@@ -267,18 +311,18 @@ Next, we have to update the SAPI metadata for the zone to add it to the new
 shard:
 
         $ sapiadm update <zone_uuid> metadata.SERVICE_NAME="3.moray.joyent.us"
-        $ sapiadm update <zone_uuid> metadata.SHARD=4
+        $ sapiadm update <zone_uuid> metadata.SHARD=3
         $ sapiadm update <zone_uuid> metadata.MANATEE_SHARD_PATH='/manatee/3.moray.joyent.us'
 
-We will also need to update the alias parameter in the VM, by reprovisioning
-the zone with sapiadm, since the alias of the vm is is a first-class property
-used to create it, and contains the cluster name.  This will also reboot the
-zone to pick up the metadata changes.
+We will also need to update the alias parameter in the VM, by reprovisioning the
+zone with sapiadm, since the alias of the vm is is a first-class property used
+to create it, and contains the cluster name.  This will also reboot the zone to
+pick up the metadata changes.
 
         # Update vmapi
-        $ sdc-vmapi /vms/<zone_uuid>?action=update -X POST -d '{"alias":"4.postgres.emy-11.joyent.us-<zone_uuid_first_bit_before_hyphen>"}'
+        $ sdc-vmapi /vms/<zone_uuid>?action=update -X POST -d '{"alias":"3.postgres.emy-11.joyent.us-<zone_uuid_first_bit_before_hyphen>"}'
         # For consistency, but won't affect cluster state
-        $ sapiadm update <zone_uuid>} params.alias=4.postgres.emy-11.joyent.us-<zone_uuid_first_bit_before_hyphen>
+        $ sapiadm update <zone_uuid> params.alias=3.postgres.emy-11.joyent.us-<zone_uuid_first_bit_before_hyphen>
         # Reboot the zone and pick up changes
         $ sapiadm reprovision <zone_uuid> <image_uuid>
 
@@ -293,37 +337,39 @@ This is because the /state file for a zookeeper manatee directory is populated
 once there is a cluster for each moray.  The first generation doesn't form
 until there are two or more peers.  So, copy the `manta-adm show` output to a
 new file and add 2 more postgres zones, since you are adding a sync and async
-for the new cluster, then run manta-adm update.
+for the new cluster, then run `manta-adm update`.
 
-Now, we are in a tricky state.  You will notice that if you run manatee-adm
-show again, the same error message is displayed.  This is partially explained
-by the comments linked here in the manatee-state-machine:
+Now, we are in a tricky state.  You will notice that if you run `manatee-adm show`
+again, the same error message is displayed.  If you check in zookeeper (which we
+will walk through shortly), you will see that the election file has updated from
+one IP to three IPs -- but there is stil no state file. This is partially
+explained by the comments linked here in the code for manatee-state-machine:
 
-https://github.com/joyent/manatee-state-machine/blob/master/lib/manatee-peer.js#L445
-https://github.com/joyent/manatee-state-machine/blob/master/lib/manatee-peer.js#L454
+https://github.com/joyent/manatee-state-machine/blob/a4d6b51355d69f0bed40bf295f31a7fb7f772f84/lib/manatee-peer.js#L445
+https://github.com/joyent/manatee-state-machine/blob/a4d6b51355d69f0bed40bf295f31a7fb7f772f84/lib/manatee-peer.js#L454
 
-Currently, when we bring up a new shard toplogy, the election is is pre-
-assigned to zookeeper.  Meaning, we have already decided which node is the
-primary, which is the sync, etc.  This is to prevent race conditions and other
-problems that occured in the original iteration of manatee.  We can reference
-this document for futher details:
+Currently, when we bring up a new shard toplogy, the election is is pre-assigned
+to zookeeper.  Meaning, we have already decided which node is the primary, which
+is the sync, etc.  This is to prevent race conditions and other problems that
+occured in the original iteration of manatee.  We can reference this document
+for futher details:
 
-https://github.com/joyent/manatee/blob/master/docs/migrate-1-to-2.md
+https://github.com/joyent/manatee/blob/34238c257d3cb6fe7eba247c7e40a1dd49c4f3e8/docs/migrate-1-to-2.md
 
-The relevant part of this for our purposes is that, since we are starting out
+The relevant part of this for our purposes is this: since we are starting out
 with only a single node that has data on it, we are going to be in a state from
 a data perspective, as we bring up nodes, that is a similar to the "legacy"
-mode referenced below--the "old" version of manatee:
+mode referenced below:
 
-https://github.com/joyent/manatee/blob/master/lib/adm.js#L209
+https://github.com/joyent/manatee/blob/34238c257d3cb6fe7eba247c7e40a1dd49c4f3e8/lib/adm.js#L209
 
-In this mode, the first zone created became the primary.  So, in that universe, 
-there would be pre-existing data on the primary, that would then move over to
-the sync and async.  However, today when we bring up a new cluster, manatee
-normally expects that there is no preexisting data in the cluster. So now, we
-will go through the mechanism to backfill data from our new primary into the
-the other two nodes.  If you get into a bad state at some point, this document
-can help you find your way out:                            
+In this mode, the first zone created became the primary.  So, in that older
+version of manatee, there would be pre-existing data on the primary that would
+then move over to the sync and async.  However, when we bring up a new cluster
+today, manatee normally expects that there is no preexisting data in the
+cluster.  This means we will need to backfill data from our new primary into the
+the other two nodes.  If you get into a bad state at some point while doing
+this, this document can help you find your way out:                            
                                                                                 
 https://github.com/joyent/manatee/blob/3771c6fbd979ad41e7a71b19f9e2b7ff99542134/docs/trouble-shooting.md
 
@@ -336,8 +382,8 @@ operations for moving the now-split manatee peer into the new shard:
         # Press 0, 1, or 2
         # Go into the zookeeper command line interface
         $ zkCli.sh
-        # Read the zk state for whichever moray cluster you're using
-        $ ls /manatee/3.moray.emy-11.joyent.us/election
+        # Read the zk election information for whichever moray cluster you're using
+        (inside zkCli)$ ls /manatee/3.moray.emy-11.joyent.us/election
         # Confirm that the lowest-numbered IP is the primary
 
         [zk: localhost:2181(CONNECTED) 16] ls /manatee/3.moray.emy-11.joyent.us/election
@@ -349,27 +395,37 @@ assigned to 12345-0000000002 and 0000000001.  Below are instructions to clear
 out a bad state:
 
         # Remove the entire directory
-        $ rmr /manatee/3.moray.emy-11.joyent.us
+        (inside zkCli)$ rmr /manatee/3.moray.emy-11.joyent.us
         # Check to see if the IP for the postgres zone you've created is there
-        $ ls /manatee/3.moray.emy-11.joyent.us/election        
+        (inside zkCli)$ ls /manatee/3.moray.emy-11.joyent.us/election
 
 Now, log in to any postgres zone in the new cluster, and run:
 
-        $ manatee-adm state-backfill                                            
+        $ manatee-adm state-backfill
                                                                                 
-It does not matter which node in the cluster you run this from, because         
-information about which node has the data on it (the primary) is kept in        
-zookeeper's /election file.  This is why  we need to make sure that the first  
-zone we created is registered as the primary in zookeeper, otherwise we risk    
-backfilling data from one of the empty zones, which would remove the data we    
-just painstakingly moved over from the old shard. 
+It does not matter which node in the cluster you run this from, because
+information about which node has the data on it (the primary) is kept in
+zookeeper's `/election` file.  This is why  we need to make sure that the first
+zone we created is registered as the primary in zookeeper, otherwise we risk
+backfilling data from one of the empty zones, which would remove the data we
+just painstakingly moved over from the old shard.
 
 Log in to the zone and check that manatee is back up and running in the new
 shard:
 
         $ manatee-adm show
 
-If everything looks correct, then we can now move on.  That WLSLT:
+Also check that state information now exists in zookeeper (and is correct).
+
+        $ zkCli.sh
+        # Read the zk state
+        (inside zkCli)$ get /manatee/3.moray.emy-11.joyent.us/state
+
+Double-check that the primary is the original shard that you split off, and you
+can also run some test sql in the postgres zones to make sure that data ended up
+in the new cluster.
+
+If everything looks correct, we can move on.  That WLSLT:
 
         $ manatee-adm show
         zookeeper:   10.77.77.113
@@ -384,16 +440,16 @@ If everything looks correct, then we can now move on.  That WLSLT:
         sync     b69b60ac ok   async 1/6C9F47C0    1/6C9F47C0    1/6C9F47C0    1279m02s
         async    d2a9cfcf ok   -     -             -             -             1279m02s
 
-You should also check that the vnode you took note of in step 2, when you
-created a canary file, is now in the new postgres shard.  You can do that
-using this query:
+You should also check that the vnode you took note of in step 2, when we created
+a canary directory, is in the new postgres shard.  You can do that using this
+query:
 
         $ psql moray -c 'select name from manta where _vnode=<vnode_number>;'
 
 The uuid returned from the query should match the one you originally generated
 and named the file you mput to manta.
 
-Finally, we'll deploy a new moray for the new shard.  Generate your manta
+Finally, we'll deploy new morays for the new cluster.  Generate your manta
 config via `manta-adm show -sj` on the headnode, copy-paste that into a new
 file, then add an entry below your final moray with an identical, incremented
 value. It should be very clear what needs to happen, given the structure of
@@ -401,50 +457,38 @@ the file.  Then, run `manta-adm update {name of your new file}` to apply your
 changes (from now on I'm just going to say 'update manta' and assume you know
 what to do).
 
-Note that LevelDB will not intuit the addition of a new moray and therefore
-will not update the list of pnodes for the ring accordingly.  We will deal
-with this in the next step.
-
-NOTE -- This was a thought I had a while ago and might not make sense now:
-As a side-note, I see no reason why this step could not be combined
-with the bit in the middle of step 3 where you have to update manta to
-increment the number of postgres shards.  Since we are down for writes from
-the time we start putting vnodes into read-only mode, until we are completely
-finished with the next step (which is a long one), it makes more sense to me
-to do this earlier, since it has no negative side effects I can think of.
-However, for the sake of the clarity of this guide, I am putting it here,
-where it might appear more conceptually relevant in this linear format.
+Note that LevelDB will not intuit the addition of a new moray and therefore will
+not update the list of pnodes for the ring accordingly.  We will deal with this
+in the next step.
 
 #### 8. Reshard the vnodes. (Add new pnode(s) to the ring.)
 
 The next step is to use node-fash's remap-vnodes instruction to create a new
 hash ring that reflects the desired state of the topology.  Before doing this,
-it is probably a good idea to copy the current topology to a new folder, just
-in case you need the original.  Note that you may want to test that you can
-remap vnodes both to existing pnodes with room on them, or to a new pnode.  In
-this example, and when doubling the space available to a given vnode topology,
-we will create and use a new pnode.  This is the heart of the process, and is
-actually more like 5 mini-steps than one.  This is what we'll be doing:
+it is probably a good idea to copy the current topology to a new folder in case
+you need the original.  Note that you may want to test that you can remap vnodes
+both to existing pnodes with room on them, or to a new pnode.  In this example,
+and when doubling the space available to a given vnode topology, we will create
+and use a new pnode.  This is the heart of the process, and is actually more
+like 5 mini-steps than one.  This is what we'll be doing:
 
-1.  First, we will download a pristine copy of hash ring from imgapi,
-    because we've made changes to the one we've been using that may not
-    be perfectly reversible via the node-fash command line tools.  There
-    is no standardized hash ring, as it is generated from each run of the
-    `manta-create-topology` script.  Since we have not tarred up our read-
-    only changes, the current hash ring image uuid is clean.
-
-    To find the image uuid, run this in your manta zone:
+1.  First, we will download a pristine copy of hash ring from imgapi, because
+    we've made changes to the one we've been using that may not be perfectly
+    reversible via the node-fash command line tools.  We will pull our ring
+    image from SAPI by running this command in our manta deployment zone:
 
         $ curl -s "$(cat /opt/smartdc/manta-deployment/etc/config.json | json sapi.url)/applications?name=manta&include_master=true" | json -Ha metadata.HASH_RING_IMAGE
 
-    Then use the upload image tool to get this image into electric-
-    moray:
+    Next, use the upload image tool to get put this image into electric-moray in
+    a directory at `/var/tmp` -- we do not want this hash ring to be in use yet,
+    the old one, with read-only vnodes marked, should still be the one
+    electric-moray uses for the time being:
 
-        $ TODO
+        $ WIP: MANTA-3388
 
-2.  We will next run the node-fash remap-vnodes command to move the vnodes
-    we want to the new pnode.  This command will create a new pnode with
-    the key passed from the -p flag, if it does not exist already.
+2.  We will next run the node-fash remap-vnodes command to move the vnodes we
+    want to the new pnode.  This command will create a new LevelDB pnode with
+    the key passed from the -p flag if it does not exist already.
 
         $ /opt/smartdc/electric-moray/node_modules/fash/bin/fash.js remap-vnodes -v '0, 106, 943, 689' -l /var/tmp/hash_ring -b leveldb -p 'new.pnode'
 
@@ -463,9 +507,9 @@ actually more like 5 mini-steps than one.  This is what we'll be doing:
 
         $ OWNER_UUID=$(curl -s "$(cat /opt/smartdc/manta-deployment/etc/config.json | json sapi.url)/applications?name=manta&include_master=true"| json -Ha owner_uuid)
 
-    Now, use these variables to create a new ring manifest.  Create a
-    file (for example, `/var/tmp/$NEW_IMAGE_UUID.ring.manifest.json`)
-    with the following contents:
+    Now, use these variables to create a new ring manifest.  Create a file (for
+    example, `/var/tmp/$NEW_IMAGE_UUID.ring.manifest.json`) with the following
+    contents:
 
             {
                 "v": 2,
@@ -492,8 +536,8 @@ actually more like 5 mini-steps than one.  This is what we'll be doing:
 
         $ sdc-imgadm import -m /var/tmp/($NEW_IMAGE_UUID).ring.manifest.json -f /var/tmp/($NEW_IMAGE_UUID).ring.tar.gz
 
-4.  Then we will update SAPI, replacing the old HASH_RING_UUID with the
-    uuid of the new hash ring topology we just uploaded to imgapi.
+4.  Then we will update SAPI, replacing the old HASH_RING_UUID with the uuid of
+    the new hash ring topology we just uploaded to imgapi.
 
         $ SAPI_URL=$(cat /opt/smartdc/manta-deployment/etc/config.json | json sapi.url)
         $ MANTA_APPLICATION=$(curl -s "$SAPI_URL/applications?name=manta&include_master=true" | json -Ha uuid)
@@ -506,25 +550,28 @@ actually more like 5 mini-steps than one.  This is what we'll be doing:
 
 5.  Finally, we will download the new sapi manifest into electric-moray.
 
-    NOTE: Instead of this, we'll use the upload topology script
-
     On the headnode:
     
         $ sdc-vmadm get <your_electric_moray_zone_uuid> | json image_uuid
         $ sapiadm reprovision <your_electric_moray_zone_uuid> <the_image_uuid_you_just_got>
+
+        OR
+
+        $ WIP: MANTA-3388
 
 This should end the write block, as the vnodes in the pristine copy of the
 topology were never set to read-only mode.
 
 #### 9. Verify changes.
 
-This is where the canary file we made in step 3 becomes useful.  We're going to
-try to write to the file that should now be in write mode and on the new shard,
-not the old one.
+This is where the canary directory we made in step 3 becomes useful.  We're
+going to try to write to the file that should now be in write mode and on the
+new shard, not the old one.
 
         $ ./bin/mput /poseidon/stor/re-shard-canary-dir/2178ed56-ed9b-11e2-8370-d70455cbcdc2 -f change.txt
 
-NOTE: I'm not so sure about this as a test with the current topology.
+NOTE: I'm not so sure about the effectiveness of the test below.
+
 Check that the `_id` field increments on the new shard rather than the old one.
 You can see this if you run this query on the primaries of the old and the new
 shard and make sure that the `_id` field is larger on the new shard:
@@ -549,24 +596,23 @@ is probable if this process took more than an hour.
 
 #### 12. Drop rows from old mappings.
 
-Now we need to clean up data left over from the previous shard relation.
-Because we are about to delete data irretrievably, let's take a moment to step
-back and review our overall goal with this process, which is to split existing
-data between two database shards, one which is left behind on old hardware, and
-the other which is moved to new hardware.  We will also need to get rid of all
-the tables that housed marlin and storage information, if the split shard was
-the administrative shard.
+Now we need to clean up data left over from the previous shard relation. Because
+we are about to delete data irretrievably, let's take a moment to step back and
+review our overall goal with this process, which is to split existing data
+between two database shards, one which is left behind on old hardware, and the
+other which is moved to new hardware.  We will also need to get rid of all the
+tables that housed marlin and storage information, if the split shard was the
+administrative shard.
 
-In step 1, we made a new async shard that needed to replicate all data from the
+In step 3, we made a new async peer that needed to replicate all data from the
 original shard.  This diagram is simplified.  Instead of showing the real
 3-shard setup with a primary, sync, and async, to which we add a second async,
 I'm going to show only the primary on the left and the second async on the
-right, skipping the sync and first async for simplicity.
+right, skipping the sync and first async for simplicity.  `1.moray` and `2.moray`
+are abbreviations for "data that was stored on x.moray".
 
 
-                       PEER 1
-
-         SHARD 1                  SHARD 4
+         PRIMARY                 2ND ASYNC
 
 
        +-----------+           +-----------+
@@ -582,15 +628,13 @@ right, skipping the sync and first async for simplicity.
        +-----------+           +-----------+
 
 
-In step 7, we stopped the replication process and moved the async shard we made
+In step 7, we stopped the replication process and moved the async peer we made
 into the new peer on the new pnode.  Note that there are now two peers, and the
 shard which was previously the fourth in the pipeline to receive data
 replication is now the primary in a new peer.
 
 
-         PEER 1                   PEER 2
-
-         SHARD 1                  SHARD 1
+         PRIMARY               ANOTHER PRIMARY
 
 
        +-----------+     +     +-----------+
@@ -612,9 +656,7 @@ which is to split the metadata between an old and a new peer, freeing space on
 both.
 
 
-         PEER 1                   PEER 2
-
-         SHARD 1                  SHARD 1
+         PRIMARY               ANOTHER PRIMARY
 
 
        +-----------+     +     +-----------+
