@@ -142,7 +142,7 @@ extended to also cap zones. There were a number of problems with rcapd:
 
    * At the time there was no mechanism to get an accurate RSS for the zone,
      so sometimes a zone would be incorrectly capped when it was actually well
-     under it's limit, due to shared pages. 
+     under its limit, due to shared pages.
 
    * The daemon was a single process responsible for capping all projects and
      zones on the system, so it was easy for it to get very far behind.
@@ -156,9 +156,9 @@ was added; 'getvmusage'. This syscall can calculate a correct, aggregated
 RSS for a given type of container (e.g. a project or zone). Because this is
 implemented in the kernel, it is more efficient at this calculation, but the
 code still locks the process while traversing the address space, so latency
-issues can occur, as described earlier. Various user-level tools, such as 'rcapd'
-and 'prstat', were enhanced to make use of this new system call when they
-need RSS data for a project or zone.
+issues can occur, as described earlier. Various user-level tools, such as
+'rcapd' and 'prstat', were enhanced to make use of this new system call when
+they need RSS data for a project or zone.
 
 To improve the scalability of zone capping, 'zoneadmd' was enhanced to use
 an internal thread to cap only the zone the daemon is managing. The 'rcapd' is
@@ -359,7 +359,7 @@ both are running. All of this has the potential to reintroduce the latency
 bubbles that we've worked hard to eliminate in the existing memory capping code.
 
 Because of the additional cost (memory/page) and complexity of this alternative,
-it is not being considered for the initial implemenation. This approach
+it is not being considered for the initial implementation. This approach
 could be revisited at a later date if it is determined that the single system
 pageout\_scanner() is inadequate.
 
@@ -407,7 +407,7 @@ assume that these different entities are strictly hierarchical (zone,
 project, etc.) then the pageout scanner could be modified to handle
 the lowest entity in the hierarchy. For example, if a project was
 over its memory cap, the scanner would only consider pages which belonged
-to the specific intermedate "container" that described the zone/project.
+to the specific intermediate "container" that described the zone/project.
 If all of the projects were under their memory cap, but the total for the
 zone was over the cap, then all of the "container" objects for that zone
 would need to be considered by the scanner.
