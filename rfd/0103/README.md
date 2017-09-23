@@ -60,7 +60,7 @@ performed multiple times.
 Go into the zone of the primary Manatee shard and run this command to display
 how many keys are stored on each vnode.
 
-        $ psql moray -c 'select _vnode, count(*) from manta group by _vnode order by count desc;''
+        $ psql moray -c 'select _vnode, count(*) from manta group by _vnode order by count desc;'
 
 The output will look something like this (WLSLT):
 
