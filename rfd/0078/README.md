@@ -62,10 +62,9 @@ Currently, moray `findobjects` requests may silently return erroneous results
 when using a search filter that includes unindexed fields.
 
 This document starts by describing the problem in details. It then presents how
-they impact the VMAPI use case that is tracked by
-[ZAPI-747](https://smartos.org/bugview/ZAPI-747). It goes on to describe how
-this use case applies to other core services and how these limitations apply to
-other use cases.
+they impact the VMAPI use case that is tracked by [ZAPI-747]. It goes on to
+describe how this use case applies to other core services and how these
+limitations apply to other use cases.
 
 Finally it presents changes to moray that would allow moray clients to never get
 incorrect results returned silently due to unindexed fields.
@@ -73,12 +72,12 @@ incorrect results returned silently due to unindexed fields.
 ### Context
 
 This document was written while implementing a new feature in VMAPI needed to
-support [NFS shared
-volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md).
+support [NFS shared volumes][RFD 26].
 
-As described in the corresponding [RFD](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md)
-, [new indexes need to be added to one of VMAPI's moray buckets' schema](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#new-internal_role-property-on-vm-objects). A [ticket was created](https://smartos.org/bugview/ZAPI-747)
-to describe and track the work needed to be able to add these new indexes.
+As described in the corresponding [RFD][RFD 26], [new indexes need to be added
+to one of VMAPI's moray buckets' schema](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#new-internal_role-property-on-vm-objects).
+A [ticket was created][ZAPI-747] to describe and track the work needed to be
+able to add these new indexes.
 
 While working on implementing the changes needed to support the addition of
 these indexes and the migration process, it seemed that moray's implementation
@@ -166,8 +165,8 @@ Passing the `noLimit: true` flag to `findobjects` works around this problem.
 However, it cannot be recommended as a solution as it can severely impact
 performance.
 
-My understanding is that this limitation is tracked by
-[MORAY-104](https://devhub.joyent.com/jira/browse/MORAY-104).
+[MORAY-104] fixes the bulk of this issue, but there are still edge cases like
+[MORAY-413] that can cause applications to hit this problem.
 
 ### non-string search filters do not work as expected
 
@@ -199,13 +198,12 @@ The reason is that the filter used to make sure that all objects returned
 actually match the provided filter use a filter that is not aware of the indexed
 fields' type _for all unindexed fields_.
 
-The [`compileQuery` function](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L126-L304)
+The [`compileQuery` function](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L126-L304)
 is the one responsible for [updating the type of the values specified in the
-`findobjects` request's filter](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L44-L123).
+`findobjects` request's filter](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L44-L123).
 
-However, it [only considers indexes that are fully reindexed as
-valid](https://github.com/joyent/moray/blob/master/lib/objects/comm
-on.js#L481-L500), and thus will update the types of filters' values only for
+However, it [only considers indexes that are fully reindexed as valid](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L481-L500),
+and thus will update the types of filters' values only for
 fields that correspond to fully reindexed indexes.
 
 The consequence is that for the following object:
@@ -227,8 +225,7 @@ Filtering on any field of type `'string'` results as expected (with the caveat
 described in the other sections regarding pagination).
 
 This limitation with search filters using non-string values is [already
-mentioned in the moray-test-suite repository](https://github.com/joyent/moray-te
-st-suite/blob/master/test/objects.test.js#L2055).
+mentioned in the moray-test-suite repository](https://github.com/joyent/moray-test-suite/blob/ad95d757/test/objects.test.js#L2055).
 
 However, I have not yet been able to find an existing JIRA ticket that tracks
 this problem.
@@ -294,23 +291,25 @@ searching for objects in this bucket with the filter
 The reason this `findobjects` request doesn't only return the object that
 matches the filter is that, when the database table's column that is storing the
 values for the newly indexed property _does not_ contain any value for that
-property, [the values on which the filter is applied have that property deleted](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L843-L857).
+property, [the values on which the filter is applied have that property deleted](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L843-L857).
 
 Thus, [the filter that is applied after all records are filtered from the
-database](https://github.com/joyent/moray/blob/master/lib/objects/find.js#L147)
+database](https://github.com/joyent/moray/blob/52d7669f/lib/objects/find.js#L147)
 does not filter on the `boolean_field` property, and the objects that do not
-match the filter for that field pass through.
+match the filter for that field pass through (without the reindexing field,
+even if it should be present).
+
+[MORAY-428] fixes this issue.
 
 ## How ZAPI-747 is impacted by these limitations
 
 This section presents why, in the context of [the work done to enable VMAPI to
-update its moray buckets' schema](https://smartos.org/bugview/ZAPI-747), these
-limitations cannot be worked around and have to be fixed.
+update its moray buckets' schema][ZAPI-747], these limitations cannot be worked
+around and have to be fixed.
 
 ### A short description of ZAPI-747's use case
 
-In order to implement part of the [NFS shared volumes
-RFD](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md), indexes on
+In order to implement part of the [NFS shared volumes RFD][RFD 26], indexes on
 new VM objects' fields need to be added to VMAPI moray buckets' schema.
 
 The migration of current schemas to the new ones needs to be performed during
@@ -335,8 +334,7 @@ handled.
 
 For instance, sdc-napi [uses a restify handler that checks for a flag
 representing whether or not all moray schema migrations have
-completed](https://github.com/joyent/sdc-na
-pi/blob/4b413d4712055019af1a9c2e160bb7246f5c0b48/lib/napi.js#L94-L97).
+completed](https://github.com/joyent/sdc-napi/blob/4b413d47/lib/napi.js#L94-L97).
 
 It works for sdc-napi because I believe its maintainers determined that the
 current reindexing time for any of its moray buckets falls within the acceptable
@@ -519,8 +517,7 @@ $ sdc-vmapi /vms?predicate=$(urlencode '{"and": [{ "eq": [ "state", "running" ]}
 ```
 
 As a result, this command _will_ silently return erroneous results. See
-[ZAPI-756](https://smartos.org/bugview/ZAPI-756) for an example of such a
-problem encountered by a user of Triton.
+[ZAPI-756] for an example of such a problem encountered by a user of Triton.
 
 I believe that these other use cases haven't attracted a lot of attention
 because most if not all users have been able to work around them.
@@ -531,10 +528,9 @@ This section presents a solution to all of the `findobjects` limitations
 described earlier in this document.
 
 This solution solves both the VMAPI specific use case presented in this document
-(tracked by [ZAPI-747](https://smartos.org/bugview/ZAPI-747)), the more general
-Triton core API moray buckets migration use case, and any other use case
-described in this document, such as the ones tracked by
-[MORAY-104](https://smartos.org/bugview/MORAY-104).
+(tracked by [ZAPI-747]), the more general Triton core API moray buckets migration
+use case, and any other use case described in this document, such as the ones
+tracked by [MORAY-104].
 
 Different solutions for each of the limitations presented in the
 section entitled "Current problems with findobjects requests using unindexed
@@ -550,8 +546,8 @@ allowing clients to send JSON-formatted filters which would include type
 information.
 
 3. The issue with not-yet-reindexed fields could be solved by fixing [the
-`rowToObject` function](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L816-L860)
-to not [delete values for fields that are being reindexed](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L849-L852).
+`rowToObject` function](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L816-L860)
+to not [delete values for fields that are being reindexed](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L849-L852).
 
 However, only applying the changes to solve issues #2 and #3 would still not
 guarantee reliable results for all `findobjects` requests, and solving issue #1
@@ -741,10 +737,9 @@ Three different cases were tested:
    the moray client passing the `requireIndexes: true` option to the
    `findObjects` method, thus enabling the new stricted behavior
 
-The performance impact was measured by running [misterdjules/moray-benchmark-sea
-rch-filters/benchmark-reindex.js](https://github.com/misterdjules/moray-benchmar
-k-search-filters/blob/49fda6fe1c802a33a4e13899a8019a89fcf7d114/benchmark-reindex
-ed.js) as following:
+The performance impact was measured by running
+[misterdjules/moray-benchmark-search-filters/benchmark-reindex.js](https://github.com/misterdjules/moray-benchmark-search-filters/blob/49fda6fe/benchmark-reindexed.js)
+as following:
 
 ```
 (I=0; while [ $I -lt 1000 ]; do node benchmark-reindexed.js -n 1000 --norecreatebucket; I=$((I + 1)); done)
@@ -1047,3 +1042,12 @@ as part of a new feature of Triton.
 Thus, it should always be able to provide a fallback that, in the worse case, is
 to communicate to users and operators that moray needs to be upgraded in order
 to be able to use that new feature.
+
+<!--- Issue links -->
+[MORAY-104]: https://smartos.org/bugview/MORAY-104
+[MORAY-428]: https://smartos.org/bugview/MORAY-428
+[ZAPI-747]: https://smartos.org/bugview/ZAPI-747
+[ZAPI-756]: https://smartos.org/bugview/ZAPI-756
+
+<!-- Other RFDs ->
+[RFD 26]: ../0026
