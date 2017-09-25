@@ -1050,4 +1050,4 @@ to be able to use that new feature.
 [ZAPI-756]: https://smartos.org/bugview/ZAPI-756
 
 <!-- Other RFDs ->
-[RFD 26]: ../0026
+[RFD26]: ../0026
