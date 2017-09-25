@@ -59,7 +59,7 @@ CNAPI is comprised of a number of sub-systems, so it is worthwhile to look at
 each in turn. We shall examine how each one works and what changes, if any, are
 required to in order to allow them to correctly operate multiple CNAPI
 instances. As currently designed, some CNAPI subsystems are more able to deal
-other CNAPI instances running alongsie without unwanted or undefined behavior,
+other CNAPI instances running alongside without unwanted or undefined behavior,
 such as unintentional overwriting of data) of itself running in parallel than
 others.
 
@@ -166,7 +166,7 @@ Incomplete.
 ##### Problem #1
 
 Presently, CNAPI is unlikely to change IP addresses, even due to upgrades, etc.
-In a deployment where there may be two CNAPI instances, and If one CNAPI
+In a deployment where there may be two CNAPI instances, and if one CNAPI
 instance is created and another destroyed, the CNAPI instance at the IP-address
 we may have on-hand could be unvavailable.
 
@@ -205,6 +205,11 @@ prohibitive.
 
 It would be ideal to only have to write to moray any time there is a signficant
 change in server's status (ie it comes up or goes down).
+
+In addition to the performance cost of this architecture, because of the
+periodic nature of updates, an update of the "status" property of a server
+could happen as much as 5 seconds after the fact, which is less than ideal.
+Ideally the moment a server went offline, its status would reflect that fact.
 
 Any new logic should not signficantly regress existing CNAPI behaviour.
 
@@ -264,17 +269,13 @@ On connection loss:
    - do nothing
 
 Periodically:
-- check all tracked connections have sent a byte in the last 2 seconds.
+- check all tracked connections have sent a byte in the last 2 seconds. This is
+  to guard against a server silently disconnecting without us noticing.
 
 If no message in last 2 seconds:
 - update server status => 'unknown'
 
-Questions/Thoughts:
-- rely on TCP sockets and lean on TCP keep-alive to maintain or use some sort of HTTP
-- how does cn-agent maintain compatability with older CNAPI
-- how does CNAPI maintain compatability with older cn-agent
-
-#### Legacy Interoperability
+#### Backwards Compatability
 
 For a period of time it may be the case that we have a CNAPI running the code
 described in this RFD, but receiving heartbeats from older versions of cn-agent
