@@ -72,9 +72,9 @@ incorrect results returned silently due to unindexed fields.
 ### Context
 
 This document was written while implementing a new feature in VMAPI needed to
-support [NFS shared volumes][RFD 26].
+support [NFS shared volumes][RFD26].
 
-As described in the corresponding [RFD][RFD 26], [new indexes need to be added
+As described in the corresponding [RFD][RFD26], [new indexes need to be added
 to one of VMAPI's moray buckets' schema](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#new-internal_role-property-on-vm-objects).
 A [ticket was created][ZAPI-747] to describe and track the work needed to be
 able to add these new indexes.
@@ -309,7 +309,7 @@ around and have to be fixed.
 
 ### A short description of ZAPI-747's use case
 
-In order to implement part of the [NFS shared volumes RFD][RFD 26], indexes on
+In order to implement part of the [NFS shared volumes RFD][RFD26], indexes on
 new VM objects' fields need to be added to VMAPI moray buckets' schema.
 
 The migration of current schemas to the new ones needs to be performed during
