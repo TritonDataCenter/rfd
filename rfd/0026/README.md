@@ -64,6 +64,7 @@ state: draft
       - [Mixing compute containers and volume containers](#mixing-compute-containers-and-volume-containers)
       - [Expressing locality with affinity filters (affinity milestone)](#expressing-locality-with-affinity-filters-affinity-milestone)
     - [Resizing volume containers](#resizing-volume-containers)
+    - [Placement of VMs that mount volumes](#placement-of-vms-that-mount-volumes)
   - [Networking](#networking)
     - [NFS volumes reachable only on fabric networks](#nfs-volumes-reachable-only-on-fabric-networks)
   - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone)
@@ -1218,6 +1219,32 @@ about challenges in resizing compute VMs that can be applied to storage VMs.
 
 The recommended way to resize NFS volumes is to create a new volume with the
 desired size and copy the data from the original volume to the new volume.
+
+### Placement of VMs that mount volumes
+
+While provisioning volume containers does not depend on platform changes,
+provisioning VMs that automatically mount volumes does depend on platform
+changes.
+
+To avoid requiring _all_ CNs of a datacenter to be upgraded to platform versions
+that include those changes before VMs can automatically mount volumes,
+allocation algorithms will be updated to filter out CNs that don't match minimum
+platform versions when provisioning VMs that automatically mount volumes.
+
+Each feature flag related to automatically mounting volumes (docker-automount
+for Docker containers and cloudapi-automount for non-Docker containers) will
+have their separate SAPI flag that indicates the minimum platform version
+required to support them.
+
+If no CN or only a limited number of CNs meet these minimum platform
+requirements, it is possible that provisioning a certain type of VMs that depend
+on volumes will fail all the time, or that the capacity will fill up very
+quickly.
+
+To make sure that operators are aware of this, the `sdcadm experimental
+nfs-volumes` command will output a warning whenever at least one CN of a given
+data center does not match the minimum platform requirements for a given feature
+flag.
 
 ## Networking
 
@@ -2824,7 +2851,8 @@ containers. This means that docker containers that are set to depend on shared
 volumes when they're created mount those volumes automatically on startup.
 Turning on this feature flag depends on all servers running a platform at
 `version >= 20160613T123039Z`, which is the platform that ships the required
-`dockerinit` changes.
+`dockerinit` changes. If this requirement is not met, then a warning message is
+outputted, but the feature flag is still enabled.
 
 Turning on `sdcadm experimental nfs-volumes docker-automount` requires turning
 on `sdcadm experimental nfs-volumes docker`, but does not do that automatically.
@@ -2840,12 +2868,11 @@ a version that ships those changes.
 indicates that the "NFS volumes automount" feature is turned on for non-docker
 VMs. This means that non-docker VMs that are set to depend on shared volumes
 when they're created mount those volumes automatically on startup. Turning on
-this feature flag will depend on all servers running a platform that doesn't
-exist yet (See [PUBAPI-1420](https://smartos.org/bugview/PUBAPI-1420)).
-
-In case enabling one of those feature flags failed on any of the prerequisites
-mentioned above, operators who would still want to proceed with enabling them
-could use the `--force` flag to bypass checks.
+this feature flag will depend on all servers running a platform at a version
+`>= 20170925T211846Z` (see
+[PUBAPI-1420](https://devhub.joyent.com/jira/browse/PUBAPI-1420)). If this
+requirement is not met, then a warning message is outputted, but the feature
+flag is still enabled.
 
 #### Turning it off
 
