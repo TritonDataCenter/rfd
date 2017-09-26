@@ -377,7 +377,7 @@ triton instance create -v wp-uploads:/uploads ...
 
 ```
 triton volume create --network mynetwork --name wp-uploads --size 100G
-triton volume create --network mynetwork --name wp-uploads --size 100G -e affinity:container!=wp-server (affinity milestone)
+triton volume create --network mynetwork --name wp-uploads --size 100G -a instance!=wp-server (affinity milestone)
 ```
 
 ##### Options
@@ -1208,7 +1208,8 @@ and the following operators:
 
 * `==`:
 * `!=`:
-* `~=`:
+* `==~`:
+* `!=~`:
 
 ### Resizing volume containers
 
@@ -2573,7 +2574,7 @@ Volumes are be represented as objects that share a common set of properties:
 
 * `state`: `creating`, `ready`, `deleting`, `deleted`, `failed` or
   `rolling_back` (snapshots milestone). Indicates in which state the volume
-  currently is. `deleted` and `failed` volumes are still persisted to Moray for
+  currently is. `failed` volumes are still persisted to Moray for
   troubleshooting/debugging purposes. See the section [Volumes state
   machine](#volumes-state-machine) for a diagram and further details about the
   volumes' state machine.
