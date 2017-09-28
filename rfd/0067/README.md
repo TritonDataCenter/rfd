@@ -38,7 +38,6 @@ want someting workable sooner.
 - [Core services](#core-services)
   - [imgapi](#imgapi)
   - [dhcpd](#dhcpd)
-  - [assets](#assets)
   - [sapi](#sapi)
   - [ufds](#ufds)
   - [sdc](#sdc)
@@ -119,7 +118,7 @@ A "properly setup TritonDC" is:
 
 ## Implementation Overview
 
-- Docs (and possibly some sdcadm command) define what "properly setup" is.
+- Docs (and possibly some sdcadm command) defining what "properly setup" is.
 
 - Triton components (platform, headnode setup scripts, services) are updated
   to support having multiple headnodes.
@@ -131,7 +130,9 @@ A "properly setup TritonDC" is:
   updated to apply changes to all headnodes.
 
     - TODO: what about catching up when changes can't be applied to all
-      headnodes and/or checking if HNs are in sync.
+      headnodes and/or checking if HNs are in sync. How about making those
+      commands idempotent, so if the update failed... it might be partial,
+      and you just re-run to finish (e.g. `sdcadm self-update ...`).
 
 - A sdcadm-owned SMF service running on each HN handles backing up data for
   local instances of non-HA services (e.g. imgapi) to "/var/sdcadm/restore-data"
@@ -152,8 +153,7 @@ A "properly setup TritonDC" is:
 This section details how operators are expected to "properly setup" their DC
 for headnode resilience and to handle headnode recovery and decommissioning.
 I.e. this is where we feel out the new operator UX and provide a basis for
-operator docs at <https://docs.joyent.com> for DC setup and headnode recovery
-and maintenance.
+updates to operator docs at <https://docs.joyent.com>.
 
 The proposed new sdcadm commands are:
 
@@ -169,22 +169,20 @@ The proposed new sdcadm commands are:
 
 ### Setting up secondary headnodes
 
-A prerequisite for the proposed headnode recovery support is that a DC is
-setup with two secondary headnodes. Current TritonDC operator documentation
-suggests that two CNs are used for HA instances of the core binder, manatee, and
-moray instances. This RFD suggests the following process to convert those
-CNs over to being "secondary headnodes":
+A prerequisite for the proposed headnode recovery support is that a DC is setup
+with two secondary headnodes. Current TritonDC operator documentation suggests
+that two CNs are used for HA instances of the core binder, manatee, and moray
+services. This RFD suggests the following process to convert those CNs over to
+being "secondary headnodes":
 
     sdcadm server headnode-setup $CN1   # convert CN1 to being a headnode
     sdcadm server headnode-setup $CN2   # convert CN2 to being a headnode
 
 Part of headnode-setup is to ensure that components in the DC are of sufficient
-version to support multiple headnodes.
-
-The headnode conversion will involve a reboot (at least, to use the fs-joyent
-script that is involved in creating the zones/usbkey dataset). The reboot could
-mean temporary service disruptions on the order of what a manatee or binder
-instance upgrade can entail.
+version to support multiple headnodes. The headnode conversion will involve a
+reboot (at least, to use the fs-joyent script that is involved in creating the
+zones/usbkey dataset). The reboot could mean temporary service disruptions on
+the order of what a manatee or binder instance upgrade can entail.
 
 For starters, this will only support converting a *setup* CN to an HN.
 Eventually this same command may support setting up a new *unsetup* server as a
@@ -210,8 +208,7 @@ set of headnodes on which to deploy so that these would become:
     sdcadm post-setup ha-manatee
     sdcadm post-setup ha-moray
 
-TODO: Minimal HA services might be expanded to include the assets and dhcpd
-services.
+TODO: Minimal HA services might be expanded to include the dhcpd service.
 
 
 ### Decommissioning a headnode server
@@ -232,7 +229,7 @@ This would do a controlled "move" of services on "headnode" to headnode
 "3WGMXQ1". "Move" is quoted because, *new* instances are created and the old
 instances destroyed, as opposed to existing "VM migration" scripts which move a
 VM dataset and maintain VM UUID, nics, etc. See the [Why new zones instead of
-migrating same UUID?](#why-new-zones-instead-of-migrating-same-UUID) section in
+migrating same UUID?](#why-new-zones-instead-of-migrating-same-uuid) section in
 the appendix.
 
 Note that service migration will avoid having multiple instances of the same
@@ -252,8 +249,6 @@ the existing secondary headnodes alone:
     sdcadm server headnode-setup $NEW_SERVER
     sdcadm service migrate headnode0 $NEW_SERVER --all
     # decommission headnode0
-
-TODO: ask joshw's opinion on VM migration vs create new insts?
 
 
 ### Headnode recovery process
@@ -429,27 +424,23 @@ subset of image file data.
 
 We want to change so that there is a dhcpd (aka "booter") zone on every
 headnode. Without this, CNs would not be able to boot while the initial headnode
-(the one with the only instances of "assets" and "dhcpd" zones) is dead.
+(the one with the only "dhcpd" zone) is dead.
 
 From discussion at YVR office:
 
 - TODO: should be fine for CN boots, but test it (per joshw)
+
 - TODO: Need to fix cache warming, because with multiple booters it could be
   a bigger potential issue. Also don't want to rely on not having a
   warmed cache for the failure scenario.
-- TODO: How to configure booter to use the *local* assets zone for serving
-  files? That might not be necessary. We'd just want a given dhcpd zone to
-  (a) only use assets zones that are up (does that mean assets using
-  registrar?); and (b) fairly use them, so that if a number of CNs are booting,
-  they don't all use the same assets zone. To be fair, we don't have numbers
-  that we need multiple dhcpd/assets zones for *scaling*. This is about
-  availability.
 
+- TODO: fix dhcpd's sapi manifest to use `{auto.ADMIN_IP}` I think it is called:
 
-### assets
+        sdc-booter/sapi_manifests/dhcpd/template
+        32:  "serverIp": "{{{dhcpd_admin_ip}}}",
 
-We want to change so that there is an assets zone on every headnode, for the
-same reasons as for the dhcpd zone (see previous section).
+    rather than `dhcpd_dmin_ip`, because we want it to use its *own* IP, not
+    the obsolete hardcoded first `dhcpd0` zone IP on the first headnode.
 
 
 ### sapi
@@ -495,19 +486,19 @@ that aren't otherwise HA. The natural choice of servers for secondary headnodes
 are the CNs already used to hold the HA instances of manatee, binder, and moray.
 The eventual suggested/blessed DC setup will then be:
 
-    Server "headnode0" (the "primary" headnode)
+    Server "headnode0"
         Instance "binder0"
         Instance "manatee0"
         Instance "moray0"
         Instance "sapi0"
         Instance "imgapi0"
         ...
-    Server "headnode1" (a secondary headnode)
+    Server "headnode1"
         Instance "binder1"
         Instance "manatee1"
         Instance "moray1"
         (possibly instances of other HA-capable core services)
-    Server "headnode2" (a secondary headnode)
+    Server "headnode2"
         Instance "binder2"
         Instance "manatee2"
         Instance "moray2"
@@ -520,6 +511,100 @@ The eventual suggested/blessed DC setup will then be:
   `sdcadm server headnode-setup ...`.
 - Change default headnode setup to use "headnode0" as the hostname.
 - Whatever syncing or data backup between headnodes that is required.
+
+
+#### headnode USB key image
+
+Here is what I think the minimal required data is for the USB key on a server
+we will be booting up to be a headnode. A tarball of this data will be
+created by `sdcadm server headnode-setup` and placed at
+"/usbkey/extra/headnode-prepare/usbkey-base.tgz" to be used by the CN for
+seeding its USB key.
+
+```
+.joyliveusb             marker file that this is the headnode bootable USB key
+boot/...                boot files
+boot/networking.json    generated from hn-netfile
+config                  manually generated (see discussion below)
+config.inc/...          files used by headnode.sh
+license                 Including it, but I assume it isn't used by code.
+os/...                  Same set as HN usbkey, but try to pull from usbkey
+                        copy for speed.
+scripts/...             holds headnode.sh and other scripts used at boot and after
+sdcadm-install.sh       Yes, but same version as *deployed* currently rather
+                        than the possibly out of date version on the HN USB key.
+tools.tar.gz            Used by headnode.sh to install GZ tools.
+cn_tools.tar.gz         Used by headnode.sh to setup for this HN setting up CNs.
+```
+
+Bits that I'm not sure if are needed, or will be if/when we drop the "CN must
+already be setup" limitation:
+
+```
+banner
+firmware/...            Not sure how used. Leaving this out for now.
+ur-scripts/...          This is the agents shar.
+```
+
+Other common USB key bits that we don't need:
+
+```
+TODO fill this out
+```
+
+#### TODO
+
+- sdcadm server headnode-setup:
+    - need to pass *local* assets IP to the headnode-prepare.sh script because
+      it is only *this* headnode that has setup /usbkey/extra/headnode-prepare
+    - trim USB key cruft from update_usbkey_extra_headnode_prepare, we need less
+    - on reboot and after headnode.sh runs we don't have:
+        /usbkey/extra/{agents,dockerlogger}
+      Is this a headnode.sh bug?
+        - also missing this mount:
+            /lib/sdc/docker/logger on /opt/smartdc/docker/bin/dockerlogger read only/setuid/devices/dev=169000f on Mon Sep 11 06:32:17 2017
+          headnode.sh issue? or elsewhere?
+    - get headnode-prepare.sh into sdc-headnode.git where it belongs
+    - 'sdcadm' install changes to install the shar, if can, to /var/sdcadm
+      somewhere, and update update_usbkey_extra_headnode_prepare to use it
+    - move ProcHeadnodeSetup to procedures/
+
+- setup sync'ing required for 'sdcadm service migration/restore'
+    This is the "restore-data" thing mentioned in the Overview.
+
+- other 'headnode resiliency setup':
+
+    - reserving IPs for replacement insts (does this require VM uuids?)
+    - creating starter instances on those new headnodes: dhcpd
+
+    Are these steps part of the headnode-setup? Or separate?
+
+
+- A replaced my COAL primary headnode, keeping an older secondary CN running
+  an older platform. The result was:
+        [root@headnode0 (coal hn) ~]# sdcadm server ls
+        HOSTNAME   UUID                                  STATUS   FLAGS  ADMIN IP
+        cn2        564dc847-1949-276a-8eb3-8d3a1df000ca  running  SHB    10.99.99.45
+        headnode0  564dd1ac-164d-cc50-247c-b2eb0cf21ce5  running  SH     10.99.99.7
+  The "B" flag is that boot_platform differs from current_platform:
+        [root@headnode0 (coal hn) ~]# sdc-cnapi /servers/564dc847-1949-276a-8eb3-8d3a1df000ca | grep platform
+          "boot_platform": "20170911T231447Z",
+          "current_platform": "20170828T221743Z",
+  Why is that? How is "boot_platform" set for a new headnode server record?
+  Is it just some sense of "default" boot platform in CNAPI?
+  Anyway this isn't a big issue. "boot_platform" for headnode is only relevant
+  if it boots as a CN.
+
+- A secondary headnode: Does it do the right thing with rabbitmq? Or does it
+  assume that rabbit will be local or not at all?
+
+- Nice to have: The "usbkey/config" file for the secondary headnode *should*
+  require a lot less than that on the initial headnode. It would be nice to
+  limit it to the minimal set -- taking the opportunity to feel out removing
+  cruft that has accumulated there. We shall see if that effort is worth
+  validating that some config is truly obsolete.
+  Note: Would be really nice to cycle on this *earlier*, as soon as we have
+  'sdcadm server headnode-setup' automated for quicker cycling.
 
 
 ### M1: Controlled decommissioning of a headnode
@@ -538,6 +623,132 @@ The ideal is to be able to do the following in nightly-1:
   services, data path (if any).
 - Full nightly-1 test suite run (including testing the nightly-1 Manta).
 
+
+#### TODO
+
+- easy first one: sdcadm service migrate headnode0 cn2 vmapi
+    - Then test can boot the HN and CN independently, etc.
+    - Watch log.errors on all services? Or is that too noisy? Would be nice
+      to get others to get those log.error's down to nothing as part of
+      normal.
+    See scratch section below.
+- next: cloudapi to test delegate dataset
+
+- ...
+
+- getting test suites to work even if inst is on another HN
+
+
+#### scratch
+
+    ssh headnode0   # shouldn't matter which one
+    sdcadm service migrate headnode0 cn2 --all
+
+    sdcadm service sync-restore-data
+        Hidden command, code in lib/service.js or whatever. Used by 'migrate'
+        for each service to ensure have latest bits.... I guess it could be
+        a proc then. Used by the bg task that is syncing these every 5m.
+
+            lib_services.listServices(...)
+            lib_services.syncRestoreData({
+                targetHeadnodes: [array of target servers]
+            }, function (err) {...});
+
+        This calls the "sync now" endpoint of the sdcadm-agent API on every
+        CN to have them pull. Those all send progress packets (JSON objects)
+        with which we show progress.
+
+sdcadm-agent:
+- listens on well-known port with an API, a la amon-relay
+- takes requests to kick off a service-restore-data sync for a given service name
+- if cannot contact a HN sdcadm-agent for sync'ing then note that for
+  'sdcadm status' (eventually an amon alarm for this)
+- also takes over the current sdcadm-setup service duties (logadm, anything else?)
+- Q: what cleans out service-restore-data when insts are removed? This argues
+  for *pull*.
+- does this service-restore-data sync every 5m
+
+
+sync-restore-data.sh prototype
+    Done:
+        /var/sdcadm/svc-restore-data/
+            svc-vmapi/
+                sapi-insts.json
+                vm-$uuid0.json
+                    XXX vmapi dump doesn't have, e.g. 'archive_on_delete'
+                    Q: what else it is missing from 'vmadm get ...'?
+                    TODO: discuss with  joshw
+                ...
+            images/
+                ... db of images here. Clean up is harder, but that is fine.
+    TODO: add dump of sapi-app.json and sapi-svc.json to give option to debug
+        or construct VM payload from that data.
+    TODO: delegate datasets (e.g. cloudapi)
+
+
+Then migrate of vmapi is:
+
+- alias: How to determine alias? Possible to have same way as for
+  restore? I.e. vmapi is down. If all the headnodes are sync'ing
+  properly (should check that as part of this migrate), then can
+  look at those 'vmadm get' payloads and find a free one? That limits to
+  only have core svc insts on HN.
+
+  In general 'service restore data' would include all required info...
+  including how to choose a valid alias.
+
+  Could switch away from '<name><N>' style to manta's style. That's a big
+  change tho. What breaks if we have 'vmapi-$shortId' for alias?
+
+  Could have all sapi service and inst data syncing, then assuming that is
+  up to date, we know about all insts. This is a periodic dump of
+  `sdcadm insts vmapi` ... strictly define that, because currently that
+  object is too fluid. :) Perhaps the raw SAPI data if that suffices.
+- image: from somewhere in server-restore-data
+- payload: TODO: work out steps from the info we have (perhaps look back at logs
+  for the manual experience?). Do we just use SAPI info? Or do we also look at
+  instance (also VMAPI obj and 'vmadm get' obj differ!)?
+  XXX Do we *use* SAPI CreateInstance if we are after SAPI? No... that doesn't
+      work for VMAPI, duh. But need to update SAPI instances after.
+- Chose IP how? Is NAPI down? Possibly, so need that IP info in
+  svc-restore-data.
+    TODO: talk with cody about plan here to reserve IPs on admin for core
+    zones. What about public ones? re-use those ones? Might prefer to. Then,
+    e.g. 'tlive' would still work without need to update LBs, DNS, configs.
+    What about stealing IP for admin network too? We shouldn't have both
+    running at the same time... because by def'n they aren't ready for that.
+- TODO: what about updating ips in settings everywhere? And ensuring clients
+  reconnect properly (they will be expected to).
+
+Re-try: what is vmapi restore/migrate procedure?
+- pick alias from vm-*.json -> vmapi1
+- image: if not already installed on target HN, reverse install origin chain
+  from svc-restore-data/images/...
+- payload: 2 options
+    1. from vm.json dump (from VMAPI or vmadm get)
+    2. from SAPI data:
+        Q: Does SAPI CreateInstance hardcode to customer_metadata?
+        Somewhat. It cherry-picks a few vars from svc.metadata
+        (and inst.metadata too?) + unholy special 'pass_vmapi_metadata_keys'
+        handling for nat zones. Hopefully we can ignore the latter.
+    XXX START HERE
+
+
+
+
+Q: Restore data syncing, push or pull?
+Pull pros:
+- If restoring on a running HN, we can know when we last pulled and if
+  successful. I suppose we should be able to tell that with dropped status
+  files from pushers, but that's more work?
+- Cleanup when insts disappears seems easier with *pull*.
+- If we want smarter layout under /var/sdcadm/service-restore-data/... then
+  there needs to be a single manager of writes to that area. That argues for
+  *pull*.
+Push pros:
+- If we 'sdcadm up vmapi' on a HN, we can know *right then* to push the updated
+  image to the remote HNs and make that push part of commiting the update.
+  We can also just poke every sdcadm-agent to update, then they pull.
 
 ### M2: Headnode recovery
 
@@ -592,8 +803,8 @@ Feeling out the restoration process.
     manatee
     moray
     binder
-    assets (NEW)
     dhcpd (NEW)
+- assets
 - sapi: Need to break sapi's silly circular dep on config-agent.
 - amonredis: Why this here? Is this following headnode.sh order?
 - ufds
@@ -619,11 +830,15 @@ Feeling out the restoration process.
 - ca: easy?
 - mahi: easy?
 - adminui: easy?
+- cloudapi?
+- cns?
+- docker?
+- cmon?
+- portolan? Kinda expect this one to be HA already.
 - ... then other zones that were on that HN and aren't here:
     - manatee?
     - moray?
     - binder?
-    - assets?
     - dhcpd?
     - TODO: recover should warn about other zones that existed but were not
       recovered (e.g. portal, sdcsso)
@@ -636,6 +851,11 @@ then it boots back up with the older instances?
 
 TODO: how do we guard against issues here?
 
+Idea: could have each service instance call SAPI to see if they are a valid
+instance, else don't engage. Not sure we want SAPI being down to mean everything
+fails to start. We could have these fail "open", i.e. if no SAPI, then they
+come up.
+
 
 ## Scratch
 
@@ -645,6 +865,80 @@ Trent's scratch area for impl. notes
 
 See also the TODOs in each milestone section, and any "TODO" or "Q" in this doc.
 This section is a general list of things to not forget.
+
+- dapi allocation (perhaps only on headnodes?) broken if have >1 headnode?
+        {
+          "result": "",
+          "error": {
+            "name": "Error",
+            "message": "More than 1 headnode found in CNAPI"
+          },
+          "name": "cnapi.acquire_fabric_nat_tickets",
+          "started_at": "2017-09-12T15:01:17.930Z",
+          "finished_at": "2017-09-12T15:01:17.974Z"
+        }
+
+- recovery of a manta-deployment zone: is this a concern? is there potential
+  data loss there? or is all the data in SAPI?
+
+- `rg 'headnode=true'` has a lot of hits. WARNING: incomplete list:
+  - phonehome from every headnode every day, is that a problem? Might
+    actually be a good thing.
+  - sdc-headnode/tools/bin/sdc-healthcheck
+  - sdc-headnode/tools/bin/sdc-sbcreate
+  - node.config different paths, too much to hope to drop node.config?
+      /opt/smartdc/config/node.config
+      /var/tmp/node.config/node.config
+  - sdcadm/lib/sdcadm.js  Something around CN setup I think.
+  - smartos-live/...
+  - ...
+
+- Update 'sdcadm post-setup cloudapi|docker|volapi|...' to not assume the
+  first "cnapi.listServers({headnode:true})" is the server they can use
+  for the first instance. Perhaps they should provision on the server on
+  which this sdcadm is running? or on the same server that hosts the 'sdc'
+  zone? and/or provide a -s/--server SERVER option to specify.
+
+- /lib/sdc/config.sh currently prefers:
+    /usbkey/config, /mnt/usbkey/config, /opt/smartdc/config/node.config
+  If you are on a CN and /mnt/usbkey/config is there (and mounted) but not
+  valid, then you get problems (e.g. with agent setup). Would be nice
+  to have it only use the usbkey values on a headnode=true. TODO: bug for it
+
+- Ensure fabrics setup works *after* having multiple headnodes. E.g. adding
+  networking.json must be on all headnodes.
+
+- perhaps pick up OS-5889 (fix identity-node comment or impl)
+
+- sdc-healthcheck for cnapi needs to change to support multiple headnodes
+    cnapi)
+      local got_name=`sdc-cnapi /servers?headnode=true 2>/dev/null | \
+          json -H -a hostname`
+      [[ "$got_name" == "$(hostname)" ]] && return
+      ;;
+  I have the changes ready.
+
+- Note for COAL testing: We could have the restore-data going to the local HN as
+  well. Then it is usable for (a) COAL testing locally and (b) for local
+  recovery of a blown away core zone. E.g. for zpool corruption as on east3b or
+  just an accident.
+
+- Get sdcadm (and possibly other gz-tools) on to the other headnodes (perhaps
+  part of the "setup as a headnode"). Ensure the 'sdcadm up gz-tools' will
+  install on other headnodes.  Consider dropping the diff btwn cn-tools
+  and gz-tools (make headnodes less special).
+  Note: 'sdcadm experimental update-gz-tools' handles updating cn_tools on
+  all CNs.
+
+- after a headnode decommission or death, part of finalizing should be cleaning
+  up assigned IPs and NICs in NAPI.
+  E.g. see https://github.com/pannon/sdc/blob/master/docs/operator-guide/headnode-migration.md#fixing-napi-entries
+
+- Continue on triton-operator-tools so that we can have `sdc-*` tools in GZ
+  without sdc zone? This might be optional.
+
+- Should 'sdcadm server ls' we have 'status' smarts if setting up? See
+  sdc-server list.
 
 - 'sdcadm ...' should warn/error if there are >1 insts of a service
   that doesn't support that.
@@ -660,6 +954,16 @@ This section is a general list of things to not forget.
       separate platform versions on separate HNs. Perhaps only subset specific
       to that HN live on that HN's USB key?
 
+- Consider a ticket to have /mnt/usbkey -> /usbkey rsync'ing exclude all but
+  those parts that a relevant. E.g. /usbkey/application.json isn't needed.
+  /usbkey/os is needed. Etc.
+
+- Ticket to drop 'assets-ip' metadata var. I don't think anything uses it.
+
+- Ticket to drop 'dhcpd_domain' (no one uses it) from config, and stop using
+  registrar in dhcpd zones, because nothing uses or should need to lookup
+  dhcpd zones in DNS.
+
 
 ### Code
 
@@ -668,32 +972,48 @@ Integrated to master:
 - sdc-headnode.git comitted to master
     - HEAD-2343 allow headnode setup to work on a CN being converted to a headnode
         requires gz-tools builds after 20170118
-- sdc-booter.git NET-371:
-    - builds on or after: master-20170518T212529Z
-
-In CR:
-
-- smartos-live.git branch "grr-OS-6160" (g live2)
+- sdc-booter.git
+    - NET-371 (builds on or after: master-20170518T212529Z)
+    - NET-376 (commit 554cb97, builds on or after:
+      master-20170907T183323Z-g554cb97)
+- smartos-live.git OS-6160
     - fs-joyent (method for filesystem/smartdc SMF service) update to work
       properly for first boot of a CN being converted to a HN. It needs to
       cope with the zones/usbkey dataset not yet existing (that comes later
       when smartdc/init runs headnode.sh for the first time on this server).
+    - builds on or after 20170830 (release-20170831)
+
+In CR:
+
 
 In progress:
 
-- sdc-headnode.git branch "rfd67" (g head)
-    - hostname=headnode0 in prompt-config default
 - smartos-live.git branch "rfd67" (g live)
-    - OS-6160
     - root ~/.bashrc has "hn" PS1 marker on HNs
       workaround if don't have latest "rfd67"-branch platform build:
         g live
         scp overlay/generic/root/.bashrc coal:/root/.bashrc
         scp overlay/generic/root/.bashrc cn0:/root/.bashrc
+    - /lib/sdc/config.sh changes to only consider [/mnt]/usbkey/config on HNs
+      and /opt/smartdc/config/node.config on CNs. This also then no longer
+      warns about lingering /opt/smartdc/config/... on a CN.
+        TODO: some testing to get comfort this doesn't break setting up HNs or CNs
 - sdcadm.git branch "rfd67" (g sa)
-    - sdcadm headnode list
-        TODO: -> sdcadm server list
-
+    - `sdcadm server list`
+    - `sdcadm service ls` (new home for `sdcadm services`, aliased)
+    - `sdcadm server headnode-setup` stub
+    - `sdcadm service migrate` stub
+    - `sdcadm service restore` stub
+    - to put in separate commits:
+        - logToFile improvements
+        - Procedure.viable ?
+- sdc-headnode.git branch "rfd67" (g head)
+    - hostname=headnode0 in prompt-config default
+      Will sit on this until all most ready. There is no great justification
+      for "headnode0" default until we have RFD 67 mostly all working. And it
+      is optional.
+    - bin/rsync-to
+    - `sdc-usbkey mount --nofoldcase`
 
 
 
