@@ -2322,10 +2322,11 @@ deleted until the provisioning job fails or the VM becomes inactive.
 
 Volume reservations are composed of the following attributes:
 
-* vm_uuid: the UUID of the VM being created
-* job_uuid: the UUID of the job that creates the VM
-* owner_uuid: the UUID of the owner of the VM and the volumes
-* volume_name: the name of the volume being created
+* `uuid`: the UUID of the reservation object
+* `vm_uuid`: the UUID of the VM being created
+* `job_uuid`: the UUID of the job that creates the VM
+* `owner_uuid`: the UUID of the owner of the VM and the volumes
+* `volume_name`: the name of the volume being created
 
 ##### Volume reservations' lifecycle
 
@@ -2369,7 +2370,8 @@ same volume is created. This happens when:
 
 ###### Output
 
-An [snapshot object](#snapshot-objects) with the state `'creating'`:
+A [volume reservation object](#volume-reservation-objects) of the following
+form:
 
 ```
 {
@@ -2388,7 +2390,7 @@ An [snapshot object](#snapshot-objects) with the state `'creating'`:
 
 | Param         | Type         | Description                              |
 | ------------- | ------------ | ---------------------------------------- |
-| uuid          | String       | The name of the volume being reserved |
+| uuid          | String       | The uuid of the volume reservation being deleted |
 | owner_uuid          | String       | The UUID of the owner associated to that volume reservation |
 
 
