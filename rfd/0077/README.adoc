@@ -47,6 +47,7 @@ authentication, but also for the protection of data at rest. As a result,
 this proposal also includes provisions for supporting this use case (though
 implementing the on-disk data encryption is delegated to ZFS).
 
+[[defns]]
 ## Definitions
 
 CN:: A "CN" here is any physical node in the Triton system.
@@ -63,6 +64,19 @@ Core service:: A "core service" is an internal Triton service which runs in a
 zone, such as VMAPI or CNAPI. These are often referred to as "headnode services"
 today, but we will avoid that term here to reduce confusion with the last
 definition.
+
+ECDH:: We will use the term "ECDH" to refer to elliptic-curve Diffie-Hellman key
+agreement protocol, as specified by NIST SP 800-56A (specifically the EC
+cofactor/CDH variant of the protocol). It is normally implied that the output of
+the protocol is processed by a cryptographic hash function before further use.
+
+DH box:: The term "Diffie-Hellman box" or "DH box" is used here to refer to an
+encrypted container for data, encrypted and authenticated using a symmetric key
+derived by performing ECDH. One of the key pairs involved in the ECDH protocol
+for a box is ephemeral, while the other is static. The private half of the
+ephemeral key pair is securely discarded after performing ECDH. Such a box can
+be constructed by anyone in possession of the recipient's public key, but can
+only be decrypted by the owner of the private key.
 
 ## Threat models and goals
 
@@ -164,8 +178,10 @@ that:
 Most commonly, cryptographic token devices obey an API similar to PKCS#11, which
 is primarily focussed on public/private asymmetric cryptography. Devices that
 only implement asymmetric cryptography are suitable for storing authentication
-credentials, but do not fit as well in a design that wants to store credentials
-for at-rest encryption.
+credentials, but do not always fit as well in a design that wants to store
+credentials for at-rest encryption. A notable exception is devices that support
+a key agreement scheme like Diffie-Hellman using their private key material,
+which can be used with an ephemeral keypair to form a Diffie-Hellman "box".
 
 In hardware there are always difficult trade-offs between price, features, and
 performance. What is implicit in the above list of goals is that the
@@ -177,7 +193,7 @@ One device that is suited for these goals is the Yubikey (manufactured by
 Yubico). It implements a number of features aimed at the 2-factor Authentication
 market (based on hash chains and HMAC) which are also ideal for securely
 deriving encryption keys. Alongside these features, it features RSA and ECDSA
-asymmetric cryptography.
+asymmetric cryptography, both for signature operations and key agreement.
 
 The Yubikey is relatively inexpensive (at $40 US it is a very small line item in
 the typical cost of a new CN), and since it uses the ubiquitious USB interface
@@ -195,49 +211,62 @@ discussed further in the section <<hardware>>.
 
 ### Overview: at-rest encryption
 
-The concept for at-rest encryption is to generate a master key for ZFS crypto
-by combining 3 pieces of data:
+The concept for at-rest encryption is to use a randomly-generated key, and then
+to protect it cryptographically such that 3 pieces of information are needed to
+recover it:
 
- * A secret key written to the hardware token (which it will not reveal);
- * A secret key stored on a trusted node in the datacenter; and
- * A randomly generated "challenge" value, kept on disk unencrypted with the
-   data.
+ * A private key generated on the hardware token (which it will not reveal);
+ * A randomly generated secret PIN stored on a trusted node service in the
+   datacenter; and
+ * The encrypted copy of some random data, stored as a ZFS pool property.
 
-The primitive used to combine these pieces of data is the HMAC (see also
-<<crypto-algos>>). First, the challenge value is read in from the disk and
-passed to the token. The token will compute the HMAC of the challenge data with
-its secret key (without revealing that secret key to the host).
+In this way, a node's disks cannot be decrypted unless an attacker has all three
+of:
 
-Then, a secret key stored in a core service will be retrieved over a
-TLS-protected authenticated channel and used as the secret key for another HMAC
-operation on the output of the first one.
+ * The disks belonging to the node;
+ * The cryptographic token belonging to the node; and
+ * Access to the PIN stored in the core service.
 
-The final output is the master key to unlock the ZFS crypto framework for the
-pool. A single master key will be used for the whole pool, rather than a key
-per zone or per customer: in the current Triton design, CNs are the source of
+The primitive used to create these properties is the elliptic curve Diffie-
+Hellman key agreement protocol (ECDH). Setting up the pool proceeds as follows:
+
+ 1. Generate a random byte string.
+ 2. Create a DH box (see <<defns>>) that can only be decrypted using the
+    hardware token's private key. Place the random byte string in it.
+ 3. Place the encrypted data from the DH box in a ZFS pool property along with
+    the public key of the ephemeral keypair.
+ 4. Use the byte strings as the ZFS encryption master key.
+
+The private key in the hardware token is protected by a PIN -- a 10 digit
+numeric code that must be provided to the token before any activity involving
+the key is permitted. After 5 failed attempts at the PIN (and an additional 3
+attempts at a PUK), the hardware token erases its keys. This PIN code is
+stored in a Triton core service and is unique for each hardware token.
+
+In order to re-derive the ZFS encryption master key for this node again on a
+subsequent boot, we will have to send this PIN back to the hardware token,
+perform ECDH with the hardware token's private key, then decrypt the DH box to
+obtain the byte string from step 1 again to unlock the ZFS pool.
+
+A single master key will be used for the whole pool, rather than a key per zone
+or per customer. The current ZFS encryption design does not allow clones of ZFS
+datasets to cross a key boundary, and since Triton relies heavily on zones being
+able to be clones of their image datasets, making a separate key spaces is
+impractical. Additionally, in the current Triton design, CNs are the source of
 truth about what zones run on them (and changing that here is out of scope), so
-there is no real benefit in using a finer-grained scheme.
+there is little benefit in using a finer-grained scheme.
 
-We incorporate the 3 pieces of data into the key so that the only sufficient
-condition to successfully decrypt the data on the disks is to have all 3 of:
-
- * The disks themselves,
- * The key stored in the CN's Yubikey, and
- * Access to the core service.
-
-If any one of these 3 is missing, the key cannot be recomputed, and the data
-cannot be decrypted.
-
-This approach has one major issue, however, which is the case of a headnode. A
-Triton headnode, as defined earlier, must be able to boot from its own media,
+This approach has two major issues, however: firstly is the case of a headnode.
+A Triton headnode, as defined earlier, must be able to boot from its own media,
 without requiring the rest of the surrounding DC to be running (as it may be
 hosting the PXE DHCP server that allows other non-self-booting CNs to boot).
 
-As a result, self-booting nodes will not use a remotely stored part in their
-key. They will use a challenge value, and the secret key in their token, but
-make no remote request to get a third piece. This also means that self-booting
-nodes do not meet the full goal discussed above -- the theft of an entire
-working headnode will allow that headnode's disks to be read.
+As a result, self-booting nodes will not use a remotely stored PIN. They will
+have the PIN code for their tokens either stored in USB flash media, or provided
+at every boot on the console (for environments where cold-theft security is more
+important than unattended reboot). This means that self-booting nodes do not
+meet the full goal discussed above -- the theft of an entire working headnode
+will allow that headnode's disks to be read.
 
 This is a difficult compromise between fault tolerance, ability to boot the
 whole DC up after power loss, and security. It may be worthwhile to examine
@@ -245,6 +274,16 @@ the possibility of special physical security measures to protect headnodes
 beyond those used for ordinary non-headnode CNs. As there is normally a
 small number of headnodes, this is at least more feasible than such protections
 for the entire server population.
+
+The second major issue is durability, or ability to recover from the failure of
+a node's hardware crypto token. Clearly it would be undesirable to create a
+single point of hardware failure that results in all data on the node being
+irretrievable. As a result, an additional step is added where as well as
+creating an encrypted DH box keyed to the hardware token for that CN, we create
+a second box keyed to an offline "recovery key" for the datacenter. The public
+half of the recovery key is distributed to all CNs for this purpose, but the
+private half is kept in offline redundant secure storage to only be used in
+emergencies. This is explored further in <<prov-backups>>.
 
 ### Overview: authentication
 
@@ -265,11 +304,11 @@ number of asymmetric keys, and the number of zones on a CN or headnode may be
 quite large by comparison. So the keys used for zone-to-zone authentication
 cannot reside directly on the hardware tokens.
 
-Instead, a "soft token" design will be used. A second HMAC secret stored on the
-token is used as an HMAC key, along with an input randomly generated for each
-zone, to derive a key used to encrypt a keystore for that zone. This keystore
-encryption is always used, so that the same code path is taken on machines
-with and without ZFS level storage encryption available.
+Instead, a "soft token" design will be used. A randomly generated symmetric key
+will be used to encrypt a keystore for that zone, and the key will be placed in
+a DH box openable by the hardware token's private key. This keystore encryption
+is always used, so that the same code path is taken on machines with and without
+ZFS level storage encryption available.
 
 The encrypted key store is managed by the global zone on behalf of the zones,
 and exposed to them via a socket that processes in the zone can connect to. The
@@ -292,6 +331,11 @@ A signed statement or certificate and a matching key is not enough on its own,
 however, to validate the identity of one zone to another arbitrary zone on the
 system -- the other zone needs to also be able to validate the key of the host
 CN. To achieve this requires a chain of trust.
+
+Agents running in the global zone of a CN are also expected to make use of a
+soft-token instance for their routine work of signing core service requests. The
+hardware tokens' workload will largely be limited to re-signing certificates for
+each soft token periodically, and deriving keys for encryption at rest.
 
 ### Trusted CNs and chain of trust
 
@@ -454,6 +498,7 @@ Binder will also have to transition away from using the raw ZooKeeper direct
 access for registration that it uses today, as the authentication schemes
 available there will not be sufficient to ensure separation of clients.
 
+[[prov-backups]]
 ### Provisioning and backups
 
 When crypto tokens like the Yubikey are manufactured, they generally do not ship
@@ -462,67 +507,62 @@ basic credentials for the Yubico official 2FA, but this is not very useful
 for our usecase). They have to be commanded to generate or write credentials
 by an administrator who configures them before use.
 
-While credentials like authentication keys are best generated on the token
-itself (so that they never leave it and thus cannot be compromised), encryption
-keys used to protect data at rest must be managed more carefully.
+Where possible, it is best for credentials to be generated on the token itself
+(so that they never leave it and thus cannot be directly compromised). Keys
+used for authentication or certificate signing can be replaced after a loss
+by creating trust for a new set of keys instead, so there is no real need to
+back them up.
 
-The loss of at-rest encryption keys leads to the loss of any data protected by
-them (this means loss of customer data). As a result, they must be backed up in
-some form of secured offline storage -- one classic technique is to print on
-archival paper and store in a secured mechanical safe in an environmentally
-controlled area.
+Loss of at-rest encryption keys, on the other hand, leads to the loss of any
+data protected by them (meaning loss of customer data). To guard against this
+for the ZFS on-disk encryption keys, as explained earlier, we make use of a
+scheme similar to key escrow, where a second DH box is created that enables the
+retrieval of the ZFS encryption key using either the node's own key, *or* an
+offline recovery key.
+
+This recovery key, as well as the root key used to bootstrap the headnode chain
+of trust, must be stored offline in a way that is both very secure and very
+durable.
 
 Keys may be split up into "pieces" for backup purposes, using secret-sharing
 arrangements like Shamir's secret sharing. These enable schemes such as N out of
 M piece secret recovery (while revealing no information in the case of fewer
 pieces being held).
 
+If the pieces are stored in separate geographic locations with separate access
+controls, this can enable a form of the "2-person rule" to be enforced, where
+these valuable "master" keys can only be used with the co-operation of multiple
+trusted members of the organization.
+
 The scheme we propose is as follows:
 
- * Generation and preparation of the root key and token for the initial set of
-   Trusted CNs will take place in an environment away from the data center, and
-   will be done in advance by administrators.
+ * Generation and preparation of the root key and recovery keys will take place
+   in an environment away from the data center, and will be done in advance by
+   administrators.
+ * The administrators must initialize backup media that have been chosen to
+   store the backed up key pieces. Initializing the media writes metadata to
+   it describing its contents and purpose.
+ * The root and recovery keys will both be split into 3 pieces, in a Shamir
+   arrangement requiring 2 pieces for recovery. Each of the pieces will be
+   written to separate media.
+ * The media may then be stored in a secure location (e.g. a safe).
+ * The public keys and initial headnode trust chain can then be written to the
+   boot USB flash media for the initial headnodes, and transported to the
+   datacenter as part of the deployment process.
+    - As an alternative, the headnode setup process will accept the public keys
+      and trust chain root on the console.
 
- * At the same time, the administrators must initialize backup media that have
-   been chosen to store the backed up key pieces. Initializing the media writes
-   a private key to the start of the media (or in a file on it with a well-known
-   name, depending on the media type) and saves only the public half of this key
-   for later use.
-
- * Token authentication keys will be generated on the token and not backed up.
-   The public half of the asymmetric keys will be prepared in a format ready to
-   upload directly into Triton command-line and web UI tools, so that they are
-   added to the DC's headnode in advance.footnoteref:[not-puppet,Note that this
-   procedure ensures administrators are not expected to perform error-prone
-   key fingerprint comparisons in the datacenter while setting up servers.]
-
- * Token encryption keys (HMAC keys) will be generated, written to the token,
-   and then split into 3 pieces, in a Shamir arrangement requiring 2 pieces for
-   recovery. The pieces will be immediately encrypted within a DH "box"
-   with an ephemeral key and a backup media public key (one key per piece) so
-   that they can only be recovered with the use of the backup media private key.
-   Then they may be transported by any appropriate means to the location of each
-   backup media to be written out. They need not be decrypted when writing out
-   to the media (as the media private key is there to decrypt them during
-   recovery).
-
-This scheme will be implemented as a set of tools that can run on at least OSX,
-Linux or SmartOS, to correctly program Yubikeys and back up credentials, either
-in bulk, or as part of a pre-flight environment run during deployment. The
-choice of a backup option by the administrator will not be optional (as not
-doing so may lead to data loss in the case of a single Yubikey malfunction).
+This scheme will be implemented using a set of tools that can run on at least
+OSX, Linux or SmartOS, to correctly generate the root and recovery keys and back
+them up, and then also to perform restoration operations in an emergency.
+Backing up credentials as part of generating them will not be optional, and the
+tools will require backup media to be present to perform any operations, to
+prevent administrator error.
 
 A recommended outline of the full deployment procedure is included in the
 sections <<green-field>> and <<brown-field>>, which include examples for both
 a "small setup" deployment not using a pre-flight environment, and a larger
 deployment using one.
-
-The tooling to initialize backup media will ensure that each initialization
-operation takes place on different media, and will produce the media public key
-in an opaque, checksummed format. The tooling for programming Yubikeys will
-refuse to operate unless it is provided with a minimum number of valid backup
-media identities in this correct opaque format. This helps prevent
-administrators from erroneously failing to back up keys.
 
 The three Shamir pieces must be stored separately on independent backup media,
 generally recommended to be either archival paper, or LTO or DAT magnetic tape.
@@ -554,15 +594,6 @@ replaced.
 | Flash (SD, CF)           | 1 year                | 3 years
 
 |===
-
-The initial preparation of the offline root key for a datacenter will be
-done using the same tooling as regular key programming and generation, and will
-be written out as 3 pieces encrypted to the backup media private keys.
-
-Full tooling will also be provided for recovering from these backup formats
-a specified CN encryption key, combining the Shamir pieces, and writing it
-to a fresh Yubikey ready for use. This tooling can also be used during
-regular media inspections to check data integrity.
 
 ### Use of zone keys and certificates by customers
 
@@ -781,16 +812,12 @@ Found blank DVD media in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0) <2>
 Initialize? [Y/n]
 Generating media key... done
 Writing session... 10% 25% 50% 75% 100% done
-Backup media identity: VEJLTSFMx9IR+nWC7FFnUC8pCTMEZL5iloLlU/xjG8x+z1jax6Xb5dvWOMzerJmkiwaK54GnNeoOLH7++R9BlGHzTAQSDMR35qW60+0PLqNEpRhtDg== <3>
-Short name to refer to this media? [214cc7d2] sfo-001 <4>
+Short name to refer to this media? [214cc7d2] sfo-001 <3>
 ----
 <1> We want to initialize a new DVD type backup media. The name we give here
     refers to the storage plugin to be used.
 <2> The plugin detects that we have a blank unused DVD-R in one of our drives.
-<3> This string must be kept in order to use this media in future. The
-    `triton-keymaster` tool will automatically record it in the current user's
-    `~/.triton` directory, as well.
-<4> This name will be used with later `triton-keymaster` commands. If we want
+<3> This name will be used with later `triton-keymaster` commands. If we want
     to use this same media from a different machine, we can copy the file
     `~/.triton/keymaster.json` or use `triton-keymaster add-media` and
     the full media identity string.
@@ -804,28 +831,23 @@ alex@mbp:~$ triton-keymaster init-media dvd -y -n ord-001 <1>
 Found blank DVD media in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
 Generating media key... done
 Writing session... 10% 25% 50% 75% 100% done
-Backup media identity: VEJLTWcqNLRmhEMG5ip91j9UzbQEakCyrLl4SJdv/D+FJo3C+uGhEwapnn7Yf+E+PB7ZiwhUcc1N8xOBDI/z5oc52wG+juwhxwj+tGgUR64N1XUCgg==
 alex@mbp:~$ triton-keymaster init-media dvd -y -n nyc-001
 Found blank DVD media in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
 Generating media key... done
 Writing session... 10% 25% 50% 75% 100% done
-Backup media identity: VEJLTTVyDUe4yKRTRY4iZzrEnAgEH4p5yyaqC2jMmNIy8x4lPl3jmbX7fEUxNSNkROAulT25fTJcfDMM/b0dPaXf+u6D4/LnyoQXRNdbNjFSMyjrXQ==
 ----
 <1> `-y` means "don't prompt me for confirmation", and `-n` is used to give the
     media short name.
 
-Now we insert a blank Yubikey into the system and proceed:
+Now we generate the root and ZFS recovery keys for the datacenter:
 
 [source,shell]
 ----
 alex@mbp:~$ triton-keymaster init-dc us-west-1 -m sfo-001,ord-001,nyc-001 <1>
+Number of backup media required to recover root key? [2] <2>
+Number of backup media required to recover ZFS recovery keys? [2]
 Generating root key... done
-Generating first headnode keys... done
-Found Yubikey (Yubikey 4 OTP), serial 4a6f94, v4.3.1
-Setting Yubikey to OTP+CCID mode... done
-Remove Yubikey from USB port and re-plug now... ok <2>
-Found Yubikey (Yubikey 4 OTP+CCID), serial 4a6f94, v4.3.1
-Writing first headnode keys to Yubikey... done
+Generating ZFS recovery keys... done
 Ready to write piece for backup media sfo-001.
 Attach where? [LOCAL/remote/file] <3>
 Found sfo-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
@@ -841,9 +863,7 @@ Writing session... 10% 25% 50% 75% 100% done
 ----
 <1> The `-m` option allows you to supply the names of the backup media keys to
     use for this datacenter. If not supplied, you will be prompted.
-<2> The Yubikey has to be physically removed from the USB port at this point to
-    change its mode. When this step is done by a pre-flight environment, it
-    uses a full system cold reboot instead.
+<2> These answers can also be supplied as commandline arguments.
 <3> After the initial media setup, backup media can be accessed in multiple
     different ways by the `keymaster` tool. They can be attached locally to
     the machine it is being run on (as shown here), or attached to a remote
@@ -851,116 +871,74 @@ Writing session... 10% 25% 50% 75% 100% done
     transferred later. The key backups are encrypted in transit and cannot be
     read without the backup media itself.
 
-In our initial visit to the datacenter, we have decided we would like to deploy
-our single headnode and 3 ordinary CNs. We've already written the Yubikey for
-the headnode (during the `init-dc` step above), so now we need to write 3
-ordinary CN Yubikeys.
+At this point, we can also write the recovery keys to some hardware tokens to
+place in storage with the backup media. This is optional, but recommended for
+production deployments: if an administrator has to step in to recover a CN from
+a broken hardware token late at night (with possibly impaired judgement), it is
+better to handle the keys on a secured device like a USB token where it is
+harder to make mistakes that may compromise the key itself.
 
 [source,shell]
 ----
-alex@mbp:~$ triton-keymaster init-cn -d us-west-1 -N 3 <1>
-Generating compute node keys... done
-Ready for Yubikey or Token for CN 1... ok
-Found Yubikey (Yubikey 4 OTP), serial 4a701a, v4.3.1
-Setting Yubikey to OTP+CCID mode... done
-Remove Yubikey from USB port and re-plug now... ok
-Found Yubikey (Yubikey 4 OTP+CCID), serial 4a701a, v4.3.1
-Writing keys to Yubikey... done
-Ready for Yubikey or Token for CN 2... ok
-Found Yubikey (Yubikey 4 OTP), serial 4a701d, v4.3.1
-Setting Yubikey to OTP+CCID mode... done
-Remove Yubikey from USB port and re-plug now... ok
-Found Yubikey (Yubikey 4 OTP+CCID), serial 4a701d, v4.3.1
-Writing keys to Yubikey... done
-Ready for Yubikey or Token for CN 3... ok
-Found Yubikey (Yubikey 4 OTP), serial 4a701e, v4.3.1
-Setting Yubikey to OTP+CCID mode... done
-Remove Yubikey from USB port and re-plug now... ok
-Found Yubikey (Yubikey 4 OTP+CCID), serial 4a701e, v4.3.1
-Writing keys to Yubikey... done
-Ready to write pieces for backup media sfo-001.
+alex@mbp:~$ triton-keymaster write-token us-west-1 <1>
+Which ZFS recovery key to write? [A/b/c] a <2>
+Need to read key pieces from 2 more backup media.
 Attach where? [LOCAL/remote/file]
 Found sfo-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
-Writing session... 10% 25% 50% 75% 100% done
-Ready to write pieces for backup media ord-001.
-Attach where? [LOCAL/remote/file]
-Found ord-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
-Writing session... 10% 25% 50% 75% 100% done
-Ready to write pieces for backup media nyc-001.
-Attach where? [LOCAL/remote/file]
-Found nyc-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
-Writing session... 10% 25% 50% 75% 100% done
-<2>
-f120cdf4-9f7d-960d-8f0a-3846ca55accb,VENOSfEgzfSffZYNjwo4RspVrMsE0U4hsV4QUpHornAU6kOAOrxVUwmVtxKVaLNPr6Gakh8izEUUmYSyW5/D9M9wG/JpdyfUcVAUHYUXttNSzht9mA==
-08270f43-28c2-57a1-e216c9d68f56af97e,VENOSYJw9DKMJXoeIWydaPVq+X4EEgLBD3PynNYI7XpQnqjmHdx63SrAalcC2vUZY7QJMwWqmIy6LGL4zyC5wlQRs0C8v4ADfVvaFInrAnwQxqNxnA==
-0e3bccd9-a92f-f26d-3c4b5ea00042cbfd2,VENOSeO8zZqS/ybTxLXqAAQsv9IE9pfHIlDIFFq2ubEOUjyPmDTWWv4dfkU+FfvEM6/1BMiY8wZB9N8QGDz7mDxsaQcLQWACuN1blZFOW3tdgPgitg==
+Reading data... done
+Need to read key pieces from 2 more backup media.
+Attach where? [LOCAL/remote/file] remote <3>
+Generating ephemeral key for remote challenge-response... done
+Challenge: AavNCXVzLXdlc3QtMRAHb3JkLTAwMQdueWMtMDAxBWVjZHNhQQRKMlDjH/3I/x5JZzh3RqtoendWyr9Aj2hz4vV9lETQWdrxkmnbDeoMjRi9ll3mDALaP5tmkh4QIClvjjIJv0pOcS6Agg==
+Enter this challenge at the prompt presented by `triton-keymaster respond' on the remote machine.
+Then enter the response from the remote machine here.
+Response: gavNBWVjZHNhEWNoYWNoYTIwLXBvbHkxMzA1DOsc+I31pxTqOL75flqSq5Cuz9hqfvKaRZHe8aEYkaMUBQZLbKyqunZRqiSHWsA0Dxo1HsVfBbIetNOqP2e5+JUnk9wS72B4sWmaojxC2nTUm6BiC+zAzW9px6uzwow5Y5KUFsYUHlSLB+mB
+Found response from backup media ord-001.
+All key pieces found.
+Ready for Yubikey or Token for writing recovery key... ok
+Found Yubikey (Yubikey 4 OTP+CCID), serial 4a701a, v4.3.1
+Writing keys to Yubikey... done
 ----
-<1> `-d` here is used to supply the short name of a datacenter we set up
-    earlier (this automatically chooses the correct backup media and root public
-    key for the operation as necessary). The `-N` option is used to generate 3
-    compute node keys in one step.
-<2> When used in `-N` mode, this command outputs CSV format entries which can
-    be copy-pasted either into `cnapi-adm` on the headnode, or into the
-    "Paste new CN identities" page in Triton AdminUI.
+<1> We have to specify the datacenter in order to fetch the backup media and
+    key configuration.
+<2> We can choose which of the 3 recovery keys to write out, so that we still
+    enforce the same 2/3 rule for access.
+<3> Here we choose to get a piece of the key from a remote system. This prints
+    out a base64-encoded "challenge" value, which an administrator at the remote
+    site can copy-paste into their "triton-keymaster" tool to generate a
+    response.
 
-To place in the new systems, we have also prepared 4 USB flash disks. These have
-already been written using `dd` with the USB image. We can insert the root key
-and secure boot config into them as follows:
+The challenge-response cycle here is secure (encrypted) and unreplayable. The
+use of the `respond` command on the remote administrator's machine looks like
+this:
 
 [source,shell]
 ----
-alex@mbp:~$ triton-keymaster update-usb -d us-west-1 -s <1>
-Ready for USB flash disk... [CONTINUE/exit]
-Found Triton boot image on /dev/disk0 (DTR30G2)
-Updating root key and setting secure mode... done
-Ready for USB flash disk... [CONTINUE/exit]
-Found Triton boot image on /dev/disk0 (DTR30G2)
-Updating root key and setting secure mode... done
-...
-Ready for USB flash disk... [CONTINUE/exit] exit
+john@mbp2:~$ triton-keymaster respond
+Enter challenge: AavNCXVzLXdlc3QtMRAHb3JkLTAwMQdueWMtMDAxBWVjZHNhQQRKMlDjH/3I/x5JZzh3RqtoendWyr9Aj2hz4vV9lETQWdrxkmnbDeoMjRi9ll3mDALaP5tmkh4QIClvjjIJv0pOcS6Agg==
+
+Challenge purpose: for master key recovery from backup media.
+
+This is NOT a challenge used to recover a compute node with a broken Yubikey.
+
+Datacenter: us-west-1
+Key being recovered: ZFS recovery key A
+Backup media they have: sfo-001
+Backup media they want from you: ord-001, nyc-001
+
+Challenge was generated 3 minutes ago by user "alex" on host "mbp"
+
+WARNING: Responding to this challenge will give the remote party an entire ZFS
+         recovery key. If they possess 2 of the set of 3, they will have enough
+         information to decrypt the disk of ANY node in datacenter "us-west-1".
+Respond to challenge? [y/N] y
+
+Need to read key pieces from backup media: ord-001, nyc-001.
+Attach where? [LOCAL/remote/file]
+Found ord-001 in HL-DT-ST DVDRW GX30N RP09 (scsi 1,0,0)
+Reading data... done
+Response: gavNBWVjZHNhEWNoYWNoYTIwLXBvbHkxMzA1DOsc+I31pxTqOL75flqSq5Cuz9hqfvKaRZHe8aEYkaMUBQZLbKyqunZRqiSHWsA0Dxo1HsVfBbIetNOqP2e5+JUnk9wS72B4sWmaojxC2nTUm6BiC+zAzW9px6uzwow5Y5KUFsYUHlSLB+mB
 ----
-<1> The `-s` option here is used to set the boot configuration to require a
-    secured boot process. Fallback to traditional PXE+TFTP with no
-    authentication will not be allowed.
-
-notes...
-
-Run through steps required to deploy the whole system from root key to
-all CNs up and running
-
- . Before beginning to set up hardware, run tools (on laptop) to generate root
-   key and program Yubikey for initial set of Trusted CNs, including at least
-   one headnode. Set up 3 DVD-Rs as backup media (as multi-track UDF), burn
-   media key and initial metadata to first track, followed by backups of root
-   key and disk encryption secrets for the initial nodes.
- . Run tool to update the USB flash drive image for booting headnodes. Copies
-   the root public key into it, as well as the top-level certificates for the
-   initial set of headnodes (edits the .img file in one step).
- . Deploy the headnodes for the datacenter, with Yubikeys already present in
-   the chassis at first boot.
- . Add CNs (small deployment method)
- .. (If needed) Update the USB flash drive image to be deployed with the current
-    set of headnodes' certificates (run the .img updater tool).
- .. Run tools (on laptop) to write a Yubikey for each new CN to be deployed.
-    Supply the identities of 3 distinct backup media, and the tool outputs the
-    encrypted pieces.
- .. Transport the 3 pieces to the locations of the DVD-Rs set up at the
-    beginning and write them in as a new UDF track.
- .. Copy-paste the public keys written to the Yubikey (output by the tool) into
-    adminui or a commandline tool on a headnode to establish trust.
- .. Place Yubikey into the new CN and boot.
- . Add CNs (large deployment method with pre-flight)
- .. Add blank Yubikeys into each new CN in the fleet
- .. Boot new CNs to pre-flight. After pre-flight checks are completed, it will
-    write the Yubikey, and pass both the public key and the encrypted pieces of
-    for backup to the pre-flight controller.
- .. Pre-flight will also write the correct USB image (with certificates added)
-    to the USB flash drive in each CN.
- .. Transport the encrypted pieces of each key from the pre-flight controller to
-    the location of the backup media and write them out.
- .. Copy the public keys from the pre-flight controller to a headnode to
-    establish trust.
- .. Boot the new CNs.
 
 [[brown-field]]
 ## Brown-field deployment
@@ -1001,8 +979,7 @@ some cases -- e.g. deployments within virtual machines for development.
 
 The soft token consists of a number of key components:
 
- * The dedicated HMAC secret for soft token protection, stored in the CN's
-   hardware token
+ * The ECDH private key, stored in the CN's hardware token
  * The soft token key data files, stored encrypted on ZFS within the zone's
    dataset
  * The SSH agent protocol socket, placed as a UNIX socket within the zone's
@@ -1016,10 +993,10 @@ Soft token key data will be stored in the `/zones/$uuid/softhsm` directory.
 Each key stored on behalf of the zone will be stored in a separate file,
 encrypted (and authenticated) using ChaCha20-Poly1305.
 
-The file format will consist of an nvlist, including the challenge value that
-must be sent to the hardware token to derive the symmetric key to decrypt the
-rest of the data, as well as the MAC and details of the algorithms in use. The
-MAC will be constructed to cover the algorithm metadata fields.
+The file format will consist of an nvlist with the public key of the hardware
+token, a DH box containing the symmetric key to decrypt the rest of the data, as
+well as the MAC and details of the algorithms in use. The MAC will be
+constructed to cover the algorithm metadata fields.
 
 ### SSH agent socket
 
@@ -1066,7 +1043,7 @@ key data, and then forks.
 This final child is the process which is responsible for speaking the SSH
 agent protocol and performing cryptographic operations. It drops all privileges
 (including those in the `basic` set) before accepting any connections. To unlock
-keys, it sends a single byte request on a pipe back to the key manager process,
+keys, it sends a fixed-size request on a pipe back to the key manager process,
 which decrypts the keys in-place in the shared memory segment.
 
 #### Performance and accounting
@@ -1103,14 +1080,15 @@ should be well-placed to make use of it.
 
 #### Cache side-channel mitigation
 
+:uri-cat: http://palms.ee.princeton.edu/system/files/CATalyst_vfinal_correct.pdf
+
 On modern Intel CPUs, the soft token will (pending OS support) make use of the
 Intel CAT feature to mitigate CPU cache timing side-channel attacks. This will
-be done along the lines of the
-http://palms.ee.princeton.edu/system/files/CATalyst_vfinal_correct.pdf["CATalyst" paper]
-where a special subset of the L3 cache capacity on the system is set aside for
-transient use in cryptography, and dedicated pages for this purpose pinned into
-cache so they cannot be flushed out (containing both the code and data used
-in the sensitive operation).
+be done along the lines of the {uri-cat}["CATalyst" paper] where a special
+subset of the L3 cache capacity on the system is set aside for transient use in
+cryptography, and dedicated pages for this purpose pinned into cache so they
+cannot be flushed out (containing both the code and data used in the sensitive
+operation).
 
 This prevents most known mechanisms of memory timing side-channel leakage from
 the cryptographic algorithms run in the soft-token, including Flush+Reload and
@@ -1151,15 +1129,23 @@ these is the NIST Personal Identity Verification (PIV) standard. This standard
 is implemented by both Yubikeys and other JavaCard token manufacturers.
 
 As a result, for asymmetric crypto operations, the interface that the RFD77
-implementation uses is PIV over ISO 7816-4 over CCID over USB. We specifically
-use the PIV Card Authentication (`0x9E`) key slot, as it does not require a
-PIN to perform signing operations.
+implementation uses is PIV over ISO 7816-4 over CCID over USB. We also use
+this interface for performing ECDH to derive disk and soft-token storage keys.
 
-For the symmetric crypto operation we require from the token (an HMAC), we use
-the Yubikey proprietary interface. We also provide open-source code to implement
-this interface on regular JavaCards. The Yubikey proprietary interface uses its
-own ISO 7816 AID (`a0:00:00:05:27:20:01`), and has a very simple command set
-for performing the HMAC operation against a choice of 2 pre-configured keys.
+PIV specifies a fixed number of key "slots" on the token, and rules about
+whether PIN or biometric authentication, or a secure channel is required for
+each. As we are not identifying human cardholders or using a non-contact
+interface like NFC, we will mostly avoid using these features, with the
+exception of the PIN which we will use to require the network connection to a
+core service for a compute node to boot.
+
+:uri-yubico-piv: https://developers.yubico.com/PIV/Introduction/Yubico_extensions.html
+
+Yubico have implemented a number of {uri-yubico-piv}[extensions] to the PIV
+specification which include support for importing a key generated off-card,
+setting management keys, changing PIN usage policies and performing attestation.
+We will not have a hard dependency on these extensions in the implementation of
+this RFD, but we may implement optional support for using them.
 
 ### Operating system infrastructure
 
@@ -1203,19 +1189,18 @@ trade-offs made in algorithm choice above.
 
 ### At-rest encryption
 
-The algorithm to be used for at-rest encryption key derivation is HMAC-SHA1.
-This is chosen because:
+The algorithm to be used for at-rest encryption key derivation is ECDH on P-256
+with KDF SHA2-512. This is chosen because:
 
- * HMAC is well-studied in the context of combining key pieces together in the
-   way proposed (combining a key piece from the headnode into a composite key).
-   HMAC with a strong hash function has a variety of properties (including
-   high diffusion) that make it a good fit for this process.
- * HMAC with SHA-family algorithms is easier to implement in a side-channel
-   resistant fashion than other symmetric algorithms such as AES, which is
-   important for long-lived hardware keys that are very difficult to change
-   (to prevent recovery of the key from a device)
- * The Yubikey already supports HMAC-SHA1 as part of its regular
-   challenge-response design. It does not support any SHA2 family algorithms.
+ * Using ECDH with an ephemeral key to derive symmetric keys for authenticated
+   file encryption is very well-studied and specified (e.g. as ECIES in SEC-1).
+ * The ability to stack the encryption "boxes" to allow multiple EC private keys
+   to be used to decrypt the final key has many desirable operational properties
+   over a scheme based on symmetric keys (e.g. no need for online backups).
+ * The P-256 curve is believed to be 128-bit secure and ECDH with it is well
+   supported on both Yubikeys and JavaCard hardware.
+ * Ed25519 and Curve25519 ECDH were also considered, but lack of hardware
+   support makes them impractical at the present time.
 
 ### Public-private encryption
 
@@ -1240,7 +1225,7 @@ support for alternatives at the present time is the main limiting factor here.
 
 Soft tokens will support Ed25519 and RSA-4096 for public/private cryptography.
 They will also support ChaCha20-Poly1305 for symmetric key operations (with the
-key protected on the Yubikey by the same HMAC-SHA1 above).
+key protected by the same ECDH box scheme as above).
 
 Ed25519 and RSA-4096 are chosen because:
 
