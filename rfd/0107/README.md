@@ -233,9 +233,8 @@ Returns and array of provisioned or reserved IP objects.
 | ---------------------	| ------------- | ------------------------------------- |
 | ip			| String	| NIC's IP Address			|
 | reserved		| Boolean	| Whether this IP is reserved or not	|
-| free			| Boolean	| Whether this IP is assigned to an instance |
+| triton_reserved	| Boolean	| True if the user cannot modify the IP via UpdateNetworkIP (example broadcast and gateway IPs) |
 | belongs_to_uuid	| String	| Optional UUID of the instance the IP is associated with |
-| nic			| String	| Optional MAC Address of the NIC the IP is attached to |
 
 ###### output (example)
 
@@ -251,9 +250,7 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips
   {
     "ip": "10.88.88.106",
     "reserved": false,
-    "free": false,
     "belongs_to_uuid": "0e56fe34-39a3-42d5-86c7-d719487f892b",
-    "nic": "90:b8:d0:55:57:2f"
   }
  ...... elided
 ]
@@ -273,9 +270,8 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips
 | ---------------------	| ------------- | ------------------------------------- |
 | ip			| String	| The IP Address			|
 | reserved		| Boolean	| The IP's current reservation state	|
-| free			| Boolean	| True if the IP is in use		|
+| triton_reserved	| Boolean	| True if the user cannot modify the IP via UpdateNetworkIP (example broadcast and gateway IPs) |
 | belongs_to_uuid	| UUID		| optional Instance that owns the IP	|
-| nic			| String	| optional MAC address of the owning nic |
 
 ###### output (in use)
 
@@ -285,9 +281,7 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips/10.88.88.106
 {
   "ip": "10.88.88.106",
   "reserved": false,
-  "free": false,
   "belongs_to_uuid": "0e56fe34-39a3-42d5-86c7-d719487f892b",
-  "nic": "90:b8:d0:55:57:2f"
 }
 ```
 
@@ -298,8 +292,7 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips/10.88.88.105
 
 {
   "ip": "10.88.88.105",
-  "reserved": true,
-  "free": true,
+  "reserved": true
 }
 ```
 
@@ -332,9 +325,7 @@ pool of possible IPs when creating another instance.
 | ---------------------	| ------------- | ------------------------------------- |
 | ip			| String	| The IP Address			|
 | reserved		| Boolean	| The IP's current reservation state	|
-| free			| Boolean	| True if the IP is in use		|
 | belongs_to_uuid	| UUID		| optional Instance that owns the IP	|
-| nic			| String	| optional MAC address of the owning nic |
 
 ###### errors
 
@@ -342,6 +333,7 @@ pool of possible IPs when creating another instance.
 | --------------------- | ----------------------------------------------------- |
 | ResourceNotFound	| If :login, :id, or :ip_address does not exist		|
 | MissingParameter	| ip and or reserved are not set			|
+| InvalidArgument	| trying to modify a triton_reserved ip			|
 
 #### Instances
 
