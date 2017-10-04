@@ -134,7 +134,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 88 DC and Hardware Management Futures](./rfd/0088/README.md) |
 | publish  | [RFD 89 Project Tiresias](./rfd/0089/README.md) |
 | predraft | [RFD 90 Handling CPU Caps in Triton](./rfd/0090/README.md) |
-| predraft | [RFD 91 Application level metrics in CMON](./rfd/0091/README.md) |
+| predraft | [RFD 91 Application Metrics in SDC and Manta](./rfd/0091/README.md) |
 | predraft | [RFD 92 Triton Services High Availability](./rfd/0092/README.md) |
 | publish  | [RFD 93 Modernize TLS Options](./rfd/0093/README.md) |
 | draft | [RFD 94 Global Zone metrics in CMON](./rfd/0094/README.md) |
