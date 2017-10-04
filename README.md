@@ -154,7 +154,8 @@ formal writing that it has come to represent.)
 | draft    | [RFD 108 Remove Support for the Kernel Memory Cage](./rfd/0108/README.md) |
 | predraft | [RFD 109 Run Operator-Script Earlier during Image Creation](./rfd/0109/README.md) |
 | predraft | [RFD 110 Operator-Configurable Throttles for Manta](./rfd/0110/README.md) |
-| draft    | [RFD 111 Manta Incident Response Practice](./rfd/0111/README.md) |
+| publish  | [RFD 111 Manta Incident Response Practice](./rfd/0111/README.md) |
+| predraft | [RFD 112 Manta Storage Auditor](./rfd/0112/README.md) |
 
 
 ## Contents of an RFD
