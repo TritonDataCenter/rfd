@@ -1,6 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>
-state: predraft
+state: draft
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+112%22
 ---
 
 <!--
@@ -179,7 +180,7 @@ un-checked object is.
 
 ## Proposal
 
-We propose two major pieces:
+We propose three major pieces:
 
 1. A new mechanism for auditing the contents of Manta without the need for daily
    backups of the metadata tier or storage tier.  This would be driven by a new
@@ -227,7 +228,7 @@ metadata).  When the auditor completes auditing an entry, it updates
 "timeAuditSweep", setting it to an ISO 8601 timestamp of the current time.  To
 find the next set of entries to audit, the auditor queries Moray for objects in
 the "manta" bucket sorted in increasing order of "timeAuditSweep".  It would
-also separately query for objects with null values of timeAuditSweep.  This
+also separately query for objects with null values of "timeAuditSweep".  This
 allows the auditor to balance auditing of least-recently-audited entries and
 newly-created entries according to whatever parameters it wants.
 
@@ -314,12 +315,12 @@ auditor per shard) using a two-phase approach to sweeping: instead of querying
 for the next set of records to audit, each auditor marks the next set of records
 for itself (using a new field) and then fetches the records it just marked.
 This ensures that the auditors are working on disjoint records.  This would
-allow large numbers of auditors to be applied to a shard
+allow large numbers of auditors to be applied to a shard.
 
 However, based on the work the auditor is doing, it's not expected that we will
 need more than one or two Node processes, even for large deployments.  We
 propose creating two by default just to make sure the multi-auditor case is
-tested regularly.  These instances would be configured to audit separate shards.
+tested regularly.  These instances would be configured to audit disjoint shards.
 
 
 #### Auditor availability
@@ -357,9 +358,18 @@ the oldest record not yet processed.
 
 #### Operational issues
 
-* XXX falling behind
-* XXX storage node being down for a while
-* XXX starting to create tons of records for a while
+* **Falling behind:** We'll want to monitor the progress of the auditor.  With
+  the proposed fields, we can easily identify the least-recently-audited object
+  (or the oldest-never-audited object), and we should alarm on that.
+* **Storage nodes down for extended periods:** We likely don't want to produce
+  audit errors if we cannot contact a particular storage node.  (This happens
+  often enough that we need to handle this first-class.)  Instead, we need to
+  keep track of the fact that we haven't audited some objects, move on, and try
+  later.
+* **Going haywire:** Bugs can cause systems like this to incorrectly generate
+  tons of bad output.  We may want a circuit breaker of sorts that says that if
+  a large number of errors are produced in a short period, we stop and raise an
+  alarm.
 
 
 ### Storage auditor
@@ -385,8 +395,8 @@ The row would include:
 
 There would be a separate table of statistics describing:
 
-- the scope, which would either be an account uuid or a tombstone directory
-- the number of objects
+- a scope, which would either be an account uuid or a tombstone directory
+- the number of objects in that scope
 - the sum of logical sizes of these objects
 - the sum of physical sizes of these objects
 
@@ -444,7 +454,7 @@ could:
   presumably by skipping the update.
 - have the cache use the file events monitoring (FEM) API in the OS to notice
   when new files have been created.  This decouples the data path from the
-  cache, which is likely preferable
+  cache, which is likely preferable.
 
 Importantly, if the auditor is asked about a file that it does not know about,
 then it would go fetch the information immediately, and synchronously with
@@ -497,6 +507,8 @@ new component described here.
 
 ## Open questions
 
+* Are the proposed new indexes really okay?  Are writes to the whole table once
+  per day okay?
 * What should we do if a storage node is down for an extended period?  (This
   isn't as uncommon as we would like.)  It can obviously skip particular entries
   for now, but how does it avoid seeing the same entries when it queries
@@ -514,16 +526,24 @@ new component described here.
   it's trying to validate.
 * How will configuration work?  Ideally, auditors would divvy up the shards
   among themselves.  How could we make sure they don't stomp on each other?
-* New index usage okay?  Writes to the whole table once per day okay?
 * Should the storage auditor checksum the object when asked to by the online
   auditor, or should it do so with some lesser frequency on its own and have the
   online auditor just report the older of the checksum timestamps?
-* Is it a problem that we have to write to the entire database?
 * How will the online auditor discover that a particular storage zone does not
   support online auditing (as opposed to it just being down)?
 * Do we want to be more precise about what "timeAuditSweep" means?  Do we want
   to distinguish between timeAudited, timeAuditSwept (in case we skipped it),
   timeAuditedWithChecksum, etc.?  That's a lot of indexes.
+
+There are several pieces we probably want to de-risk early in the project:
+
+- See the questions above about the new database indexes and writes.
+- Will the storage-auditor be built in Node?  (Bias should be yes, but it can be
+  hard to get much concurrency for filesystem operations in Node.)
+- How large would a sqlite database for a typical production node be?  How long
+  would it take to build?  How many writes per second can it do, and how would
+  that compare to writes that our production systems actually do?
+
 
 
 ## RFD Basics
