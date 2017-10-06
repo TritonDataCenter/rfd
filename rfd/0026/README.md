@@ -94,7 +94,7 @@ state: draft
         - [GetVolumePackage GET /volumepackages/volume-package-uuid (Volume packages milestone)](#getvolumepackage-get-volumepackagesvolume-package-uuid-volume-packages-milestone)
     - [Changes to VMAPI](#changes-to-vmapi)
       - [New `sdc:volumes` metadata property (mvp milestone)](#new-sdcvolumes-metadata-property-mvp-milestone)
-      - [New `nfsvolumestorage` `smartdc_role`](#new-nfsvolumestorage-smartdc_role)
+      - [New `nfsvolumestorage` `triton.system_role`](#new-nfsvolumestorage-tritonsystem_role)
       - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
       - [New `volumes` parameter for `CreateVm` endpoint](#new-volumes-parameter-for-createvm-endpoint)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
@@ -139,8 +139,8 @@ state: draft
       - [Volume reservations](#volume-reservations)
         - [Volume reservation objects](#volume-reservation-objects)
         - [Volume reservations' lifecycle](#volume-reservations-lifecycle)
-        - [AddVolumeReservation POST /volumereservations](#addvolumereservation-post-volumereservations)
-        - [RemoveVolumeReservation DELETE /volumereservations/uuid](#removevolumereservation-delete-volumereservationsuuid)
+        - [CreateVolumeReservation POST /volumereservations](#createvolumereservation-post-volumereservations)
+        - [DeleteVolumeReservation DELETE /volumereservations/uuid](#deletevolumereservation-delete-volumereservationsuuid)
         - [ListVolumeReservations GET /volumereservations](#listvolumereservations-get-volumereservations)
       - [Snapshots (Snapshots milestone)](#snapshots-snapshots-milestone-1)
         - [Snapshot objects](#snapshot-objects)
@@ -616,8 +616,9 @@ integration milestone, and will use volume packages when those become available
 #### Adding a new `triton report` command (MVP milestone)
 
 Creating a shared volume results in creating a VM object and an instance with
-`smartdc_role: 'nfsvolumestorage'`. As such, a user could list all their
-"resources" (including instances _and_ shared volumes) by listing instances.
+the `triton.system_role: 'nfsvolumestorage'` tag. As such, a user could list all
+their "resources" (including instances _and_ shared volumes) by listing
+instances.
 
 However, the fact that shared volumes have a 1 to 1 relationship with their
 underlying containers is an implementation detail that should not be publicly
@@ -1316,15 +1317,15 @@ that should not be exposed to end users. As such, they need to be filtered out
 from any of the `*Machines` endpoints (e.g `ListMachines`, `GetMachine`, etc.).
 
 For the `ListMachines` endpoint, filtering out NFS volumes' storage VMs will be
-done by filtering on the `smartdc_role` tag: VMs with the `nfsvolumestorage`
-`smartdc_role` tag will be filtered out.
+done by filtering on the `triton.system_role` tag: VMs with the
+`nfsvolumestorage` `triton.system_role` tag will be filtered out.
 
 For instance, CloudAPI's `ListMachines` endpoint will always pass -- in addition
 to any other search predicate set due to other `ListMachines` parameters -- the
 following predicate to VMAPI's ListVms endpoint:
 
 ```
-{ne: ['tags', '*smartdc_role=nfsvolumestorage*']}
+{ne: ['tags', '*triton.system_role=nfsvolumestorage*']}
 ```
 
 For all other endpoints, they will result in an error when used on an NFS
@@ -1737,11 +1738,11 @@ package](#introduction-of-volume-packages-volume-packages-milestone) with UUID
 A new `sdc:volumes` metadata property will be added that will contain all the
 data needed for an instance to determine what volumes it requires/mounts.
 
-#### New `nfsvolumestorage` `smartdc_role`
+#### New `nfsvolumestorage` `triton.system_role`
 
 Machines acting as shared volumes' storage zones will have the value
-`nfsvolumestorage` for their `smartdc_role` property. To know how this new
-`smartdc_role` value is used by CloudAPI to prevent users from performing
+`nfsvolumestorage` for their `triton.system_role` property. To know how this new
+`triton.system_role` value is used by CloudAPI to prevent users from performing
 operations on these storage VMs, refer to the section [Not exposing NFS volumes'
 storage VMs via any of the `Machines`
 endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
@@ -2327,6 +2328,7 @@ Volume reservations are composed of the following attributes:
 * `job_uuid`: the UUID of the job that creates the VM
 * `owner_uuid`: the UUID of the owner of the VM and the volumes
 * `volume_name`: the name of the volume being created
+* `create_timestamp`: the time at which the volume reservation was created
 
 ##### Volume reservations' lifecycle
 
@@ -2357,7 +2359,7 @@ same volume is created. This happens when:
 * the corresponding provisioning workflow job completes successfully
 * the VM that mounts reserved volumes becomes active
 
-##### AddVolumeReservation POST /volumereservations
+##### CreateVolumeReservation POST /volumereservations
 
 ###### Input
 
@@ -2384,7 +2386,7 @@ form:
 }
 ```
 
-##### RemoveVolumeReservation DELETE /volumereservations/uuid
+##### DeleteVolumeReservation DELETE /volumereservations/uuid
 
 ###### Input
 
