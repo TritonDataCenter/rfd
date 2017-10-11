@@ -59,8 +59,7 @@ please refer to RFD 27.
 
 ## Proposed Solution
 
-### The following routes will be added to
-[triton-cmon](https://github.com/joyent/triton-cmon/)
+### The following routes will be added to [triton-cmon](https://github.com/joyent/triton-cmon/)
 
 * Compute node metrics discovery:
 
@@ -94,8 +93,7 @@ cpu_info_model 42
 ...
 ```
 
-### The following route will be added to
-[triton-cmon-agent](https://github.com/joyent/triton-cmon-agent)
+### The following route will be added to [triton-cmon-agent](https://github.com/joyent/triton-cmon-agent)
 
 * Compute node metrics:
 
@@ -114,8 +112,8 @@ cpu_info_model 42
 ...
 ```
 
-### The following functionality will be added to
-[triton-cns](https://github.com/joyent/triton-cns)
+### The following functionality will be added to [triton-cns](https://github.com/joyent/triton-cns)
+
 * When compute nodes come and go, CNS will detect the change and create a DNS
 CNAME record which points to the CMON proxy A RECORD.
 
