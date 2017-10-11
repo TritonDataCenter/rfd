@@ -159,7 +159,7 @@ The proposed new sdcadm commands are:
 
     sdcadm server ls                # replacement for `sdc-server list`
     sdcadm server headnode-setup    # convert a CN to an HN
-    sdcadm service migrate          # controlled migration of a service inst
+    sdcadm service migrate          # controlled migration of service insts
     sdcadm service restore          # restore one or more services
 
     # Lower priority.
@@ -225,16 +225,21 @@ For example, to migrate all services from the initial headnode (hostname
 
     sdcadm service migrate headnode0 3WGMXQ1 --all
 
-This would do a controlled "move" of services on "headnode" to headnode
+This would do a controlled "move" of services on "headnode0" to headnode
 "3WGMXQ1". "Move" is quoted because, *new* instances are created and the old
 instances destroyed, as opposed to existing "VM migration" scripts which move a
 VM dataset and maintain VM UUID, nics, etc. See the [Why new zones instead of
 migrating same UUID?](#why-new-zones-instead-of-migrating-same-uuid) section in
 the appendix.
 
+`sdcadm service migrate ...` assumes that the provisioning stack is operational.
+If it is broken, then either the operator needs to fix existing instances
+that are broken or consider using [`sdcadm service
+restore`](#headnode-recovery-process).
+
 Note that service migration will avoid having multiple instances of the same
 service on the same HN. For example, if there is already a manatee on this HN,
-then another will not be created. It is expect that the operator may have to
+then another will not be created. It is expected that the operator may have to
 re-establish three HA instances of binder, manatee, and moray via the following
 on some new server.
 
@@ -253,15 +258,15 @@ the existing secondary headnodes alone:
 
 ### Headnode recovery process
 
-The main headnode has just died. This section describes how the operator is
-expected to recover things.
+A headnode has just died and it was running single-instance services. This
+section describes how the operator is expected to recover things.
 
     ssh $SECONDARY_HEADNODE
     sdcadm service restore
 
 This will walk through recovering all required Triton DataCenter core instances
 on this server. On success, the DC should be fully operational. However
-the final state will be HA clusters of binder, manatee, and moray that only have
+the final state may be HA clusters of binder, manatee, and moray that only have
 *two* instances -- less than the required three. It is expected that the
 operator follow up relatively soon with an additional headnode:
 
@@ -632,6 +637,10 @@ The ideal is to be able to do the following in nightly-1:
       to get others to get those log.error's down to nothing as part of
       normal.
     See scratch section below.
+- look into properly using ssh-keyscan for setup CNs/HNs so `sdc-login ...`
+  doesn't have to do host key verification the first time. This would
+  break automated tests. Start with:
+    ssh-keyscan -t rsa,dsa 10.99.99.45 >> ~/.ssh/known_hosts
 - next: cloudapi to test delegate dataset
 
 - ...
@@ -641,101 +650,61 @@ The ideal is to be able to do the following in nightly-1:
 
 #### scratch
 
+
     ssh headnode0   # shouldn't matter which one
+    sdcadm service migrate headnode0 cn2 vmapi
     sdcadm service migrate headnode0 cn2 --all
 
-    sdcadm service sync-restore-data
-        Hidden command, code in lib/service.js or whatever. Used by 'migrate'
-        for each service to ensure have latest bits.... I guess it could be
-        a proc then. Used by the bg task that is syncing these every 5m.
 
-            lib_services.listServices(...)
-            lib_services.syncRestoreData({
-                targetHeadnodes: [array of target servers]
-            }, function (err) {...});
+Moved vmapi to cn2 with:
 
-        This calls the "sync now" endpoint of the sdcadm-agent API on every
-        CN to have them pull. Those all send progress packets (JSON objects)
-        with which we show progress.
-
-sdcadm-agent:
-- listens on well-known port with an API, a la amon-relay
-- takes requests to kick off a service-restore-data sync for a given service name
-- if cannot contact a HN sdcadm-agent for sync'ing then note that for
-  'sdcadm status' (eventually an amon alarm for this)
-- also takes over the current sdcadm-setup service duties (logadm, anything else?)
-- Q: what cleans out service-restore-data when insts are removed? This argues
-  for *pull*.
-- does this service-restore-data sync every 5m
+    sdcadm create -s cn2 vmapi --dev-allow-multiple-instances
 
 
-sync-restore-data.sh prototype
-    Done:
-        /var/sdcadm/svc-restore-data/
-            svc-vmapi/
-                sapi-insts.json
-                vm-$uuid0.json
-                    XXX vmapi dump doesn't have, e.g. 'archive_on_delete'
-                    Q: what else it is missing from 'vmadm get ...'?
-                    TODO: discuss with  joshw
-                ...
-            images/
-                ... db of images here. Clean up is harder, but that is fine.
-    TODO: add dump of sapi-app.json and sapi-svc.json to give option to debug
-        or construct VM payload from that data.
-    TODO: delegate datasets (e.g. cloudapi)
+##### appendix: how to migrate
+
+TODO: move this to an appendix about how to handle min-downtime migration
+TODO: get discussion and review from others on it
+
+What is vmapi *migrate*?
+
+For *migration* we assume the stack is up. If not, then we are *restoring* and
+that's different... possibly with slightly less correctness (up to date data
+for, e.g., selecting alias).
+- Take 1 (no new support for APIs required):
+    - put DC in maint mode
+    - create the new instance on target HN
+    - (hope that there aren't integrity issues with having 2 insts for a short while)
+      TODO: quick eval of each repo for whether there could be issues with
+      2 running. If so, then might want different procedure for those where
+      the old inst is down before the new one is brought up. This requires
+      the ability to SAPI CreateInstance this instance without that service
+      itself.
+    - destroy the old instance on the source HN
+    - take DC out of maint mode
+- Take 2 (cutesy proxying):
+    - Bring up new inst on target HN (assuming here a svc that can handling having
+      multiple unused insts; e.g. this excludes the 'sdc' zone for which there
+      should only be one at a time) in "disabled" mode. "Disabled mode" means:
+      an API functions but isn't in DNS; the "sdc" zone singleton work
+      (cronjobs, hermes) is off.
+    - Put the old inst in "proxy mode" where it quiesces and proxies all new
+      requests to the new insts' IP. (Q: Is this easily possible?)
+    - Put the new inst in DNS, then take the old one out of DNS.
+    - Quiesce the old inst and then shut it down.
+    * * *
+    - Q: work for vmapi (simple)?
+    - Q: work for cloudapi (simple, delegate dataset)?
+    - Q: work for sdc (crontabs, hermes, possible IP whitelisting to Manta)?
+    - Q: work for ufds (possible IP whitelisting to master UFDS)?
+    - Q: work for imgapi (large delegate dataset)?
+Might prefer take 1 because KISS. The *right* answer is for each service to
+get to being HA. Better to spend time on that, then cutesy "proxy mode".
 
 
-Then migrate of vmapi is:
+##### appendix: push or pull for svc-restore-data?
 
-- alias: How to determine alias? Possible to have same way as for
-  restore? I.e. vmapi is down. If all the headnodes are sync'ing
-  properly (should check that as part of this migrate), then can
-  look at those 'vmadm get' payloads and find a free one? That limits to
-  only have core svc insts on HN.
-
-  In general 'service restore data' would include all required info...
-  including how to choose a valid alias.
-
-  Could switch away from '<name><N>' style to manta's style. That's a big
-  change tho. What breaks if we have 'vmapi-$shortId' for alias?
-
-  Could have all sapi service and inst data syncing, then assuming that is
-  up to date, we know about all insts. This is a periodic dump of
-  `sdcadm insts vmapi` ... strictly define that, because currently that
-  object is too fluid. :) Perhaps the raw SAPI data if that suffices.
-- image: from somewhere in server-restore-data
-- payload: TODO: work out steps from the info we have (perhaps look back at logs
-  for the manual experience?). Do we just use SAPI info? Or do we also look at
-  instance (also VMAPI obj and 'vmadm get' obj differ!)?
-  XXX Do we *use* SAPI CreateInstance if we are after SAPI? No... that doesn't
-      work for VMAPI, duh. But need to update SAPI instances after.
-- Chose IP how? Is NAPI down? Possibly, so need that IP info in
-  svc-restore-data.
-    TODO: talk with cody about plan here to reserve IPs on admin for core
-    zones. What about public ones? re-use those ones? Might prefer to. Then,
-    e.g. 'tlive' would still work without need to update LBs, DNS, configs.
-    What about stealing IP for admin network too? We shouldn't have both
-    running at the same time... because by def'n they aren't ready for that.
-- TODO: what about updating ips in settings everywhere? And ensuring clients
-  reconnect properly (they will be expected to).
-
-Re-try: what is vmapi restore/migrate procedure?
-- pick alias from vm-*.json -> vmapi1
-- image: if not already installed on target HN, reverse install origin chain
-  from svc-restore-data/images/...
-- payload: 2 options
-    1. from vm.json dump (from VMAPI or vmadm get)
-    2. from SAPI data:
-        Q: Does SAPI CreateInstance hardcode to customer_metadata?
-        Somewhat. It cherry-picks a few vars from svc.metadata
-        (and inst.metadata too?) + unholy special 'pass_vmapi_metadata_keys'
-        handling for nat zones. Hopefully we can ignore the latter.
-    XXX START HERE
-
-
-
-
+TODO: move this to an appendix, conclusion "pull", update with reasons above
 Q: Restore data syncing, push or pull?
 Pull pros:
 - If restoring on a running HN, we can know when we last pulled and if
@@ -749,6 +718,7 @@ Push pros:
 - If we 'sdcadm up vmapi' on a HN, we can know *right then* to push the updated
   image to the remote HNs and make that push part of commiting the update.
   We can also just poke every sdcadm-agent to update, then they pull.
+
 
 ### M2: Headnode recovery
 
@@ -777,7 +747,101 @@ Also (restore full HA on new server):
 
 - Ensure can easily setup a 4th CN as the third HN.
 
-* * *
+
+#### TODO
+
+- finish off sync-restore-data.sh work into functioning sdcadm-agent and
+  'sdcadm service sync-restore-data' hidden command
+
+
+#### scratch
+
+##### svc-restore-data
+
+    sdcadm service sync-restore-data
+        Hidden command, code in lib/service.js or whatever. Used by 'migrate'
+        for each service to ensure have latest bits.... I guess it could be
+        a proc then. Used by the bg task that is syncing these every 5m.
+
+            lib_service.listServices(...)
+            lib_service.syncRestoreData({
+                targetHeadnodes: [array of target servers]
+            }, function (err) {...});
+
+        This calls the "sync now" endpoint of the sdcadm-agent API on every
+        CN to have them pull. Those all send progress packets (JSON objects)
+        with which we show progress.
+
+sdcadm-agent:
+- listens on well-known port with an API, a la amon-relay
+- takes requests to kick off a svc-restore-data sync for a given service name
+- if cannot contact a HN sdcadm-agent for sync'ing then note that for
+  'sdcadm status' (eventually an amon alarm for this)
+- also takes over the current sdcadm-setup service duties (logadm, anything else?)
+- Q: what cleans out svc-restore-data when insts are removed? This argues
+  for *pull*.
+- does this svc-restore-data sync every 5m
+
+
+sync-restore-data.sh prototype
+    Done:
+        /var/sdcadm/svc-restore-data/
+            svc-vmapi/
+                sapi-insts.json
+                vm-$uuid0.json
+                    XXX vmapi dump doesn't have, e.g. 'archive_on_delete'
+                    Q: what else it is missing from 'vmadm get ...'?
+                    TODO: discuss with  joshw
+                ...
+            images/
+                ... db of images here. Clean up is harder, but that is fine.
+    TODO: add dump of sapi-app.json and sapi-svc.json to give option to debug
+        or construct VM payload from that data.
+    TODO: delegate datasets (e.g. cloudapi)
+
+##### restore notes
+
+A *restore* of vmapi is:
+- alias: How to determine alias? Possible to have same way as for
+  restore?
+
+  We have a periodic dump of the SAPI 'sdc' app data, so we can see all the
+  vmapi insts and pick a free alias -- assuming the data isn't split brain.
+
+  TODO: sdcadm status and/or amon alarms for splitbrain data and truing up.
+  Perhaps require that to be clean for 'sdcadm up' runs? Add warnings to
+  the output of 'sdcadm insts'?
+
+- image: from somewhere in svc-restore-data
+- payload: TODO: work out steps from the info we have (perhaps look back at logs
+  for the manual experience?). Do we just use SAPI info? Or do we also look at
+  instance (also VMAPI obj and 'vmadm get' obj differ!)?
+  XXX Do we *use* SAPI CreateInstance if we are after SAPI? No... that doesn't
+      work for VMAPI, duh. But need to update SAPI instances after.
+- Chose IP how? Is NAPI down? Possibly, so need that IP info in
+  svc-restore-data.
+    TODO: talk with cody about plan here to reserve IPs on admin for core
+    zones. What about public ones? re-use those ones? Might prefer to. Then,
+    e.g. 'tlive' would still work without need to update LBs, DNS, configs.
+    What about stealing IP for admin network too? We shouldn't have both
+    running at the same time... because by def'n they aren't ready for that.
+- TODO: what about updating ips in settings everywhere? And ensuring clients
+  reconnect properly (they will be expected to).
+
+Re-try: What is vmapi restore procedure?
+- pick alias from vm-*.json -> vmapi1
+- image: if not already installed on target HN, reverse install origin chain
+  from svc-restore-data/images/...
+- payload: 2 options
+    1. from vm.json dump (from VMAPI or vmadm get)
+    2. from SAPI data:
+        Q: Does SAPI CreateInstance hardcode to customer_metadata?
+        Somewhat. It cherry-picks a few vars from svc.metadata
+        (and inst.metadata too?) + unholy special 'pass_vmapi_metadata_keys'
+        handling for nat zones. Hopefully we can ignore the latter.
+    XXX START HERE
+
+##### admin ips
 
 TODO: A problem here is that creating new core zones, we could run out of admin
 IPs! How do we know which IPs to use? We could try to get that info from NAPI.
@@ -794,8 +858,7 @@ NAPI? How/where?
 
 TODO: ask ops/support if being low on admin IPs is possible/common?
 
-
-#### restore process
+##### restore process
 
 Feeling out the restoration process.
 
@@ -861,11 +924,45 @@ come up.
 
 Trent's scratch area for impl. notes
 
+
+### Separable work
+
+These need to be fleshed out, ticketed, assigned.
+
+- [HEAD-2207] booter warm cache work
+- HA booter (because required for data path rebooting of CNs while
+  HN is down): see about fair load balancing if multiple CNs are
+  booting (round robin? have a given booter delay by N*100ms on DHCPD responses
+  if already booting N CNs?)
+- breaking SAPI's circular dep on config-agent
+  Currently SAPI is first setup in proto mode and requires headnode.sh
+  dorking into it later to get its config-agent going and then changing
+  SAPI to full mode. SAPI zone update requires creating a sapi0tmp zone,
+  updating sapi0 to the new image, and then deleting the sapi0tmp zone.
+  We need to be able to setup a SAPI instance while there are
+  no SAPI zones running. If, while designing this, it is easier to just
+  require multiple SAPI zones (one on each HN) and ensure HA SAPI works,
+  then we could consider that. However, for COAL and non-HA TritonDC
+  deployments it would be nice to have SAPI be able to be updated
+  without requiring sapi0tmp.
+  There was some discussion on config-agent changes to look at
+  being able to do all configuration using VM metadata, so that all
+  data required for a zone boot is on the CN itself. There is likely
+  significant work for that, so not sure of practically.
+- doc'ing all the CNAPI server object fields (start a ticket with my
+  starter notes)
+- doc'ing all the USB key layout (perhaps in a docs/index.md in
+  sdc-headnode.git?). Also document if/how/what each of those is
+  updated, and how they relay to the USB key "copy" at /usbkey/...
+  (e.g. /usbkey/os can contain more plats than on the physical USB key).
+
+
 ### TODOs
 
 See also the TODOs in each milestone section, and any "TODO" or "Q" in this doc.
 This section is a general list of things to not forget.
 
+XXX
 - dapi allocation (perhaps only on headnodes?) broken if have >1 headnode?
         {
           "result": "",
@@ -945,7 +1042,11 @@ This section is a general list of things to not forget.
 
 - How does being a UFDS master or slave affect things here?
 
-- sdc-oneachnode: Consideration for '-c, --computeonly' option?
+- sdc-oneachnode:
+    - Let people know that '-c' is now not "all other nodes" because some of
+      those are headnodes.
+    - Consider adding '-H, --headnodes' to run only on headnodes.
+    - Consider favouring '--computenodes' over '--computeonly'.
 
 - sdcadm: `sdcadm self-update` to update on all HNs
 
@@ -964,14 +1065,22 @@ This section is a general list of things to not forget.
   registrar in dhcpd zones, because nothing uses or should need to lookup
   dhcpd zones in DNS.
 
+- setup file (/var/lib/setup.json) has node_type=headnode|computenode.
+    Why? Does this matter. Pretty sure not -- these are the only hits:
+        $ rg -w node_type | grep -v javascriptlint | grep -v uglify-js | grep -v illumos-joyent/usr/src | grep -v deps/node | grep -v node_modules/sprintf | grep -v sdcboot/ | grep -v www/js/lib/underscore.string.js
+        sdc-headnode/scripts/joysetup.sh:        echo "{ \"node_type\": \"$TYPE\", " \
+        smartos-live/overlay/generic/lib/svc/method/smartdc-init:	"\"node_type\": \"computenode\"," \
+    TODO: a separate HEAD-??? ticket to remove node_type
 
 ### Code
 
 Integrated to master:
 
 - sdc-headnode.git comitted to master
-    - HEAD-2343 allow headnode setup to work on a CN being converted to a headnode
-        requires gz-tools builds after 20170118
+    - HEAD-2343 allow headnode setup to work on a CN being converted to a
+      headnode requires gz-tools builds after 20170118
+    - HEAD-2367, HEAD-2368 sdc-login improvements to help with running
+      test suites with multiple headnodes
 - sdc-booter.git
     - NET-371 (builds on or after: master-20170518T212529Z)
     - NET-376 (commit 554cb97, builds on or after:
@@ -982,6 +1091,8 @@ Integrated to master:
       cope with the zones/usbkey dataset not yet existing (that comes later
       when smartdc/init runs headnode.sh for the first time on this server).
     - builds on or after 20170830 (release-20170831)
+- sdc-vmapi.git
+    - ZAPI-800 Update provision workflow to not assume a single headnode
 
 In CR:
 
