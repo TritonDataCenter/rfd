@@ -204,9 +204,8 @@ is less new work, but I'm not positive the auth story is a good thing. Does
 authenticating as the user like this pose a problem for RBACv2 design? E.g.
 what if it a subuser calling? Or is it a good/bad idea to have admin from a DC
 authenticating as 'admin' on another DC's cloudapi? Perhaps no worse than:
-    triton -a admin --act-as $user image get IMAGE
-What key setup is required for this? Perhaps less than for IMGAPI-to-IMGAPI
-communication.
+`triton -a admin --act-as $user image get IMAGE`. What key setup is required for
+this? Perhaps less than for IMGAPI-to-IMGAPI communication.
 
 
 ## Open Qs and TODOs
