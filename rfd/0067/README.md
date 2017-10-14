@@ -46,12 +46,16 @@ want someting workable sooner.
   - [M1: Controlled decommissioning of a headnode](#m1-controlled-decommissioning-of-a-headnode)
   - [M2: Headnode recovery](#m2-headnode-recovery)
   - [M3: Surviving the dead headnode coming back](#m3-surviving-the-dead-headnode-coming-back)
-- [TODOs](#todos)
+- [Scratch](#scratch)
+  - [Separable work](#separable-work)
+  - [TODOs](#todos)
+  - [Code](#code)
 - [Appendices](#appendices)
   - [Prior art](#prior-art)
   - [Why 3 HNs and not 2?](#why-3-hns-and-not-2)
   - [What does it mean to be a headnode?](#what-does-it-mean-to-be-a-headnode)
   - [Why new zones instead of migrating same UUID?](#why-new-zones-instead-of-migrating-same-uuid)
+  - ['sdcadm server' notes](#sdcadm-server-notes)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -559,9 +563,47 @@ TODO fill this out
 
 #### TODO
 
+XXX
+
 - sdcadm server headnode-setup:
     - need to pass *local* assets IP to the headnode-prepare.sh script because
       it is only *this* headnode that has setup /usbkey/extra/headnode-prepare
+
+        See cnapi server-setup.js running agentsetup.sh that passes assets-url via env:
+            function executeAgentSetupScript(job, callback) {
+                var urUrl = '/servers/' + job.params.server_uuid + '/execute';
+                var cnapiUrl = job.params.cnapi_url;
+                var assetsUrl = job.params.assets_url;
+                var cnapi = restify.createJsonClient({ url: cnapiUrl});
+
+                var script = [
+                    '#!/bin/bash',
+                    'set -o xtrace',
+                    'cd /var/tmp',
+                    'echo ASSETS_URL = $ASSETS_URL',
+                    './agentsetup.sh'
+                ].join('\n');
+
+                var payload = {
+                    script: script,
+                    env: { ASSETS_URL: assetsUrl }
+                };
+
+                cnapi.post(urUrl, payload, function (error, req, res) {
+                    if (error) {
+                        job.log.info('Error executing agent setup via CNAPI:'
+                            + error.message);
+                        job.log.info(error.stack.toString());
+                        callback(error);
+                        return;
+                    }
+                    callback();
+                });
+            }
+        Can use args too (I prefer that).
+
+    - Use cnapi.serverExecute rather than Ur directly.
+      Will that work because it is sync? I don't know about timeouts.
     - trim USB key cruft from update_usbkey_extra_headnode_prepare, we need less
     - on reboot and after headnode.sh runs we don't have:
         /usbkey/extra/{agents,dockerlogger}
@@ -570,12 +612,16 @@ TODO fill this out
             /lib/sdc/docker/logger on /opt/smartdc/docker/bin/dockerlogger read only/setuid/devices/dev=169000f on Mon Sep 11 06:32:17 2017
           headnode.sh issue? or elsewhere?
     - get headnode-prepare.sh into sdc-headnode.git where it belongs
+        - then ensure we can updated it with SdcAdm.updateGzTools
+          (it should be updated in /mnt/usbkey/scripts already, need to add
+          similar to copyAgentSetup to create /usbkey/extra/headnode-prepare)
     - 'sdcadm' install changes to install the shar, if can, to /var/sdcadm
       somewhere, and update update_usbkey_extra_headnode_prepare to use it
     - move ProcHeadnodeSetup to procedures/
 
-- setup sync'ing required for 'sdcadm service migration/restore'
-    This is the "restore-data" thing mentioned in the Overview.
+- move this to M3 TODOs:
+    - setup sync'ing required for 'sdcadm service migration/restore'
+        This is the "restore-data" thing mentioned in the Overview.
 
 - other 'headnode resiliency setup':
 
@@ -583,7 +629,6 @@ TODO fill this out
     - creating starter instances on those new headnodes: dhcpd
 
     Are these steps part of the headnode-setup? Or separate?
-
 
 - A replaced my COAL primary headnode, keeping an older secondary CN running
   an older platform. The result was:
@@ -601,7 +646,8 @@ TODO fill this out
   if it boots as a CN.
 
 - A secondary headnode: Does it do the right thing with rabbitmq? Or does it
-  assume that rabbit will be local or not at all?
+  assume that rabbit will be local or not at all?  Perhaps usbkey/config
+  is being used via /lib/sdc/config.sh ?
 
 - Nice to have: The "usbkey/config" file for the secondary headnode *should*
   require a lot less than that on the initial headnode. It would be nice to
@@ -637,10 +683,6 @@ The ideal is to be able to do the following in nightly-1:
       to get others to get those log.error's down to nothing as part of
       normal.
     See scratch section below.
-- look into properly using ssh-keyscan for setup CNs/HNs so `sdc-login ...`
-  doesn't have to do host key verification the first time. This would
-  break automated tests. Start with:
-    ssh-keyscan -t rsa,dsa 10.99.99.45 >> ~/.ssh/known_hosts
 - next: cloudapi to test delegate dataset
 
 - ...
@@ -699,7 +741,7 @@ for, e.g., selecting alias).
     - Q: work for ufds (possible IP whitelisting to master UFDS)?
     - Q: work for imgapi (large delegate dataset)?
 Might prefer take 1 because KISS. The *right* answer is for each service to
-get to being HA. Better to spend time on that, then cutesy "proxy mode".
+get to being HA. Better to spend time on that, than on cutesy "proxy mode".
 
 
 ##### appendix: push or pull for svc-restore-data?
@@ -839,7 +881,7 @@ Re-try: What is vmapi restore procedure?
         Somewhat. It cherry-picks a few vars from svc.metadata
         (and inst.metadata too?) + unholy special 'pass_vmapi_metadata_keys'
         handling for nat zones. Hopefully we can ignore the latter.
-    XXX START HERE
+    XXX
 
 ##### admin ips
 
@@ -962,19 +1004,6 @@ These need to be fleshed out, ticketed, assigned.
 See also the TODOs in each milestone section, and any "TODO" or "Q" in this doc.
 This section is a general list of things to not forget.
 
-XXX
-- dapi allocation (perhaps only on headnodes?) broken if have >1 headnode?
-        {
-          "result": "",
-          "error": {
-            "name": "Error",
-            "message": "More than 1 headnode found in CNAPI"
-          },
-          "name": "cnapi.acquire_fabric_nat_tickets",
-          "started_at": "2017-09-12T15:01:17.930Z",
-          "finished_at": "2017-09-12T15:01:17.974Z"
-        }
-
 - recovery of a manta-deployment zone: is this a concern? is there potential
   data loss there? or is all the data in SAPI?
 
@@ -989,6 +1018,9 @@ XXX
   - sdcadm/lib/sdcadm.js  Something around CN setup I think.
   - smartos-live/...
   - ...
+
+- do our CNs sync ntp from the headnode? if so, there are implications there
+  for headnode resiliency
 
 - Update 'sdcadm post-setup cloudapi|docker|volapi|...' to not assume the
   first "cnapi.listServers({headnode:true})" is the server they can use
