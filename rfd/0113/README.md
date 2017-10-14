@@ -196,6 +196,9 @@ Implementation notes:
   (images.jo, updates.jo) already do. I'm not sure if certs are a potential
   problem here.
 
+
+#### Can we avoid exposing the IMGAPIs?
+
 Q: Can we avoid exposing the IMGAPIs to the other DCs? What if the target IMGAPI
 talked only to the CloudAPI of the source DC. It uses CloudAPI GetImage and
 CloudAPI GetImageFile (new) to stream out the file. This would require the
