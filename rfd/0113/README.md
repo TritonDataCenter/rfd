@@ -1,6 +1,7 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
-state: predraft
+state: draft
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+113%22
 ---
 
 # RFD 113 Triton custom image sharing, transfering, and x-DC copying
