@@ -18,6 +18,25 @@ maintained, built, and distributed. Also, besides documenting the origin
 images, this RFD will cover work to modernize the current set in use
 by Triton and Manta.
 
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Current Status](#current-status)
+- [The problem](#the-problem)
+- [Modernization 2016-2017](#modernization-2016-2017)
+  - [tl;dr](#tldr)
+  - [Considerations](#considerations)
+  - [Q1: -multiarch or -32 or -64?](#q1--multiarch-or--32-or--64)
+  - [Q2: base- or minimal- or something in between?](#q2-base--or-minimal--or-something-in-between)
+  - [Q4: Still need sdcnode builds for each image?](#q4-still-need-sdcnode-builds-for-each-image)
+  - [Naming and versioning](#naming-and-versioning)
+- [State as of July 2016](#state-as-of-july-2016)
+- [Future](#future)
+- [Discussions](#discussions)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 
 ## Current Status
 
