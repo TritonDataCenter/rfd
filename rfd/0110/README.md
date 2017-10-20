@@ -18,21 +18,12 @@ dicussion: https://github.com/joyent/rfd/issues/52
 
 ## Overview
 
-The purpose of this RFD is to discuss possible directions for implementing
-general throttles for Manta. The initial iteration of this throttle was
-implemented as per-muskie-process rate limiter. The reason we chose to go this
-direction initially is that it was relatively simple to implement and could be
-used during incidents to quickly lighten the load on the entire system.
-
-The intention is to eventually create a general purpose throttling library
-that can used by any service with parameters that can be dynamically configured
-by the operator. This means that instead of just throttling client requests
-at the front door the operator would be able to, for example, select a
-particular moray process and set a request rate limit for just that moray
-process. This more complex throttle will also have a mechanism for making
-globally-aware throttling decisions by talking to multiple services that opt-in
-to throttle inbound requests. The later iteration will require a state-sharing
-mechanism that we will not attempt to describe yet in this RFD.
+This RFD documents the design and implementation of a coarse muskie
+rate-limiter. The use-case addressed by the design is alleviating
+manta-wide stress when there is simply too much load for the system to
+handle. When manta load is too high, it is desirable to respond to
+clients in a way that will make them back-off until outstanding requests
+are handled.
 
 A motivating [example](https://devhub.joyent.com/jira/browse/MANTA-3283)
 for throttling in manta is the observation that
@@ -50,11 +41,12 @@ users publish URLs to Manta objects on social media with using a CDN.
 In this situation a muskie throttle probably makes the most sense.
 
 ## Terminology
-When a request is "throttled," muskie sends an HTTP response with status code
-429 without doing any processing that is specific to the request. In the current
-iteration, muskie treats all incoming requests equally, not attempting to
-differentiate PUTs from GETs, for example. Doing so may be useful and merits
-further investigation.
+To reject a request when manta is under too much load, a rate-limited muskie
+will send an HTTP status code 503 (ServiceUnavailable) without doing any
+processing that is specific to the request. Currently, muskie doesn't
+differentiate between different types of requests, such as PUTs and GETs.
+Maintaining separate queues for reads and writes, or metadata and content
+operations, may be useful and merits further investigation.
 
 In the language associated with a vasync queue, a request is "pending" if it is
 has been received by muskie, but the callback for processing it has not been
@@ -65,315 +57,113 @@ requests instead of allowing them to observe high request latencies.
 
 ## Restify
 Restify has a throttling [plugin](http://restify.com/docs/plugins-api/#throttle)
-that was proposed at a manta call, but we came to the conclusion that we'd
-rather not use it because (1) not all services we want to throttle use restify
-and (2) we'd rather not depend on restify. Ultimately, we would like a modular
-npm package that we can plug in to any manta service with minimal change to the
-service's operation or configuration.
+that was proposed at a manta call, but the conclusion reached in various
+discussions was that muskie should not use it because
+    * Not all services we want to rate-limit use restify
+    * Dependence on restify has led to bugs in the past
 
-Testing to compare the performance of a throttle that we roll on our own against
+Testing to compare the performance of the throttle discussed here and
 the restify throttle later in the development process may be useful for ensuring
-that efficiency is up to par. We might also consider some of the options that
-the restify throttle exposes that might be useful for our throttle when
-designing the library.
-
-## Initial Proposal
-As an initial iteration, this RFD proposes the addition of a throttling
-module to the Muskie repo. Over a longer time horizon, we plan to implement a
-generic throttling library that any node.js service in manta can require and add
-to middleware to any request-processing codepath.
+that efficiency is up to par. It may be useful to consider including some of the
+options that the restify throttle exposes in this design. One such option is
+maintaining a per-client-IP request queue.
 
 ### Parameters
-Currently, the muskie module is configured via the file
-etc/config.json in the "throttle" object. It exposes the following
-tunables:
+Currently, the muskie module is configured via the file `etc/config.json`
+the "throttle" object. It exposes the following configuration parameters
+(shown with their corresponding default values):
 
 ```json
 ...
 "throttle" : {
+        "enabled": false,
 	"concurrency": 50,
-	"requestRateCap": 5000,
-	"reqRateCheckIntervalSec": 5,
-	"queueTolerance": 10
+	"queueTolerance": 25
 },
 ...
 ```
 
-Internally, the muskie-throttle is implemented with a vasync queue. The
-concurrency value passed through the above configuration is fed directly
-into the queue and indicates the number of tasks that the queue schedules
-concurrently. Surplus requests are put in the pending state.
+The corresponding SAPI tunables are:
 
-The request rate capacity "requestRateCap" is a request/second value that
-indicates the maximum tolerable request rate before muskie starts sending
-back responses with HTTP status code 429. Once the observed request rate
-falls back to appropriate levels, muskie will start handling requests as
-usual.
+    - MUSKIE_THROTTLE_ENABLED
+    - MUSKIE_THROTTLE_CONCURRENCY
+    - MUSKIE_THROTTLE_QUEUE_TOLERANCE
 
-The request rate check interval "requestRateCheckIntervalSec" is the time
-interval that muskie should wait before computing the request rate again.
-It's unclear currently what this value should be, but setting it too low
-risks capturing too few requests in the calculation, and setting it too
-high risks muskie not responding to a burst quickly enough. The default
-is 5 seconds. This is an arbitrary choice.  As of now, the default values
-for the above parameters are set to be values that do not interfere with
-either the concurrent operation of
-10 mlive instances or the muskie test-suite. Further investigation
-based on real workloads is necessary.
+A dicussion concerning the tradeoffs between configuring these values on the fly
+and making them SAPI tunables concluded that it was better to preserve
+consistency, maintaining SAPI as the main source of manta component
+configuration.
 
-Finally the "queueTolerance" tunable corresponds to the number of requests
-muskie will tolerate in the queue during periods in which the request rate
-goes above capacity before it starts throttling requests. The queueTolerance
-can be viewed as a "hard" capacity or buffer space for queueing requests
-during bursty traffic.
+The "enabled" parameter decides whether muskie performs any request throttling
+at all. If the throttle is not enabled, muskie will operate just as it did prior
+to the introduction of the throttle. With the goal of being minimally-invasive
+to normal manta operation in mind, the throttle is disabled by default.
+
+The "concurrency" parameter corresponds to the concurrency option passed to the
+vasync queue that the coarse rate-limiter is implemented with. It represents the
+number of request-processing callbacks muskie can run at once. If all the slots in
+the queue are filled, incoming requests will start entering the "pending" state,
+waiting for request callbacks to finish.
+
+The "queueTolerance" parameter corresponds to the number of "pending" requests
+muskie will tolerate before it responds to new requests with 503 errors.
+Experiments with mlive show that queueing rarely occurs with a concurrency value
+of 50. Queues that hit a depth of 25 likely indicate anomalous request latency
+and suggest a problem elsewhere in the system that should be investigated.
+
+The default values of these parameters are based on load that was observed on
+SPC muskie instances. In general, tracing with the restify `route-start` and
+`route-done` parameters shows that under typical operation a muskie instance in
+SPC processes an average of 15 requests concurrently. The default value of the
+concurrency parameter is deliberately much higher than this average request
+rate. The reason for this being that the throttle is designed to be minimally
+invasive under normal and even slightly-higher-than-normal load.
 
 ### Dtrace Probes
-The current iteration of the muskie-throttle exposes a dtrace provider
-called "muskie-throttle" with four probes. The probes along with example scripts
-and output are listed below:
+Currently, the muskie-throttle exposes a dtrace provider called "muskie-throttle"
+with two probes:
 
-- *request_received*. This probe passes the number of requests currently queued
-  on the request queue at the moment that it fired. Queued requests are
-  operations that are not running, but waiting for other requests to be
-  serviced. This number is used to decide whether, during periods of bursty
-  requests the next request is throttled or queued (according to whatever soft
-  capacity is decided upon).
-	```
-	muskie-throttle*:::request_received{
-		printf("%d", arg0);
-	}
-	```
-  The output shows the number of requests that are in the pending state of the
-  vasync queue at the time the probe was fired:
-	```
-	7  11007 request_received:request_received 5
-	7  11007 request_received:request_received 5
-	4  11007 request_received:request_received 5
-	4  11007 request_received:request_received 4
-	4  11007 request_received:request_received 4
-	4  11007 request_received:request_received 5
-	4  11007 request_received:request_received 5
-	```
-  The results above are generated with 25 concurrent mlive processes. Looking at
-  a larger output window the number of queued requests seems cyclic - there is a
-  period of ~10 outputs that show 0 requests queued followed by ~10 outputs
-  that show 10-15 requests queued, and so on. For lower volume workloads (1-5
-  mlive processes) there is almost no discernible request queueing even with
-  relatively low concurrency values.
-- *request_rate_checked*. This change exposes a configuration called
-  "reqRateCheckIntervalSec" which indicates the number of seconds muskie should
-  allow between checking subsequent request rates. Request rates are evaluated as
-  the number of requests that arrived during one of these intervals. This probe
-  fires at the end of one of these intervals, reporting the most recently
-  observed request rate.
-	```
-	muskie-throttle*:::request_rate_checked{
-		printf("%d", arg0);
-	}
-	```
-  This output shows the request rate of a muskie process being checked
-  periodically. It should be noted that the load here was generated with a
-  single mlive process so the numbers aren't astronomical:
-	```
-	[root@0e176aeb-3a6b-cf90-b846-9e1d293ac1ae ~/muskie-stats/bin]# dtrace -s \
-		request_rate_checked.d
-	CPU     ID                    FUNCTION:NAME
-	  7  11008 request_rate_checked:request_rate_checked 1
-	  7  11008 request_rate_checked:request_rate_checked 6
-	  5  11008 request_rate_checked:request_rate_checked 18
-	  6  11008 request_rate_checked:request_rate_checked 18
-	  4  11008 request_rate_checked:request_rate_checked 15
-	```
-- *request_handled*. This probe fires after a request has been handled and
-  reports both *that* request's latency followed by the running average over all
-  latencies recorded during the most recent check interval.
-	```
-	muskie-throttle*:::request_handled{
-		printf("%d %d", arg0, arg1);
-	}
-	```
-  Example output of a request that took ~1 millisecond. The second number is the
-  running average request rate in the most recent check interval:
-	```
-	[root@0e176aeb-3a6b-cf90-b846-9e1d293ac1ae ~/muskie-stats/bin]# dtrace -s \
-		request_handled.d
-	CPU     ID                    FUNCTION:NAME
-	  3  11047  request_handled:request_handled 1 1
-	```
 - *request_throttled*. This probe fires when a request is throttled. If this
-  probe fires the the client originating the offending request received a 429
-  status code. The probe returns the most recent request rate followed by the target
-  url and http method of the throttled request.
+  probe fires then the client originating the offending request received a 503
+  status code. The probe passes the number of occupied vasync queue slots, the
+  number of queued or "pending" requests, the url, and the http method of the
+  request as arguments.
 	```
 	muskie-throttle*:::request_throttled{
-		printf("queue: %d, rate: %d, url: %s, method: %s", arg0, arg1, copyinstr(arg2),
+		printf("slots: %d, queued: %d, url: %s, method: %s", arg0, arg1, copyinstr(arg2),
 				copyinstr(arg3));
 	}
 	```
-  Example output here shows the queue size, rate that caused the throttle,
-  with some basic information about the throttled request:
+  Example output:
 	```
 	[root@0e176aeb-3a6b-cf90-b846-9e1d293ac1ae ~/muskie-stats/bin]# dtrace -s \
 		request_throttled.d
 	CPU     ID                    FUNCTION:NAME
-	  7  11010 request_throttled:request_throttled queue: 10, rate: 222, url:
+	  7  11010 request_throttled:request_throttled slots: 50, queued: 25, url:
 		/notop/stor/mlive/mlive_24/obj method": GET
 	```
-  This output shows a GET request being throttled when the request rate was
-  222 requests/second and the number of pending request reached the threshold
-  that I configured muskie to have to generate this output.
+  This probe will only fire if all the slots are occupied and the number of
+  queued requests has reached the "queueTolerance" threshold. The probe includes
+  the occupied slots and queue arguments despite the fact that, given knowledge
+  of the muskie configuration, they provide no new information. The hope is that
+  including these parameters will answer the question of whether the SAPI
+  tunables need to be adjusted without requiring the operator to look in two
+  places.
 
-### Testing
-Initial testing for the muskie-throttle was done against a coal deployment with
-a single muskie instance running a single muskie process and
-mlive to generate a uniform workload. The test was repeated for various
-combinations of mlives and concurrencies. Average request latency, average queue
-size and average request rates for different mlive-concurrency pairs are
-reported in the table below:
-
-| number of mlives/concurrency | 1       | 10    | 100   | 1000  |
-|------------------------------|---------|-------|-------|-------|
-| 1                            | 2, 1    | 2, 0  | 2, 0  | 1, 0  |
-| 10                           | 112, 6  | 25, 1 | 25, 0 | 20, 0 |
-| 25                           | 220, 16 | 45, 2 | 40, 0 | 55, 1 |
-
-The tuples in the matrix above correspond to (average request latency,
-average queue size). Request latencies are given in milliseconds. It seems that
-the trend is as we increase concurrency muskie queues fewer requests and latency
-generally goes down. The actual character of request latencies in the dtrace
-output used to collect these results is periodic. There are periods low latency
-requests followed by periods of high latency requests. The crests and troughs of
-this latency measurement remain constant over the lifetime of the muskie
-process.
-
-To see the throttle work in action, I used observed request rates from the
-experiments documented above. Since the experiment with concurrency 1 against 25
-mlive instances showed the most queueing I re-ran that experiment with a
-queue tolerance of 10 requests and a request rate capacity of 20 requests/second (the
-rate I observed in my experiments was rougly 28 requests/second). I expected to
-find that the request_throttled probe fires when the most recent observed
-request rate is greater than 20 rps *and* there are 10 requests queued. For the
-purpose of this experiment alone I modified the request_throttled probe to
-additionally print the number of queued requests at the time the probe fired.
-
-Running the following probe:
-```
-muskie-throttle*:::request_throttled{
-        printf("queue: %d, rate: %d, url: %s, method: %s", arg0, arg1,
-				copyinstr(arg2), copyinstr(arg3));
-}
-```
-Generates the following output whenever the throttle observes a request rate
-higher than 20 rps with more than 10 requests queued:
-```
-CPU     ID                    FUNCTION:NAME
-  0  12190 request_throttled:request_throttled queue: 10, rate: 66, url:
-/notop/stor/mlive, method: PUT
-  4  12190 request_throttled:request_throttled queue: 10, rate: 66, url:
-/notop/stor/mlive, method: PUT
-  5  12190 request_throttled:request_throttled queue: 10, rate: 66, url:
-/notop/stor/mlive/mlive_21, method: PUT
-  4  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
-/notop/stor/mlive, method: PUT
-  4  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
-/notop/stor/mlive, method: PUT
-  2  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
-/notop/stor/mlive, method: PUT
-  2  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
-/notop/stor/mlive, method: PUT
-  3  12190 request_throttled:request_throttled queue: 10, rate: 55, url:
-/notop/stor/mlive, method: PUT
-```
-
-We can also see the requests being throttle from the mlive output:
-```
-using base paths: /notop/stor/mlive
-time between requests: 50 ms
-maximum outstanding requests: 100
-environment:
-    MANTA_USER = notop
-    MANTA_KEY_ID = 9c:bc:f3:fa:47:0b:79:2b:e1:72:6f:91:09:f0:d2:d6
-    MANTA_URL = http://localhost:8080
-    MANTA_TLS_INSECURE = true
-creating test directory tree ... failed (manta throttled this request)
-creating test directory tree ... failed (manta throttled this request)
-creating test directory tree ... failed (manta throttled this request)
-creating test directory tree ... failed (manta throttled this request)
-```
-
-This is last output line is the message of the new `ThrottledError`
-added to muskie's error.js.
-
-### Dynamic Configuration
-In the most recent version of the muskie throttle, I've added the ability for
-operators to dynamically change the values of the tunables described in the
-Parameters section by sending HTTP post/get requests to a restify server that
-the throttle manages.
-
-POST requests are directed to the `/updateConfig` url and expect a json payload
-where the key/value pairs in the root object correspond to tunable names and
-values. Any number of valid parameters can be included in the payload, and the
-configuration server will update those parameters to take on the values
-specified in the payload, provided that they pass validation. For example, if
-an operator wanted to enable throttling, it could be done by sending:
-```
-POST <ip-address>:<port>/updateConfig
-{
-    'enabled': true
-}
-```
-Here, `<ip-address>` is the manta-network NIC ip address of the zone on which
-the muskie instance is running, and `<port>` is the port that the throttle
-config server is listening on. `<port>` is currently set to 10081. This will
-change.
-
-GET requests are directed to the `/getConfig` url and expect url query
-parameters with the key "fields" and the corresponding values correspond to
-the names of the tunables that should be returned to the client json payload.
-GET requests do not affect the state of the throttle. If the root
-object has no members, the config server will return all the exposed tunables.
-For example, if a client wanted to see the requestRateCapacity and concurrency
-of a muskie throttle, it could be done by sending a request like this one:
-```
-GET <ip-address>:<port>/getConfig?fields=requestRateCapacity&fields=concurrency
-```
-The response to this request would have a payload that might look like this:
-```
-{
-    'requestRateCapacity': 1000,
-    'concurrency': 50
-}
-```
-I've designed the server to be extensible with respect to additions to the set
-of exposed tunables. Currently, the server has no way to persist configuration
-changes, but this will probably be useful to do in the future with a "persist"
-option.
-
-An obvious drawback of this scheme is that we might be trying to perform network
-operations on a manta that is already experiencing a lot of network stress
-(hence the throttle). It would probably be useful to give operators the ability
-to configure the tunables within the zone running muskie without going through
-the network. One option to explore for doing this might be to send a
-user-defined signal with a json payload from `manta-adm`.
-
-### Passive Mode
-With the adition of the "enabled" option, the muskie throttle can now run in a
-passive mode. A passive throttle will perform all the operations of a regular
-throttle without actually throttling the requests or queueing them. The passive
-throttle will still report statistics via dtrace, which makes it a useful tool
-for identifying symptoms of an overloaded manta on production systems.
-
-The initial throttle will be passive by default so as to be minimally invasive.
-It may be useful for a passive throttle to collect more statistics that an
-active one does to provide a more accurate picture of system resources that
-would be undesirably expensive otherwise.
+- *request_handled*. This probe fires every time a request is handled. It includes
+  the same information that the request_throttled probe provides. The benefit
+  of having this probe is that the operator can use it to differentiate between
+  requests being throttled and requests being handled under high-load situations.
+  The output of the the probe is the same as that of the request_throttled probe
+  only that the slots and queued values are not guaranteed to be the
+  operator-defined threshold values.
 
 ### Future Work
 
 #### Generalizing
 For now, the core throttling logic is implemented as a module in muskie. To
-generalize the logic, it would be useful to implement a library as an npm
-package that any manta service written in node.js. All throttling logic
+generalize the logic, it may be useful to implement a library as an npm
+package that any manta service written in node.js can use. All throttling logic
 including and http endpoint exposed for tuning throttle parameters would be
 contained in the module.
 
@@ -388,6 +178,30 @@ To actually use the module, it would be ideal to plug in a single callback
 into a handler chain through which all incoming requests to the service pass.
 Identifying such a chain or codepath will require further investigation.
 
+#### Fine-grained Throttle
+It may be useful to maintain separate request queues for differente types of
+requests. For example, certain loads might generate a much higher volume of PUTs
+than GETs. In this case, because the PUTs are the root cause of the load, it would
+be beneficial to throttle only PUTs and maintain a high GET throughput as opposed
+to blocking GETs because some client is generating a lot of PUTs. An even more
+fine-grained throttle might differentiate between different types of operations
+(putobject vs putdirectory) and could even use tools such as the one outlined in
+[MANTA-3426](https://devhub.joyent.com/jira/browse/MANTA-3426) to throttle requests
+that put a lot of stress an a particular metadata shard, which seemed to be
+a contributing factor to [SCI-293](https://devhub.joyent.com/jira/browse/SCI-293).
+
+As mentioned in the discussion of the restify throttle plugin, it could also be
+useful to throttle requests on a per-IP basis. In general, it does not make
+sense to throttle clients that are not responsible for high load. Doing so also
+does not address the root cause of the load.
+
+With a more fine-grained throttle comes the problem of managing a more
+fine-grained configuration. For each request differentiating property described
+in the previous two paragraphs, it may be desirable to impose concurrency or
+queue tolerance thresholds for only those requests that match a specific set of
+criteria. It might even be desirable to disable (or enabled) throttling for some
+types of requests altogether.
+
 #### Global Decisions
 In a more complex iteration of the throttle, we want to have a way to make
 throttling decisions with system-wide information. This means that we will want
@@ -398,17 +212,6 @@ decisions. For this reason, the per-muskie-process iteration of the throttle
 should be built with the possibility of sharing information concerning resources
 and various tunable parameters in mind.
 
-#### Throttle Types
-In different contexts, we will want to be able to throttle based on different
-request properties. For example, there is good motivation for throttling
-on a per-user basis in muskie. In other contexts, we might want to throttle on
-the type of request (for example on whether it's a read or write of a metadata
-or an object). With the initial throttle design it will be useful to consider
-how requests might be filtered/selected by these various properties. We'll
-probably want generic logic to handle throttle of a subset of requests, and then
-separate self-contained logic for selecting the appropriate subset based on
-whatever filters the throttle has been configured with.
-
 #### Configuration
 Two big open questions concerning the implementation of *operator-configurable*
 throttling are:
@@ -418,29 +221,14 @@ throttling are:
 
 #### How
 
-We'd like to be able to configure the
-tunables statically in a configuration file, but we'd also like to be able to
-tune these parameters dynamically without restarting whatever process is using
-the throttling library. The former configuration method can be implemented
-without changing the configuration scheme of the invoking service by pointing
-the throttling library at a json configuration file that can either be in a
-well-known location or a specific location specified by the invoking service
-with a module "init" function.
+Currently, the muskie throttle parameters are configured as SAPI tunables. The
+reason for this decision, as mentioned above, is to maintain consistency with
+the way that other manta components are configured.
 
-Implementing dynamic configuration requires being able to talk to the invoking
-service at runtime. An obvious possible direction is to expose these
-configurations as http endpoints that are registered by the throttling library at
-initialization time. To avoid interfering with whatever http server the invoking
-service has created, the throttling library can create it's own restify server that
-listens on a configurable port number. With such endpoints in place, we can add
-a mode to the manta-adm that allows the operator to set values for these
-parameters. We could also consider adding these as tunables on adminui.
-
-It may also be useful to have a stand-alone configuration service that
-periodically checks on the request rates of various muskie instances to present
-a more globally-aware picture of the load that manta is under. This may allow
-the operator to make better decisions about how to tune the throttle parameters
-of individual requests.
+In the future, it may be useful to have a stand-alone configuration service that
+periodically checks on various muskie instances to present a more globally-aware
+picture of the load that manta is under. This may allow the operator to make
+better decisions about how to tune the throttle parameters of individual requests.
 
 We may or may not want to investigate the possibility of having the library tune
 throttling parameters automatically when it experiences various levels of
@@ -450,62 +238,42 @@ tune automatically will require further investigation.
 
 #### What
 
-##### Request Rate Check Interval
-It seems pretty clear that
-a configuration akin to "maximum request rate" should be included. Less clear is
-whether it would be useful to set a "check interval" -- that is, the amount of
-time muskie should allow before checking it's incoming request rate again.
-Though this doesn't have any effect on the correctness of the request rate
-figure reported in the dtrace probes, having a check interval that is too wide
-may prevent muskie from effectively reacting to bursty traffic, and having one
-that is too narrow may increase the average request latency more substantially.
-
 ##### Concurrency
+Higher concurrency values will result in more concurrent requests being handled
+by manta at any given point. This comes at the cost of greater load, but decreases the
+likelihood of exceptionally high request latencies. Lower concurrency
+values will result in fewer requests being handled concurrently at the cost of higher
+muskie queue depths (or 503 responses if the queue tolerance is low), which in turn
+increase the likelihood of high request latency.
+
 Another question motivated by the operational semantics of a vasync queue is how
 to handle the situation in which the number of incoming requests exceeds the
-concurrency value of the queue.
-In this situation, the queue will begin to accumulate requests
-that will not be scheduled until a slot in the queue becomes available. It may
+concurrency value of the queue. In this situation, the queue will begin to accumulate
+requests that will not be scheduled until a slot in the queue becomes available. It may
 be useful to have muskie tune the concurrency value of the queue to adapt to
 higher or lower queue lengths. For example, if muskie finds that there are
 consistently more than 5 requests in the pending state on the queue, it may
-choose to increase the queue's concurrency value by 5 so that these extra
+choose to increase the queues concurrency value by 5 so that these extra
 requests can be scheduled. Alernatively (or perhaps additionally) this configuration
 could be exposed to the operator.
 
-##### Soft and Hard Capacities
-Currently not implemented on the 'manta-throttle' branch is a distinction
-between a "soft" and a "hard" request rate capacity. One possible design begins
-queueing requests (leaving them in a kind of pending state) when a request rate
-above the soft capacity is observed and rejecting requests (HTTP 429) when a
-request rate above the hard capacity is observed. The reason this scheme is
-not already implemented is mostly simplicity. At the moment, throttle.js has one
-request vasync queue which runs up to 'concurrency' requests concurrently and
-leaves all other requests in a pending state. In this way the concurrency serves
-as a kind of soft capacity and a numeric upper bound on the number of pending
-requests serves as a hard capacity. This implementation doesn't truly capture
-the design described in the beginning of this paragraph because it deals in
-request volume as opposed to request rate. It would be possible to implement the
-design in a request-rate oriented manner by having an additional pending queue
-that requests would be put on when a request rate above the soft capacity is
-observed (below the soft cap requests are put on the original vasync queue -
-which actually runs them).
+##### Queue Tolerance
+A high queue tolerance value will result in more requests being queued under
+high load but may decrease the likelihood of rejecting requests with 503s.
+A low queue tolerance will result in more requests being rejected with 503s
+under high load, but will also limit muskies memory footprint in those
+situations.
 
-This discussion also begs the question of whether using a vasync is useful. It
-may be simpler to queue requests when a request rate above the soft
-capacity is observed and begin dequeuing them once the request rate falls below
-the soft cap. The hybrid scheme described at the end of the previous paragraph
-may be useful because it allows the operator to control the volume of callbacks
-dedicated to service incoming requests as well as the rate at which requests can be
-received.
+One possibly unintended consequence of a high queue tolerance value is increased
+individual request latency. If clients timeout waiting for a response and then
+retry the request, the queue can actually lead in more requests being rejected
+with 503s because of induced client retries.
 
 #### Validation
 The parameters described in the "Parameters" section do not currently undergo
 any validation. Another important point to address is what upper/lower bounds
-should be set on numeric values. It is clear that the exclusive lower bound on
-the rate check interval should be 0 but it's less clear what the bounds on
-concurrency, max request rate, or queue tolerance should be. Determining these
-bounds will require more experimentation with realistic workloads.
+should be set on numeric values. Determining these bounds will require more
+experimentation with realistic workloads.
 
 It would be nice to enforce parameter bounds with a JSON validation library like
 ajv.
@@ -534,12 +302,12 @@ Included in the above cases should be mmpu operations as well as non-mpu
 operations. We anticipate that the last type, random workloads, will be most
 difficult for the throttle to handle. The test results should show that for
 workloads that muskie instances in staging can handle well, the throttle should
-not degrade performance, but thta for workloads that muskie instances in staging
-do not handle well, the throttle begins to send 429s to protect against
+not degrade performance, but that for workloads that muskie instances in staging
+do not handle well, the throttle begins to send 503s to protect against
 brownout. It may be useful to write some scripts like mlive that can generate
 these different types of workloads.
 
 Testing in staging also provides an opportunity to demonstrate dynamic configuration
 of the tunables listed in previous sections. We should be able to set values
 that cause aggressive throttling and values that cause less aggressive
-throttling and see that the 429s were sent when expected.
+throttling and see that the 503s were sent when expected.
