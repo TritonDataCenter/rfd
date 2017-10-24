@@ -115,7 +115,7 @@ Implementation notes:
 - TODO(trent): finish next section for implementation ideas
 
 
-#### IMGAPI-to-IMGAPI or target cloudapi pulls?
+#### implementation: IMGAPI-to-IMGAPI or target cloudapi pulls?
 
 An IMGAPI-to-IMGAPI implementation:
 
