@@ -4,7 +4,7 @@ state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+113%22
 ---
 
-# RFD 113 Triton custom image sharing, transfering, and x-DC copying
+# RFD 113 Triton custom image sharing and x-DC copying
 
 The following details a proposal for new IMGAPI, CloudAPI, and node-triton
 functionality to make the following improvements to Triton custom images:
@@ -23,18 +23,26 @@ Alternative proposals are welcome!
 - [Status](#status)
 - [Background](#background)
 - [tl;dr](#tldr)
-- [M0: share an image with other accounts](#m0-share-an-image-with-other-accounts)
-- [M1: transfer ownership of an image to another account](#m1-transfer-ownership-of-an-image-to-another-account)
-- [M2: copying a custom image from another DC](#m2-copying-a-custom-image-from-another-dc)
-- [Open Qs and TODOs](#open-qs-and-todos)
+- [Milestones](#milestones)
+  - [M0: copying an image from another DC](#m0-copying-an-image-from-another-dc)
+  - [M1: share an image with other accounts](#m1-share-an-image-with-other-accounts)
+- [Scratch](#scratch)
+  - [Open Qs and TODOs](#open-qs-and-todos)
+  - [Trent's scratch area](#trents-scratch-area)
+- [Appendices](#appendices)
+  - [Sharing using account *login* or *uuid*?](#sharing-using-account-login-or-uuid)
+  - [Out of scope](#out-of-scope)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 
 ## Status
 
-See [RFD-113 labelled issues](https://devhub.joyent.com/jira/issues/?jql=labels%3DRFD-113).
-Still in earlier discussions.
+Still in design discussions. See:
+
+- [The discussion on GitHub](https://github.com/joyent/rfd/issues/71)
+- [Some internal discussion](https://devhub.joyent.com/jira/browse/SWSUP-903)
+- [RFD-113 labelled issues](https://devhub.joyent.com/jira/issues/?jql=labels%3DRFD-113).
 
 
 ## Background
@@ -47,125 +55,46 @@ Note that currently in IMGAPI:
   list). Accounts on the `acl` for an image can *use* the image (GetImage,
   ListImages, provisioning) but cannot modify or delete the image.
 
-Here is a scenario that Angela and I discussed that motivated part of the
-proposal below. Say there are three accounts: Eng (builds the images), QA
-(approves the images for prod), and Ops (deploys images in prod). When Eng
-builds an image and QA starts evaluating it, it would be good if QA could assume
-full control of the image. Likewise when Ops starts using the image in prod, it
-should have full control of the image so that, e.g., someone in Eng cannot
-delete the image that is in use.
+Our scenario for examples below:
+
+- Alice (login=alice, uuid=a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef) has an
+  image "my-image" built in DC "us-sw-1".
+- Bob (login=bob, uuid=b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4).
 
 
 ## tl;dr
 
-Alice sharing an image with Carl:
+Alice sharing an image with Bob:
 
-    [alice]$ triton image share my-awesome-image carl
+    [alice]$ triton image share my-image bob
+    [alice]$ triton image get my-image
+    {
+        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
+        "name": "my-image",
+        ...
+        "shared_with": [        // "shared_with" name still up for discussion
+            "bob"
+        ]
+    }
 
-    [carl]$ triton image offer ls
-    ID        FROM   ACTION  IMAGE                              EXPIRES
-    9dce1460  alice  share   060fda88 (my-awesome-image@1.2.3)  2017-10-14T03:17:55
+    [bob]$ triton image list --shared
+    SHORTID   OWNER_LOGIN  NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
+    0965c1f4  alice        my-image   1.0.0    S      smartos  zone-dataset  2017-10-17
+    ...
 
-    [carl]$ triton image offer accept 9dce1460
+Alice copying image from us-sw-1 to us-west-1:
 
-Alice transfering ownership to Bob:
-
-    [alice]$ triton image transfer my-awesome-image bob
-
-    [bob]$ triton image offer ls
-    ID        FROM   ACTION    IMAGE                              EXPIRES
-    c2972170  alice  transfer  060fda88 (my-awesome-image@1.2.3)  2017-10-14T03:17:55
-
-    [bob]$ triton image offer accept c2972170
-
-Bob copying image from us-sw-1 to us-west-1
-
-    #      triton               image cp  DC      IMAGE
-    [bob]$ triton -p us-west-1  image cp  us-sw-1 my-awesome-image
-
+    [alice]$ triton -p us-west-1 image cp us-sw-1 my-image
+    Copying image 0965c1f4 (my-image) from datacenter us-sw-1.
+    [======>                ] ... progress ...
 
 
-## M0: share an image with other accounts
+## Milestones
 
-We expose the ability to share a custom image with other accounts, while
-retaining ownership. Here "share" means read-only access to the image --
-GetImage, ListImages, provisioning. We say "expose" because this is what
-`image.acl` provides.
+### M0: copying an image from another DC
 
-We felt it was necessary that the target account must explicitly take an
-action to be added to an image.acl. Otherwise an attacker could create a
-custom image named after Joyent-provided images (e.g. minimal-multiarch-lts)
-and add target accounts to the ACL. Then the attacker would hope that one of
-those target accounts would `triton inst create minimal-multiarch-lts ...`
-and unintentionally get the attacker's image.
-
-The proposal is to handle this via "offers". (Suggestions for better naming
-are welcome.)
-
-First Alice offers to share her image with Carl and Deena. She needs to know
-their account login names.
-
-    # triton image share IMAGE ACCOUNT...
-    [alice]$ triton image share my-awesome-image carl deena
-    Created offer (9dce1460) to share image 060fda88 with "carl" (expires 2017-10-14T03:17:55)
-    Created offer (c2972170) to share image 060fda88 with "deena" (expires 2017-10-14T03:17:55)
-
-Then Carl can accept:
-
-    [carl]$ triton image offer ls
-    ID        FROM   ACTION  IMAGE                              EXPIRES
-    9dce1460  alice  share   060fda88 (my-awesome-image@1.2.3)  2017-10-14T03:17:55
-
-    [carl]$ triton image offer accept -y 9dce1460
-    Accepting image share offer for image 060fda88 from alice.
-    Account carl can now use image 060fda88 (my-awesome-image@1.2.3).
-
-Carl is added to `image.acl`.
-
-Dev Notes:
-- Offers expire after a day by default. No strong reason for that expiry,
-  other than I think they *should* expire. FWIW, GitHub repo transfer offers
-  expire after a day.
-- Offers should not expose account UUIDs.
-- Offers should not expose whether those accounts exist. I.e. the offers are
-  accepted whether the target account exists or not.
-- Have a `-j` option to emit structured JSON objects for the offer objects.
-- Would be nice if default output lines are <80 chars.
-
-
-## M1: transfer ownership of an image to another account
-
-We add the ability to *transfer ownership* of an image to another account.
-First the current owner of the image initiates a transfer:
-
-    [alice]$ triton image transfer my-awesome-image bob
-
-This creates an "offer to transfer" ownership of the image to account `bob`.
-Bob must then *accept or decline the offer*:
-
-    [bob]$ triton image offer ls            # list current image offers
-    ID        FROM   ACTION     IMAGE                              EXPIRES
-    a8f9e18f  alice  ownership  060fda88 (my-awesome-image@1.2.3)  2017-10-14T03:17:55
-
-    [bob]$ triton image offer accept -y a8f9e18f
-    Accepting image ownership offer for image 060fda88 from alice.
-    Account bob now owns image 060fda88 (my-awesome-image@1.2.3).
-
-This results in two things:
-
-1. Bob is made `image.owner` (affording full control over the image), and
-2. Alice is added to `image.acl` (so Alice can still see and provision with
-   the image).
-
-Note: The concept of transferring ownership of a Triton object could be
-extended to VMs, volumes, etc. but that is out of scope here. I don't
-believe I've proposed anything that gets in the way of doing it later.
-
-
-## M2: copying a custom image from another DC
-
-We add the ability for an account to copy one's custom image from another
-DC in the same cloud (i.e. sharing a UFDS account database).
+We add the ability for an account to copy **one's own custom images** from
+another DC in the same cloud (i.e. sharing an account database).
 
     [alice]$ triton datacenters
     NAME       URL
@@ -174,11 +103,21 @@ DC in the same cloud (i.e. sharing a UFDS account database).
     us-sw-1    https://us-sw-1.api.joyentcloud.com
     ...
 
-    [alice]$ triton image cp us-sw-1 my-awesome-image
-    Copying image 060fda88 (my-awesome-image) from datacenter us-sw-1.
+    [alice]$ triton image cp us-sw-1 my-image
+    Copying image 0965c1f4 (my-image) from datacenter us-sw-1.
     [======>                ] ... progress ...
 
+
+
 Implementation notes:
+- `triton image cp ...` calls CloudAPI CopyImageFromDc which streams back
+  progress (perhaps after 100-Continue and then chunked).
+- TODO(trent): finish next section for implementation ideas
+
+
+#### IMGAPI-to-IMGAPI or target cloudapi pulls?
+
+An IMGAPI-to-IMGAPI implementation:
 
 - `triton image cp ...` calls CloudAPI CopyImageFromDc, which calls
   IMGAPI CopyImageFromDc, which does:
@@ -197,8 +136,7 @@ Implementation notes:
   (images.jo, updates.jo) already do. I'm not sure if certs are a potential
   problem here.
 
-
-#### Can we avoid exposing the IMGAPIs?
+A "target cloudapi pulls" implementation:
 
 Q: Can we avoid exposing the IMGAPIs to the other DCs? What if the target IMGAPI
 talked only to the CloudAPI of the source DC. It uses CloudAPI GetImage and
@@ -211,8 +149,75 @@ authenticating as 'admin' on another DC's cloudapi? Perhaps no worse than:
 `triton -a admin --act-as $user image get IMAGE`. What key setup is required for
 this? Perhaps less than for IMGAPI-to-IMGAPI communication.
 
+Can we also get benefit of shared Manta to avoid streaming of the whole image
+file? Does this method give up potential for a higher BW internal-DC-to-DC link?
 
-## Open Qs and TODOs
+
+### M1: share an image with other accounts
+
+We expose the ability to share a custom image with other accounts, while
+retaining ownership. Here "share" means read-only access to the image --
+GetImage, ListImages, provisioning. We say "expose" because this is what
+`image.acl` provides.
+
+    [alice]$ triton image share my-image bob
+    Image "my-image" shared with account "bob"
+
+    [alice]$ triton image get my-image
+    {
+        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
+        "name": "my-image",
+        "version": "1.0.0",
+        "owner": "a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef",
+        "owner_login": "alice",     // added this
+        ...
+        "shared_with": [            // not re-using "acl" for discussion
+            "bob"
+        ]
+    }
+
+    [bob]$ triton image list --shared
+    SHORTID   OWNER_LOGIN  NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
+    0965c1f4  alice        my-image   1.0.0    S      smartos  zone-dataset  2017-10-17
+    ...
+
+If Alice fat-fingers the account name to one that doesn't exist, it still
+"works":
+
+    $ triton image share my-image bib
+    Image "my-image" shared with account "bib"
+
+See the "Sharing using account *login* or *uuid*?" appendix below for some
+earlier debate on this functionality.
+
+TODO:
+
+- Still need to spec how to deal with treating shares images separately from
+  public and ones own images. Specifically for matching images by name
+  (a convenience provided by the `triton` CLI), e.g. when providing an image
+  by name for `triton instance create ...`. We want to avoid an attacker
+  being able to affect a user's use of, e.g.,
+  `triton create minimal-multiarch-lts ...`.
+
+
+Implementation notes:
+
+- IMGAPI's acl handling could be updated to support account *login* rather than
+  just UUID for `acl` valies. It would be a new v3 major API version, but we're
+  already doing API versioning, so that should be fine.
+- IMGAPI ListImages and GetImage for API v2 would elide the non-UUID entries
+  of `image.acl`.
+- CloudAPI GetImage and ListImages would add `owner_login`.
+  Q: Do we add `owner_login="admin"` for admin-owned images? We already *do*
+  expose the admin UUID with the `owner` field, FWIW.
+- Decide on the "shared_with" field name. If it maps directly to what IMGAPI
+  stores, then we could/should call it the same "acl" name.
+
+
+
+## Scratch
+
+### Open Qs and TODOs
 
 - `triton image cp`:
     - fwrule updates for IMGAPI zones, which typically drop in-bound requests.
@@ -232,10 +237,203 @@ this? Perhaps less than for IMGAPI-to-IMGAPI communication.
 - Per <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/CopyingAMIs.html#copy-amis-across-regions>
   note that one can "recopy" if there were image changes (for us that would
   just be mutable manifest changes).
-- Accepting a transfer of ownership should invalidate offers to share/use/read
-  the image? Or that could be handled at 'accept' time: if the current owner
-  isn't the account that originally offered, then it fails.
-- Cannot have multiple offers of transfer at the same time.
 - Nice to have: `triton image clone` so Carl can create a personal (owned)
+  copy of Alice's shared image? That way he can be confident it won't be
+  deleted out from under him if Alice deletes the image.
+
+
+### Trent's scratch area
+
+(If you aren't Trent, you can ignore all this.)
+
+
+    triton imgs           # public and images I own
+    triton imgs -a|-all   # includes inactive image (state=all)
+
+How to show also shared ones, or *just* shared ones? Is the latter really
+that important?
+
+    triton imgs --shared  # also include shared ones? or *just* all shared ones?
+
+Try this:
+
+    triton imgs --shared  # *also* includes shared ones
+
+Is it weird that `triton imgs owner=$alice` can show things not in `triton imgs`
+default list?  Kinda, yes. So that also requires `--shared`:
+
+    triton imgs --shared owner=$alice
+
+To show a particular, UUID works:
+
+    triton img get UUID
+
+but by name you must specify from whom it is being shared?
+
+    alice=<alice's account uuid>
+    triton img get -S $alice cool-image
+
+
+    triton imgs -S
+
+    # how to only list shared ones?
+    triton imgs public=false 'owner!=me'   # too hard
+    # Could consider a 'shared=true'.
+    triton imgs
+
+    triton img get NAME[@VERSION]
+    triton inst create NAME[@VERSION] PACKAGE
+
+
+New "S" flag for shared images. This requires knowing the account uuid.
+Which means extra work if this is client side. Could easily do server side.
+
+
+TODO:
+- a way to unshare
+- a way to see with whom I've shared my images
+- what's the story for account uuid vs login
+
+
+## Appendices
+
+### Sharing using account *login* or *uuid*?
+
+This section discusses the tradeoffs with the API speaking only in terms of
+account UUIDs or account login.
+
+We want to enable Alice (login=alice, uuid=a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef)
+to share here image (name=my-image) with Bob (login=bob,
+uuid=b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4). Here "share" means adding Bob's
+account UUID to the image's [acl](https://images.joyent.com/docs/#manifest-acl).
+
+
+#### take 1: only support account UUIDs
+
+Alice shares her image like this:
+
+    $ triton image share my-image c6512b9a-7835-4fbe-bbfd-8ecb5a7881c4  # typo
+    triton image share: error: account "c6512b9a-7835-4fbe-bbfd-8ecb5a7881c4" does not exist
+    $ triton image share my-image b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4
+    Image "my-image" shared with account "b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4"
+
+And she can see with whom she has shared a given image something like this:
+
+    $ triton image get my-image
+    {
+        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
+        "name": "my-image",
+        "version": "1.0.0",
+        "owner": "a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef",
+        ...
+        "acl": [
+            "b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4"
+        ]
+    }
+
+Then Bob can see the shared image via something like:
+
+    $ triton image list --shared
+    SHORTID   OWNER                                 NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
+    0965c1f4  a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef  my-image   1.0.0    S      smartos  zone-dataset  2017-10-17
+    ...
+
+
+Pros:
+- This is very straightforward to implement and the implementation would be
+  efficient because the semantics of sharing map directly to the current
+  [`image.acl`](https://images.joyent.com/docs/#manifest-acl) behaviour.
+
+Cons:
+- Getting and recognizing Bob's account UUID could be a burden for Alice.
+- Recognizing Alice's account UUID could be a burden for Bob.
+
+
+#### take 2: attempting to support login names
+
+It would be nice (for end users) if login names could be used instead (easy to
+communicate, remember, recognize):
+
+    $ triton image share my-image bob
+    Image "my-image" shared with account "bob"
+
+    $ triton image get my-image
+    {
+        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
+        "name": "my-image",
+        "version": "1.0.0",
+        "owner": "a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef",
+        "owner_login": "alice",     // added this
+        ...
+        "shared_with": [            // not re-using "acl" for discussion
+            "bob"
+        ]
+    }
+
+    # Bob
+    $ triton image list --shared
+    SHORTID   OWNER_LOGIN  NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
+    0965c1f4  alice        my-image   1.0.0    S      smartos  zone-dataset  2017-10-17
+    ...
+
+If Alice fat-fingers the account name:
+
+    $ triton image share my-image bib
+    triton image share: error: account "bib" does not exist
+
+*Problem:* This error message gives end users a way to test if a given login
+name exists. See [MANTA-3356](https://devhub.joyent.com/jira/browse/MANTA-3356)
+for why we don't want to allow that.
+
+A solution for this would be to not validate that given account login names
+exist. Instead they are just stored as given.
+
+    $ triton image share my-image bib
+    Image "my-image" shared with account "bib"
+
+    $ triton image get my-image
+    {
+        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
+        "name": "my-image",
+        "version": "1.0.0",
+        "owner": "a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef",
+        "owner_login": "alice",     // added this
+        ...
+        "shared_with": [    // the "shared_with" field name is up for discussion
+            "bob",
+            "bib"
+        ]
+    }
+
+Pros:
+- More convenient for Alice and Bob.
+
+Cons:
+- Less straightforward to implement. However, I don't think it is super
+  difficult.
+
+
+Dev Notes:
+- IMGAPI's acl handling could be updated to support account *login* rather than
+  just UUID for `acl` valies. It would be a new v3 major API version, but we're
+  already doing API versioning, so that should be fine.
+- IMGAPI ListImages and GetImage for API v2 would elide the non-UUID entries
+  of `image.acl`.
+- CloudAPI GetImage and ListImages would add `owner_login`.
+  Q: Do we add `owner_login="admin"` for admin-owned images? We already *do*
+  expose the admin UUID with the `owner` field, FWIW.
+- Decide on the "shared_with" field name. If it maps directly to what IMGAPI
+  stores, then we could/should call it the same "acl" name.
+
+
+### Out of scope
+
+From [discussion](https://github.com/joyent/rfd/issues/71), some related
+potential features are determined to be out of scope for this RFD.
+
+- Transferring *ownership* of an image to another account: not neede based
+  on review of competitors ...
+  ([discussion](https://github.com/joyent/rfd/issues/71#issuecomment-337149084)).
+- Nice to have: `triton image clone` so Bob can create a personal (owned)
   copy of Alice's shared image? That way he can be confident it won't be
   deleted out from under him if Alice deletes the image.
