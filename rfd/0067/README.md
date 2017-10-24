@@ -1117,19 +1117,20 @@ Integrated to master:
     - NET-371 (builds on or after: master-20170518T212529Z)
     - NET-376 (commit 554cb97, builds on or after:
       master-20170907T183323Z-g554cb97)
-- smartos-live.git OS-6160
-    - fs-joyent (method for filesystem/smartdc SMF service) update to work
-      properly for first boot of a CN being converted to a HN. It needs to
-      cope with the zones/usbkey dataset not yet existing (that comes later
-      when smartdc/init runs headnode.sh for the first time on this server).
-    - builds on or after 20170830 (release-20170831)
+- smartos-live.git
+    - OS-6160
+        - fs-joyent (method for filesystem/smartdc SMF service) update to work
+          properly for first boot of a CN being converted to a HN. It needs to
+          cope with the zones/usbkey dataset not yet existing (that comes later
+          when smartdc/init runs headnode.sh for the first time on this server).
+        - builds on or after 20170830 (release-20170831)
 - sdc-vmapi.git
     - ZAPI-800 Update provision workflow to not assume a single headnode
 
 In CR:
 
 
-In progress:
+Trent's WiP:
 
 - smartos-live.git branch "rfd67" (g live)
     - root ~/.bashrc has "hn" PS1 marker on HNs
@@ -1142,21 +1143,34 @@ In progress:
       warns about lingering /opt/smartdc/config/... on a CN.
         TODO: some testing to get comfort this doesn't break setting up HNs or CNs
 - sdcadm.git branch "rfd67" (g sa)
-    - `sdcadm server list`
-    - `sdcadm service ls` (new home for `sdcadm services`, aliased)
-    - `sdcadm server headnode-setup` stub
-    - `sdcadm service migrate` stub
-    - `sdcadm service restore` stub
-    - to put in separate commits:
+    - ready to go to master
         - logToFile improvements
-        - Procedure.viable ?
+            TODO: get this to master
+        - Procedure.viable
+            TODO: move this to master?
+    - done, but stays in rfd67:
+        - `sdcadm server list`
+        - `sdcadm service ls` (new home for `sdcadm services`, aliased)
+            Should this change to newer form of "sdcadmService objects"?
+    - WiP:
+        - lib/common.js: Fixes for the usbKey mounting functions. Can these
+          go to master?
+        - sdcadm to node v4
+            See TODOs in scratch: urclient, wf-client releases. Put in master
+            after release.
+        - `sdcadm server headnode-setup`
+    - on deck:
+        - `sdcadm service migrate`
+        - `sdcadm service restore`
 - sdc-headnode.git branch "rfd67" (g head)
     - hostname=headnode0 in prompt-config default
       Will sit on this until all most ready. There is no great justification
       for "headnode0" default until we have RFD 67 mostly all working. And it
       is optional.
     - bin/rsync-to
+        TODO: get this to master
     - `sdc-usbkey mount --nofoldcase`
+        TODO: get this to master
 
 
 
