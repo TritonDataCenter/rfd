@@ -218,7 +218,8 @@ only displayed under certain conditions.
 - ip: always displayed
 - reserved: always displayed
 - managed: always displayed
-- owner_uuid: displayed only if the ip address has a belongs_to_uuid field
+- owner_uuid: displayed only if the ip address has a belongs_to_uuid field, and
+  uuid is not the admin uuid.
 - belongs_to_uuid: displayed only if the ip is allocated to
   "something"<sup>1</sup> AND the owner_uuid matches the user making the
   request.
