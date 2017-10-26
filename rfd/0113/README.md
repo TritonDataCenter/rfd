@@ -108,49 +108,13 @@ another DC in the same cloud (i.e. sharing an account database).
     [======>                ] ... progress ...
 
 
+Implementation proposal: https://gist.github.com/trentm/b02c6977c2cacfdb580a2b3c09fcf3a5
 
-Implementation notes:
-- `triton image cp ...` calls CloudAPI CopyImageFromDc which streams back
-  progress (perhaps after 100-Continue and then chunked).
-- TODO(trent): finish next section for implementation ideas
-
-
-#### implementation: IMGAPI-to-IMGAPI or target cloudapi pulls?
-
-An IMGAPI-to-IMGAPI implementation:
-
-- `triton image cp ...` calls CloudAPI CopyImageFromDc, which calls
-  IMGAPI CopyImageFromDc, which does:
-    - calls source IMGAPI GetImage,
-    - validates perms to copy the image,
-    - creates a placeholder image object with state=copying,
-    - streams the image file from source IMGAPI GetImageFile,
-    - activates the image.
-- IMGAPI is configured with the name-to-host mapping (including info like
-  tls_insecure=true) for the IMGAPI in each other DC. Perhaps this could be
-  made available via UFDS to avoid operators having to deal with this, or via
-  a 'sdcadm ...' command to help.
-- Each IMGAPI in the cloud must be able to talk to the other IMGAPIs, whether
-  that is by IP or (preferably) via cross-DC DNS. This means, in general, the
-  DC's IMGAPI needs to use TLS and http-sig auth, as the public IMGAPIs
-  (images.jo, updates.jo) already do. I'm not sure if certs are a potential
-  problem here.
-
-A "target cloudapi pulls" implementation:
-
-Q: Can we avoid exposing the IMGAPIs to the other DCs? What if the target IMGAPI
-talked only to the CloudAPI of the source DC. It uses CloudAPI GetImage and
-CloudAPI GetImageFile (new) to stream out the file. This would require the
-target IMGAPI authenticating as the user's account or as 'admin'. I think that
-is less new work, but I'm not positive the auth story is a good thing. Does
-authenticating as the user like this pose a problem for RBACv2 design? E.g.
-what if it a subuser calling? Or is it a good/bad idea to have admin from a DC
-authenticating as 'admin' on another DC's cloudapi? Perhaps no worse than:
-`triton -a admin --act-as $user image get IMAGE`. What key setup is required for
-this? Perhaps less than for IMGAPI-to-IMGAPI communication.
-
-Can we also get benefit of shared Manta to avoid streaming of the whole image
-file? Does this method give up potential for a higher BW internal-DC-to-DC link?
+Dev Notes:
+- think about failed file transfer
+- think about retry
+- think about concurrent attempts
+- think about DeleteImage on the src DC during the copy
 
 
 ### M1: share an image with other accounts
@@ -237,9 +201,8 @@ Implementation notes:
 - Per <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/CopyingAMIs.html#copy-amis-across-regions>
   note that one can "recopy" if there were image changes (for us that would
   just be mutable manifest changes).
-- Nice to have: `triton image clone` so Carl can create a personal (owned)
-  copy of Alice's shared image? That way he can be confident it won't be
-  deleted out from under him if Alice deletes the image.
+- Nice to have: a way to list just *my* custom images easily (to see them from
+  the noise of all the public ones)
 
 
 ### Trent's scratch area
