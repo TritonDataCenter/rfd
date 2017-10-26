@@ -212,6 +212,22 @@ to data to eaisly map to any `VMAPI` changes.
 
 #### Networks
 
+There are some fields returned in `ListNetworkIPs` and `GetNetworkIP` that are
+only displayed under certain conditions.
+
+- ip: always displayed
+- reserved: always displayed
+- managed: always displayed
+- owner_uuid: displayed only if the ip address has a belongs_to_uuid field
+- belongs_to_uuid: displayed only if the ip is allocated to
+  "something"<sup>1</sup> AND the owner_uuid matches the user making the
+  request.
+
+  [1] Currently in Triton "something" can refer to "zone", "server", or
+  "other".  `NAPI` lists this type in `belongs_to_type`.  We would like to
+  expose this type information in the future, and possibly extend the values in
+  the field to be more meaningful such as "nat", "nfs", or "router"
+
 ##### ListNetworkIPs (GET /:login/networks/:id/ips)
 
 Only provisioned and reserved IP's will be returned.  In addition users will be
@@ -221,19 +237,16 @@ In order to support listing a public networks IPs we will have to add the
 `owner_uuid` filter to the `NAPI` request. This means `CloudAPI` will have a
 requirement on minimum `NAPI` version.
 
-Also since a user can get a fabric networks IPs, the following will be an alias
-for `ListNetworkIPs`: ` GET
-/:login/fabrics/default/vlans/:vlan_id/networks/:network/ips`
-
 ###### output
 
 Returns and array of provisioned or reserved IP objects.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| ip			| String	| NIC's IP Address			|
+| ip			| String	| IP Address				|
 | reserved		| Boolean	| Whether this IP is reserved or not	|
-| triton_reserved	| Boolean	| True if the user cannot modify the IP via UpdateNetworkIP (example broadcast and gateway IPs) |
+| managed		| Boolean	| True if the user cannot modify the IP via UpdateNetworkIP (example broadcast and gateway IPs) |
+| owner_uuid		| String	| Optional owner UUID of the instance the IP is associated with |
 | belongs_to_uuid	| String	| Optional UUID of the instance the IP is associated with |
 
 ###### output (example)
@@ -245,12 +258,14 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips
   {
     "ip": "10.88.88.105",
     "reserved": true,
-    "free": true,
+    "managed": false
   },
   {
     "ip": "10.88.88.106",
     "reserved": false,
     "belongs_to_uuid": "0e56fe34-39a3-42d5-86c7-d719487f892b",
+    "owner_uuid": "7dfbbcda-4f62-cdf8-df31-d1e4d8d34c5e",
+    "managed": false
   }
  ...... elided
 ]
@@ -268,10 +283,11 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| ip			| String	| The IP Address			|
-| reserved		| Boolean	| The IP's current reservation state	|
-| triton_reserved	| Boolean	| True if the user cannot modify the IP via UpdateNetworkIP (example broadcast and gateway IPs) |
-| belongs_to_uuid	| UUID		| optional Instance that owns the IP	|
+| ip			| String	| IP Address				|
+| reserved		| Boolean	| Whether this IP is reserved or not	|
+| managed		| Boolean	| True if the user cannot modify the IP via UpdateNetworkIP (example broadcast and gateway IPs) |
+| owner_uuid		| String	| Optional owner UUID of the instance the IP is associated with |
+| belongs_to_uuid	| String	| Optional UUID of the instance the IP is associated with |
 
 ###### output (in use)
 
@@ -282,6 +298,8 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips/10.88.88.106
   "ip": "10.88.88.106",
   "reserved": false,
   "belongs_to_uuid": "0e56fe34-39a3-42d5-86c7-d719487f892b",
+  "owner_uuid": "7dfbbcda-4f62-cdf8-df31-d1e4d8d34c5e",
+  "managed": false
 }
 ```
 
