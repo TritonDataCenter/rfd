@@ -1,7 +1,7 @@
 ---
 authors: Jerry Jelinek <jerry@joyent.com>
 contributors: Joshua Clulow <jclulow@joyent.com>
-state: draft
+state: publish
 ---
 
 # RFD 38 Zone Physical Memory Capping
