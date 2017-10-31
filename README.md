@@ -118,7 +118,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 72 Chroot-independent Device Access](./rfd/0072/README.md) |
 | publish  | [RFD 73 Moray client support for SRV-based service discovery](./rfd/0073/README.md) |
 | draft    | [RFD 74 Manta fault tolerance test plan](./rfd/0074/README.md) |
-| predraft | [RFD 75 Virtualizing the number of CPUs](./rfd/0075/README.md) |
+| draft    | [RFD 75 Virtualizing the number of CPUs](./rfd/0075/README.md) |
 | draft    | [RFD 76 Improving Manta Networking Setup](./rfd/0076/README.md) |
 | draft    | [RFD 77 Hardware-backed per-zone crypto tokens](./rfd/0077/README.adoc) |
 | publish | [RFD 78 Making Moray's findobjects requests robust with regards to unindexed fields](./rfd/0078/README.md) |
