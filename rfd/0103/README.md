@@ -616,20 +616,20 @@ topology, we will create and use a new pnode.  This is what we'll be doing:
         # Put the file from imgapi into the temporary directory
         $ /opt/smartdc/electric-moray/node_modules/.bin/sdc-imgadm get-file "$ORIGINAL_HASH_RING_IMAGE_UUID" -o /var/tmp/hash_ring.tar.gz
         # Make a new directory for the hash ring for remapping to live in
-        $ mkdir /var/tmp/new_hash_ring
+        $ mkdir /var/tmp/hash_ring
         # Untar the tarball so that we can use fash on it
-        $ tar -xzf /var/tmp/hash_ring.tar.gz -C /var/tmp/new_hash_ring
+        $ tar -xzf /var/tmp/hash_ring.tar.gz -C /var/tmp/hash_ring
 
 2.  We will next run the node-fash remap-vnodes command to move the vnodes we
     want to the new pnode.  This command will create a new LevelDB pnode with
     the key passed from the -p flag if it does not exist already.
 
         # Check the list of pnodes, which should just be the original ones
-        $ fash get-pnodes -l /var/tmp/new_hash_ring -b leveldb
+        $ fash get-pnodes -l /var/tmp/hash_ring -b leveldb
         # Assign the vnodes to a variable so we can update them all at once
         $ VNODES_FOR_REMAP='0, 106, 943, 689'
         # Remap vnodes to the new pnode, which creates the new pnode in LevelDB
-        $ fash remap-vnode -v "$VNODES_FOR_REMAP" -l /var/tmp/new_hash_ring -b leveldb -p 'tcp://3.moray.emy-11.joyent.us:2020'
+        $ fash remap-vnode -v "$VNODES_FOR_REMAP" -l /var/tmp/hash_ring -b leveldb -p 'tcp://3.moray.emy-11.joyent.us:2020'
 
 3.  Next we will upload the remapped hash topology to imgapi.
 
@@ -639,7 +639,8 @@ topology, we will create and use a new pnode.  This is what we'll be doing:
     
     Next, we tar up the new image:
 
-        $ /usr/bin/tar -czf /var/tmp/"$NEW_IMAGE_UUID".tar.gz /var/tmp/new_hash_ring
+        # You MUST call the tarred-up folder "hash_ring"
+        $ /usr/bin/tar -czf /var/tmp/"$NEW_IMAGE_UUID".tar.gz -C /var/tmp hash_ring
 
     Then we make an image manifest for it, which requires the owner UUID
     environmental variable from your Manta zone:
@@ -664,7 +665,7 @@ topology, we will create and use a new pnode.  This is what we'll be doing:
             "os": "other",
             "files": [
             {
-                "sha1": "$(sha1sum /var/tmp/"$NEW_IMAGE_UUID".tar.gz | tr -s ' '| cut -d ' ' -f1)",
+                "sha1": "$(sha1sum /var/tmp/"$NEW_IMAGE_UUID".tar.gz | tr -s ' ' | cut -d ' ' -f1)",
                 "size": $(stat -c %s /var/tmp/"$NEW_IMAGE_UUID".tar.gz),
                 "compression": "gzip"
             }
@@ -690,7 +691,7 @@ topology, we will create and use a new pnode.  This is what we'll be doing:
             -H content-type:application/json\
             --url "$SAPI_URL/applications/$MANTA_APPLICATION" \
             -X PUT -d \
-            "{ \"action\": \"update\", \"metadata\": { \"NEW_IMAGE_UUID\": \"$OLD_IMAGE_UUID\", \"HASH_RING_IMGAPI_SERVICE\": \"$SDC_IMGADM_URL\" } }"
+            "{ \"action\": \"update\", \"metadata\": { \"HASH_RING_IMAGE\": \"$NEW_IMAGE_UUID\", \"HASH_RING_IMGAPI_SERVICE\": \"$SDC_IMGADM_URL\" } }"
 
 5.  Finally, we will reprovision electric-moray so that its setup script will 
     run, setting up LevelDB the way it is in the new image we just created.
@@ -701,7 +702,10 @@ topology, we will create and use a new pnode.  This is what we'll be doing:
         $ sapiadm reprovision <your_electric_moray_zone_uuid> <the_image_uuid_you_just_got>
 
 This should end the write block, as the vnodes in the pristine copy of the
-topology were never set to read-only mode.
+topology were never set to read-only mode.  Check that this worked as expected
+(that you can see the remapped topology in the correct path in electric-moray
+and it responds to fash commands appropriately) and then reprovision any other
+electric-moray zones.
 
 #### 9. Re-enable pg dumps.
 
@@ -780,18 +784,18 @@ To this:
 
 Here is the process to delete these rows:
 
-On the original shard, run:
+On the original shard's primary peer, run:
 
         $ sudo -u postgres psql moray -c 'delete from manta where _vnode in (0, 105, 943, 689);'
 
-On the new shard, run the inverse of the previous command:
+On the new shard's primary peer, run the inverse of the previous command:
 
         $ sudo -u postgres psql moray -c 'delete from manta where _vnode not in (0, 105, 943, 689);'
 
 In a production reality, where we are splitting these databases in half, we will
 need to construct deletion sql that operates in batches.
 
-This was the final step.  It is a good idea to double-check that all  data is
+This was the final step.  It is a good idea to double-check that all data is
 where you think it should be, and then follow up with stakeholders.
 
 ### Automation of Resharding
