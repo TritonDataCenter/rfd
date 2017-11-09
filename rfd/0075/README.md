@@ -73,9 +73,13 @@ fix this for lx.
 ### Complications of the comm page
 
 As a result of the work done in [OS-5192](https://smartos.org/bugview/OS-5192),
-the `getcpu(2)` syscall is often accessed via its vDSO implementation.  This
-means that augmentation to the in-kernel syscall implementation would be
-inadequate to constrain the observed CPU IDs.
+the equivalent of the `getcpu(2)` syscall can be accessed via its vDSO
+implementation.  This means that enhancing the in-kernel syscall implementation
+is inadequate to constrain the observed CPU IDs. However, note that there is no
+`getcpu(2)` wrapper in `glibc` and an invocation using the `syscall` function
+will make the syscall, so reading the `cp_tsc_ncpu` value from the vDSO must be
+coded up explicitly by an application. It is unclear how many applications
+attempt to make use of this value directly from the vDSO.
 
 One way to address this issue would be to push the modulo figure needed for
 virtual CPU ID calculation into the comm page.  This is somewhat strange, given
@@ -87,7 +91,7 @@ performing a `swtch()`.
 
 ### Interposition Points
 
-This section summarizes the locations that would need to be virtualized.
+This section summarizes the non-vDSO locations that need to be virtualized.
 
 1. /proc
 
@@ -106,3 +110,5 @@ This section summarizes the locations that would need to be virtualized.
    The lx /sys filesystem also exposes some CPU information.
 
    *  /sys/devices/system/cpu
+
+3. `getcpu(2)`
