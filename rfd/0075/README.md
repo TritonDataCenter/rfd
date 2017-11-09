@@ -77,7 +77,7 @@ the equivalent of the `getcpu(2)` syscall can be accessed via its vDSO
 implementation.  This means that enhancing the in-kernel syscall implementation
 is inadequate to constrain the observed CPU IDs. However, note that there is no
 `getcpu(2)` wrapper in `glibc` and an invocation using the `syscall` function
-will make the syscall, so reading the `cp_tsc_ncpu` value from the vDSO must be
+will make the syscall, so using the `__vdso_getcpu` entry in the vDSO must be
 coded up explicitly by an application. It is unclear how many applications
 attempt to make use of this value directly from the vDSO.
 
