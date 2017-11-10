@@ -99,11 +99,12 @@ This section summarizes the non-vDSO locations that need to be virtualized.
    CPU information.
 
    * /proc/cpuinfo
-   * /proc/[pid]/cpuset
    * /proc/[pid]/stat        processor field (39)
-   * /proc/[pid]/status      Cpus\_allowed
-   * /proc/interrupts        ints/cpu
    * /proc/stat              cpu time
+   * /proc/[pid]/cpu         (no change needed, we report an empty file)
+   * /proc/[pid]/cpuset      (no change needed, we don't provide this file)
+   * /proc/[pid]/status      (no change needed, Cpus\_allowed not provided)
+   * /proc/interrupts        (no change needed, we report an empty file)
 
 2. /sysfs
 
