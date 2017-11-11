@@ -69,7 +69,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 23 Manta docs pipeline](./rfd/0023/README.md) |
 | draft    | [RFD 24 Designation API improvements to facilitate platform update](./rfd/0024/README.md) |
 | draft    | [RFD 25 Pluralizing CloudAPI CreateMachine et al](./rfd/0025/README.md) |
-| draft    | [RFD 26 Network Shared Storage for Triton](./rfd/0026/README.md) |
+| publish  | [RFD 26 Network Shared Storage for Triton](./rfd/0026/README.md) |
 | publish  | [RFD 27 Triton Container Monitor](./rfd/0027/README.md) |
 | predraft | [RFD 28 Improving syncing between Compute Nodes and NAPI](./rfd/0028/README.md) |
 | draft    | [RFD 29 Nothing in Triton should rely on ur outside bootstrapping and emergencies](./rfd/0029/README.md) |
