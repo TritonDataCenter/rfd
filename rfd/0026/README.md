@@ -1,6 +1,7 @@
 ---
 authors: Angela Fong <angela.fong@joyent.com>, Casey Bisson <casey.bisson@joyent.com>, Jerry Jelinek <jerry@joyent.com>, Josh Wilsdon <jwilsdon@joyent.com>, Julien Gilli <julien.gilli@joyent.com>, Trent Mick <trent.mick@joyent.com>, Marsell Kukuljevic <marsell@joyent.com>
-state: draft
+state: publish
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+26%22
 ---
 
 <!-- to update doctoc, use: `doctoc.js --maxlevel 5 rfd/0026/README.md` -->
@@ -94,8 +95,7 @@ state: draft
         - [GetVolumePackage GET /volumepackages/volume-package-uuid (Volume packages milestone)](#getvolumepackage-get-volumepackagesvolume-package-uuid-volume-packages-milestone)
     - [Changes to VMAPI](#changes-to-vmapi)
       - [New `sdc:volumes` metadata property (mvp milestone)](#new-sdcvolumes-metadata-property-mvp-milestone)
-      - [New `nfsvolumestorage` `triton.system_role`](#new-nfsvolumestorage-tritonsystem_role)
-      - [New `volumes` property on VM objects](#new-volumes-property-on-vm-objects)
+      - [New `sdc:system_role` `internal_metadata` key](#new-sdcsystem_role-internal_metadata-key)
       - [New `volumes` parameter for `CreateVm` endpoint](#new-volumes-parameter-for-createvm-endpoint)
       - [Naming of shared volumes zones](#naming-of-shared-volumes-zones)
     - [Changes to PAPI](#changes-to-papi)
@@ -616,9 +616,9 @@ integration milestone, and will use volume packages when those become available
 #### Adding a new `triton report` command (MVP milestone)
 
 Creating a shared volume results in creating a VM object and an instance with
-the `triton.system_role: 'nfsvolumestorage'` tag. As such, a user could list all
-their "resources" (including instances _and_ shared volumes) by listing
-instances.
+the `sdc:system_role` `internal_metadata` property set to `'nfsvolumestorage'` .
+As such, a user could list all their "resources" (including instances _and_
+shared volumes) by listing instances.
 
 However, the fact that shared volumes have a 1 to 1 relationship with their
 underlying containers is an implementation detail that should not be publicly
@@ -1317,8 +1317,9 @@ that should not be exposed to end users. As such, they need to be filtered out
 from any of the `*Machines` endpoints (e.g `ListMachines`, `GetMachine`, etc.).
 
 For the `ListMachines` endpoint, filtering out NFS volumes' storage VMs will be
-done by filtering on the `triton.system_role` tag: VMs with the
-`nfsvolumestorage` `triton.system_role` tag will be filtered out.
+done by filtering on the `sdc:system_role` `internal_metadata``: VMs with the a
+value of `nfsvolumestorage` for their `sdc:system_role` `internal_metadata` will
+be filtered out.
 
 For instance, CloudAPI's `ListMachines` endpoint will always pass -- in addition
 to any other search predicate set due to other `ListMachines` parameters -- the
@@ -1738,32 +1739,14 @@ package](#introduction-of-volume-packages-volume-packages-milestone) with UUID
 A new `sdc:volumes` metadata property will be added that will contain all the
 data needed for an instance to determine what volumes it requires/mounts.
 
-#### New `nfsvolumestorage` `triton.system_role`
+#### New `sdc:system_role` `internal_metadata` key
 
 Machines acting as shared volumes' storage zones will have the value
-`nfsvolumestorage` for their `triton.system_role` property. To know how this new
-`triton.system_role` value is used by CloudAPI to prevent users from performing
+`nfsvolumestorage` for their `sdc:system_role` `internal_metadata` key. To know
+how this new value is used by CloudAPI to prevent users from performing
 operations on these storage VMs, refer to the section [Not exposing NFS volumes'
 storage VMs via any of the `Machines`
 endpoints](#not-exposing-nfs-volumes-storage-vms-via-any-of-the-machines-endpoints)
-
-#### New `volumes` property on VM objects
-
-A VM object that represents a container mounting shared volumes will store a
-reference to these volumes in a new property named `volumes`. This property will
-have the following form:
-
-```
-[
-  {
-    "name": "volume-name-1",
-    "type": "tritonnfs",
-    "mode": "rw",
-    "mountpoint": "/foo"
-  },
-  ...
-]
-```
 
 #### New `volumes` parameter for `CreateVm` endpoint
 
