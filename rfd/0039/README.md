@@ -56,7 +56,7 @@ VMs.
 When you loaded the list of VMs from MAPI or when you went to perform an action
 and MAPI needed to first check whether a VM existed or not, MAPI would check its
 own SQL database. It would not actually check the CNs. The agents (specifically
-heartbeater) were responsible for keeping the information in MAPI up-to-date.
+[heartbeater]) were responsible for keeping the information in MAPI up-to-date.
 Unfortunately this often failed and MAPI's view of the world would regularly
 diverge from the actual system.
 
@@ -807,3 +807,6 @@ Miscellaneous notes:
 
  - vminfod must expose VMs with do\_not\_inventory set so that vmadm works in a
    backward compatible way. Consumers should be aware of this.
+
+<!-- Repo Links -->
+[heartbeater]: https://github.com/joyent/sdc-heartbeater-agent
