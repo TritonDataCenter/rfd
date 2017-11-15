@@ -58,6 +58,8 @@ And additionally, for "Option B":
      * net-agent
      * ur
      * vm-agent
+ * Infrastructure for building new platform images.
+     * new Jenkins agent images?
 
 Other future work specific to "Option B", but not specific to MVP of
 provisioning instances would include:
