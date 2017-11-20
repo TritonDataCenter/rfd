@@ -276,13 +276,13 @@ necessarily having to have fully moved off the agentsshar.
   it is clear how that is done. Also add a 'sdcadm check cnapi-server-agents'
   that can be used to check this and will provide steps for correcting it if
   wrong. (See below)
-- Include `params.server_uuid` in all SAPI agent instances. (AGENT-XXXX)
 - Include `params.image_uuid` in all SAPI instances (since we can have more than one instance for a given service and
-  these could be using different images).
+  these could be using different images). [SAPI-296](https://smartos.org/bugview/SAPI-296)
+- Include `params.server_uuid` in all SAPI agent instances. [AGENT-1087](https://smartos.org/bugview/AGENT-1087
 - [SAPI-285](https://smartos.org/bugview/SAPI-285): 'Create Service should not validate presence of provide image_uuid
   into local IMGAPI'. Done.
 - Update SAPI to index and provide search options for instances image_uuid and
-  server_uuid.
+  server_uuid. [SAPI-297](https://smartos.org/bugview/SAPI-297)
 - Any call to CNAPI factory-reset or delete for a given server should remove
   every agent instance existing into that server from SAPI.
 - SAPI CreateInstance, UpgradeInstance and DeleteInstance should work for agent
@@ -307,10 +307,10 @@ will make easier to include additional information about CN agents in the future
 
 The following issues are required:
 
-- sdc-cn-agent: Create independent `refresh_agents` task (AGENT-XXXX). This will require
+- sdc-cn-agent: Create independent `refresh_agents` task [AGENT-1079](https://smartos.org/bugview/AGENT-1079). This will require
   some refactoring of current `update_agent` task, in order to do not enter code
-  duplication.
-- sdc-cnapi: Create end-point to call refreshAgents task, which should return the taskId (CNAPI-XXX)
+  duplication. Done.
+- sdc-cnapi: Create end-point to call refreshAgents task, which should return the taskId [CNAPI-727](https://smartos.org/bugview/CNAPI-727)
 - sdcadm: Create `sdcadm check server-agents` subcommand, which should be able to go
   through the available information for the given server(s) - or all of them if nothing
   else has been specified - and provide feedback about the status of agents property fo

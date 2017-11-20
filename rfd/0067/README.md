@@ -1027,6 +1027,7 @@ This section is a general list of things to not forget.
   for the first instance. Perhaps they should provision on the server on
   which this sdcadm is running? or on the same server that hosts the 'sdc'
   zone? and/or provide a -s/--server SERVER option to specify.
+  [TOOLS-1930](https://smartos.org/bugview/TOOLS-1930)
 
 - /lib/sdc/config.sh currently prefers:
     /usbkey/config, /mnt/usbkey/config, /opt/smartdc/config/node.config
