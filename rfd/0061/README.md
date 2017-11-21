@@ -177,6 +177,57 @@ contact CNAPI it should force a new look-up of CNAPI's IP address and
 re-attempt the operation.
 
 
+##### Problem #2
+
+CNAPI provides a "wait" endpoint that allows a client to wait on a pending task
+to complete. It accomplishes this by keeping track of pending cn-agent tasks
+in memory, and allowing clients to block on the task termination, via CNAPI.
+
+While this method works when there is a single CNAPI instance which is
+responsible for handling all cn-agent requests, it doesn't scale beyond one
+instance of CNAPI.
+
+##### Proposed Solution #1
+
+When CNAPI gets a task wait request, it simply polls moray periodically for the
+task and returns when the task's status is either 'finished' or 'failure'.
+
+This solution is not great since it necessarily involves not only limited
+granularity in wait times, but also imposes additional work on the system every
+time a check is performed.
+
+
+#### Proposed Solution #2
+
+CNAPI keeps track of other CNAPI instances and POSTs HTTP messages whenever
+events of interest need to be propagated.
+
+
+##### Proposed Solution #3
+
+CNAPI maintains its own helper service which will allow propagation of data and
+events in a reliable way. Consul, Zookeeper, Redis are all things which we
+could look at here.
+
+
+##### Alternative/Future Solutions
+
+Waitlist logic was added to CNAPI since initially it was thought that it would
+be more closely tied to servers. And despite that a number of the operations
+the waitlist is used for are for server tasks, it has since be found to be
+generally useful for coordinating and serializing certain operations within a
+datacenter. One such instance is serializing access to DAPI, to prevent
+situations such as DAPI returning allocations for multiple VMs onto the same
+server.
+
+One possible solution would be to extract the waitlist and task tracking
+functionality from CNAPI and make it its own API (coordiantion API or coapi).
+Were it the case that the waitlist and cn-agent task logic was removed from
+CNAPI and placed in another API, it would greatly simplify CNAPI.
+
+CNAPI would become a simple reader/writer to moray, instead of it playing host
+to complex locking code.
+
 ## cn-agent Heartbeats/VM Status Updates
 
 A compute node's `status` property indicates whether we have heard from the
@@ -192,7 +243,7 @@ Incomplete.
 
 ##### Proposed Solution
 
-See section below, titld 'Server Status'.
+See section below, titled 'Server Status'.
 
 
 
