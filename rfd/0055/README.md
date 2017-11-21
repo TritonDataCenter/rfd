@@ -162,7 +162,7 @@ would need to mask the entire tree from visibility in the parent (even though
 shared mount changes must still propagate correctly).
 
 The advantage of this approach is that mountpoint traversal would work as
-expected withn the chroot-ed process (and its children) with no changes to the
+expected within the chroot-ed process (and its children) with no changes to the
 lookup code.
 
 One difficult aspect of this approach is handling shared mount changes from the
@@ -188,7 +188,7 @@ the processes associated mount structure list to determine how to proceed (i.e.
 which vnode to traverse to next).
 
 As with the previous alternative, mount operations which are shared would need
-to propagate into all of the effected process-related mount lists.
+to propagate into all of the affected process-related mount lists.
 Perhaps some form of chaining could be used to manage these relations.
 Slave and private mount operations within the child would only effect that
 process's mount list.
