@@ -64,6 +64,12 @@ Our scenario for examples below:
 
 ## tl;dr
 
+Alice copying image from us-sw-1 to us-west-1:
+
+    [alice]$ triton -p us-west-1 image cp us-sw-1 my-image
+    Copying image 0965c1f4 (my-image) from datacenter us-sw-1.
+    [======>                ] ... progress ...
+
 Alice sharing an image with Bob:
 
     [alice]$ triton image share my-image bob
@@ -81,12 +87,6 @@ Alice sharing an image with Bob:
     SHORTID   OWNER_LOGIN  NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
     0965c1f4  alice        my-image   1.0.0    S      smartos  zone-dataset  2017-10-17
     ...
-
-Alice copying image from us-sw-1 to us-west-1:
-
-    [alice]$ triton -p us-west-1 image cp us-sw-1 my-image
-    Copying image 0965c1f4 (my-image) from datacenter us-sw-1.
-    [======>                ] ... progress ...
 
 
 ## Milestones
@@ -110,11 +110,39 @@ another DC in the same cloud (i.e. sharing an account database).
 
 Implementation proposal: https://gist.github.com/trentm/b02c6977c2cacfdb580a2b3c09fcf3a5
 
+TODO:
+
+- modify this to do IMGAPI-to-IMGAPI direct and inline it
+- Could this just extend AdminImportRemoteImage? I think yes. Add
+  a `source-dc` alt to `source=URL`.
+
 Dev Notes:
+
+- must handle origin images... does this have a confirmation? Perhaps just
+  client side? Meh. Adding `triton img ancestry IMG` might be nice to
+  be able to predict.
+  Could punt origin chain for M0.
+- it would be *really* good if this could share the same "import from IMGAPI"
+  (e.g. images.jo) code in IMGAPI already
 - think about failed file transfer
 - think about retry
 - think about concurrent attempts
 - think about DeleteImage on the src DC during the copy
+- `triton image cp`:
+    - fwrule updates for IMGAPI zones, which typically drop in-bound requests.
+    - Would want 'sdcadm post-setup' command to assist with linking IMGAPIs.
+      Would we re-use the '$dc imgapi key'? Probably piggyback on that, yes.
+    - `triton image cp` is short for `triton image copy-from-dc` perhaps
+    - What's the progress mechanism? Meta info on the placeholder image?
+    - If have state=copying (see below), then `triton image wait IMAGE` would
+      be useful for resuming waiting for a copy in progress.
+    - Have state=copying (or similar) for images that are being copied, and
+      then "ActivateImage" (again?) to make it active when done importing the file?
+    - On error: ensure a state="copying/failed" image doesn't interfere with a retry.
+    - Note image *icon* limitation for starters.
+- Per <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/CopyingAMIs.html#copy-amis-across-regions>
+  note that one can "recopy" if there were image changes (for us that would
+  just be mutable manifest changes).
 
 
 ### M1: share an image with other accounts
@@ -156,7 +184,7 @@ earlier debate on this functionality.
 
 TODO:
 
-- Still need to spec how to deal with treating shares images separately from
+- Still need to spec how to deal with treating shared images separately from
   public and ones own images. Specifically for matching images by name
   (a convenience provided by the `triton` CLI), e.g. when providing an image
   by name for `triton instance create ...`. We want to avoid an attacker
@@ -183,24 +211,6 @@ Implementation notes:
 
 ### Open Qs and TODOs
 
-- `triton image cp`:
-    - fwrule updates for IMGAPI zones, which typically drop in-bound requests.
-    - Would want 'sdcadm post-setup' command to assist with linking IMGAPIs.
-      Would we re-use the '$dc imgapi key'? Probably piggyback on that, yes.
-    - `triton image cp` is short for `triton image copy-from-dc` perhaps
-    - What's the progress mechanism? Meta info on the placeholder image?
-    - If have state=copying (see below), then `triton image wait IMAGE` would
-      be useful for resuming waiting for a copy in progress.
-    - Could call this "PullImage"? `triton image pull us-sw-1 my-awesome-image`
-      Wary of getting in the way of pulling non-ZFS (security) images from
-      public repos (a la docker pull).
-    - Have state=copying (or similar) for images that are being copied, and
-      then "ActivateImage" (again?) to make it active when done importing the file?
-    - On error: ensure a state="copying/failed" image doesn't interfere with a retry.
-    - Note image *icon* limitation for starters.
-- Per <http://docs.aws.amazon.com/AWSEC2/latest/UserGuide/CopyingAMIs.html#copy-amis-across-regions>
-  note that one can "recopy" if there were image changes (for us that would
-  just be mutable manifest changes).
 - Nice to have: a way to list just *my* custom images easily (to see them from
   the noise of all the public ones)
 
@@ -211,7 +221,7 @@ Implementation notes:
 
 
     triton imgs           # public and images I own
-    triton imgs -a|-all   # includes inactive image (state=all)
+    triton imgs -a|--all  # includes inactive image (state=all)
 
 How to show also shared ones, or *just* shared ones? Is the latter really
 that important?
@@ -389,14 +399,159 @@ Dev Notes:
   stores, then we could/should call it the same "acl" name.
 
 
+### Old proposal for copying images x-DC that has IMGAPI talking to a remote CloudAPI
+
+This is an old proposal. After discussion, the suggestion was to pursue direct
+IMGAPI-to-IMGAPI communication for transferring image data. For the current
+design, see M0.
+
+* * *
+
+The feature is to pull/copy one's own custom image (named "my-image") from one
+DC (us-sw-1) to another DC (us-west-1) in the same cloud.
+
+    # Usage:       triton image pull SOURCE-DC IMAGE
+    $ triton -p us-west-1 image pull us-sw-1   my-image
+    Pulling image 0965c1f4 (my-image) from datacenter us-sw-1.
+    [======>                ] ... progress ...
+
+Per usual, the `triton` CLI provides the sugar to map "my-image" to the actual
+image UUID.
+
+* * *
+
+Here is a proposed implementation plan for this. Names are all open for debate.
+My main questions are whether my "Assumption"s are reasonable and if the
+design seems sane.
+
+- `triton image pull` calls `us-west-1 CloudAPI PullImageFromDc`
+  and then maintains the connection and gets a stream of progress events
+  until the pull is complete.
+
+- `us-west-1 CloudAPI PullImageFromDc` passes on to its `IMGAPI PullImageFromDc`
+  to handle the pull (i.e. the smarts are in IMGAPI).
+
+The IMGAPI in the destination DC (us-west-1) gets the data it needs for the
+image from the source DC's (us-sw-1) *CloudAPI* as follows:
+
+- `us-west-1 IMGAPI PullImageFromDc` calls `us-sw-1 CloudAPI AdminGetImage`
+  (not the existing GetImage) to get the full unadulterated image manifest. This
+  call verifies the user owns the image and that the image is active. IMGAPI
+  authenticates as "admin" using the "$dcName imgapi key", which is already on
+  the admin user.
+
+  **Assumption 1**: Within a cloud (shared UFDS), the IMGAPIs can reach the
+  CloudAPI in the other clouds and can auth as "admin" on them.
+
+- `us-west-1 IMGAPI PullImageFromDc` calls `us-sw-1 CloudAPI AdminGetImageFile`
+
+    - `us-sw-1 CloudAPI AdminGetImageFile` calls its `IMGAPI
+      CreateImageFilePullUrl` which will:
+
+        - Create a snaplink of the image file to an export location in its
+          Manta area. E.g.:
+
+                mls /admin/stor/imgapi/us-sw-1/images/341/341ef22c-9b65-ecec-894a-ff8bb8133f77/file0 \
+                    /admin/stor/imgapi/us-sw-1/pulls/20171023/341ef22c-9b65-ecec-894a-ff8bb8133f77.file0.$req_id
+
+        - Create a signed URL (expiry <1d) to that pulls/... object and respond
+          with that URL.
+
+    - `us-sw-1 CloudAPI AdminGetImageFile` will then respond with an HTTP 307
+      redirect to the signed pull URL.
+
+    - `us-west-1 IMGAPI PullImageFromDc` will then:
+        - If it notices that the Manta URL is the same as its Manta storage,
+          attempt to `mln` that Manta object path. This is shortcut that will
+          greatly benefit a setup like JPC. Otherwise,
+        - download the image file from the signed URL
+
+    **Assumption 2**: Within a cloud, the IMGAPIs can reach the Manta area of the
+    other IMGAPIs.
+
+
+Notes:
+
+- This design requires that pulled images are stored in Manta. The feature is
+  intended for end-user custom images, which are typically stored in Manta, so
+  this should be fine. There is a "typically solely for development"
+  option to [allow custom images without a
+  Manta](https://github.com/joyent/sdc-imgapi/blob/master/docs/operator-guide.md#dc-mode-setup-enable-custom-image-creation-without-manta)
+  but not production TritonDCs should be using this.
+  `IMGAPI CreateImageFilePullUrl` will error out if the given image is not
+  stored in Manta.
+
+- If assumption #2 isn't true (IMGAPIs cannot reach the Manta area of other
+  DCs) for a DC we need to support, then we could handle that as follows.
+  Initially this work would be deferred.
+
+    - `us-west-1 IMGAPI PullImageFromDc` would be configured to used a param
+      to `us-sw-1 CloudAPI AdminGetImageFile` saying that redirects to its
+      Manta are not supported.
+
+    - `us-sw-1 CloudAPI AdminGetImageFile` would then stream the image file
+      via its `IMGAPI GetImageFile`.
+
+  Similarly, if a source DC knows that its Manta won't be externally accessible,
+  it can configure its `CloudAPI AdminGetImageFile` to always stream the image
+  file.
+
+- IMGAPI will need a reaper that cleans up $mantaArea/pulls/$day for days more
+  than 2 days old.
+
+
+* * *
+
+Sequence diagram for <https://bramp.github.io/js-sequence-diagrams/>
+
+```
+# for https://bramp.github.io/js-sequence-diagrams/
+
+title: Proposal for `triton image pull`
+
+Note right of "triton image pull":*the INTERNET*
+
+"triton image pull"->"us-west-1 CloudAPI":PullImageFromDc
+
+"us-west-1 CloudAPI"->"us-west-1 IMGAPI":PullImageFromDc
+
+Note right of "us-west-1 IMGAPI":*cross-DC network*
+
+"us-west-1 IMGAPI"->"us-sw-1 CloudAPI":AdminGetImage
+"us-sw-1 CloudAPI"-->"us-west-1 IMGAPI":image manifest
+"us-west-1 IMGAPI"-->"triton image pull":{progress}
+
+"us-west-1 IMGAPI"->"us-sw-1 CloudAPI":AdminGetImageFile
+"us-sw-1 CloudAPI"->"us-sw-1 IMGAPI":CreateImageFilePullUrl
+"us-sw-1 IMGAPI"-->"us-sw-1 CloudAPI":signed pull URL
+
+"us-sw-1 CloudAPI"-->"us-west-1 IMGAPI":HTTP 307 to signed pull URL
+Note over "us-west-1 IMGAPI":mln or download pull URL
+"us-west-1 IMGAPI"-->"triton image pull":{progress}
+```
+
 ### Out of scope
 
 From [discussion](https://github.com/joyent/rfd/issues/71), some related
 potential features are determined to be out of scope for this RFD.
 
-- Transferring *ownership* of an image to another account: not neede based
+- Transferring *ownership* of an image to another account: not needed based
   on review of competitors ...
   ([discussion](https://github.com/joyent/rfd/issues/71#issuecomment-337149084)).
 - Nice to have: `triton image clone` so Bob can create a personal (owned)
   copy of Alice's shared image? That way he can be confident it won't be
   deleted out from under him if Alice deletes the image.
+
+
+### 'copy' or 'pull' language?
+
+Answer: copy
+
+    triton pull REPO:IMAGE
+    triton pull DC IMAGE
+
+    sdc-imgadm import -S REPO IMAGE
+
+"Pull" intuition is about pulling from some external repository. When I'm
+making my image available throughout the same cloud... it feels less like a
+"pull" and more like "scp", i.e. "copy". Sync?  AWS lang is copy, so use that.
