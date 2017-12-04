@@ -108,13 +108,8 @@ another DC in the same cloud (i.e. sharing an account database).
     [======>                ] ... progress ...
 
 
-Implementation proposal: https://gist.github.com/trentm/b02c6977c2cacfdb580a2b3c09fcf3a5
 
-TODO:
 
-- modify this to do IMGAPI-to-IMGAPI direct and inline it
-- Could this just extend AdminImportRemoteImage? I think yes. Add
-  a `source-dc` alt to `source=URL`.
 
 Dev Notes:
 
@@ -503,6 +498,7 @@ Notes:
 * * *
 
 Sequence diagram for <https://bramp.github.io/js-sequence-diagrams/>
+See it rendered here: <https://gist.github.com/trentm/b02c6977c2cacfdb580a2b3c09fcf3a5>
 
 ```
 # for https://bramp.github.io/js-sequence-diagrams/
