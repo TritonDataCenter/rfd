@@ -1292,3 +1292,15 @@ zombie instances.
 
 Not sure about 'sdcadm post-setup underlay-nics ...'
 and 'sdc-server [update|replace|delete]-nictags'.
+
+### Swapping CNS instances
+
+There's no reason why you can't run two CNS instances at once, it's just that if you configure a BIND slave to follow both of them at once if can get confused and inconsistent.
+
+We don't serve records directly from the CNS zone anyway, so bringing it down has only the impact that changes to DNS may be delayed, records continue to be served as normal. The data in the dataset is always safe to throw away, it'll just rebuild it again and the BINDs will have to do full AXFRs to catch up.
+
+The BIND instances all have the IP of the CNS instance in their config, so if you decide to recreate it with a different IP, you will need to go configure them all.
+
+The BIND instances need to be reconfigured upstream and have names like `cns[1-4].my.org.dns.com`
+
+And don't forget to make sure the new one has the same firewall rules.
