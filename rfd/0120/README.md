@@ -27,13 +27,16 @@ network.
 
 ## Proposed Solution
 
+XXX KEBE SAYS introductory text goes here regarding which *APIs change,
+etc. etc.... XXX
+
 ### NAPI changes
 
 #### CreateRouterObject (POST /routers)
 
 Creating a Router Object simply involves listing a number of NAPI network
 objects one wishes to join together.  For now, these network objects MUST be
-fabrics.
+fabrics, and MUST be owned by the same owner_uuid that submits the request.
 
 ##### input
 
@@ -65,6 +68,7 @@ be of the same address family (IPv4 or IPv6).
 | networks		| Array		| Array of network object UUIDs	|
 | family		| String	| Either 'ipv4' or 'ipv6'	|
 | name			| String	| Name for this Router Object. |
+| owner_uuid		| UUID		| Router Object owner's UUID. |
 
 ##### errors
 
@@ -72,6 +76,7 @@ be of the same address family (IPv4 or IPv6).
 | --------------------- | ----------------------------------------------------- |
 | MissingParameter	| No array of networks, or a single-element array of networks, get passed in.		|
 | InvalidArgument	| Overlapping or duplicate IP prefixes.  Other issues |
+| ResourceNotFound	| Network requested was not found, or is owned by another owner. |
 
 
 
@@ -118,7 +123,7 @@ A multi-entry list of networks to add or delete from a router object.
 
 | Error Code		| Description						|
 | --------------------- | ----------------------------------------------------- |
-| ResourceNotFound	| Router object or network object does not exist |
+| ResourceNotFound	| Router object, network object does not exist, or is owned by another owner. |
 | MissingParameter	| No network.				 |
 | InvalidArgument	| Overlapping or duplicate IP prefixes.  Other issues |
 
@@ -186,9 +191,11 @@ None.
 
 ### CLOUDAPI changes
 
-<Coming soon.>
+XXX KEBE SAYS LOTS OF WORK TO DO HERE. XXX
 
 ### Implementation details.
+
+XXX KEBE SAYS LOTS OF WORK TO DO HERE, ALSO. XXX
 
 #### Requirement for RFD 28
 
@@ -240,7 +247,7 @@ Object destruction:
 
 - RFD 28 pushes out route deletions to every affected VM.
 
-#### Adding and Deleting Networks
+#### Adding and Deleting Networks Directly from Router Objects
 
 The single primitive ModifyRouterNetworks requires a list of network changes
 which can both add and delete networks.  It is possible that the Router
@@ -267,3 +274,20 @@ new networks, RFD 28 not only needs to reach attached VMs, but the Router
 Object zones as well.
 
 
+#### Deleting Networks from Triton
+
+Deleting network objects from Triton will now involve additional checks. Any
+network that exists in a Router Object MUST be removed from the Router
+Object.  Per the previous section, if there are only one or zero remaining
+networks attached to the Router Object after that removal, the Router Object
+itself SHOULD be deleted.  This may violate least-surprise, or perhaps NAPI
+can return an additional indicator that a Router Object was deleted alongside
+the network object.
+
+#### Ownership and Router Objects
+
+For now, Router Objects are unique per account.  Furthermore, any networks
+attached to a Router Object must also be owned by the same account as the
+Router Object.  Eventually this may change, but such a change either falls
+under Remote Network Objects (discussed in RFE 2) or a future change to
+Router Objects beyond the scope of this RFD.
