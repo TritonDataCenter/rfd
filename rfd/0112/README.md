@@ -425,13 +425,28 @@ confidence in the cache's correctness, we can tune this period to be quite
 long.)
 
 Assuming this cache were populated initially from a full file scan, there are
-only a few operations that would need to modify it:
+only a few common operations that would need to modify it:
 
-| Operation    | Component    | Details             |
-| ------------ | ------------ | ------------------- |
-| file create  | nginx        | PUTs of object data |
-| tombstone    | `mako_gc.sh` | Move files from live area to tombstone after they've been GC'd |
-| deletion     | `mako_gc.sh` | Unlink files from the tombstone area |
+| Operation         | Component    | Details             |
+| ----------------- | ------------ | ------------------- |
+| file create       | nginx        | PUTs of object data |
+| tombstone         | `mako_gc.sh` | Move files from live area to tombstone after they've been GC'd |
+| deletion          | `mako_gc.sh` | Unlink files from the tombstone area |
+| MPU part deletion | nginx        | mako-finalize |
+
+There are other cases to consider as well:
+
+- operator intervention, including both creation and deletion of files.  Files
+  can be removed accidentally or as part of emergency space cleanup.  Files can
+  be created as part of undoing previous accidental losses.
+- the cruft job, which may remove files
+- the rebalance job, which may create and remove files
+
+The cruft and rebalance jobs can be modified to update the cache, but the
+possibility of operator intervention or other software bugs reinforces that we
+should periodically re-scan the entire filesystem even if practical experience
+confirms our hope that we don't need to do this very often.
+
 
 **Garbage collection:** the `mako_gc.sh` steps could be incorporated into this
 component.  That would not require much work, it would provide the opportunity
