@@ -1,7 +1,7 @@
 ---
 authors: Dan McDonald <danmcd@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/<FILLMEIN>
+discussion: https://github.com/joyent/rfd/issues/73
 ---
 
 <!--
