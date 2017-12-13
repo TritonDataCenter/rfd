@@ -47,6 +47,7 @@ be of the same address family (IPv4 or IPv6).
 | ---------------------	| ------------- | ------------------------------------- |
 | networks		| Array		| Array of network objects	|
 | name			| String	| Name for this Router Object.	|
+| owner_uuid		| UUID		| Router Object owner's UUID |
 
 
 ```
@@ -64,7 +65,7 @@ be of the same address family (IPv4 or IPv6).
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| router		| UUID		| UUID of the Router Object	|
+| uuid		| UUID		| UUID of the Router Object	|
 | networks		| Array		| Array of network object UUIDs	|
 | family		| String	| Either 'ipv4' or 'ipv6'	|
 | name			| String	| Name for this Router Object. |
@@ -88,7 +89,7 @@ A multi-entry list of networks to add or delete from a router object.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| router		| UUID		| UUID of the Router Object	|
+| uuid		| UUID		| UUID of the Router Object	|
 | network_updates	| Array		| Array of actions and networks	|
 
 ```
@@ -113,10 +114,11 @@ A multi-entry list of networks to add or delete from a router object.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| router		| UUID		| UUID of the Router Object	|
+| uuid		| UUID		| UUID of the Router Object	|
 | networks		| Array		| Array of network object UUIDs	|
 | family		| String	| Either 'ipv4' or 'ipv6'	|
 | name			| String	| Name for this Router Object. |
+| owner_uuid		| UUID		| Router Object owner's UUID |
 
 ##### errors
 
@@ -138,10 +140,11 @@ None.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| router		| UUID		| Router Object UUID		|
+| uuid		| UUID		| Router Object UUID		|
 | networks		| Array		| Array of network object UUIDs |
 | family		| String	| Either 'ipv4' or 'ipv6'	|
 | name			| String	| Name for this Router Object. |
+| owner_uuid		| UUID		| Router Object owner's UUID |
 
 ##### errors
 
