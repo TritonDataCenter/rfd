@@ -181,6 +181,7 @@ ESLint also supports performing a variety of style checks. Most of
 | Whether a trailing newline is allowed at the end of the file                                        | (on by default)                                         | no-multiple-empty-lines
 | Whether spaces are required around infix operations                                                 | (on by default for relational and assignment operators) | space-infix-ops
 | Whether spaces are required before an opening `{`                                                   | (on by default)                                         | space-before-blocks
+| Whether spaces are allowed to pad the inside of parentheses                                         | (on by default)                                         | space-in-parens
 | Whether spaces are allowed before/after commas                                                      | (on by default)                                         | comma-spacing
 | Whether spaces are allowed before/after the colon in an object literal                              | :x:                                                     | key-spacing
 | Whether spaces are allowed before property names (e.g., `Object. keys(obj)` or `Object .keys(obj)`) | :x:                                                     | no-whitespace-before-property
