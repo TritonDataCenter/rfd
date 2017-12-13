@@ -175,7 +175,7 @@ ESLint also supports performing a variety of style checks. Most of
 | How the code should be indented                                                                     | indent                                                  | indent (see below)
 | Whether a space is required before the opening parenthesis of an anonymous function                 | no-blank-for-anon-function                              | space-before-function-paren
 | Whether values and identifiers need to be parenthesized when returned                               | unparenthesized-return                                  | :x:
-| Whether 4-space continuations are enabled                                                           | continuation-at-front                                   | :x:
+| Whether operators must go at the start or end of a statement split across two lines                 | continuation-at-front (only boolean operators)          | operator-linebreak
 | Whether spaces are allowed before semicolons                                                        | (on by default)                                         | semi-spacing
 | Whether trailing spaces are allowed                                                                 | (on by default)                                         | no-trailing-spaces
 | Whether a trailing newline is allowed at the end of the file                                        | (on by default)                                         | no-multiple-empty-lines
