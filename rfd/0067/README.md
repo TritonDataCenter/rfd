@@ -1115,6 +1115,7 @@ Integrated to master:
     - HEAD-2367, HEAD-2368 sdc-login improvements to help with running
       test suites with multiple headnodes
     - HEAD-2370 add bin/rsync-to
+    - HEAD-2380 'sdc-usbkey mount --nofoldcase'
 - sdc-booter.git
     - NET-371 (builds on or after: master-20170518T212529Z)
     - NET-376 (commit 554cb97, builds on or after:
@@ -1133,11 +1134,6 @@ In CR:
 
 Trent's WiP:
 
-- sdc-headnode.git:
-    - HEAD-2380 'sdc-usbkey mount --nofoldcase'
-        g head2  # https://cr.joyent.us/#/c/3032/
-        Retry using a separate /mnt/usbkey-nondefaultoptions or whatever
-        separate path.
 - smartos-live.git branch "rfd67" (g live)
     - root ~/.bashrc has "hn" PS1 marker on HNs
       workaround if don't have latest "rfd67"-branch platform build:
