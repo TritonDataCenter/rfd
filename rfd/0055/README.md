@@ -247,7 +247,7 @@ described in detail in *Handling Mountpoints During Lookup*.
         vnode_t       *mnse_vnodep; /* mountpoint vnode */
         uint_t        mnse_flags;   /* mointpoint flags */
         vfs_t         *mnse_vfsp;   /* pointer to the vfs visible to the NS */
-	struct mntns_ent *mnse_underlayp; /* underlay mount */
+        struct mntns_ent *mnse_underlayp; /* underlay mount */
         avl_node_t    mnse_avl;
     } mntns_ent_t;
 
@@ -283,7 +283,7 @@ Within `vfs_t`:
     list_t       *vfs_nslist;     /* list of vfsns_ent_t seeing this mount */
     struct vfs   *vfs_mnt_next;   /* next VFS on the same mntpnt */
     struct vfs   *vfs_mnt_prev;   /* prev VFS on the same mntpnt */
-    
+
 ### Maintaining the two mount lists
 
 The `vfs_t` and `mntns_t` mount lists are updated during a `mount` or `unmount`
