@@ -89,6 +89,22 @@ unreasonable to pull a 'virtual CPU ID limit' from the `kthread_t` or `proc_t`
 structure and place it in the approrpiate CPU slot in the comm page when
 performing a `swtch()`.
 
+### Complications with processor binding
+
+Under `lx` we support processor binding using the Linux `sched_setaffinity(2)`
+syscall. If we virtualize CPUs modulo the cap, this implies that an application
+could be binding processes only to low-numbered CPUs. If this is happening
+for multiple applications across multiple zones, we could see undesirabled
+behavior with contention on low-numbered CPUs and less usage on higher-numbered
+CPUs.
+
+After some discussion, it is not really clear that we should actually be
+doing processor binding at all. Any assumptions that an application would
+make around this being a performance "improvement" will be negated by the
+multi-tenant nature of our system. We probably need to revisit the current
+implemenation of `sched_setaffinity(2)` and simply pretend that we're
+binding, when in fact we won't.
+
 ### Interposition Points
 
 This section summarizes the non-vDSO locations that need to be virtualized.
