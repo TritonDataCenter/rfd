@@ -200,6 +200,30 @@ XXX KEBE SAYS LOTS OF WORK TO DO HERE. XXX
 
 XXX KEBE SAYS LOTS OF WORK TO DO HERE, ALSO. XXX
 
+#### Network Object Route Attributes
+
+NAPI hold the routes for a given network.  Router Object creation essentially
+adds routes to every network object.  For example, upon the creation of this
+router object:
+
+     Router Object:  192.168.1.0/24, 192.168.2.0/24
+
+The NAPI objects for the 192.168.1.0/24 network will now need an additional
+route for 192.168.2.0/24 to the IP address created for the router object on
+the 192.168.1.0/24 network.  If 192.168.1.0/24 already has a routes
+attribute, it will need augmentation.
+
+Once network objects get their routes attribute updated, all affected VMs
+must have their routing tables updated.  An existing RFD, cited below,
+specifies how this will happen.
+
+Router zones and zones which happen to have multiple network attachments (but
+which do not route themselves) will somehow have to deal with routes which
+collide with interfaces for which they already have connectivity.  The
+illumos routing code will prevent this for router zones, but will
+successfully add a route for a zone which is dual-attached, even though the
+directly-attached interface should receive precedence in lookups.
+
 #### Requirement for RFD 28
 
 RFD 28 (link?) specifies an improved syncing between NAPI and the Compute
@@ -224,22 +248,25 @@ Object involves several steps:
 
 #### Router Object zones
 
-A router object is implemented by one or more minimal zones per Compute Node
-that has the following properties:
+A router object is implemented by at least one zone per Compute Node that has
+the following properties:
 
 - NICs for every network listed in the router object.
 
 - Each zone has the *same* IP addresses regardless of which Compute Node it's
   on.  This will require some NAPI changes to handle an IP address that spans
-  multiple zones/CNs.  A new belongs_to_type may be the solution.
+  multiple zones/CNs.  A new belongs_to_type ("router") and belongs_to value
+  (Router Object UUID) may be the solution.
 
 These zones perform the work of packet-forwarding.  Because one instantiates
 per CN, the availability is equivalent to that of Fabric Networks.  A packet
-leaves a zone, its next-hop router is insured to be on the same CN, so at
-most, a forwarded packet transits one cross-CN fabric.
+leaves a zone, its next-hop router will be on the same CN, so at most, a
+forwarded packet transits one cross-CN fabric.
 
-Configuring such zones that share IP addresses (exploiting MAC's same-machine
-short-circuit path to avoid VARPd) will 
+The use of vmadm(1M) on each CN, combined with reserving the shared addresses
+in NAPI, demonstrate the feasibility of the identically-addressed,
+one-zone-per-CN approach.
+
 
 #### Router Object Destruction - Behind the Scenes
 
