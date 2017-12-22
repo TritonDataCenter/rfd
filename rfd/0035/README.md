@@ -10,7 +10,7 @@ state: draft
 -->
 
 <!--
-    Copyright 2016 Joyent
+    Copyright 2017 Joyent
 -->
 
 
@@ -96,7 +96,7 @@ spans.
 
 ### Questions this system should be able to answer
 
-The primary focus of this work is to ensure that it is possible to trace a the
+The primary focus of this work is to ensure that it is possible to trace the
 entire series of actions (or as close as possible) that is performed by Triton
 to satisfy a given inbound API request, from the first triton component that
 receives the request until the response is returned. It should be possible for
@@ -491,6 +491,9 @@ The [node-vmadm](https://github.com/joyent/node-vmadm) library is used by
 cn-agent to wrap the vmadm tool. It will be modified so that it logs all calls
 to vmadm and passes through the trace ids so that vmadm output that contains
 traces can be captured and put in the correct format to include in the trace.
+
+Note that the vmadm output will be parsed after the completion of the vmadm
+command, which is then used to generate tracing event information.
 
 ### Modification of vmadm
 
@@ -1001,6 +1004,12 @@ to look at existing logs from Triton and use existing numbers of requests for
 various services combined with prototype numbers of logs per request to
 determine how much additional data this might be.
 
+Preliminary testing of the sdc-docker zone using the sdc-docker test suite on
+19th Dec 2017 (running 1500 tests) in COAL showed a doubling of log file size:
+
+    -rw-r--r--  1 root root  7,002,769 Dec 18 21:53 docker-testsuite.log
+    -rw-r--r--  1 root root 13,567,770 Dec 18 23:59 docker-testsuite-rfd35.log
+
 If at some point we determine that this will be too much data to write to disk,
 we should be able to change the target of the data by adding a separate bunyan
 log backend that sends the data somewhere other than the disk. A previous
@@ -1010,6 +1019,20 @@ https://github.com/joshwilsdon/effluent-logger
 
 which plugs into bunyan and sends messages to fluentd. We could have these go to
 some other system in a simlar manner and not write them to local disk.
+
+### Performance impact
+
+Preliminary testing of the sdc-docker zone using the sdc-docker test suite on
+19th Dec 2017 (running ~1500 tests) in COAL showed around 7% performance
+penalty, where all triton components had rfd-35-cls tracing enabled:
+
+    # No RFD 35 test results:
+    # Completed in 3144 seconds.
+    # PASS: 1574 / 1574
+
+    # RFD 35 cls test results:
+    # Completed in 3360 seconds.
+    # PASS: 1574 / 1574
 
 ### Impact on post-mortem debugging
 
