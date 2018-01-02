@@ -242,13 +242,13 @@ support these styles currently, we should be able to extend it such that it can.
 
 Based on the above comparisons, we can replace JavaScript Lint with ESLint as
 our default linter without losing important checks, and gain new useful ones. To
-make it easy for people to use ESLint in new and current repos, we will update
-the example Makefiles in the Engineering Guide to have a `check-eslint` target
-that `check` depends on (see [TOOLS-1826]), and provide an ESLint plugin,
-[node-eslint-plugin-joyent], so that we have a standard configuration for
-projects to use. Each project will need to have a `.eslintrc` file at its root,
-which will make it easier for people's editors to automatically discover the
-configuration.
+make it easy for people to use ESLint in new and current repos, the example
+Makefiles in the Engineering Guide provide a `check-eslint` target
+that `check` depends on when `ESLINT_FILES` is defined (see [TOOLS-1826]). It
+will take care of installing ESLint and [node-eslint-plugin-joyent], which
+contains a standard configuration for projects to use. Each project should
+keep its configuration in an `.eslintrc` file at its root, to make it easier for
+people's editors to automatically discover the configuration.
 
 Given the lack of several important style checks in ESLint, we should continue
 to use `jsstyle` for style checks going forward, and supplement what it
@@ -256,10 +256,12 @@ provides with several from ESLint. Once we've worked on extending ESLint (either
 upstream or in our plugin) to support the missing features, we'll be able to
 switch to using just ESLint.
 
-For the time being we will be using the ESLint 2.x series of versions, since
-newer releases [dropped support for node 0.10 and 0.12][eslint-3-node-support].
-Once [RFD 59] is fully executed, we will then be able to move to version 4 or
-newer.
+For the time being, some projects will need to use the ESLint 2.x series of
+versions, since newer releases [dropped support for node 0.10 and 0.12][eslint-3-node-support].
+Once [RFD 59] is fully executed, they will be able to move to version 4 or
+newer. [node-eslint-plugin-joyent] 1.x releases will be compatible with
+ESLint 2.x, and [node-eslint-plugin-joyent] 2.x will be compatible with
+ESLint 4.x.
 
 Updating repositories will be done as a gradual process, as people work in
 different repos and take the time to figure out how to appropriately fix lint
