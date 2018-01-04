@@ -27,13 +27,16 @@ network.
 
 ## Proposed Solution
 
+XXX KEBE SAYS introductory text goes here regarding which *APIs change,
+etc. etc.... XXX
+
 ### NAPI changes
 
 #### CreateRouterObject (POST /routers)
 
 Creating a Router Object simply involves listing a number of NAPI network
 objects one wishes to join together.  For now, these network objects MUST be
-fabrics.
+fabrics, and MUST be owned by the same owner_uuid that submits the request.
 
 ##### input
 
@@ -44,6 +47,7 @@ be of the same address family (IPv4 or IPv6).
 | ---------------------	| ------------- | ------------------------------------- |
 | networks		| Array		| Array of network objects	|
 | name			| String	| Name for this Router Object.	|
+| owner_uuid		| UUID		| Router Object owner's UUID |
 
 
 ```
@@ -61,10 +65,11 @@ be of the same address family (IPv4 or IPv6).
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| router		| UUID		| UUID of the Router Object	|
+| uuid		| UUID		| UUID of the Router Object	|
 | networks		| Array		| Array of network object UUIDs	|
 | family		| String	| Either 'ipv4' or 'ipv6'	|
 | name			| String	| Name for this Router Object. |
+| owner_uuid		| UUID		| Router Object owner's UUID. |
 
 ##### errors
 
@@ -72,6 +77,7 @@ be of the same address family (IPv4 or IPv6).
 | --------------------- | ----------------------------------------------------- |
 | MissingParameter	| No array of networks, or a single-element array of networks, get passed in.		|
 | InvalidArgument	| Overlapping or duplicate IP prefixes.  Other issues |
+| ResourceNotFound	| Network requested was not found, or is owned by another owner. |
 
 
 
@@ -83,7 +89,7 @@ A multi-entry list of networks to add or delete from a router object.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| router		| UUID		| UUID of the Router Object	|
+| uuid		| UUID		| UUID of the Router Object	|
 | network_updates	| Array		| Array of actions and networks	|
 
 ```
@@ -108,17 +114,18 @@ A multi-entry list of networks to add or delete from a router object.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| router		| UUID		| UUID of the Router Object	|
+| uuid		| UUID		| UUID of the Router Object	|
 | networks		| Array		| Array of network object UUIDs	|
 | family		| String	| Either 'ipv4' or 'ipv6'	|
 | name			| String	| Name for this Router Object. |
+| owner_uuid		| UUID		| Router Object owner's UUID |
 
 ##### errors
 
 
 | Error Code		| Description						|
 | --------------------- | ----------------------------------------------------- |
-| ResourceNotFound	| Router object or network object does not exist |
+| ResourceNotFound	| Router object, network object does not exist, or is owned by another owner. |
 | MissingParameter	| No network.				 |
 | InvalidArgument	| Overlapping or duplicate IP prefixes.  Other issues |
 
@@ -133,10 +140,11 @@ None.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| router		| UUID		| Router Object UUID		|
+| uuid		| UUID		| Router Object UUID		|
 | networks		| Array		| Array of network object UUIDs |
 | family		| String	| Either 'ipv4' or 'ipv6'	|
 | name			| String	| Name for this Router Object. |
+| owner_uuid		| UUID		| Router Object owner's UUID |
 
 ##### errors
 
@@ -186,9 +194,35 @@ None.
 
 ### CLOUDAPI changes
 
-<Coming soon.>
+XXX KEBE SAYS LOTS OF WORK TO DO HERE. XXX
 
 ### Implementation details.
+
+XXX KEBE SAYS LOTS OF WORK TO DO HERE, ALSO. XXX
+
+#### Network Object Route Attributes
+
+NAPI hold the routes for a given network.  Router Object creation essentially
+adds routes to every network object.  For example, upon the creation of this
+router object:
+
+     Router Object:  192.168.1.0/24, 192.168.2.0/24
+
+The NAPI objects for the 192.168.1.0/24 network will now need an additional
+route for 192.168.2.0/24 to the IP address created for the router object on
+the 192.168.1.0/24 network.  If 192.168.1.0/24 already has a routes
+attribute, it will need augmentation.
+
+Once network objects get their routes attribute updated, all affected VMs
+must have their routing tables updated.  An existing RFD, cited below,
+specifies how this will happen.
+
+Router zones and zones which happen to have multiple network attachments (but
+which do not route themselves) will somehow have to deal with routes which
+collide with interfaces for which they already have connectivity.  The
+illumos routing code will prevent this for router zones, but will
+successfully add a route for a zone which is dual-attached, even though the
+directly-attached interface should receive precedence in lookups.
 
 #### Requirement for RFD 28
 
@@ -214,22 +248,25 @@ Object involves several steps:
 
 #### Router Object zones
 
-A router object is implemented by one or more minimal zones per Compute Node
-that has the following properties:
+A router object is implemented by at least one zone per Compute Node that has
+the following properties:
 
 - NICs for every network listed in the router object.
 
 - Each zone has the *same* IP addresses regardless of which Compute Node it's
   on.  This will require some NAPI changes to handle an IP address that spans
-  multiple zones/CNs.  A new belongs_to_type may be the solution.
+  multiple zones/CNs.  A new belongs_to_type ("router") and belongs_to value
+  (Router Object UUID) may be the solution.
 
 These zones perform the work of packet-forwarding.  Because one instantiates
 per CN, the availability is equivalent to that of Fabric Networks.  A packet
-leaves a zone, its next-hop router is insured to be on the same CN, so at
-most, a forwarded packet transits one cross-CN fabric.
+leaves a zone, its next-hop router will be on the same CN, so at most, a
+forwarded packet transits one cross-CN fabric.
 
-Configuring such zones that share IP addresses (exploiting MAC's same-machine
-short-circuit path to avoid VARPd) will 
+The use of vmadm(1M) on each CN, combined with reserving the shared addresses
+in NAPI, demonstrate the feasibility of the identically-addressed,
+one-zone-per-CN approach.
+
 
 #### Router Object Destruction - Behind the Scenes
 
@@ -240,7 +277,7 @@ Object destruction:
 
 - RFD 28 pushes out route deletions to every affected VM.
 
-#### Adding and Deleting Networks
+#### Adding and Deleting Networks Directly from Router Objects
 
 The single primitive ModifyRouterNetworks requires a list of network changes
 which can both add and delete networks.  It is possible that the Router
@@ -267,3 +304,20 @@ new networks, RFD 28 not only needs to reach attached VMs, but the Router
 Object zones as well.
 
 
+#### Deleting Networks from Triton
+
+Deleting network objects from Triton will now involve additional checks. Any
+network that exists in a Router Object MUST be removed from the Router
+Object.  Per the previous section, if there are only one or zero remaining
+networks attached to the Router Object after that removal, the Router Object
+itself SHOULD be deleted.  This may violate least-surprise, or perhaps NAPI
+can return an additional indicator that a Router Object was deleted alongside
+the network object.
+
+#### Ownership and Router Objects
+
+For now, Router Objects are unique per account.  Furthermore, any networks
+attached to a Router Object must also be owned by the same account as the
+Router Object.  Eventually this may change, but such a change either falls
+under Remote Network Objects (discussed in RFE 2) or a future change to
+Router Objects beyond the scope of this RFD.
