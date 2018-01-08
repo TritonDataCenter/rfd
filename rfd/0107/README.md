@@ -1,6 +1,6 @@
 ---
 authors: Mike Zeller <mike.zeller@joyent.com>
-state: predraft
+state: publish
 discussion: https://github.com/joyent/rfd/issues/49
 ---
 
@@ -145,46 +145,28 @@ like this.
 
 Until we have support for multiple IPs per NIC, `CloudAPI` will restrict
 requests to only allow a count of 1 and an ips array with a single element.
+It is also still possible to pass in just a network UUID.
 
 ###### input
 
-An array of network objects.
+A single network object.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| network		| UUID		| Network UUID				|
-| count			| Integer	| Number of IP's wanted. Optional	|
-| ips			| Array		| Specific IPs to assign to the NIC. Optional |
-| primary		| Boolean	| The ip should be the PrimaryIP	|
+| ipv4_uuid		| UUID		| Network UUID				|
+| ipv4_ips		| Array		| Specific IPs to assign to the NIC. Optional |
+| ipv4_count		| Integer	| Number of IP's wanted. Optional (not needed if ipv4_ips is provided)	|
 
-Currently:
 
 ```
-[
-  { "network": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2" }
-]
+{ "ipv4_uuid": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2" }
 
 or
-[
-  {
-    "network": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2",
-    "ips": ["192.168.1.234"],
-    "primary": true
-  }
-]
-```
 
-Future:
-
-```
-[
-  { "network": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2" },
-  { "network": "2fc14e44-3813-47c5-9eec-fd281cbc2dbe",  "count": 4 },
-  {
-    "network": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2",
-    "ips": ["192.168.1.234", "192.168.1.235"]
-  }
-]
+{
+  "ipv4_uuid": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2",
+  "ipv4_ips": ["192.168.1.234"]
+}
 ```
 
 ###### output
@@ -311,7 +293,8 @@ GET /:login/networks/b330e2a1-6260-41a8-8567-a8a011f202f1/ips/10.88.88.105
 
 {
   "ip": "10.88.88.105",
-  "reserved": true
+  "reserved": true,
+  "managed": false
 }
 ```
 
@@ -331,20 +314,21 @@ pool of possible IPs when creating another instance.
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| ip			| String	| The IP Address			|
 | reserved		| Boolean	| Reserve/Unreserve the IP		|
 
 ```
-{ "ip": "192.168.1.234", "reserved": true }
+{ "reserved": true }
 ```
 
 ###### output
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| ip			| String	| The IP Address			|
-| reserved		| Boolean	| The IP's current reservation state	|
-| belongs_to_uuid	| UUID		| optional Instance that owns the IP	|
+| ip			| String	| IP Address				|
+| reserved		| Boolean	| Whether this IP is reserved or not	|
+| managed		| Boolean	| True if the user cannot modify the IP via UpdateNetworkIP (example broadcast and gateway IPs) |
+| owner_uuid		| String	| Optional owner UUID of the instance the IP is associated with |
+| belongs_to_uuid	| String	| Optional UUID of the instance the IP is associated with |
 
 ###### errors
 
@@ -359,6 +343,7 @@ pool of possible IPs when creating another instance.
 ##### CreateMachine (POST /:login/machines)
 
 The only change here is to the networks array, it is now an array of objects.
+CloudAPI will also still accept an array of network UUID strings.
 
 ###### input
 
@@ -369,9 +354,9 @@ The only change here is to the networks array, it is now an array of objects.
 | ...			|		|					|
 
 ```
-[
-  { "network": "58f75b3e-15aa-4bab-ad22-c6546cfd6b59" },
-  { "network": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2", "ip": "192.168.1.234" }
+"networks": [
+  { "ipv4_uuid": "58f75b3e-15aa-4bab-ad22-c6546cfd6b59" },
+  { "ipv4_uuid": "72a9cd7d-2a0d-4f45-8fa5-f092a3654ce2", "ipv4_ips": ["192.168.1.234"] }
 ]
 ```
 
