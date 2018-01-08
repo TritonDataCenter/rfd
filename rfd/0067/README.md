@@ -1115,7 +1115,7 @@ Integrated to master:
     - HEAD-2367, HEAD-2368 sdc-login improvements to help with running
       test suites with multiple headnodes
     - HEAD-2370 add bin/rsync-to
-    - HEAD-2380 'sdc-usbkey mount --nofoldcase'
+    - HEAD-2380, HEAD-2383: 'sdc-usbkey mount --nofoldcase'
 - sdc-booter.git
     - NET-371 (builds on or after: master-20170518T212529Z)
     - NET-376 (commit 554cb97, builds on or after:
@@ -1131,6 +1131,10 @@ Integrated to master:
     - ZAPI-800 Update provision workflow to not assume a single headnode
 
 In CR:
+
+- sdc-booter:
+    - TRITON-29  This needs some discussion to solve the "admin on aggrs"
+      issue in east3b.
 
 Trent's WiP:
 
@@ -1155,8 +1159,8 @@ Trent's WiP:
         - `sdcadm service ls` (new home for `sdcadm services`, aliased)
             Should this change to newer form of "sdcadmService objects"?
     - WiP:
-        - lib/common.js: Fixes for the usbKey mounting functions. Can these
-          go to master?
+        - lib/common.js: Fixes for the usbKey mounting functions.
+            TODO: update this to handle passing back the mount dir!
         - sdcadm to node v4
             See TODOs in scratch: urclient, wf-client releases. Put in master
             after release.
