@@ -158,6 +158,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 112 Manta Storage Auditor](./rfd/0112/README.md) |
 | draft    | [RFD 113 Triton custom image sharing and x-DC copying](./rfd/0113/README.md) |
 | predraft | [RFD 114 GPGPU Instance Support in Triton](./rfd/0114/README.md) |
+| predraft | [RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md) |
 
 
 ## Contents of an RFD
