@@ -47,8 +47,8 @@ That is, the virtual platform has:
 - 2 virtaul CPUs
 - first serial port (ttya, ttyS0, com1) attached to /dev/zconsole
 - An LPC PCI-ISA bridge, providing connectivity to com1, com2, and bootrom
-- A disk device at PCI 3,0,0
-- A network device at PCI 4,0,0
+- A disk device at PCI 0,3,0
+- A network device at PCI 0,4,0
 - A boot ROM
 
 The guest OS is installed on the ZFS volume `zones/*zone*/data/disk0` which is
