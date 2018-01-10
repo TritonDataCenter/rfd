@@ -1,6 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: predraft
+discussion: https://github.com/joyent/rfd/issues/76
 ---
 
 <!--
@@ -18,7 +19,7 @@ state: predraft
 ## Introduction
 
 **NOTE**  This is an early draft.  Your feedback and that of others will likely
-cause things to change.  That's a good thing.
+cause things to change.
 
 For reasons beyond the scope of this document, `bhyve` is needed by SmartOS.  It
 is at least an analog for `kvm` and perhaps an outright replacement.  This
