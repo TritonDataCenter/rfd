@@ -110,7 +110,7 @@ described below.
 | global | fs-allowed	| Not supported, but [subject to change](https://reviews.freebsd.org/D10335)
 | global | ip-type	| Only `exclusive` is supported			|
 | global | hostid	| Ignored					|
-| dataset | name	| Not supported, at least once [OS-5161](https://jira.joyent.us/browse/OS-5161) is fixed |
+| dataset | name	| Not supported, at least once [OS-5161](https://smartos.org/bugview/OS-5161) is fixed |
 | device | match 	| Must match exactly one raw disk device (e.g. in `/dev/rdsk` or `/dev/zvol/rdsk`). |
 | fs 	| all		| Not supported, but [subject to change](https://reviews.freebsd.org/D10335)
 | inherit-pkg-dir | all | Not supported				| 
