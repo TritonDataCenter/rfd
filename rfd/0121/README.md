@@ -14,12 +14,13 @@ discussion: https://github.com/joyent/rfd/issues/76
     Copyright (c) 2018, Joyent, Inc.
 -->
 
-# RFD XXX bhyve brand
+# RFD 121 bhyve brand
 
 ## Introduction
 
 **NOTE**  This is an early draft.  Your feedback and that of others will likely
-cause things to change.
+cause things to change. Open [issues](https://github.com/joyent/rfd/issues/76)
+are tagged with @githubusername.
 
 For reasons beyond the scope of this document, `bhyve` is needed by SmartOS.  It
 is at least an analog for `kvm` and perhaps an outright replacement.  This
@@ -45,9 +46,9 @@ the command line looks like:
 That is, the virtual platform has:
 
 - 4 GB of RAM
-- 2 virtaul CPUs
-- first serial port (ttya, ttyS0, com1) attached to /dev/zconsole
-- An LPC PCI-ISA bridge, providing connectivity to com1, com2, and bootrom
+- 2 virtual CPUs
+- first serial port (`ttya`, `ttyS0`, `com1`) attached to `/dev/zconsole`
+- An LPC PCI-ISA bridge, providing connectivity to `com1`, `com2`, and bootrom
 - A disk device at PCI 0,3,0
 - A network device at PCI 0,4,0
 - A boot ROM
@@ -106,7 +107,7 @@ described below.
 | Scope	| Property	| Notes						|
 | ----- | ------------- | --------------------------------------------- |
 | global | bootargs	| Ignored					|
-| global | fs-allowed	| Not supported.  The zone cannot mount any file system |
+| global | fs-allowed	| Not supported, but [subject to change](https://reviews.freebsd.org/D10335)
 | global | ip-type	| Only `exclusive` is supported			|
 | global | hostid	| Ignored					|
 | dataset | name	| Not supported, at least once [OS-5161](https://jira.joyent.us/browse/OS-5161) is fixed |
@@ -123,7 +124,8 @@ summarizes the impact.
 | device | boot		| Is this the boot device? `true` or `false`	|
 | device | model	| See *emulation* in [bhyve(8)](https://www.freebsd.org/cgi/man.cgi?query=bhyve&format=html) |
 | device | media	| `hd` for hard drive or `cd` for cdrom		|
-| device | image-size	| If the device does not exist during installation, the size that it will be created as, in megabytes (10^6 bytes) |
+| device | size		| If the device does not exist during installation, the size that it will be created as, in megabytes (10^6 bytes) |
+| device | image-size	| XXX - specific to vmadm? not relevant to this doc? @joshwilsdon		|
 | device | image-uuid	| XXX - specific to vmadm?			|
 | net	| gateway	| XXX I do not yet know how we will do guest network config |
 | net	| gateways	| XXX						|
@@ -140,11 +142,25 @@ Some of the properties above, and others not mentioned, may be used by `vmadm`.
 The interaction between `vmadm` and the brand is beyond the scope of this
 document.
 
-**XXX** Future (near future, I hope) work should add new properties or overload
-existing properties to make it so that `attr` resources are not needed to
-configure things that are fundamental to the brand.  If adding properties and/or
-resources that are unique to the brand, we need a mechanism to disable them in
-brands where they don't exist.  This is an opportunity to copy Solaris.
+#### To be determined
+
+- It is not yet clear how we will manage PCI pass-through.  We need to figure
+  this out soon. @sjorge
+- We should be able to pass through tty devices too, as this is supported with
+  kvm.  The current plan is to have `com1` attached to `/dev/zconsole`.  @sjorge
+  @joshwilsdon
+- Any time a critical configuration element is found in an `attr` resource, we
+  should probably be adding an appropriate resources and/or properties.  For
+  instance, rather than having an `attr` resource with `name=vcpu`, there should
+  be a `virtual-cpu` resource with a property `ncpus`.  To do this without
+  confusing other brands, we will need a mechanism to let `zonecfg` filter the
+  available configurable items based on brand.  In Solaris 11.2+ this
+  was done by tagging various resources and properties as disabled in the
+  brand's `platform.xml`.
+- Keep an eye on [bhyve fs pass-through](https://reviews.freebsd.org/D10335).
+  Support for this would likely be follow-on work. @wiedi
+- Live reconfiguration (e.g. add more disks) is a complicated problem that is
+  unlikely to make the initial cut. @jussisallinen
 
 ### `zoneadm`
 
@@ -235,6 +251,15 @@ attached.  These options facilitate rescue operations and/or reconfiguration.
 In the case of a live CD, it should be possible to run *diskless* using only the
 specified `boot.iso`
 
+** XXX ** Need a mechanism to communicate to the global zone when `zhyve`
+actually starts running guest code.  It's been observed that there can be a
+significant delay as kvm evicts arc buffers to make room for guest RAM.  Perhaps
+`zoneadm boot` should not return until that initialization is done.
+Alternatively, we could implement [auxiliary
+states](https://docs.oracle.com/cd/E53394_01/html/E54762/gqhar.html#VLZONgqhej)
+and have an aux state like `guest-running`.  Aux state changes would generate
+sysevents, allowing management frameworks to be notified of changes.
+
 #### `zoneadm reboot`
 
 This will be the same as `zoneadm halt` followed by `zoneadm boot`.
@@ -312,6 +337,11 @@ All executables and libraries that exist in the bhyve brand will be 64-bit only.
 Executables will not be placed in ISA-specific subdirectories, but libraries
 will be.
 
+**XXX** It seems as though all of the libraries requried by zhyve are in `/lib`.
+It may make more sense to move `bhyve` (and `zhyve`, see below) to `/sbin` (and
+`/lib/bhyve/bhyve/root/sbin`, obviating the need for
+`/usr/lib/brand/bhyve/root`.
+
 ### Zone directory hierarchy
 
 The in-zone directory hierarchy will be:
@@ -380,21 +410,22 @@ arguments from `/var/run/bhyve/zhyve.args`.
 
 #### Implementation note
 
-In the global zone, `/usr/sbin/amd64/bhyve` and
-`/usr/lib/brand/bhyve/usr/sbin/zhyve` will be hard links to the same file.  When
-invoked with a basename of `bhyve`, the command will behave exactly as
-documented in `bhyve(8)`.  When invoked with a basename of `zhyve`, it will read
-its arguments from `/var/run/bhyve/zhyve.args`
-
-The format of `/var/run/bhyve/zhyve.args` is one option or argument per line.
-No comments are allowed.  Any blank lines will be translated into a "" argument.
-
 We are striving to not modify `bhyve` code any more than required so that it is
 easier to keep in sync with upstream.  For this reason, a new source file,
 `zhyve.c` is being added.  This will contain an implementation of `main()` and
 any other `bhyve` brand-specific code that is required.  The `main()` that is in
 `bhyverun.c` is renamed to `bhyve_main()` via `-Dmain=bhyve_main` in `CPPFLAGS`
 while compiling `bhyverun.c`
+
+In the global zone, `/usr/sbin/amd64/bhyve` and
+`/usr/lib/brand/bhyve/usr/sbin/zhyve` will be hard links to the same file.  When
+invoked with a basename of `bhyve`, the command will behave exactly as
+documented in `bhyve(8)`.  When invoked with a basename of `zhyve`, it will read
+its arguments from `/var/run/bhyve/zhyve.args`
+
+The format of `/var/run/bhyve/zhyve.args` is a packed nvlist with one string
+array element at key `zhyve_args`.  The array and size returned by
+`nvlist_lookup_string_array()` are suitable for passing to `bhyve_main()`.
 
 #### Future direction
 
@@ -413,3 +444,36 @@ features.
 For the case of passing the bhyve configuration, this mechanism would involve
 `zhyve` starting the door server, then waiting for `zoneadmd` to make a door
 call passing the required configuration.
+
+### Live reconfiguration
+
+#### Resizing virtual disks
+
+**WARNING: Aspirational statement ahead** @jussisallinen
+
+When the backing store for a disk is resized, the next time the guest makes a
+geometry request, the virtio-blk driver will return the new size.  That is, the
+virtio-blk driver will not cache the disk size, rather it will query the backing
+store each time the guest requests the geometry.
+
+No zone utility will be involved in the actual resizing of the device in the
+host.
+
+#### Hot add/remove of devices
+
+Changing the set of devices visible to a guest without a reboot is not feasible
+in the initial implementation.  This is an area where there may need to be guest
+cooperation, which would further complicated the implementation. @jussisallinen
+
+**XXX** Solaris implemented *removable `lofi`* devices.  Such an approach may be
+feasible to create empty disks slots that can be filled without a reboot.  The
+occupants of those slots will not be present in the zone's configuration and as
+such will not persist across host reboot.
+
+#### Hot add/remove of vcpus
+
+In the future, maybe.
+
+#### Memory resizing or ballooning
+
+In the future, maybe.
