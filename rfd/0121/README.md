@@ -112,7 +112,7 @@ described below.
 | global | hostid	| Ignored					|
 | dataset | name	| Not supported, at least once [OS-5161](https://jira.joyent.us/browse/OS-5161) is fixed |
 | device | match 	| Must match exactly one raw disk device (e.g. in `/dev/rdsk` or `/dev/zvol/rdsk`). |
-| fs 	| all		| Not supported					|
+| fs 	| all		| Not supported, but [subject to change](https://reviews.freebsd.org/D10335)
 | inherit-pkg-dir | all | Not supported				| 
 
 As with the `kvm` brand, properties on `device` and `net` resources as well as
@@ -146,7 +146,7 @@ document.
 
 - It is not yet clear how we will manage PCI pass-through.  We need to figure
   this out soon. @sjorge
-- We should be able to pass through tty devices too, as this is supported with
+- We should be able to pass through serial devices too, as this is supported with
   kvm.  The current plan is to have `com1` attached to `/dev/zconsole`.  @sjorge
   @joshwilsdon
 - Any time a critical configuration element is found in an `attr` resource, we
