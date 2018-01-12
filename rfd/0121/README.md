@@ -281,11 +281,30 @@ relevant.
 
 ### Guest networking configuration
 
-In the `kvm` brand, DHCP packets are intercepted by (kvm? qemu?) and an
-in-hypervisor DHCP server responds handles the DHCP conversation.  No such
-facility exists in bhyve.
+**XXX** @pfmooney needs to review this
 
-**XXX** We need to work out what we will do for bhyve.
+An ioctl will be added that allows association of
+[bpf](http://biot.com/capstats/bpf.html) program to a `viona` device.  This
+filter will redirect DHCP packets such that a program that reads from the viona
+device will read the packets.  Writes to that same device will be sent as
+packets to the guest.
+
+A simple dhcp server will be added to `zoneadmd`.  This server will use the
+various `net` reseource and global properties while making DHCP offers.
+
+The guest may wish to renegotiate the DHCP lease at any time.  This can come
+about due to pending lease expiration or administrator activity.  Currently,
+is only needed to carry out activity related to `zoneadm` and `zlogin` commands.
+Both `zoneadm` and `zlogin` will restart `zoneadmd` if it is not running.  A
+more robust mechanism to ensure that `zoneadmd` stays running is needed.  A
+likely approach is to put `zoneadmd` into a `contract(4)` that causes the
+program to restart automatically.
+
+**XXX** From a security standpoint, it may be better for DHCP to be handled by a
+child of `zoneadmd` that reads the zone configuration, opens the `viona`
+device(s), then drops all privileges that aren't needed for reading from and
+writing to the `viona` device.  Not many DHCP servers have been free from
+security bugs at version 1.0.
 
 ### PCI slot and function allocation
 
