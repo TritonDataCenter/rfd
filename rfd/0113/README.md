@@ -469,8 +469,9 @@ Implementation notes:
 - What guard to implement for x-account image transfer? See the design
   section for this.
 
-- Naming the action. Alice is giving Bob a *copy* of the image. Alice
-  retains the original. "share"? "transfer"? Some other verb?)
+- Naming the action for transferring ownership of an image. Alice is giving Bob
+  a *copy* of the image. Alice retains the original. "share"? "transfer"? Some
+  other verb?)
 
         ... publish?
             [eng]
@@ -479,6 +480,22 @@ Implementation notes:
         Publish to whom? Where? Who has access to that repo?
         Publish directly to their account? This could be the verb instead of transfer.
             $ triton image publish mex@1.2.3 bob
+
+    Angela suggested perhaps "clone". That isn't perfect either.
+
+- Consider tracking the transfer source account and image UUID. A quick way
+  to do this would be to define special *tags* for this. Tags would certainly
+  be quick, but it is a little weak to use that. We *do* already use tags for
+  structured info, e.g. for `tags.kernel_version`, so this wouldn't be the
+  first time. That doesn't make it a Good Thing.
+
+  IMO, we should spec out what field or tag names we would use, and then
+  see what effort/issues there would be in using first-class manfiest fields
+  for this, before considering falling back to the "quick hack" use of tags.
+
+- Consider adding all this behind a feature flag -- whether that is a generic
+  TritonDC feature flag mechanism that this RFD guinea pigs, or a simple/quick
+  SAPI metadata var on the IMGAPI service.
 
 - Nice to have: a way to list just *my* custom images easily (to see them from
   the noise of all the public ones)
