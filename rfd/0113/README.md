@@ -9,7 +9,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+113%22
 The following details a proposal for new IMGAPI, CloudAPI, and node-triton
 functionality to make the following improvements to Triton custom images:
 
-- allow transferring ownership of an image to another account;
+- allow transferring ownership of an image (or clone of an image) to another account;
 - allow copying one's own custom images from another DC within the same cloud;
 - possibly support tooling for a customer to better understand their image usage
   (which images does this image depend upon; which images are derived from
@@ -132,7 +132,7 @@ Alice copying image from us-sw-1 to us-west-1:
 
 ## Design discussion
 
-### transfer an image to another account
+### x-account image clone
 
 How should giving ownership of an image to another account work?
 The naive first pass at this would be **just change the owner to the new
@@ -164,8 +164,8 @@ the image.
 
 Other options:
 
-1. **Create a duplicate copy of the image (and its non-admin-owned origin
-   images) with a new UUID** and assign *that* image to the new account owner.
+1. **Create a clone of the image (and its non-admin-owned origin images) with a
+   new UUID** and assign *that* image to the new account owner.
 2. Create a new image that flattens any incremental origin layers of the
    origin image, and assign *that* image to the new account owner.
 
@@ -186,8 +186,8 @@ images to being non-incremental: larger, but simpler to manage.
 And then **for cross-account image transfer, we'd do option #1** as described
 above.
 
-The expected *common case* would be transfer of a non-incremental image.
-A copy image with a new UUID is created, and `image.owner` is set to the new
+The expected *common case* would be x-account clone a non-incremental image.
+An image clone with a new UUID is created, and `image.owner` is set to the new
 account.
 
 Another benefit of custom images being non-incremental is that they do not
@@ -198,7 +198,7 @@ identical in all DCs as a requirement for x-DC image copying.
 * * *
 
 Security considerations. So far the feature as described allows any account
-in the same cloud to add an image with any name@version into your list of
+in the same cloud to add an image with any name@version to your list of
 images. If you are in the habit of using `triton instance create my-image ...`
 or equivalent -- i.e. using client tooling that identifies images by *name*
 for provisioning -- then there is a possible attack where an account can
@@ -207,17 +207,17 @@ Some guard against this is justified.
 
 To guard against this, the receiving account needs to one or more of:
 
-- Explicitly trust the sending account to do this (i.e. grant permission to
-  specific accounts to transfer images to me)
+- Explicitly trust the sending account to do this: i.e. grant permission to
+  specific accounts to transfer images to me.
 
 - Explicitly trust every transferred image: every transferred image goes into
   a "not yet available for provisioning" bucket until some explicit action by
   the receiver.
 
-  This is akin to the "transfer" process being a "publish" by the sender and a
-  "pull" by the receiver, except that the Triton imaging system doesn't have a
-  concept of an repository with access control to which customers can publish
-  images.
+  This is akin to the x-account clone process being a "publish" by the sender
+  and a "pull" by the receiver, except that the Triton imaging system doesn't
+  have a concept of an repository with access control to which customers can
+  publish images.
 
 I got the impression from our last customer workshop that the latter (having
 to explicitly accept every new image transferred before using for provisioning)
@@ -226,10 +226,10 @@ was considered too much of a burden. However, I would welcome hearing opinions.
 Potential ways to implement this:
 
 1.  Triton could add support for an account config:
-    `image_transfer_trusted_accounts` A receiver would have to explicitly do the
+    `image_clone_trusted_accounts` A receiver would have to explicitly do the
     following once:
 
-        triton account update image_transfer_trusted_accounts=$uuid-of-allowed-sender
+        triton account update image_clone_trusted_accounts=$uuid-of-allowed-sender
 
 2.  Transferred images could be tracked (with a new
     `image.transferred_by=$account` manifest field) and client tooling that
@@ -241,8 +241,8 @@ Potential ways to implement this:
     For example, I don't have a feel for the impact on Terraform support to
     require this.
 
-3.  Transferred images could have a new image state=transferred. The receiver
-    would have to `triton image accept-transfer IMAGE...` to move it to
+3.  Transferred images could have a new image state=cloned. The receiver
+    would have to `triton image accept-clone IMAGE...` to move it to
     state=active to have it in the default set of listed images for
     provisioning. This is an example of the latter "explicitly trust every
     transferred image".
@@ -287,6 +287,8 @@ See the Milestones section below for implementation details.
 
 ### M1: make image creation *non*-incremental by default
 
+<https://jira.joyent.us/browse/TRITON-51>
+
 See the x-account image transfer design discussion above. This milestone is
 about making image creation (cloudapi CreateImageFromMachine) *non*-incremental
 by default and then support an option for the old behaviour of making an
@@ -299,20 +301,26 @@ incremental image. Implementation notes:
 - CloudAPI CreateImageFromMachine should add a new `incremental` option
   and document implications of incremental and non-incremental images.
 - `triton image create` should expose this incremental option.
+- Q: Need we bump the cloudapi major version for this? It *is* a behaviour
+  change. However, I believe there is wiggle room given the limited
+  current capabilities the user has for image management. I'd still bias
+  to a major version bump for this, which would mean a required update
+  to node-triton and other clients.
 
 
-### M2: x-account image transfer
+### M2: x-account image clone
 
 See the design notes above for reasoning. This milestone is about the new
-support for x-account image transfer. Implementation notes:
+support for x-account image clone. Implementation notes:
 
-- `triton image transfer` new command (and node-triton library support)
-- New CloudAPI TransferImage that will call IMGAPI to do the work.
+- `triton image clone-to-account` new command (`clone` alias) and node-triton
+  library support.
+- New CloudAPI CloneImageToAccount that will call IMGAPI to do the work.
   Ideally, given that there is no heavy bit moving here (we are just doing
   `ln` or `mln` of image files on the storage backend), I think this can be
-  a synchronous endpoint, i.e. CloudAPI TransferImage doesn't return until
+  a synchronous endpoint, i.e. CloudAPI CloneImageToAccount doesn't return until
   the transfer is complete (either successfully or failed).
-- New IMGAPI TransferImage endpoint:
+- New IMGAPI CloneImageToAccount endpoint:
     - The image must be state=active
     - Gather the ancestry of the image to transfer
     - Ensure that all images in the ancestry to be transferred (all those
@@ -329,14 +337,20 @@ support for x-account image transfer. Implementation notes:
           it should have that same state afterwards. In other words, it is
           okay to transfer an image if one of its origin images is disabled
           (disabled just means you can't provision that image).
-    - TODO: consider adding new `transferred_by=$source_account_uuid` manifest
-      variable for bookkeeping. This *could* be exposed via CloudAPI and
-      `triton` client tooling or not. Having that data internal could help
-      with auditing if there is a problem. On the client side, it *could*
-      be used for one of the proposed guards. For *auditing*, if we had
-      lightweight jobs, then we'd have that info in job data. Using a job
-      for this feels like overkill, however.
-- Guards on calling TransferImage: TODO once a guard design is selected.
+- Guards on calling CloneImageToAccount: TODO once a guard design is selected.
+- (TODO: consider this) Adding metadata to cloned images about the source
+  image. This isn't *required* for providing the functionality, however it could
+  be helpful for users to grok the source of images in `triton image list`.
+    - Q: image.tags (quick hack) or top-level fields (less hacky, API
+      versioning, more work)?
+    - Q: track both source image UUID and source account? What about exposing
+      the source account *login*?
+    - Q: what field names to use?
+    - TODO: evaluate the effort in using top-level manifest fields. If that
+      is too difficult and the feature is still desired, then consider
+      falling back to using tags.
+    - Note: Even if added fields were not exposed via CloudAPI, then could
+      be useful for internal auditing.
 
 
 ### M3: x-DC image copy
@@ -378,6 +392,7 @@ Dev Notes:
   be able to predict.
 - it would be *really* good if this could share the same "import from IMGAPI"
   (e.g. images.jo) code in IMGAPI already
+- what about 'DeleteImage' on the target image to cancel the copy job?
 - think about failed file transfer
 - think about retry
 - think about range-gets for retries to cope with huge image files
@@ -482,6 +497,19 @@ Implementation notes:
             $ triton image publish mex@1.2.3 bob
 
     Angela suggested perhaps "clone". That isn't perfect either.
+
+    How about "CloneImageToAccount"?
+        CloudAPI CloneImageToAccount
+        CloudAPI CopyImage
+            Perhaps better than "CopyImageFromDc" because (a) AWS calls it
+            "CopyFoo" (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/CopyingAMIs.html#copy-amis-across-regions)
+            and (b) this leaves it unspecified whether Triton images are DC
+            or region-specific. By "region" might come at a later date.
+
+    XXX x-DC copy naming is: "copy". "CopyRemoteImage" -> "IMGAPI ImportDcImage".
+        Q: what is cloudapi name?
+            triton image copy-from-dc ...
+            triton image cp ...             # alias
 
 - Consider tracking the transfer source account and image UUID. A quick way
   to do this would be to define special *tags* for this. Tags would certainly
@@ -912,7 +940,11 @@ See it rendered here: <https://gist.github.com/trentm/b02c6977c2cacfdb580a2b3c09
     "us-west-1 IMGAPI"-->"triton image pull":{progress}
 
 
-### Appendix E: 'copy' or 'pull' language?
+### Appendix E: language for x-DC image copy?
+
+What should the language be for the x-DC image copy feature?
+
+Thinking out loud:
 
     triton pull REPO:IMAGE
     triton pull DC IMAGE
@@ -921,6 +953,46 @@ See it rendered here: <https://gist.github.com/trentm/b02c6977c2cacfdb580a2b3c09
 
 "Pull" intuition is about pulling from some external repository. When I'm
 making my image available throughout the same cloud... it feels less like a
-"pull" and more like "scp", i.e. "copy". Sync?  AWS lang is copy, so use that.
+"pull" and more like "scp", i.e. "copy".
 
-Answer: copy
+"Sync"? Not bad, but it could imply there is a live syncing, which there is not.
+You need to explicitly re-copy if you want to transfer metadata changes after
+an earlier copy.
+
+"Copy"? This is the language AWS uses, and otherwise works for me.
+
+Winner: copy
+
+CloudAPI "CopyImage" or "CopyImageFromDc"? The former would be fine. There isn't
+any current overloading of "copy" for images. AWS language at
+<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/CopyingAMIs.html#copy-amis-across-regions>
+specifies "region" in prose, but the commands (`copy-image`, `Copy-EC2Image`)
+don't. My bias is to be specific on balance, hence the winner is:
+`CloudAPI CopyImageFromDc`. Node-triton would have:
+
+    triton image copy-from-dc ...
+    triton image cp ...                 # shortcut alias
+
+
+### Appendix F: language for x-account image clone?
+
+What should the verb/language be for x-account image transfer/copy? The
+implementation is that a *clone* of the image is created for the target
+account -- with a new UUID. The original image remains unchanged for the sending
+account.
+
+Options:
+
+- `transfer` - The word "transfer" connotes that the sending account would no
+  longer have the image and that the receiving account would get an image with
+  an unchanged UUID.
+- `share` - Implies that both accounts get access to the same shared resource.
+- `copy` - Overloaded, `copy` is being used for x-DC image copying.
+- `clone` - Better. "Clone" implies a new UUID. It does not connote the transfer
+  to a new owner.
+- `clone to account`? We don't have to use a single word here.
+  `CloudAPI CloneImageToAccount`, `IMGAPI CloneImageToAccount`,
+  `triton image clone-to-account IMAGE ACCOUNT`,
+  `triton image clone IMAGE ACCOUNT` (alias).
+
+Winner: "clone to account"
