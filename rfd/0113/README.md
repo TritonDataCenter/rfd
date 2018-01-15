@@ -25,11 +25,11 @@ functionality to make the following improvements to Triton custom images:
 - [Background](#background)
 - [tl;dr](#tldr)
 - [Design discussion](#design-discussion)
-  - [transfer an image to another account](#transfer-an-image-to-another-account)
+  - [x-account image clone](#x-account-image-clone)
   - [x-DC image copy](#x-dc-image-copy)
 - [Milestones](#milestones)
   - [M1: make image creation *non*-incremental by default](#m1-make-image-creation-non-incremental-by-default)
-  - [M2: x-account image transfer](#m2-x-account-image-transfer)
+  - [M2: x-account image clone](#m2-x-account-image-clone)
   - [M3: x-DC image copy](#m3-x-dc-image-copy)
   - [M4: triton-go and terraform support for these new features](#m4-triton-go-and-terraform-support-for-these-new-features)
   - [M5: client improvements for listing image usage](#m5-client-improvements-for-listing-image-usage)
@@ -41,7 +41,8 @@ functionality to make the following improvements to Triton custom images:
   - [Appendix B: share an image with other accounts](#appendix-b-share-an-image-with-other-accounts)
   - [Appendix C: Sharing using account *login* or *uuid*?](#appendix-c-sharing-using-account-login-or-uuid)
   - [Appendix D: Old proposal for copying images x-DC that has IMGAPI talking to a remote CloudAPI](#appendix-d-old-proposal-for-copying-images-x-dc-that-has-imgapi-talking-to-a-remote-cloudapi)
-  - [Appendix E: 'copy' or 'pull' language?](#appendix-e-copy-or-pull-language)
+  - [Appendix E: language for x-DC image copy?](#appendix-e-language-for-x-dc-image-copy)
+  - [Appendix F: language for x-account image clone?](#appendix-f-language-for-x-account-image-clone)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
