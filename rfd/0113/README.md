@@ -311,6 +311,8 @@ incremental image. Implementation notes:
 
 ### M2: x-account image clone
 
+<https://jira.joyent.us/browse/TRITON-53>
+
 See the design notes above for reasoning. This milestone is about the new
 support for x-account image clone. Implementation notes:
 
@@ -355,6 +357,8 @@ support for x-account image clone. Implementation notes:
 
 
 ### M3: x-DC image copy
+
+<https://jira.joyent.us/browse/TRITON-52>
 
 Implementation notes:
 
