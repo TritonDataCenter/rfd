@@ -5,7 +5,7 @@
 -->
 
 <!--
-    Copyright 2017 Joyent, Inc.
+    Copyright 2018 Joyent, Inc.
 -->
 
 # Requests for Discussion
@@ -159,6 +159,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 113 x-account image transfer and x-DC image copying](./rfd/0113/README.md) |
 | predraft | [RFD 114 GPGPU Instance Support in Triton](./rfd/0114/README.md) |
 | predraft | [RFD 115 Improving Manta Availability](./rfd/0115/README.md) |
+| predraft | [RFD 116 Manta Bucket Exploration](./rfd/0116/README.md) |
 | predraft | [RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md) |
 | predraft | [RFD 121 bhyve brand](./rfd/0121/README.md)
 | predraft | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md)
