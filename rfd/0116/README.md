@@ -1,5 +1,5 @@
 ---
-authors: David Pacheco <dap@joyent.com>
+authors: David Pacheco <dap@joyent.com> Kelly McLaughlin <kelly.mclaughlin@joyent.com>
 state: predraft
 ---
 
@@ -111,6 +111,42 @@ these systems, if any, may be suitable as the backing store for the buckets
 feature, as well as the costs and risks of building a system with one of these
 components.
 
+There are two possibilities for how a distributed database might be leveraged
+by manta for metadata storage.
+
+1. Muskie would continue to serve as the API front door, but instead of
+   communicating with electric-moray and using moray for storage the
+   distribution mechanism of the database would be used to evenly spread the
+   data among the cluster members.
+
+   This requires a database capable of functioning on a large scale and across
+   datacenters. Ideally it would offer the same strong consistency and
+   availability guarantees as what is currently provided by
+   electric-moray+moray+manatee+posgresql, but initially strong consistency is
+   not a required criteria. The following are examples of databases that *may*
+   meet the requirements for this option:
+
+   * [CockroachDB](https://www.cockroachlabs.com/)
+   * [TiDB](https://pingcap.com/en/)
+   * [Cassandra](http://cassandra.apache.org/)
+
+2. As with the first possibility, in this scenario muskie continues to serve API
+   requests and continues to use electric-moray (or something very similar) to
+   evenly distribute data among available nodes. Each manatee cluster is
+   replaced with an instance of the distributed database that manages the
+   replication of data. A moray-compatible component could possibly be used so
+   that the change is only at the manatee layer (very hand-wavy).
+
+   As with the previous possibility maintaining strong consistency guarantees
+   currently offered by manatee would be ideal, but not required at this
+   point. Here are some examples that *may* meet the criteria:
+
+   * [CockroachDB](https://www.cockroachlabs.com/)
+   * [TiDB](https://pingcap.com/en/)
+   * [ArangoDB](https://www.arangodb.com/)
+   * [Hibari](https://hibari.github.io/hibari-doc/)
+   * [Cassandra](http://cassandra.apache.org/)
+   * [Riak](https://github.com/basho/riak)
 
 ### Option 3: Build a new metadata storage service using low-level components
 
@@ -119,8 +155,20 @@ of an off-the-shelf non-replicated, single-consumer databases (e.g., sqlite)
 with replication managed by a proven consensus algorithm (e.g., Raft, either
 using an off-the-shelf component or a new implementation).  As with option 2,
 exploration is needed to determine which of these systems may be suitable, as
-well as the costs and risks of building such a system.
+well as the costs and risks of building such a system. Implementing our own
+replication system is risky and achieving correctness can be difficult even for
+seemingly simple replication schemes. On the other hand it presents an
+opportunity to separate the concerns of replication and data storage that would
+make transitioning from one data store to the other much more tenable.
 
+Here are some examples of data stores that could fit this option:
+
+* [SQLite](https://www.sqlite.org/)
+* [WiredTiger](http://source.wiredtiger.com/)
+* [RocksDB](http://rocksdb.org/)
+* [Basho LevelDB](https://github.com/basho/leveldb)
+* [LMDB](http://www.lmdb.tech/doc/)
+* BerkeleyDB
 
 ## Exploration
 
@@ -184,7 +232,11 @@ qualitative and quantitative requirements below.
 
 * It should provide substantial **write throughput** (in terms of
   metadata-records-written-per-second), even in the face if simultaneous reads.
-  **Read latency and throughput** are also important.
+  **Read latency and throughput** are also important. The underlying data
+  structure in use should be examined for implications on read and write
+  performance. Options such as RocksDB use a log-structured merge tree which
+  generally favors writes versus SQLite that uses a b-tree that is generally
+  more favorable to reads.
 * It should be **cost-efficient**.  We will focus first on **storage
   efficiency** (e.g., disk bytes required per object stored) and **resource
   efficiency** (e.g., memory, CPU, and network bandwidth required to satisfy a
@@ -232,6 +284,38 @@ Ideally, before committing to a path, we would have tested it:
 - with various types of injected faults (killing processes, injected network
   partitions, system panics, power resets)
 
-and verified that the overall integrity of the system is never compromised and
-that latency and throughput remain steady aside from transient degradations
-during and very shortly after injected failures.
+We should also verify that the overall integrity of the system is never
+compromised and that latency and throughput remain steady aside from transient
+degradations during and very shortly after injected failures.
+
+## Moving forward
+
+One of the next steps of this process is to gather a list of candidate
+technologies for options 2 and 3 mentioned above and then to evaluate each one
+against the criteria that have been laid out. Please make suggestions on the
+issue associated with this RFD. This list need not be limited to
+technologies that we have in-depth experience with. This is the time to put
+forth options that have anecdotal benefits or appear technically interesting in
+ways that may help us, but which may not be verified. Then we need to have
+discussion and narrow down the list to only include options that satisfy enough
+of the criteria to merit further investment of effort. We also need to explore
+the details of options 2 and 3 in more depth to guage the effort involved in
+crafting viable test scenarios. We should also discuss if we want to discount any
+of the options right away.
+
+After we have a list of viable techology options we can move onto prepartion for
+the actual testing. The testing needs to be a fair comparison among the
+different techologies and the different options. We also want to test a workload
+and approach similar to what would actually be used in manta. Ideally we could
+use muppet and muskie (or a stripped down version that only stores metadata) as
+the entry point for all tests. The number of testing candidates and effort
+involved will dictate if this is feasible. A stress testing tool such as
+cosbench or [tsung](http://tsung.erlang-projects.org/) could then be a used to test each option with the same
+workloads and would make for straightforward comparison of results.
+
+We also need to determine what machines can be used for the testing and ensure
+there are enough resources available to properly evaluate each of the options.
+
+There is a lot of opportunity to parallize the work in the information gathering
+and test preparation stages so anyone interested in being involved is welcome to
+help out.
