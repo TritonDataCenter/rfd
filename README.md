@@ -163,6 +163,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md) |
 | predraft | [RFD 121 bhyve brand](./rfd/0121/README.md)
 | predraft | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md)
+| predraft | [RFD 123 Online Manta Garbage Collection](./rfd/0123/README.md)
 
 ## Contents of an RFD
 
