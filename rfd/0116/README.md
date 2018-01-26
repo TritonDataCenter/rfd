@@ -1,5 +1,5 @@
 ---
-authors: David Pacheco <dap@joyent.com> Kelly McLaughlin <kelly.mclaughlin@joyent.com>
+authors: David Pacheco <dap@joyent.com> Kelly McLaughlin <kelly.mclaughlin@joyent.com> Jared Morrow <jm@joyent.com>
 state: predraft
 ---
 
@@ -129,6 +129,7 @@ by manta for metadata storage.
    * [CockroachDB](https://www.cockroachlabs.com/)
    * [TiDB](https://pingcap.com/en/)
    * [Cassandra](http://cassandra.apache.org/)
+   * [VoltDB](https://www.voltdb.com/)
 
 2. As with the first possibility, in this scenario muskie continues to serve API
    requests and continues to use electric-moray (or something very similar) to
