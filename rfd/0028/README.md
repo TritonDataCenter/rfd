@@ -23,15 +23,27 @@ placed on, such as `resolvers` and `nics.*.gateways`. Once the VM is created
 however, if the network is later updated (i.e. to change a gateway), existing VMs
 will never get updated and discover the new gateway. We should sync these
 network properties when they change and update the local VMs to make use of
-them.
+them. Important properties on networks to watch are:
 
-NAPI will have a counter that is incremented each time a network is modified, so
-that `net-agent` can periodically check with NAPI to see if NAPI has changed
-since it last synced. If so, `net-agent` will download the updated networks and
-apply the changes to the local VMs on those networks. Once finished, it will
-POST to NAPI the version that it has updated to, so that an admin can query NAPI
-to see what versions different CNs are at. When it starts up, `net-agent` will
-pull down all networks that it cares about and hold them in an in-memory cache.
+- `gateway`
+- `routes`
+- `resolvers`
+
+We may also want to consider allowing and processing updates to currently immutable
+fields like:
+
+- `vlan_id`
+- `nic_tag`
+- `mtu`
+
+As part of [RFD 120], we will also want to push out updates to Router Objects,
+so that net-agent can handle updating the router zones.
+
+NAPI will distribute updates using [sdc-changefeed], which will allow it to
+create and manage a stream of updates that can be consumed by net-agents. This
+will allow a temporarily partitioned net-agent to catch up on recent changes when
+it reconnects, and also allow it to react after being disconnected for a long
+period of time by pulling down all networks again for its in-memory cache.
 
 # Syncing changes in VM NICs to NAPI
 
@@ -55,6 +67,12 @@ Since we will need to add sysevents for this, `net-agent` will need to also
 support a mode where it periodically checks for changes on platforms lacking
 support.
 
+What we will probably not do as part of this work is reflecting changes made in
+NAPI to GZ NICs on the CN. The global zone NIC configuration is currently all
+set up during boot. At some point we may want to pursue a way for this
+information to be refreshed without reboots, but that should probably be done
+in a separate RFD.
+
 # Enforce updating via NAPI
 
 To ensure updates are applied consistently and correctly, VMAPI should prevent
@@ -73,3 +91,5 @@ VMAPI, since it feels like the more obvious place to do so to a user, but doing 
 should be equivalent to making a call out to NAPI.
 
 [sysinfo(1M)]: https://smartos.org/man/1M/sysinfo
+[sdc-changefeed]: https://github.com/joyent/node-sdc-changefeed/
+[RFD 120]: ../0120
