@@ -183,7 +183,7 @@ qualitative and quantitative requirements below.
 ### Qualitative requirements
 
 * It should be **open-source.**
-* It should run inside a SmartOS or LX-branded zone.
+* It should run inside a native SmartOS zone.
 * It has to support the PUT, GET, LIST, and DELETE operations that we need.
 * It should provide strong **durability** guarantees: corruption of the
   database, even in the face of ungraceful fatal failure of either hardware or
