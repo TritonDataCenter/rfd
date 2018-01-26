@@ -1,6 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com> Kelly McLaughlin <kelly.mclaughlin@joyent.com> Jared Morrow <jm@joyent.com>
 state: predraft
+discussion: https://github.com/joyent/rfd/issues/77
 ---
 
 <!--
@@ -304,6 +305,14 @@ the details of options 2 and 3 in more depth to guage the effort involved in
 crafting viable test scenarios. We should also discuss if we want to discount any
 of the options right away.
 
+For each candidate we will create a Jira issue and do a cursory evaluation
+against the criteria laid out in this issue. This will not involve actual
+testing on our part, but is more of an information gathering phase. It may
+include testing if the condidate technology readily builds on smartos. The
+information accumulated in the Jira tickets will inform furhter discussion and
+hopefully allow us to narrow down the set of candidates to a subset that we want
+to actually test with.
+
 After we have a list of viable techology options we can move onto prepartion for
 the actual testing. The testing needs to be a fair comparison among the
 different techologies and the different options. We also want to test a workload
@@ -312,7 +321,8 @@ use muppet and muskie (or a stripped down version that only stores metadata) as
 the entry point for all tests. The number of testing candidates and effort
 involved will dictate if this is feasible. A stress testing tool such as
 cosbench or [tsung](http://tsung.erlang-projects.org/) could then be a used to test each option with the same
-workloads and would make for straightforward comparison of results.
+workloads and would make for straightforward comparison of results. Another
+option is to adapt [mdshovel](https://github.com/joyent/manta-mdshovel) as a test entry point.
 
 We also need to determine what machines can be used for the testing and ensure
 there are enough resources available to properly evaluate each of the options.
