@@ -82,19 +82,19 @@ The `sysinfo` tool on SmartOS generates a JSON object describing a given Triton
 node. The resulting "sysinfo" data is stored in the server objects in CNAPI. In
 order to support GPGPU instances, we'll need some way to track what GPGPU
 hardware is available on a system and sysinfo is the obvious place. The proposal
-here is to add the following fields to sysinfo:
+here is to add the following fields to sysinfo (example for an NVIDIA "GV100
+[Tesla V100 PCIe]" card):
 
 ```
 {
     ...
     "Assignable Devices" [
         {
+            device: "1db4",
             id: "0:134:0:0",
-            class: "display",
-            device: "GV100 [Tesla V100 PCIe]",
-            revision: "0xa1",
-            subclass: "3D",
-            vendor: "NVIDIA Corporation"
+            revision: "a1",
+            type: "gpu",
+            vendor: "10de"
         },
         ...
     ]
@@ -134,9 +134,8 @@ unchanged fields):
     "assignable_devices": [
         {
             id: "0:134:0:0",
-            model: "GV100 [Tesla V100 PCIe]",
-            revision: "0xa1",
-            type: 'GPU'
+            type: "gpu",
+            variant: "NVIDIA_GPU_GEN1"
         }
     ],
     gpus: 1,
@@ -144,8 +143,16 @@ unchanged fields):
 }
 ```
 
-You can see here we've also added a `gpus: 1` field. This will simply represent
-the count of objects in `assignable_devices` that have type 'GPU'. When a CNAPI
+The "variant" field here is a triton-specific translation of the device, vendor
+and revision string into a single value that can be used to reference a specific
+GPU configuration.
+
+The variants should be configurable within a given DC and it should only ever be
+CNAPI that does translation. Everything else in the APIs (packages, etc.) should
+only need to reference devices via variant, type and id.
+
+You can also see here we've added a `gpus: 1` field. This will simply represent
+the count of objects in `assignable_devices` that have type 'gpu'. When a CNAPI
 client wishes to find all systems that are capable of hosting any GPU workloads,
 they can first query the set of servers that have a non-zero value for gpus and
 from there, they can narrow down to the system(s) they're looking for. As a
@@ -210,6 +217,12 @@ with an appropriate device that's not in-use, and the system would need to
 reserve that device for the VM as part of the provisioning process.
 
 
+### CNAPI Endpoints
+
+It's an open question as to whether we should add endpoints to CNAPI (or
+elsewhere) for managing variants of devices.
+
+
 ### VM Objects
 
 #### vmadm
@@ -246,12 +259,14 @@ no package is specified, a client will be able to add an `assigned_devices`
 field just like the one at vmadm described above.
 
 These will be the only options when creating a GPGPU VM at VMAPI. Either a
-package or an `assigned_devices` array.
+package or an `assigned_devices` array. As a future enhancement we may want to
+allow specifying a variant in the assigned\_devices array rather than a specific
+device id.
 
 When loading VMs from VMAPI, the `assigned_devices` array will be visible,
 again matching what one would see with `vmadm`. This field will not initially
 be updatable but the ability to modify `assigned_devices` is a logical future
-enhancement.
+enhancement, though this would require restarting the VM.
 
 
 #### CNAPI
@@ -265,63 +280,29 @@ All instances in Triton have their parameters defined by a package. As such, in
 order to be able to provision instances that have GPGPUs we'll need something in
 the packages indicating some number of GPUs.
 
-At this point however it's an open question how this should look. Suggestions
-welcome.
-
-There has been some discussion that we need to potentially support different
-revisions and types of GPUs. If that's the case, a simple:
+The proposal here is that a package should contain something like:
 
 ```
 {
     ...
-    gpus: 1,
-    ...
-}
-```
-
-option in the package will not be sufficient and we'd need something more like:
-
-```
-{
-    ...
-    gpus: {
-        "GV100 [Tesla V100 PCIe]": 1
+    devices: {
+        "NVIDIA_GPU_GEN1": 1
     }
     ...
 }
 ```
 
-though there has also been suggestion that revision matters, so we might need to
-go even more complex and do something like:
-
-```
-{
-    ...
-    gpus: [
-        {
-            "count": 1,
-            "model": "GV100 [Tesla V100 PCIe]",
-            "revision": "0xa1"
-        }
-    ]
-    ...
-}
-```
-
-which is *much* more complex than anything that currently exists in package
-definitions (which is an array of network uuids), and will make things like
-searching using the ListPackages endpoint likely more confusing. It also will be
-difficult to generate useful indexes in Moray for this field.
-
+How this will interact with moray and indexes is not yet worked out in detail.
 
 ## Open Questions
 
-### What form should we use for PCI identifiers?
+### What form should we use for device identifiers?
 
 Options include at least:
 
  * <domain>:<bus>:<device>:<function>
  * <domain>:<bus>:<device>.<function>
+ * /devices path to the device
 
 but other suggestions are welcome. This identifier will be used to match
 available devices with used devices and also used for generating cmdline
@@ -336,3 +317,8 @@ Do we want to be able to mark an *image* as requiring GPGPUs?
 ### How should packages define requirements for GPUs?
 
 See `Packages` section above for some more discussion of the issues here.
+
+### Should device variants be exposed via an API?
+
+For example, CNAPI could have endpoints for managing mappings between device
+types and variant names?
