@@ -300,8 +300,8 @@ How this will interact with moray and indexes is not yet worked out in detail.
 
 Options include at least:
 
- * <domain>:<bus>:<device>:<function>
- * <domain>:<bus>:<device>.<function>
+ * `<domain>:<bus>:<device>:<function>`
+ * `<domain>:<bus>:<device>.<function>`
  * /devices path to the device
 
 but other suggestions are welcome. This identifier will be used to match
