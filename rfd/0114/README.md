@@ -93,7 +93,6 @@ here is to add the following fields to sysinfo (example for an NVIDIA "GV100
             device: "1db4",
             id: "0:134:0:0",
             revision: "a1",
-            type: "gpu",
             vendor: "10de"
         },
         ...
@@ -149,7 +148,8 @@ GPU configuration.
 
 The variants should be configurable within a given DC and it should only ever be
 CNAPI that does translation. Everything else in the APIs (packages, etc.) should
-only need to reference devices via variant, type and id.
+only need to reference devices via variant, type and id. The variant definition
+should also include the type (here: "gpu").
 
 You can also see here we've added a `gpus: 1` field. This will simply represent
 the count of objects in `assignable_devices` that have type 'gpu'. When a CNAPI
