@@ -322,3 +322,17 @@ See `Packages` section above for some more discussion of the issues here.
 
 For example, CNAPI could have endpoints for managing mappings between device
 types and variant names?
+
+## Other ideas/things that are being investigated
+
+Since most Triton development is done on systems that do not have GPU hardware,
+we'd like to have some mechanism for adding "fake" GPUs that will allow us to
+provision instances that claim to have GPUs for purposes of Triton, but don't
+actually have GPUs.
+
+## Things that are out of scope
+
+* Changes to Ops' migration scripts (not part of Triton) in order to change
+  assigned devices and only migrate where a compatible device is available.
+
+
