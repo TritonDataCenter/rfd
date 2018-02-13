@@ -40,7 +40,7 @@ fabrics, and MUST be owned by the same owner_uuid that submits the request.
 
 ##### input
 
-Requires an array of network objects and a name.  These network object must
+Requires an array of network objects and a name.  These network objects must
 be of the same address family (IPv4 or IPv6).
 
 | Field			| Type		| Description				|
@@ -202,9 +202,9 @@ XXX KEBE SAYS LOTS OF WORK TO DO HERE, ALSO. XXX
 
 #### Network Object Route Attributes
 
-NAPI hold the routes for a given network.  Router Object creation essentially
-adds routes to every network object.  For example, upon the creation of this
-router object:
+NAPI holds the routes for a given network.  Router Object creation
+essentially adds routes to every network object.  For example, upon the
+creation of this router object:
 
      Router Object:  192.168.1.0/24, 192.168.2.0/24
 
