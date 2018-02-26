@@ -45,6 +45,7 @@ be of the same address family (IPv4 or IPv6).
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
+| description		| String	| Additional descriptive text	|
 | networks		| Array		| Array of network objects	|
 | name			| String	| Name for this Router Object.	|
 | owner_uuid		| UUID		| Router Object owner's UUID |
@@ -54,9 +55,9 @@ be of the same address family (IPv4 or IPv6).
 {
   "name": "My first Router Object",
   "networks": [
-    { "uuid": "f4104070-df1e-4c4a-891c-58951abd72e8" },
-    { "uuid": "103b4f01-b8bc-42a5-886a-0a680da22d20" },
-    { "uuid": "b1963383-6b1a-4025-b73d-a7fb43ff7624" }
+    "f4104070-df1e-4c4a-891c-58951abd72e8",
+    "103b4f01-b8bc-42a5-886a-0a680da22d20",
+    "b1963383-6b1a-4025-b73d-a7fb43ff7624"
   ]
 }
 ```
@@ -81,7 +82,7 @@ be of the same address family (IPv4 or IPv6).
 
 
 
-#### ModifyRouterNetworks (PUT /routers/:uuid/networks/)
+#### UpdateRouterNetworks (PUT /routers/:uuid/networks/)
 
 A multi-entry list of networks to add or delete from a router object.
 
@@ -279,7 +280,7 @@ Object destruction:
 
 #### Adding and Deleting Networks Directly from Router Objects
 
-The single primitive ModifyRouterNetworks requires a list of network changes
+The single primitive UpdateRouterNetworks requires a list of network changes
 which can both add and delete networks.  It is possible that the Router
 Object's "family" attribute could change if the deletion list eliminates all
 of one family, and the addition list adds all of another.
