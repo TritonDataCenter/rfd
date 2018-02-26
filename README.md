@@ -165,6 +165,8 @@ formal writing that it has come to represent.)
 | predraft | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md)
 | predraft | [RFD 123 Online Manta Garbage Collection](./rfd/0123/README.md)
 | predraft | [RFD 124 Incident Response Guidelines](./rfd/0124/README.md)
+| predraft | [RFD 125 Online Schema Changes in Manta](./rfd/0125/README.md)
+
 
 ## Contents of an RFD
 
