@@ -82,16 +82,25 @@ be of the same address family (IPv4 or IPv6).
 
 
 
-#### UpdateRouterNetworks (PUT /routers/:uuid/networks/)
+#### UpdateRouterNetworks (PUT /routers/:uuid/)
 
-A multi-entry list of networks to add or delete from a router object.
+Either a list of network object UUIDs or a list of modification tuples
+indicating networks to add or delete from a router object.
 
 ##### input
 
 | Field			| Type		| Description				|
 | ---------------------	| ------------- | ------------------------------------- |
-| uuid		| UUID		| UUID of the Router Object	|
+| uuid			| UUID		| UUID of the Router Object	|
+| networks		| Array		| Array of network object UUIDs	|
 | network_updates	| Array		| Array of actions and networks	|
+
+```
+"networks": [
+    "f4104070-df1e-4c4a-891c-58951abd72e8",
+    "103b4f01-b8bc-42a5-886a-0a680da22d20"
+]
+```
 
 ```
 "network_updates": [
