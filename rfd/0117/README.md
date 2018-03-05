@@ -101,7 +101,8 @@ support for managing them.
 The [firewaller] agent will need to track updates to networks so that when
 traits are changed the firewalls of relevant VMs get updated. This will require
 first implementing [RFD 28], so that [firewaller] can subscribe to the NAPI
-changefeed.
+changefeed. [firewaller] will subscribe to the feed using the instance
+identifier `<cn uuid>/firewaller`.
 
 [fwadm(1M)], the tool for managing firewall rules local to a machine, will need
 to gain commands for storing network information locally, like it does today for

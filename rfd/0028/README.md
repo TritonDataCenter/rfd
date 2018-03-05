@@ -45,6 +45,9 @@ will allow a temporarily partitioned net-agent to catch up on recent changes whe
 it reconnects, and also allow it to react after being disconnected for a long
 period of time by pulling down all networks again for its in-memory cache.
 
+[net-agent] will subscribe to the changefeed using the instance identifier
+`<cn uuid>/net-agent`.
+
 # Syncing changes in VM NICs to NAPI
 
 `net-agent` will currently sync changes to a NIC to NAPI, but there are some
@@ -91,5 +94,6 @@ VMAPI, since it feels like the more obvious place to do so to a user, but doing 
 should be equivalent to making a call out to NAPI.
 
 [sysinfo(1M)]: https://smartos.org/man/1M/sysinfo
+[net-agent]: https://github.com/joyent/sdc-net-agent/
 [sdc-changefeed]: https://github.com/joyent/node-sdc-changefeed/
 [RFD 120]: ../0120
