@@ -16,15 +16,28 @@ discussion: https://github.com/joyent/rfd/issues/76
 
 # RFD 121 bhyve brand
 
-## Introduction
-
-**NOTE**  This is an early draft.  Your feedback and that of others will likely
+**NOTE**  This is a draft.  Your feedback and that of others will likely
 cause things to change. Open [issues](https://github.com/joyent/rfd/issues/76)
 are tagged with @githubusername.
 
-For reasons beyond the scope of this document, `bhyve` is needed by SmartOS.  It
-is at least an analog for `kvm` and perhaps an outright replacement.  This
-document describes the `bhyve` brand, a new zone brand.
+The FreeBSD hypervisor, bhyve (pronounced "beehive"), is being ported to SmartOS
+as a potential replacement for KVM.  The key motivations for this include
+better network performance and more opportunities for collaboration with the
+FreeBSD bhyve community.
+
+There are several motivations for the bhyve zone brand.  In no particular order,
+they are:
+
+- In the unlikely event of a security flaw that leads to a guest escape, the
+  escape may be into a zone with greatly reduced privileges.
+- Zones are well integrated with a variety of resource controls that are
+  important for predictable behavior on shared resources.
+- Zones provide easy mechanisms network virtualization and isolation.
+- Many cloud and virtualization management frameworks are designed to work with
+  zones.  This is particularly true in Joyent's environment.
+
+The following sections provide a brief overview bhyve then significant detail
+on the bhyve brand.
 
 ## Overview of bhyve
 
@@ -33,65 +46,63 @@ also uses the `vmm` (virtual machine monitor) and `viona` (VirtIO Network
 Adaptor) drivers, which are being introduced with the bhyve project.
 
 The configuration of the virtual hardware is controlled purely through
-command-line arguments to the `bhyve` command.  In the prototype implementation,
-the command line looks like:
+command-line arguments to the `bhyve` command.  A typical command line looks
+like:
 
 ```
-/usr/sbin/amd64/bhyve -m 4g -c 2 -l com1,/dev/zconsole -P -H -s 1,lpc \
-    -s 3,virtio-blk,/dev/zvol/rdsk/zones/$zone/data/disk0 \
+bhyve -m 4g -c 2 -l com1,stdio -P -H -s 1,lpc \
+    -s 3,virtio-blk,/dev/zvol/rdsk/tank/myfirstvm/disk0 \
     -s 4,virtio-net-viona,net0 \
-    -l bootrom,/BHYVE_UEFI.fd "$zone"
+    -l bootrom,/usr/share/bhyve/bhyve-csm-rom.fd myfirstvm
 ```
 
-That is, the virtual platform has:
+That is, the VM named *myfirstvm* has:
 
 - 4 GB of RAM
 - 2 virtual CPUs
-- first serial port (`ttya`, `ttyS0`, `com1`) attached to `/dev/zconsole`
+- first serial port (`ttya`, `ttyS0`, `com1`) attached to `stdin` and `stdout`
 - An LPC PCI-ISA bridge, providing connectivity to `com1`, `com2`, and bootrom
-- A disk device at PCI 0,3,0
-- A network device at PCI 0,4,0
+- A disk device at PCI (bus, slot, function) 0,3,0.  This disk device is created
+  before running the bhyve program, and is most likely populated with an
+  installed operating system.
+- A network device at PCI 0,4,0.  This device, typically a vnic, must exist
+  before `bhyve` is executed.
 - A boot ROM
 
-The guest OS is installed on the ZFS volume `zones/*zone*/data/disk0` which is
-visible within the zone.  `net0` is a vnic configured via a net resource.  The
-guest OS uses the MAC address that is specified in the zone's configuration for
-that `net` resource.
+There are a variety of other things that may be configured via command line
+arguments.  See [bhyve(8)](https://www.freebsd.org/cgi/man.cgi?query=bhyve&apropos=0&sektion=8&manpath=FreeBSD+11.1-RELEASE+and+Ports&arch=default&format=html).
 
-As `bhyve` starts, the sequence of events is roughly the following and not
-necessarily in this order.
+Even after the `bhyve` command exits, the VM state may still be present in the
+kernel.  Subject to certain limitations, this can be reused by future
+invocations of `bhyve` to avoid the expensive freeing and allocation of
+gigabytes of memory.  When one wants to free up these resources, `bhyvectl
+--vm=<name> --destroy` must be used.
 
-- A new virtual machine is created by opening `/dev/vmm/ctl` and issuing a
-  `CREATE` `ioctl`.  This results in:
-  - Various host kernel resources allocated for the vm
-  - RAM for guest memory is allocated and mapped into guest memory
-  - Creation of a new `vmm` minor, accessible at `/dev/vmm/<zone>`
-- The `/dev/vmm/<zone>` node is opened
-- The disk device is opened.
-- The `/dev/viona/ctl` node is opened and a `CREATE` ioctl is issued.  This
-  creates a new minor that does not require a minor node.  The return value from
-  the `ioctl` is a file descriptor associated with the new `viona` minor.
-- The boot ROM file is opened and mapped into guest memory.
+It is possible to run an arbitrary number of `bhyve` instances in the global
+zone or non-global zones, subject to resource limitations.
 
-At this point, the `VMRUN` `ioctl` is issued on the VM's `vmm` device node.  The
-guest will begin executing the code in the boot ROM.  From there, the guest OS
-runs as it would anywhere else.  Note that since the disk and network devices
-are using `virtio`, the guest OS must have `virtio` drivers.  `virtio` drivers
-are present in recent versions of common Linux distributions, FreeBSD, and
-Windows.
+## The bhyve brand
 
-As mentioned above, the first serial port is connected to `/dev/zconsole`.  If
-the guest OS attaches its console to its first serial port, `zlogin -C <zone>`
-will give access to the guest OS console.  It is possible to attach guest serial
-ports to any serial device, to stdio of the bhyve process, or to a special
-`bcons` UNIX domain socket.
+The bhyve brand will be inplemented in a way that allows it to be included in
+illumos so as to benefit from community involvement and to minimize the
+troubles associated with maintaining a fork.  The key implication for SmartOS
+is that all interaction between `vmadm[d]` and the `bhyve` must be through
+public zones interfaces.  This is contrast to how other SmartOS brands are
+currently implemented:  most or all of the brand files for the smartos, lx, and
+kvm brands live outside of the illumos-joyent repository.
 
-The `bhyve` command may emit errors to `stderr`, which can be redirected to a
-log file.
+Within a bhyve zone, a special version of the `bhyve` program is used as the
+only process in the zone.  It goes by the name `zhyve`.  The life of a `zhyve`
+instance and its `vmm` state (e.g.  guest memory, etc.) will match the life of
+the zone virtual platform.  That is, the zone's `init` process is `zhyve` and
+care is taken to ensure that all resources are freed before the virtual
+platform is taken down.  No `vmm` instance will outlive the `zone_t` of the
+zone in which it was created.
 
-When the `bhyve` command exits, the kernel state remains present until a
-`DESTROY` `ioctl` is issued.  To free these resources, `vmctl --destroy` must be
-used.
+By default, LPC device `com1` will be connected to `/dev/zconsole`.  If the
+guest boot loader and/or operating system redirects its console to the first
+serial port (`COM1`, `ttya`, `ttyS0`, etc.), `zlogin -C` may be used to access
+the guest's console.  This may be customized with a `serial` resource.
 
 ## Public interfaces
 
@@ -99,68 +110,249 @@ The public interfaces to the `bhyve` brand are via `zonecfg(1M)`, `zoneadm(1M)`,
 and `zlogin(1M)`.  A new man page, `bhyve(5)` will be added to describe the
 uniqueness of the brand.
 
-### `zonecfg`
+### Zone Configuration
 
-The `bhyve` brand places restrictions on several properties and resources, as
-described below.
+Because hardware virtual machines have unique configuration requirements,
+various new resource types and properties will be needed.  Some resource types
+and properties that are appropriate for other brands will not be appopriate for
+the bhyve bvrand.  Details of how resource types and properties are selectively
+enabled per-brand are found in [RFD 122](../0122/README.md).  Details on the
+resource types and properties supported by the bhyve brand are found below.
 
-| Scope	| Property	| Notes						|
-| ----- | ------------- | --------------------------------------------- |
-| global | bootargs	| Ignored					|
-| global | fs-allowed	| Not supported, but [subject to change](https://reviews.freebsd.org/D10335)
-| global | ip-type	| Only `exclusive` is supported			|
-| global | hostid	| Ignored					|
-| dataset | name	| Not supported, at least once [OS-5161](https://smartos.org/bugview/OS-5161) is fixed |
-| device | match 	| Must match exactly one raw disk device (e.g. in `/dev/rdsk` or `/dev/zvol/rdsk`). |
-| fs 	| all		| Not supported, but [subject to change](https://reviews.freebsd.org/D10335)
-| inherit-pkg-dir | all | Not supported				|
+Of particular note with this brand is that it is being designed for inclusion
+in illumos, while allowing the various distributions to extend it to their
+needs.  In a nutshell this means:
 
-As with the `kvm` brand, properties on `device` and `net` resources as well as
-various `attr` resources may impact how the guest runs.  The following table
-summarizes the impact.
+- No `attr` resources are required to have a usable bhyve zone.
+- No code in illumos will process `attr` resources for any purpose other than
+  storing and retrieving them on behalf of users or layered software.
+- As described in [RFD XXX](../0XXX/README.md), all resource types will support
+  custom properties.  This will allow customers that use illumos and layered
+  software to attach metadata to every resource.  This is following the lead of
+  SmartOS' use of the `property` complex property in `network` and `device`
+  resources.
 
-| Scope | Property	| Notes						|
-| ----- | ------------- | --------------------------------------------- |
-| device | boot		| Is this the boot device? `true` or `false`	|
-| device | model	| See *emulation* in [bhyve(8)](https://www.freebsd.org/cgi/man.cgi?query=bhyve&format=html) |
-| device | media	| `hd` for hard drive or `cd` for cdrom		|
-| device | size		| If the device does not exist during installation, the size that it will be created as, in megabytes (10^6 bytes) |
-| device | image-size	| XXX - specific to vmadm? not relevant to this doc? @joshwilsdon		|
-| device | image-uuid	| XXX - specific to vmadm?			|
-| net	| gateway	| XXX I do not yet know how we will do guest network config |
-| net	| gateways	| XXX						|
-| net	| netmask	| XXX						|
-| net	| ip		| XXX						|
-| net	| ips		| XXX						|
-| net	| model		| See *emulation* in [bhyve(8)](https://www.freebsd.org/cgi/man.cgi?query=bhyve&format=html) |
-| net	| primary	| XXX						|
-| attr	| resolvers	| XXX still don't know about net configuration	|
-| attr	| vcpus		| The number of guest vcpus.			|
-| attr	| ram		| Guest memory size in MiB (2^20 bytes)		|
+The following sections describe the various resource types and properties
+configurable by zonecfg(1M).
 
-Some of the properties above, and others not mentioned, may be used by `vmadm`.
-The interaction between `vmadm` and the brand is beyond the scope of this
-document.
+#### global scope
 
-#### To be determined
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| autoboot	| simple | yes	| Determines whether zone boots at system boot |
+| bootargs	| N/A	| N/A	| Not supported.  Disabled.		|
+| brand		| simple | yes	| Must be "bhyve"			|
+| com1		| simple | no	| The 
+| fs-allowed	| N/A	| N/A	| Pending [virtfs](https://reviews.freebsd.org/D10335) |
+| hostid	| N/A	| N/A	| Not supported.  Disabled.		|
+| ip-type	| simple | yes	| Must be "exclusive"			|
+| limitpriv	| simple | no	| See "privsetspec" in ppriv(1)		|
+| pool		| simple | no	| Resource pool to which the zone binds |
+| scheduling-class | simple | no |					|
+| uuid		| simple | no	|					|
 
-- It is not yet clear how we will manage PCI pass-through.  We need to figure
-  this out soon. @sjorge
-- We should be able to pass through serial devices too, as this is supported with
-  kvm.  The current plan is to have `com1` attached to `/dev/zconsole`.  @sjorge
-  @joshwilsdon
-- Any time a critical configuration element is found in an `attr` resource, we
-  should probably be adding an appropriate resources and/or properties.  For
-  instance, rather than having an `attr` resource with `name=vcpu`, there should
-  be a `virtual-cpu` resource with a property `ncpus`.  To do this without
-  confusing other brands, we will need a mechanism to let `zonecfg` filter the
-  available configurable items based on brand.  In Solaris 11.2+ this
-  was done by tagging various resources and properties as disabled in the
-  brand's `platform.xml`.
-- Keep an eye on [bhyve fs pass-through](https://reviews.freebsd.org/D10335).
-  Support for this would likely be follow-on work. @wiedi
-- Live reconfiguration (e.g. add more disks) is a complicated problem that is
-  unlikely to make the initial cut. @jussisallinen
+#### admin resource
+
+No change from historical use.
+
+#### attr resource
+
+No change from historical use.
+
+#### capped-cpu resource
+
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| ncpus		| simple | no	| If there is no `dedicated-cpus` resource, `min(1,floor(ncpus))` is used to determine the number of virtual cpus configurd in the guest. |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
+
+#### capped-memory resource
+
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| guest		| simple | yes	| Guest memory size.  Must be a multiple of the page size used by the guest. |
+| locked	| alias | no	| Alias for `rctl` with name `zone.max-locked-memory` `rctl` |
+| physical	| alias | no	| Alias for `rctl` with name `zone.max-rss` `rctl` |
+| swap		| alias | no	| Alias for `rctl` with name `zone.max-swap` `rctl` |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
+
+#### dataset resource
+
+Not supported.
+
+#### dedicated-cpu resource
+
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| ncpus		| simple | no	| The number of CPUs that are reserved for the exclusive use of this zone.  This will also be the number of virtual cpus configured in the guest. |
+
+#### device resource
+
+**XXX The scope of this resource is unclear.  See notes in `disk` and `pci`
+resources below.**
+
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| match		| simple | yes	| The global zone device to delegate to the zone.  Must be unique across all zones.  Globs are not allowed. |
+| emulation	| simple | yes	| See bhyve(8).  Typically `virtio-blk`, `virtio-net-viona`, `passthru`, or `none`.  If `emulation` is `none`, the device is not visible in the guest. |
+| pci-slot	| simple | no	| Not used if `emulation` is `none`.  Otherwise if not specified, dynamically generated on each boot.  If specified, must be in *pcislot[:function]* or *bus:pcislot:function* format.  See bhyve(8).  `pci-slot` must be unique within this zone's configuration. |
+| option	| list of complex | no	| Optional configuration options that are specific to `emulation`.  See `bhyve(8)`.  Any option that involves IP addresses is not supported. |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
+
+Note that this scheme gives no meaningful way to control the probe order of
+devices inside the guest, aside from manually setting `pci-slot`.  This is
+escecially important for disks if the guest is sensitive to device ordering, as
+configuration changes could prevent a guest from booting by moving a boot disk
+to a differnet location.
+
+**Example 1:**  Add a virtual disk backed by a zvol in
+[4Kn](https://en.wikipedia.org/wiki/Advanced_Format#4K_native) mode.
+
+```
+z1> add device
+z1:device> set emulation=virtio-blk
+z1:device> set match=/dev/zvol/rdsk/zones/z1/disk0
+z1:device> add conf (name=nocache,value="")
+z1:device> add conf (name=sectorsize,value="512/4096")
+z1:device> end
+```
+
+**Example 2:** Connect the host's first serial port to the guest's second serial port.
+
+This example supposes a device such as a GPS receiver used for NTP is attached
+to the host's first serial port and there is a desire to present that device to
+the guest on its second serial port.
+
+```
+z1> add device
+z1:device> set emulation=none
+z1:device> set match=/dev/term/a
+z1:device> end
+z1> select lpc
+z1:lpc> set com2=/dev/term/a
+z1:lpc> end
+```
+
+**Example 3:** Use PCI passthrough to give a real PCI device to the guest
+
+In this example, the device in the host PCI slot 2:0:0 is passed through to the
+guest in PCI slot 8:0:0.  A comment is added using a custom property.
+
+```
+z1> add device
+z1:device> set emulation=passthru
+z1:device> set match=2:0:0
+z1:device> set pci-slot=8:0:0
+z1:device> add property (name=comment,value="AR8151 v2.0 Gigabit Ethernet")
+z1> end
+```
+
+#### fs resource
+
+Not supported, at least until [virtfs](https://reviews.freebsd.org/D10335) or
+or similar is viable.
+
+#### lpc resource
+
+This is a new resource type being added.  A maximum of one `lpc` resource is
+supported.  The recommended values for `bootrom` and `com1` will appear in the
+`SYSbhyve` `zonecfg` template.
+
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| bootrom	| simple | no	| The bootrom image to load and associate with the LPC device.  The suggested value is `/usr/share/bhyve/uefi-csi-rom.bin` |
+| com1		| simple | no	| Where to connect the first serial device.  The suggested value is `/dev/zconsole`.  If the guest then redirects the console output to its first serial port, `zlogin -C` may be used to access the guest console. |
+| com2		| simple | no	| Where to connect the second serial device. |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
+
+#### net resource
+
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| address	| N/A	| N/A	| Not supported. Disabled.		|
+| allowed-address | N/A | N/A	| Not supported. Disabled.		|
+| defrouter	| N/A	| N/A	| Not supported. Disabled.		|
+| global-nic	| N/A	| N/A	| Obsolete.  Not Supported.  Disabled.	|
+| linkprop	| list of complex | no | A list of link properties that will be set on the vnic specified by `virtual` in `<linkprop>="<value>"` format.  Valid link properties and values are found in `dladm(1M)`. |
+| mac-addr	| simple | no	| A MAC address.  If not specified, a MAC address will be dynamically generated and stored in this property. |
+| model		| simple | no	| Specifies NIC type that is emulated.  If not specified, defaults to `virtio-viona`.  See bhyve(8) for other supported models. |
+| pci-slot	| simple | no	| If not specified, dynamically generated on each boot.  If specified, must be in *pcislot[:function]* or *bus:pcislot:function* format.  See bhyve(8).  Most not conflict with any other `pci-slot` in any other resource. |
+| physical	| N/A	| N/A	| This is the name of a physical device or a NIC tag in the global zone.  If `virtual` is specified, this will be the device from which a vnic is created.  If `virtual` is not specified, this device will be delegated. |
+| virtual	| simple | no	| If specified, it is the name of a vnic that will be created on top of `physical`.  The value must be valid as a vnic name and must be unique within this zone. |
+| vlan		| simple | no	| The vlan ID set on `virtual`.  Only used if `virtual` is set. |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
+
+SmartOS will use the following custom properties ([RFD 122](../0122/README.md)).
+
+| Property	| Description						|
+|---------------|-------------------------------------------------------|
+| ips		| List of IP addresses in CIDR format that are to be configured on this NIC |
+| gateways	| List of gateways accessible from this NIC		|
+| primary	| XXX useful?						|
+
+**Example:** Create a vnic named `eth0` on `ixgbe1`.
+
+Configure the vnic to prevent DHCP spoofing and only allow outgoing traffic
+from 10.88.88.25 or 10.88.88.26.  The `ips` and `gateways` custom properties
+are not used by the zones framework - they are only used by SmartOS metadata
+service.
+
+```
+z1> add net
+z1:net> set physical=ixgbe1
+z1:net> set virtual=eth0
+z1:net> add linkprop (name=protection,value="dhcp-nospoof")
+z1:net> add linkprop (name=allowed-ips,value="10.88.88.25,10.88.88.26")
+z1:net> add property (name=ips,value="10.88.88.25/24,10.88.88.26/24")
+z1:net> add property (name=gateways,value="10.88.88.1")
+z1:net> end
+z1>
+```
+
+**Compatibility warning:**
+
+SmartOS has historically used `physical` to specify the name of the vnic and
+`global-nic` to specify the name of physical nic.  This SmartOS convention
+seems likely to be difficult to sell to upstream reviewers.
+
+#### rctl resource
+
+No change from historical use.
+
+#### security-flags resource
+
+No change from historical use.
+
+#### disk resource
+
+**XXX It is not clear if this will exist or we will continue to use device
+resources for presenting virtual disks**
+
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| path		| simple | yes	| Path to the raw device (`/dev/rdsk`) that provides the backing store. |
+| boot		| simple | no	| Defualts to `false`, may be `true` or `false`.  Only one disk can have this set to true.  Setting it to true causes the disk to appear in a lower-numbered PCI slot than other disks.  Ignored if `pci-slot` is also configured. |
+| model		| simple | no	| If not specified, defaults to `virtio` (disk) or `ahci-cd` (cd), depending on value of `media` property.  Other block device emulation type specified in bhyve(8) may be specified. |
+| media		| simple | no	| Defaults to `disk`.  May be `disk` or `cd` |
+| pci-slot	| simple | no	| If not specified, dynamically generated on each boot.  If specified, must be in *pcislot[:function]* or *bus:pcislot:function* format.  See bhyve(8).  Most not conflict with any other `pci-slot` in any other resource. |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
+
+SmartOS will use the following custom properties ([RFD 122](../0122/README.md)).
+
+| Property	| Description						|
+|---------------|-------------------------------------------------------|
+| image-size	| XXX							|
+| image-uuid	| XXX							|
+
+#### pci resource
+
+**XXX It is not clear if this will exist or if we will somehow use device resources**
+
+| Property	| Type	| Required | Notes				|
+|---------------|:-----:|:-----:|---------------------------------------|
+| XXX		| simple | yes	| Specifies the physical device		|
+| pci-slot	| simple | no	| If not specified, dynamically generated on each boot.  If specified, must be in *pcislot[:function]* or *bus:pcislot:function* format.  See bhyve(8).  Most not conflict with any other `pci-slot` in any other resource. |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
 
 ### `zoneadm`
 
@@ -281,32 +473,20 @@ relevant.
 
 ### Guest networking configuration
 
-**XXX** @pfmooney needs to review this
+Guest networking can be configured statically, via DHCP, or via cloud
+orchestration protocols.  The bhyve brand will not implement a built-in
+DHCP server.  If DHCP is needed for guest configuration, a DHCP server needs
+to be configured and maintained.
 
-An ioctl will be added that allows association of
-[bpf](http://biot.com/capstats/bpf.html) program to a `viona` device.  This
-filter will redirect DHCP packets such that a program that reads from the viona
-device will read the packets.  Writes to that same device will be sent as
-packets to the guest.
-
-A simple dhcp server will be added to `zoneadmd`.  This server will use the
-various `net` reseource and global properties while making DHCP offers.
-
-The guest may wish to renegotiate the DHCP lease at any time.  This can come
-about due to pending lease expiration or administrator activity.  Currently,
-is only needed to carry out activity related to `zoneadm` and `zlogin` commands.
-Both `zoneadm` and `zlogin` will restart `zoneadmd` if it is not running.  A
-more robust mechanism to ensure that `zoneadmd` stays running is needed.  A
-likely approach is to put `zoneadmd` into a `contract(4)` that causes the
-program to restart automatically.
-
-**XXX** From a security standpoint, it may be better for DHCP to be handled by a
-child of `zoneadmd` that reads the zone configuration, opens the `viona`
-device(s), then drops all privileges that aren't needed for reading from and
-writing to the `viona` device.  Not many DHCP servers have been free from
-security bugs at version 1.0.
+In SmartOS, each guest image will be configured to use `cloud-init` or a
+similar program to configure guest networking.  The network configuration
+will be obtained through the metadata socket, which is configured on the
+second serial port in each guest.
 
 ### PCI slot and function allocation
+
+**XXX this needs work, subject to resolution of the `device` vs. `disk` & `pci`
+resource type discussion.**
 
 [bhyve(8)](https://www.freebsd.org/cgi/man.cgi?query=bhyve&sektion=8) says:
 
@@ -335,55 +515,20 @@ over the persistently attached disk images,
 **XXX** Do we need to expose the bus:slot:function as a property on device and
 net resources?
 
-
-### Customized sparse root
-
-Aside from the shared libraries with which `bhyve` is linked, there are few
-other things that are needed for the ongoing operation of a `bhyve` process.
-The only known command that it may spawn is
-[iasl](https://www.freebsd.org/cgi/man.cgi?query=iasl&sektion=8) if the `-A`
-option is used.  Because of having so few dependencies, the `bhyve` brand is an
-excellent candidate for an extremely sparse root.
-
-The `bhyve` sparse root will be read-only `lofs` mounted from
-`/usr/lib/brand/bhyve/root` with its `/lib` subdirectoring being mounted from
-`/lib/brand/bhyve/root/lib`.  All of the executables and libraries found in
-each of those directories will be hard links from their normal locations in the
-`/` and `/usr` file systems.  Thus, the overhead for supporting the new
-alternate root will be tiny
-
-All executables and libraries that exist in the bhyve brand will be 64-bit only.
-Executables will not be placed in ISA-specific subdirectories, but libraries
-will be.
-
-**XXX** It seems as though all of the libraries requried by zhyve are in `/lib`.
-It may make more sense to move `bhyve` (and `zhyve`, see below) to `/sbin` (and
-`/lib/bhyve/bhyve/root/sbin`, obviating the need for
-`/usr/lib/brand/bhyve/root`.
-
 ### Zone directory hierarchy
 
 The in-zone directory hierarchy will be:
 
 | Zone directory 	| Notes 					|
 | --------------------- | --------------------------------------------- |
-| `/`			| Mounted read-only from global `/usr/lib/brand/bhyve/root` |
-| `/dev`		| `dev(7FS)` mount point
-| `/lib`		| Mounted read-only from global `/lib/brand/bhyve/root/lib` |
-| `/lib/amd64`		| 						|
-| `/system/contract`	| `ctfs(7FS)` mountpoint			|
-| `/usr/sbin`		| Contains 64-bit executable(s)			|
+| `/`			| Read-write `<zonepath>/root` directory	|
+| `/dev`		| `dev(7FS)` mount point			|
+| `/lib`		| Mounted read-only from global `/lib`		|
+| `/usr`		| Mounted read-only from global `/usr`		|
+| `/tmp`		| `tmpfs(7FS)` mount point			|
 | `/var/run`		| `tmpfs(7FS)` mount point			|
+| `/etc/svc/volatile`	| `tmpfs(7FS)` mount point, required by `dlmgmtd` |
 
-The list above intentionally does not include `/proc` or `/tmp`.  The only
-writable directory is `/var/run`.
-
-**XXX** It is not yet known if the following are needed:
-
-- `objfs(7FS)` at `/system/object`
-- `fd(7FS)` `/dev/fd`
-- Does `dladm` need anything as its setting up datalinks?  Does `dladm` really
-  need to be the one setting up datalinks?  See `dladm_zone_boot()`.
 
 ### Devices
 
@@ -392,19 +537,19 @@ a small subset of what is typically available within a zone.  Those include:
 
 | Device		| Notes						|
 | --------------------- | --------------------------------------------- |
+| `/dev/dld`		|						|
+| `/dev/fd`		|						|
 | `/dev/null`		| Attached to `stdin`				|
-| `/dev/viona/ctl`	| To open VirtIO network devices		|
-| `/dev/vmm/`		| Only the `ctl` node and any nodes for instances belonging to the zone. |
-| `/dev/zfd/`		| Attached to `stdout` and `stderr` for logging	|
-| `/dev/zvol/rdsk/`	| For access to ZFS volumes in delegated datasets |
+| `/dev/random`		|						|
+| `/dev/rdsk`		|						|
+| `/dev/viona`		| To open VirtIO network devices		|
+| `/dev/vmmctl`		|						|
+| `/dev/vmm/`		| Only the nodes for instances belonging to the zone. |
+| `/dev/zvol/rdsk/`	| For access to ZFS volumes			|
 | `/dev/zconsole`	| So the guest console may be mapped to the zone console |
 
 Any other devices will be present in the zone only if specified in the per-zone
 configuration with `zonecfg(1M)`.
-
-**XXX** It is not yet known if the following are needed:
-
-- `vnd(8d)`
 
 ### Privileges
 
@@ -437,7 +582,7 @@ any other `bhyve` brand-specific code that is required.  The `main()` that is in
 while compiling `bhyverun.c`
 
 In the global zone, `/usr/sbin/amd64/bhyve` and
-`/usr/lib/brand/bhyve/usr/sbin/zhyve` will be hard links to the same file.  When
+`/usr/lib/brand/bhyve/zhyve` will be hard links to the same file.  When
 invoked with a basename of `bhyve`, the command will behave exactly as
 documented in `bhyve(8)`.  When invoked with a basename of `zhyve`, it will read
 its arguments from `/var/run/bhyve/zhyve.args`
