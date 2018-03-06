@@ -18,6 +18,8 @@ state: predraft
 This pre-draft is provided to support upcoming changes to the bhyve brand draft,
 described in [RFD 121](../0121/README.md).
 
+Discussion is being held in [issue 78](https://github.com/joyent/rfd/issues/78).
+
 ## Problem Statement
 
 The `brands(5)` framework was conceived in a time when all zone brands were
