@@ -185,6 +185,7 @@ Not supported.
 | Property	| Type	| Required | Notes				|
 |---------------|:-----:|:-----:|---------------------------------------|
 | ncpus		| simple | no	| The number of CPUs that are reserved for the exclusive use of this zone.  This will also be the number of virtual cpus configured in the guest. |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
 
 #### device resource
 
@@ -213,7 +214,7 @@ z1> add device
 z1:device> set emulation=virtio-blk
 z1:device> set match=/dev/zvol/rdsk/zones/z1/disk0
 z1:device> add conf (name=nocache,value="")
-z1:device> add conf (name=sectorsize,value="512/4096")
+z1:device> add conf (name=sectorsize,value="4096")
 z1:device> end
 ```
 
