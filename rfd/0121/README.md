@@ -79,11 +79,11 @@ gigabytes of memory.  When one wants to free up these resources, `bhyvectl
 --vm=<name> --destroy` must be used.
 
 It is possible to run an arbitrary number of `bhyve` instances in the global
-zone or non-global zones, subject to resource limitations.
+zone or non-global zones, subject to resource constraints.
 
 ## The bhyve brand
 
-The bhyve brand will be inplemented in a way that allows it to be included in
+The bhyve brand will be implemented in a way that allows it to be included in
 illumos so as to benefit from community involvement and to minimize the
 troubles associated with maintaining a fork.  The key implication for SmartOS
 is that all interaction between `vmadm[d]` and the `bhyve` must be through
@@ -114,8 +114,8 @@ uniqueness of the brand.
 
 Because hardware virtual machines have unique configuration requirements,
 various new resource types and properties will be needed.  Some resource types
-and properties that are appropriate for other brands will not be appopriate for
-the bhyve bvrand.  Details of how resource types and properties are selectively
+and properties that are appropriate for other brands will not be appropriate for
+the bhyve brand.  Details of how resource types and properties are selectively
 enabled per-brand are found in [RFD 122](../0122/README.md).  Details on the
 resource types and properties supported by the bhyve brand are found below.
 
@@ -142,7 +142,6 @@ configurable by zonecfg(1M).
 | autoboot	| simple | yes	| Determines whether zone boots at system boot |
 | bootargs	| N/A	| N/A	| Not supported.  Disabled.		|
 | brand		| simple | yes	| Must be "bhyve"			|
-| com1		| simple | no	| The 
 | fs-allowed	| N/A	| N/A	| Pending [virtfs](https://reviews.freebsd.org/D10335) |
 | hostid	| N/A	| N/A	| Not supported.  Disabled.		|
 | ip-type	| simple | yes	| Must be "exclusive"			|
@@ -163,7 +162,7 @@ No change from historical use.
 
 | Property	| Type	| Required | Notes				|
 |---------------|:-----:|:-----:|---------------------------------------|
-| ncpus		| simple | no	| If there is no `dedicated-cpus` resource, `min(1,floor(ncpus))` is used to determine the number of virtual cpus configurd in the guest. |
+| ncpus		| simple | no	| If there is no `dedicated-cpus` resource, `min(1,floor(ncpus))` is used to determine the number of virtual cpus configured in the guest. |
 | property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
 
 #### capped-memory resource
@@ -202,9 +201,9 @@ resources below.**
 
 Note that this scheme gives no meaningful way to control the probe order of
 devices inside the guest, aside from manually setting `pci-slot`.  This is
-escecially important for disks if the guest is sensitive to device ordering, as
+especially important for disks if the guest is sensitive to device ordering, as
 configuration changes could prevent a guest from booting by moving a boot disk
-to a differnet location.
+to a different location.
 
 **Example 1:**  Add a virtual disk backed by a zvol in
 [4Kn](https://en.wikipedia.org/wiki/Advanced_Format#4K_native) mode.
@@ -255,9 +254,9 @@ or similar is viable.
 
 #### lpc resource
 
-This is a new resource type being added.  A maximum of one `lpc` resource is
-supported.  The recommended values for `bootrom` and `com1` will appear in the
-`SYSbhyve` `zonecfg` template.
+This is a new resource type being added to allow configuration of bhyve's LPC
+devices.  A maximum of one `lpc` resource is supported.  The recommended values
+for `bootrom` and `com1` will appear in the `SYSbhyve` `zonecfg` template.
 
 | Property	| Type	| Required | Notes				|
 |---------------|:-----:|:-----:|---------------------------------------|
@@ -332,7 +331,7 @@ resources for presenting virtual disks**
 | Property	| Type	| Required | Notes				|
 |---------------|:-----:|:-----:|---------------------------------------|
 | path		| simple | yes	| Path to the raw device (`/dev/rdsk`) that provides the backing store. |
-| boot		| simple | no	| Defualts to `false`, may be `true` or `false`.  Only one disk can have this set to true.  Setting it to true causes the disk to appear in a lower-numbered PCI slot than other disks.  Ignored if `pci-slot` is also configured. |
+| boot		| simple | no	| Defaults to `false`, may be `true` or `false`.  Only one disk can have this set to true.  Setting it to true causes the disk to appear in a lower-numbered PCI slot than other disks.  Ignored if `pci-slot` is also configured. |
 | model		| simple | no	| If not specified, defaults to `virtio` (disk) or `ahci-cd` (cd), depending on value of `media` property.  Other block device emulation type specified in bhyve(8) may be specified. |
 | media		| simple | no	| Defaults to `disk`.  May be `disk` or `cd` |
 | pci-slot	| simple | no	| If not specified, dynamically generated on each boot.  If specified, must be in *pcislot[:function]* or *bus:pcislot:function* format.  See bhyve(8).  Most not conflict with any other `pci-slot` in any other resource. |
@@ -380,7 +379,7 @@ zoneadm -z <bhyve-zone> install -b <boot.iso> [-c cfgdisk]
 
 In the first form, `-i` specifies the disk image that the host will write to the
 device that has a `boot` property with value set to `true`.  Supported formats
-are `raw` and `zfs`, either of which may be compressed wtih `gzip`, `bzip2`, or
+are `raw` and `zfs`, either of which may be compressed with `gzip`, `bzip2`, or
 `xz`.  `zoneadm install` will only install to the boot disk.  For multi-disk
 installations, other tools should populate the virtual disks and then use
 `zoneadm attach`.
@@ -389,7 +388,7 @@ If `-c cfgdisk` is specified, the guest is booted once with the specified
 configuration disk attached temporarily.  The configuration disk must be in a
 raw disk image in a format that is understood by the guest.
 
-In the second form, `-b` specifices installation media that will be temporarily
+In the second form, `-b` specifies installation media that will be temporarily
 attached.  If `-c cfgdisk` is also specified, the configuration disk will also
 be attached during the installation boot.  The zone will always transition to
 the installed state when the guest halts or reboots.  If the guest installation
