@@ -61,6 +61,8 @@ discussion: https://github.com/joyent/rfd/issues/76
     + [Hot add/remove of devices](#hot-addremove-of-devices)
     + [Hot add/remove of vcpus](#hot-addremove-of-vcpus)
     + [Memory resizing or ballooning](#memory-resizing-or-ballooning)
+- [Integration with SmartOS](#integration-with-smartos)
+  * [Configuration mapping](#configuration-mapping)
 
 **NOTE**  This is a draft.  Your feedback and that of others will likely
 cause things to change. Open [issues](https://github.com/joyent/rfd/issues/76)
