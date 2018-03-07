@@ -14,6 +14,52 @@ discussion: https://github.com/joyent/rfd/issues/76
     Copyright (c) 2018, Joyent, Inc.
 -->
 
+<!--
+    Courtesy of markdown-toc, with some massaging on "## `stuff`" links.
+-->
+- [Overview of bhyve](#overview-of-bhyve)
+- [The bhyve brand](#the-bhyve-brand)
+- [Public interfaces](#public-interfaces)
+  * [Zone Configuration](#zone-configuration)
+    + [global scope](#global-scope)
+    + [admin resource](#admin-resource)
+    + [attr resource](#attr-resource)
+    + [capped-cpu resource](#capped-cpu-resource)
+    + [capped-memory resource](#capped-memory-resource)
+    + [dataset resource](#dataset-resource)
+    + [dedicated-cpu resource](#dedicated-cpu-resource)
+    + [device resource](#device-resource)
+    + [fs resource](#fs-resource)
+    + [lpc resource](#lpc-resource)
+    + [net resource](#net-resource)
+    + [rctl resource](#rctl-resource)
+    + [security-flags resource](#security-flags-resource)
+    + [disk resource](#disk-resource)
+    + [pci resource](#pci-resource)
+  * [`zoneadm`](#-zoneadm-)
+    + [`zoneadm install`](#-zoneadm-install-)
+    + [`zoneadm attach`](#-zoneadm-attach-)
+    + [`zoneadm detach`](#-zoneadm-detach-)
+    + [`zoneadm clone`](#-zoneadm-clone-)
+    + [`zoneadm boot`](#-zoneadm-boot-)
+    + [`zoneadm reboot`](#-zoneadm-reboot-)
+    + [`zoneadm shutdown`](#-zoneadm-shutdown-)
+  * [`zlogin`](#-zlogin-)
+- [Brand implementation details](#brand-implementation-details)
+  * [Guest networking configuration](#guest-networking-configuration)
+  * [PCI slot and function allocation](#pci-slot-and-function-allocation)
+  * [Zone directory hierarchy](#zone-directory-hierarchy)
+  * [Devices](#devices)
+  * [Privileges](#privileges)
+  * [Zone init command: `zhyve`](#zone-init-command-zhyve)
+    + [Implementation note](#implementation-note)
+    + [Future direction](#future-direction)
+  * [Live reconfiguration](#live-reconfiguration)
+    + [Resizing virtual disks](#resizing-virtual-disks)
+    + [Hot add/remove of devices](#hot-addremove-of-devices)
+    + [Hot add/remove of vcpus](#hot-addremove-of-vcpus)
+    + [Memory resizing or ballooning](#memory-resizing-or-ballooning)
+
 # RFD 121 bhyve brand
 
 **NOTE**  This is a draft.  Your feedback and that of others will likely
