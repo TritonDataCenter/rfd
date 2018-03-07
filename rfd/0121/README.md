@@ -824,7 +824,7 @@ metadata.  All `attr` resources have `type=string`.
 | transition_to         | xxx                           | xxx           |
 | type                  | *fixed `BHYVE`*               |               |
 | uuid                  | global                        | uuid          |
-| vcpus                 | dedicated-cpu or capped-cpu   | *See **Note 3**, below* |
+| vcpus                 | dedicated-cpu                 | ncpus *(but see **Note 3**, below)* |
 | vga                   | xxx                           | xxx           |
 | virtio_txburst        | xxx                           | xxx           |
 | virtio_txtimer        | xxx                           | xxx           |
@@ -844,3 +844,29 @@ metadata.  All `attr` resources have `type=string`.
 | zonename              | global                        | zonename      |
 | zoneid                | *dynamic*                     |               |
 | zpool                 | xxx                           | xxx           |
+
+**Note 1:** For each disk `media` and `model` work together to populate to
+populate the `model` and `media` in the `device` resource.
+
+| json media	| json model	| device media		| device model	|
+|---------------|---------------|-----------------------|---------------|
+|		|		| disk			| virtio-blk	|
+| disk		|		| disk			| virtio-blk	|
+| disk		| virtio	| disk			| virtio-blk	|
+| disk		| ide		| disk			| ahci		|
+| disk		| ide		| disk			| ahci		|
+| disk		|		| *not supported*	|		|
+| cdrom		|		| cdrom			| ahci		|
+| cdrom		| virtio	| *not supported*	|		|
+| cdrom		| ide		| cdrom			| ahci		|
+| cdrom		|		| *not supported*	|		|
+
+**Note 2:** All of the properties related to the `protection` link property gets
+turned into a single comma-separated list and added to the `net` resource's
+`linkprop name=protection`.
+
+**Note 3:** This assumes that for SmartOS we do not allow oversubscription of
+CPUs.  This seems to be the direction we are going, at least initially.  In the
+future, we can add an `oversubscribe_cpus` knob which would suggest that we
+may use `capped-cpus`.  Both modes are accounted for in the descriptions of the
+`dedicated-cpu` and `capped-cpu` resources above.
