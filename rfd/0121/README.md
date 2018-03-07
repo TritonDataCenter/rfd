@@ -525,10 +525,11 @@ The in-zone directory hierarchy will be:
 | `/dev`		| `dev(7FS)` mount point			|
 | `/lib`		| Mounted read-only from global `/lib`		|
 | `/usr`		| Mounted read-only from global `/usr`		|
-| `/tmp`		| `tmpfs(7FS)` mount point			|
 | `/var/run`		| `tmpfs(7FS)` mount point			|
 | `/etc/svc/volatile`	| `tmpfs(7FS)` mount point, required by `dlmgmtd` |
 
+Note that `/tmp` is not `tmpfs`.  It is used by `zhyve` to store logs that
+should survive a zone reboot.
 
 ### Devices
 
