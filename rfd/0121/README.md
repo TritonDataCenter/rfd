@@ -239,8 +239,9 @@ resources below.**
 
 | Property	| Type	| Required | Notes				|
 |---------------|:-----:|:-----:|---------------------------------------|
+| boot		| simple | no	| Only relevant to non-passthrough disk devices.  If set to `true` this device will be the boot disk.  Set on at most one device. |
 | match		| simple | yes	| The global zone device to delegate to the zone.  Must be unique across all zones.  Globs are not allowed. |
-| emulation	| simple | yes	| See bhyve(8).  Typically `virtio-blk`, `virtio-net-viona`, `passthru`, or `none`.  If `emulation` is `none`, the device is not visible in the guest. |
+| emulation	| simple | yes	| See bhyve(8).  Typically `virtio-blk`, `passthru`, or `none`.  If `emulation` is `none`, the device is not visible in the guest. |
 | pci-slot	| simple | no	| Not used if `emulation` is `none`.  Otherwise if not specified, dynamically generated on each boot.  If specified, must be in *pcislot[:function]* or *bus:pcislot:function* format.  See bhyve(8).  `pci-slot` must be unique within this zone's configuration. |
 | option	| list of complex | no	| Optional configuration options that are specific to `emulation`.  See `bhyve(8)`.  Any option that involves IP addresses is not supported. |
 | property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
@@ -249,7 +250,28 @@ Note that this scheme gives no meaningful way to control the probe order of
 devices inside the guest, aside from manually setting `pci-slot`.  This is
 especially important for disks if the guest is sensitive to device ordering, as
 configuration changes could prevent a guest from booting by moving a boot disk
-to a different location.
+to a different location.  If `pci-slot` is not specified on all disks, use the
+`boot` property on one disk to ensure it is put into a slot that the bootrom
+will likely choose as a boot device.
+
+**XXX This does not give a way to have multiple disks on a controller. From bhyve(8):**
+```
+     Run an 8GB	quad-CPU virtual machine with 8	AHCI SATA disks, an AHCI ATAPI
+     CD-ROM, a single virtio network port, an AMD hostbridge, and the console
+     port connected to an nmdm(4) null-modem device.
+
+	   bhyve -c 4 \
+	     -s	0,amd_hostbridge -s 1,lpc \
+	     -s	1:0,ahci,hd:/images/disk.1,hd:/images/disk.2,\
+	   hd:/images/disk.3,hd:/images/disk.4,\
+	   hd:/images/disk.5,hd:/images/disk.6,\
+	   hd:/images/disk.7,hd:/images/disk.8,\
+	   cd:/images/install.iso \
+	     -s	3,virtio-net,tap0 \
+	     -l	com1,/dev/nmdm0A \
+	     -A	-H -P -m 8G
+```
+**But maybe that's not required?**
 
 **Example 1:**  Add a virtual disk backed by a zvol in
 [4Kn](https://en.wikipedia.org/wiki/Advanced_Format#4K_native) mode.
@@ -688,3 +710,137 @@ In the future, maybe.
 #### Memory resizing or ballooning
 
 In the future, maybe.
+
+## Integration with SmartOS
+
+While SmartOS will benefit greatly from the features that are core to the bhyve
+brand, SmartOS has its own mechanisms for zone configuration, installation,
+console access, guest network configuration, etc.
+
+### Configuration mapping
+
+SmartOS zones are configured via a `json` file.  The supported configuration
+items are described in `vmadm(1M)`.  The following table shows how each
+supported configuration item maps to zone configuration or externally maintained
+metadata.  All `attr` resources have `type=string`.
+
+| SmartOS Config        | Resource                      | Property      |
+|-----------------------|-------------------------------|---------------|
+| alias                 | attr name=alias               | value         |
+| archive_on_delete     | attr name=archive_on_delete   | value         |
+| billing_id            | attr name=billing_id          | value         |
+| boot                  | attr name=boot                | value         |
+| boot_timestmap        | xxx                           | xxx           |
+| brand                 | global                        | brand         |
+| cpu_cap               | capped-cpu                    | ncpus         |
+| cpu_shares            | global                        | cpu-shares    |
+| cpu_type              | *not supported in this brand* |               |
+| create_timestmap      | attr name=create-timestamp    | value         |
+| server_uuid           | *dynamic, based on server*    |               |
+| customer_metadata     | *stored `<zonepath>/config/`* |               |
+| datasets              | *not supported in this brand* |               |
+| delegate_datasets     | *not supported in this brand* |               |
+| disks                 | *Each disk gets a unique `device` resource* | |
+| disks.\*.block_size   | device                        | option name=sectorsize |
+| disks.\*.boot         | device                        | boot          |
+| disks.\*.compression  | device                        | property name=compression |
+| disks.\*.nocreate     | device                        | property name=nocreate |
+| disks.\*.image_name   | device                        | property name=image-name |
+| disks.\*.image_size   | device                        | property name=image-size |
+| disks.\*.image_uuid   | device                        | property name=image-uuid |
+| disks.\*.refreservation | device                      | property name=refreservation |
+| disks.\*.size         | device                        | property name=size |
+| disks.\*.media        | device                        | *See **Note 1**, below* |
+| disks.\*.model        | device                        | *See **Note 1**, below* |
+| disks.\*.zpool        | xxx                           | xxx           |
+| disk_driver           | xxx                           | xxx           |
+| do_not_inventory      | attr name=do-not-inventory    | value         |
+| dns_domain            | attr name=dns-domain          | value         |
+| filesystems           | *not supported in this brand* |               |
+| filesystems.\*.type   | *not supported in this brand* |               |
+| filesystems.\*.source | *not supported in this brand* |               |
+| filesystems.\*.target | *not supported in this brand* |               |
+| filesystems.\*.raw    | *not supported in this brand* |               |
+| filesystems.\*.options | *not supported in this brand* |              |
+| firewall_enabled      | xxx                           | xxx           |
+| fs_allowed            | *not supported in this brand* |               |
+| hostname              | attr name=hostname            | value         |
+| image_uuid            | xxx                           | xxx           |
+| internal_metadata     | *see `<zonepath>/config/`*    |               |
+| internal_metadata_namespace | xxx                     |               |
+| indestructable_delegated | xxx                        | xxx           |
+| indestructable_zoneroot | *zfs snapshot and hold*     |               |
+| kernel_version        | *not supported in this brand* |               |
+| limit_priv            | *not supported in this brand (set to fixed value)* | |
+| maintain_resolvers    | attr name=maintain-resolvers  | value         |
+| max_locked_memory     | capped-memory                 | locked        |
+| max_lwps              | global                        | max-lwps      |
+| max_physical_memory   | capped-memory                 | physical      |
+| max_swap              | capped-memory                 | swap          |
+| mdata_exec_timeout    | *not supported in this brand* |               |
+| nics                  | *Each nic gets a unique `net` resource* |     |
+| nics.\*.allow_dhcp_spoofing           | net           | *See **Note 2**, below* |
+| nics.\*.allow_ip_spoofing             | net           | *See **Note 2**, below* |
+| nics.\*.allow_mac_spoofing            | net           | *See **Note 2**, below* |
+| nics.\*.allow_restricted_traffic      | net           | *See **Note 2**, below* |
+| nics.\*.allow_unfilterd_promisc       | net           | *See **Note 2**, below* |
+| nics.\*.allow_blocked_outgoing_ports  | net           | *See **Note 2**, below* |
+| nics.\*.allow_allowed_ips             | net           | *See **Note 2**, below* |
+| nics.\*.allow_dhcp_server             | net           | *See **Note 2**, below* |
+| nics.\*.gateway       | net                           | property name=gateway   |
+| nics.\*.gateways      | net                           | property name=gateways  |
+| nics.\*.interface     | net                           | virtual                 |
+| nics.\*.ip            | net                           | property name=ip        |
+| nics.\*.ips           | net                           | property name=ips       |
+| nics.\*.mac           | net                           | mac-addr                |
+| nics.\*.model         | net                           | model                   |
+| nics.\*.mtu           | net                           | property name=mtu       |
+| nics.\*.netmask       | net                           | property name=metask    |
+| nics.\*.network_uuid  | net                           | property name=network_uuid |
+| nics.\*.nic_tag       | net                           | physical                |
+| nics.\*.primary       | net                           | primary                 |
+| nics.\*.vlan_id       | net                           | vlan-id                 |
+| nics.\*.vrrp_primary_ip | *not supported in this brand* |                       |
+| nics.\*.vrrp__vrid    | *not supported in this brand* |                         |
+| nic_driver            | *not supported in this brand* |               |
+| nowait                | attr name=nowait              | value         |
+| owner_uuid            | attr name=owner-uuid          | value         |
+| package_name          | attr name=package-name        | value         |
+| package_version       | attr name=package-version     | value         |
+| pid                   | *dynamic*                     |               |
+| qemu_opts             | *not supported in this brand* |               |
+| qemu_extra_opts       | *not supported in this brand* |               |
+| quota                 | *zfs property*                |               |
+| ram                   | capped-memory                 | guest         |
+| resolvers             | attr name=resolvers           | value         |
+| routes                | *see `<zonepath>`/config/`*   |               |
+| snapshots             | *not supported in this brand* |               |
+| space_opts            | *not supported in this brand* |               |
+| spice_password        | *not supported in this brand* |               |
+| spice_port            | *not supported in this brand* |               |
+| state                 | *dynamic*                     |               |
+| tmpfs                 | *not supported in this brand* |               |
+| transition_expire     | xxx                           | xxx           |
+| transition_to         | xxx                           | xxx           |
+| type                  | *fixed `BHYVE`*               |               |
+| uuid                  | global                        | uuid          |
+| vcpus                 | dedicated-cpu or capped-cpu   | *See **Note 3**, below* |
+| vga                   | xxx                           | xxx           |
+| virtio_txburst        | xxx                           | xxx           |
+| virtio_txtimer        | xxx                           | xxx           |
+| vnc_password          | xxx                           | xxx           |
+| vnc_port              | xxx                           | xxx           |
+| zfs_data_compression  | *not supported in this brand* |               |
+| zfs_data_recsize      | *not supported in this brand* |               |
+| zfs_filesystem_limit  | *not supported in this brand* |               |
+| zfs_io_priority       | global                        | zfs-io-priority |
+| zfs_root_compression  | *not supported in this brand* |               |
+| zfs_root_recsize      | *not supported in this brand* |               |
+| zfs_snapshot_limit    | *not supported in this brand* |               |
+| zfs_max_size          | *not supported in this brand* |               |
+| zlog_max_size         | *not supported in this brand* |               |
+| zone_state            | xxx                           | xxx           |
+| zonepath              | global                        | zonepath      |
+| zonename              | global                        | zonename      |
+| zoneid                | *dynamic*                     |               |
+| zpool                 | xxx                           | xxx           |
