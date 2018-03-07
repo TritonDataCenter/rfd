@@ -14,8 +14,10 @@ discussion: https://github.com/joyent/rfd/issues/76
     Copyright (c) 2018, Joyent, Inc.
 -->
 
+# RFD 121 bhyve brand
+
 <!--
-    Courtesy of markdown-toc, with some massaging on "## `stuff`" links.
+    Courtesy of markdown-toc.
 -->
 - [Overview of bhyve](#overview-of-bhyve)
 - [The bhyve brand](#the-bhyve-brand)
@@ -36,15 +38,15 @@ discussion: https://github.com/joyent/rfd/issues/76
     + [security-flags resource](#security-flags-resource)
     + [disk resource](#disk-resource)
     + [pci resource](#pci-resource)
-  * [`zoneadm`](#-zoneadm-)
-    + [`zoneadm install`](#-zoneadm-install-)
-    + [`zoneadm attach`](#-zoneadm-attach-)
-    + [`zoneadm detach`](#-zoneadm-detach-)
-    + [`zoneadm clone`](#-zoneadm-clone-)
-    + [`zoneadm boot`](#-zoneadm-boot-)
-    + [`zoneadm reboot`](#-zoneadm-reboot-)
-    + [`zoneadm shutdown`](#-zoneadm-shutdown-)
-  * [`zlogin`](#-zlogin-)
+  * [`zoneadm`](#zoneadm)
+    + [`zoneadm install`](#zoneadm-install)
+    + [`zoneadm attach`](#zoneadm-attach)
+    + [`zoneadm detach`](#zoneadm-detach)
+    + [`zoneadm clone`](#zoneadm-clone)
+    + [`zoneadm boot`](#zoneadm-boot)
+    + [`zoneadm reboot`](#zoneadm-reboot)
+    + [`zoneadm shutdown`](#zoneadm-shutdown)
+  * [`zlogin`](#zlogin)
 - [Brand implementation details](#brand-implementation-details)
   * [Guest networking configuration](#guest-networking-configuration)
   * [PCI slot and function allocation](#pci-slot-and-function-allocation)
@@ -59,8 +61,6 @@ discussion: https://github.com/joyent/rfd/issues/76
     + [Hot add/remove of devices](#hot-addremove-of-devices)
     + [Hot add/remove of vcpus](#hot-addremove-of-vcpus)
     + [Memory resizing or ballooning](#memory-resizing-or-ballooning)
-
-# RFD 121 bhyve brand
 
 **NOTE**  This is a draft.  Your feedback and that of others will likely
 cause things to change. Open [issues](https://github.com/joyent/rfd/issues/76)
