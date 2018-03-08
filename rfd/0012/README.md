@@ -116,11 +116,11 @@ GH issues for each non-trivial chunk of work here.
 | GetMachineMetadata               | NYI      | `triton instance get-metadata INST KEY`                     |
 | DeleteMachineMetadata            | NYI      | `triton instance delete-metadata INST KEY`                  |
 | DeleteAllMachineMetadata         | NYI      | `triton instance delete-metadata --all INST`                |
-| AddMachineTags                   | NYI      | `triton instance add-tags,tag INST KEY=VALUE ...`           |
-| ReplaceMachineTags               | NYI\*    | ???                                                         |
-| ListMachineTags                  | NYI      | `triton instance list-tags,tags INST`                       |
-| GetMachineTag                    | NYI      | `triton instance get-tag,tag INST KEY`                      |
-| DeleteMachineTag(s)              | NYI      | `triton instance delete-tags -d INST KEY ...`               |
+| AddMachineTags                   | DONE     | `triton instance tag set INST [KEY=VALUE ...]`              |
+| ReplaceMachineTags               | DONE     | `triton instance tag replace-all INST [KEY=VALUE ...]       |
+| ListMachineTags                  | DONE     | `triton instance tag list INST`                             |
+| GetMachineTag                    | DONE     | `triton instance tag get INST KEY`                          |
+| DeleteMachineTag(s)              | DONE     | `triton instance tag delete INST [KEY ...]`                 |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
 | **ANALYTICS**                    |          |                                                             |
 | DescribeAnalytics                | -        |                                                             |
@@ -156,10 +156,10 @@ GH issues for each non-trivial chunk of work here.
 | ListNetworks                     | DONE     | `triton network list`, `triton networks`                    |
 | GetNetwork                       | DONE     | `triton network get NET`                                    |
 | **NICS**                         | \*NICS   |                                                             |
-| ListNics                         | NYI      | `triton nic list`, `triton nics`                            |
-| GetNic                           | NYI      | `triton nic get INST MAC`                                   |
-| AddNic                           | NYI      | `triton nic add ...`                                        |
-| RemoveNic                        | NYI      | `triton nic delete,rm INST MAC`                             |
+| ListNics                         | DONE     | `triton instance nic list INST`                             |
+| GetNic                           | DONE     | `triton instance nic get INST MAC`                          |
+| AddNic                           | DONE     | `triton instance nic create INST NETWORK`                   |
+| RemoveNic                        | DONE     | `triton instance nic delete,rm INST MAC`                    |
 
 
 Notes:
