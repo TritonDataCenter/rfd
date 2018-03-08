@@ -316,7 +316,7 @@ was increasingly unclear as the major release number went unchanged for decades.
 | `property` element in `brand.dtd.1`           | Committed     |
 | `enabled` attribute on `property` element     | Committed     |
 | `fixed-value` attribute on `property` element | Committed     |
-| `zonecfg -b <brand> <resources|properties>	| Comittted	|
+| `zonecfg -b <brand> <resources\|properties>`	| Comittted	|
 | `brand_get_enabled_res`			| Private	|
 | `brand_get_enabled_simple_props`		| Private	|
 | `brand_get_enabled_complex_props`		| Private	|
