@@ -94,7 +94,7 @@ should align with how things are done for kvm.
 | resolvers             | attr name=resolvers           | value         |
 | routes                | *see `<zonepath>`/config/`*   |               |
 | snapshots             | *not supported in this brand* |               |
-| space_opts            | *not supported in this brand* |               |
+| spice_opts            | *not supported in this brand* |               |
 | spice_password        | *not supported in this brand* |               |
 | spice_port            | *not supported in this brand* |               |
 | state                 | *dynamic*                     |               |
