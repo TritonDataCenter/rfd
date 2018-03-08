@@ -117,7 +117,7 @@ GH issues for each non-trivial chunk of work here.
 | DeleteMachineMetadata            | NYI      | `triton instance delete-metadata INST KEY`                  |
 | DeleteAllMachineMetadata         | NYI      | `triton instance delete-metadata --all INST`                |
 | AddMachineTags                   | DONE     | `triton instance tag set INST [KEY=VALUE ...]`              |
-| ReplaceMachineTags               | DONE     | `triton instance tag replace-all INST [KEY=VALUE ...]       |
+| ReplaceMachineTags               | DONE     | `triton instance tag replace-all INST [KEY=VALUE ...]`      |
 | ListMachineTags                  | DONE     | `triton instance tag list INST`                             |
 | GetMachineTag                    | DONE     | `triton instance tag get INST KEY`                          |
 | DeleteMachineTag(s)              | DONE     | `triton instance tag delete INST [KEY ...]`                 |
