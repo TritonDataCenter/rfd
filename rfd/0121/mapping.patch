@@ -1,0 +1,120 @@
+--- mapping-old.md	2018-03-08 11:47:23.000000000 -0600
++++ mapping-new.md	2018-03-08 11:48:33.000000000 -0600
+@@ -1,7 +1,6 @@
+ ### Configuration mapping
+ 
+-This is how properties are handled by the initial implementation of bhyve.  It
+-should align with how things are done for kvm.
++This is the proposed new mapping
+ 
+ | SmartOS Config        | Resource                      | Property      |
+ |-----------------------|-------------------------------|---------------|
+@@ -20,8 +19,8 @@
+ | datasets              | *not supported in this brand* |               |
+ | delegate_datasets     | *not supported in this brand* |               |
+ | disks                 | *Each disk gets a unique `device` resource* | |
+-| disks.\*.block_size   | device                        | property name=block-size |
+-| disks.\*.boot         | device                        | property name=boot |
++| disks.\*.block_size   | device                        | option name=sectorsize |
++| disks.\*.boot         | device                        | boot          |
+ | disks.\*.compression  | device                        | property name=compression |
+ | disks.\*.nocreate     | device                        | property name=nocreate |
+ | disks.\*.image_name   | device                        | property name=image-name |
+@@ -29,8 +28,8 @@
+ | disks.\*.image_uuid   | device                        | property name=image-uuid |
+ | disks.\*.refreservation | device                      | property name=refreservation |
+ | disks.\*.size         | device                        | property name=size |
+-| disks.\*.media        | device                        | proeprty name=media |
+-| disks.\*.model        | device                        | property name=model |
++| disks.\*.media        | device                        | *See **Note 1**, below* |
++| disks.\*.model        | device                        | *See **Note 1**, below* |
+ | disks.\*.zpool        | xxx                           | xxx           |
+ | disk_driver           | xxx                           | xxx           |
+ | do_not_inventory      | attr name=do-not-inventory    | value         |
+@@ -58,26 +57,26 @@
+ | max_swap              | capped-memory                 | swap          |
+ | mdata_exec_timeout    | *not supported in this brand* |               |
+ | nics                  | *Each nic gets a unique `net` resource* |     |
+-| nics.\*.allow_dhcp_spoofing           | net           | property name=allow-dhcp-spoofing |
+-| nics.\*.allow_ip_spoofing             | net           | property name=allow-ip-spoofing |
+-| nics.\*.allow_mac_spoofing            | net           | property name=allow-mac-spoofing |
+-| nics.\*.allow_restricted_traffic      | net           | property name=allow-restricted-traffic |
+-| nics.\*.allow_unfilterd_promisc       | net           | property name=allow-unfiltered-promisc |
+-| nics.\*.allow_blocked_outgoing_ports  | net           | property name=allow-blocked-outgoing-ports |
+-| nics.\*.allow_allowed_ips             | net           | property name=allow-allowed-ips |
+-| nics.\*.allow_dhcp_server             | net           | property name=allow-dhcp-server |
++| nics.\*.allow_dhcp_spoofing           | net           | *See **Note 2**, below* |
++| nics.\*.allow_ip_spoofing             | net           | *See **Note 2**, below* |
++| nics.\*.allow_mac_spoofing            | net           | *See **Note 2**, below* |
++| nics.\*.allow_restricted_traffic      | net           | *See **Note 2**, below* |
++| nics.\*.allow_unfilterd_promisc       | net           | *See **Note 2**, below* |
++| nics.\*.allow_blocked_outgoing_ports  | net           | *See **Note 2**, below* |
++| nics.\*.allow_allowed_ips             | net           | *See **Note 2**, below* |
++| nics.\*.allow_dhcp_server             | net           | *See **Note 2**, below* |
+ | nics.\*.gateway       | net                           | property name=gateway   |
+ | nics.\*.gateways      | net                           | property name=gateways  |
+-| nics.\*.interface     | net                           | physical                |
++| nics.\*.interface     | net                           | virtual                 |
+ | nics.\*.ip            | net                           | property name=ip        |
+ | nics.\*.ips           | net                           | property name=ips       |
+ | nics.\*.mac           | net                           | mac-addr                |
+ | nics.\*.model         | net                           | model                   |
+ | nics.\*.mtu           | net                           | property name=mtu       |
+ | nics.\*.netmask       | net                           | property name=metask    |
+-| nics.\*.network_uuid  | net                           | property name=network-uuid |
+-| nics.\*.nic_tag       | net                           | global-nic              |
+-| nics.\*.primary       | net                           | property name=primary   |
++| nics.\*.network_uuid  | net                           | property name=network_uuid |
++| nics.\*.nic_tag       | net                           | physical                |
++| nics.\*.primary       | net                           | primary                 |
+ | nics.\*.vlan_id       | net                           | vlan-id                 |
+ | nics.\*.vrrp_primary_ip | *not supported in this brand* |                       |
+ | nics.\*.vrrp__vrid    | *not supported in this brand* |                         |
+@@ -90,7 +89,7 @@
+ | qemu_opts             | *not supported in this brand* |               |
+ | qemu_extra_opts       | *not supported in this brand* |               |
+ | quota                 | *zfs property*                |               |
+-| ram                   | attr name=ram                 | value *in megabytes* |
++| ram                   | capped-memory                 | guest *in bytes* |
+ | resolvers             | attr name=resolvers           | value         |
+ | routes                | *see `<zonepath>`/config/`*   |               |
+ | snapshots             | *not supported in this brand* |               |
+@@ -103,7 +102,7 @@
+ | transition_to         | xxx                           | xxx           |
+ | type                  | *fixed `BHYVE`*               |               |
+ | uuid                  | global                        | uuid          |
+-| vcpus                 | attr name=vcpus               | value         |
++| vcpus                 | dedicated-cpu                 | ncpus *(but see **Note 3**, below)* |
+ | vga                   | xxx                           | xxx           |
+ | virtio_txburst        | xxx                           | xxx           |
+ | virtio_txtimer        | xxx                           | xxx           |
+@@ -123,3 +122,29 @@
+ | zonename              | global                        | zonename      |
+ | zoneid                | *dynamic*                     |               |
+ | zpool                 | xxx                           | xxx           |
++
++**Note 1:** For each disk `media` and `model` work together to populate to
++populate the `model` and `media` in the `device` resource.
++
++| json media	| json model	| device media		| device model	|
++|---------------|---------------|-----------------------|---------------|
++|		|		| disk			| virtio-blk	|
++| disk		|		| disk			| virtio-blk	|
++| disk		| virtio	| disk			| virtio-blk	|
++| disk		| ide		| disk			| ahci		|
++| disk		| ide		| disk			| ahci		|
++| disk		|		| *not supported*	|		|
++| cdrom		|		| cdrom			| ahci		|
++| cdrom		| virtio	| *not supported*	|		|
++| cdrom		| ide		| cdrom			| ahci		|
++| cdrom		|		| *not supported*	|		|
++
++**Note 2:** All of the properties related to the `protection` link property gets
++turned into a single comma-separated list and added to the `net` resource's
++`linkprop name=protection`.
++
++**Note 3:** This assumes that for SmartOS we do not allow oversubscription of
++CPUs.  This seems to be the direction we are going, at least initially.  In the
++future, we can add an `oversubscribe_cpus` knob which would suggest that we
++may use `capped-cpus`.  Both modes are accounted for in the descriptions of the
++`dedicated-cpu` and `capped-cpu` resources above.
