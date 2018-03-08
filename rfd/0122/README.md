@@ -214,6 +214,9 @@ lists will be dynamically generated based on the scope.
 software to determine which resource types and property types are supported.
 The synopsis is:
 
+**XXX this needs to transition to ofmt, as it is intended to be machine readable
+output.**
+
 ```
 zonecfg -b <brand> resources
 zonecfg -b <brand> properties [restype]
