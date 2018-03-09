@@ -719,6 +719,21 @@ While SmartOS will benefit greatly from the features that are core to the bhyve
 brand, SmartOS has its own mechanisms for zone configuration, installation,
 console access, guest network configuration, etc.
 
+### Configuration upgrade and downgrade
+
+It is likely that there will be a non-trivial number of bhyve zones in the wild
+before the features described in this RFD are ready.  This implies that there
+needs to be an automatic conversion from the old configuration version to the
+new.  Once a configuration is converted, there's also the possibility that the
+system will be rebooted to an old platform image or that the zone will be
+migrated.  Thus, we need to have a means for automatic conversion between
+arbitrary configuration versions.
+
+When the first configuration change is delivered, a new zone configuration
+conversion service will be added by installing an SMF manifest in
+`/var/svc/profile` along with an appropriate conversion script within
+`/var/lib`.  See [OS-6746](https://smartos.org/bugview/OS-6746).
+
 ### Configuration mapping
 
 SmartOS zones are configured via a `json` file.  The supported configuration
