@@ -278,3 +278,9 @@ Tools:
   - prstat(1M)
   - mpstat(1M)
 - TBD: muskie scripts to summarize error rates and latency
+
+## See also
+
+* [Nexus of
+  Evil](https://blogs.nasa.gov/waynehalesblog/2010/02/16/post_1266353065166/),
+  about NASA's team that helps train mission teams for handling failure
