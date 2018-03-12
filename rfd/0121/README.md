@@ -424,6 +424,30 @@ SmartOS will use the following custom properties ([RFD 122](../0122/README.md)).
 | pci-slot	| simple | no	| If not specified, dynamically generated on each boot.  If specified, must be in *pcislot[:function]* or *bus:pcislot:function* format.  See bhyve(8).  Most not conflict with any other `pci-slot` in any other resource. |
 | property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
 
+#### smbios resource
+
+This resource allows customization of some
+[SMBIOS](https://www.dmtf.org/standards/smbios) fields.
+
+| Property      | Type  | Required | Notes                              |
+|---------------|:-----:|:-----:|---------------------------------------|
+| type          | simple | yes  | A number, as defined in SMBIOS specification.  Initially, only type 1 is supported. |
+| field         | list of complex | yes | Each `field` has members `name` and `value`, as described in the SMBIOS specifications. |
+| property	| list of complex | no	| Arbitrary custom properties for use by SmartOS and other consumers downstream from illumos. |
+
+The `type` and `fields` translate into `-B <type>,<name>=<value>[,...]` arguments for `bhyve(8)`.  See `bhyve(8)` for details.
+
+**Example**
+
+```
+z1> add smbios
+z1:smbios> set type=1
+z1:smbios> add field (name=product,value="SmartDC HVM")
+z1:smbios> add field (name=version,value="20380119T031408Z")
+z1:smbios> add field (name=uuid,value="51db0004-1a24-e3c3-a62b-eb6da1827b9e")
+z1:smbios> end
+```
+
 ### `zoneadm`
 
 The `zoneadm` command supports most of the operations supported with other
