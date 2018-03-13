@@ -315,6 +315,8 @@ severely disrupt and or hinder the datapath.
 
 1. Concurrent schema changes that leave the database in an undefined
    state should not be allowed.
+2. If concurrent changes are allowed, there must be a means by which to limit
+   the table contention they cause.
 
 ### Potential Schema Changes
 
