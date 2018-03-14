@@ -1,5 +1,5 @@
 ---
-authors: Trent Mick <trent.mick@joyent.com>
+authors: Trent Mick <trent.mick@joyent.com>, Todd Whiteman
 state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+113%22
 ---
@@ -47,15 +47,6 @@ functionality to make the following improvements to Triton custom images:
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
 
-## Status
-
-Still in design discussions. See:
-
-- [The discussion on GitHub](https://github.com/joyent/rfd/issues/71)
-- [Some internal discussion](https://devhub.joyent.com/jira/browse/SWSUP-903)
-- [RFD-113 labelled issues](https://devhub.joyent.com/jira/issues/?jql=labels%3DRFD-113).
-
-
 ## Motivation
 
 The scenario: An organization has a service infrastructure with a dozen or
@@ -77,16 +68,15 @@ the customer could just build the image in each DC separately. However, that
 isn't a satisfying solution. Tooling that is deploying across the region
 shouldn't *have* to manage separate image identifiers for the image in each DC.
 
-Earlier versions of this RFD talked about the separate functionality of
-"sharing" images -- providing read access to an image to another account. The
-issue with this is that the shared (by engineering) image is still ultimately
-controlled by engineering. It is unsatisfying for operations to be deploying
-instances using an image that could be deleted at anytime by a separate
-corporate group. Likewise, engineering would prefer to not have the
-responsibility to not mess up production when wanting to do house cleaning.
+
+## Related discussions
+
+- [The discussion on GitHub](https://github.com/joyent/rfd/issues/71)
+- [Some internal discussion](https://devhub.joyent.com/jira/browse/SWSUP-903)
+- [RFD-113 labelled issues](https://devhub.joyent.com/jira/issues/?jql=labels%3DRFD-113).
 
 
-## Background
+## IMGAPI refresher
 
 Note that currently in IMGAPI:
 
@@ -101,28 +91,45 @@ Note that currently in IMGAPI:
   (e.g. minimal-multiarch-lts@15.4.1 is one). There are implications with
   transferring images and its parentage.
 
-Our scenario for examples below:
+## Example
+
+For the following examples, the following accounts and images already exist:
 
 - Alice (login=alice, uuid=a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef) has an
   image "my-image" built in DC "us-sw-1".
 - Bob (login=bob, uuid=b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4).
 
+Alice shares her image "my-image" with Bob.
 
-## tl;dr
+    [alice]$ triton image share my-image b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4
+    Shared image 0965c1f4-6995-c095-ecb5-c1a80be2b08e (my-image@1.2.3) with
+        account b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4
 
-Alice transferring a *copy* of image "my-image" to Bob. (In the current
-proposal, Alice needs to know Bob's account UUID. This is to avoid a method by
-which account logins can be enumerated.)
-
-    [alice]$ triton image transfer my-image b0bac663-9f3b-4a55-9079-e6fa0d308e13
-    Copied image 0965c1f4-6995-c095-ecb5-c1a80be2b08e (my-image@1.2.3)
-        to image 6d1bd84b-7a32-4242-8350-e0cbe7d6cb1b (my-image@1.2.3)
-        owned by account b0bac663-9f3b-4a55-9079-e6fa0d308e13
+Bob can see the shared image (marked with the 'S' flag).
 
     [bob]$ triton image list
-    SHORTID   NAME      VERSION  OS       TYPE          PUBDATE
-    6d1bd84b  my-image  1.2.3    smartos  zone-dataset  2017-10-17
-    ...
+    SHORTID   NAME      VERSION  FLAGS   OS       TYPE          PUBDATE
+    6d1bd84b  my-image  1.2.3    S       smartos  zone-dataset  2017-10-17
+
+When provisioning the shared image, Bob must explicitly specify that he wants to
+allow provisioning of shared images (default is no).
+
+    [bob]$ triton create --allow-shared-images my-image some-package
+    SHORTID   NAME      VERSION  FLAGS   OS       TYPE          PUBDATE
+    6d1bd84b  my-image  1.2.3    S       smartos  zone-dataset  2017-10-17
+
+Bob can clone Alice's shared image into his own account, which gives Bob full
+control over the image.
+
+    [bob]$ triton image clone my-image
+    Cloned image id: 0965c1f4-6995-c095-ecb5-c1a80be2b08e
+
+The cloned image has a different id and is the original image is no longer
+shared with Bob.
+
+    [bob]$ triton image list
+    SHORTID   NAME      VERSION  FLAGS   OS       TYPE          PUBDATE
+    0965c1f4  my-image  1.2.3            smartos  zone-dataset  2017-10-17
 
 Alice copying image from us-sw-1 to us-west-1:
 
@@ -135,120 +142,66 @@ Alice copying image from us-sw-1 to us-west-1:
 
 ### x-account image clone
 
-How should giving ownership of an image to another account work?
-The naive first pass at this would be **just change the owner to the new
-account.** If an image is incremental you run into potential problems. Take
-this scenario:
+Cloning will need to take into account incremental images and public
+(operator provided) images. Take this scenario:
 
-- image ubuntu-14.04 (admin-owned, operator provided base image)
+- image ubuntu-14.04 (public, admin-owned, operator provided base image)
 - image A (custom image based on ubuntu-14.04, say it provides the JVM)
 - image B (based on A, say it provides Tomcat)
 - images C and D (service-specific images, each based on B)
 - Eng would like to transfer C and D to Ops
 
-If the implementation simply updated `owner` on images C and D, we need to
-decide what to do with images B and A on which they depend. If Ops was made
-owner of those, then the Eng account has lost access to those images for
-subsequent image building work. That's unacceptable. If images B and A were
-left alone, then the Ops account has incomplete access to images C and D.
-Eng could delete images B or A, breaking future provisions using C and D.
-That is also unacceptable.
+Cloning an image must clone all incremental (origin) images, but not the
+public (operator) provided images.
 
-Below we will consider moving away from incremental images (at least by
-default). However, they exist now and likely aren't completely going away.
-That means "just change the owner to the new account" isn't a candidate
-solution. Further, even if we only supported non-incremental images, it isn't
-clear that the account transferring the image would accept losing access to
-the image.
+When Eng shares image C with Ops, it will give Ops access to images B and A
+(they already have access to ubuntu-14.04).
 
-* * *
+When Ops clones image C, they get clones of images B and A as well.
 
-Other options:
+When Ops clones image D, they will get *new* clones of image B and A, which
+will be different to the cloned B and A images from cloned image C.
 
-1. **Create a clone of the image (and its non-admin-owned origin images) with a
-   new UUID** and assign *that* image to the new account owner.
-2. Create a new image that flattens any incremental origin layers of the
-   origin image, and assign *that* image to the new account owner.
+To avoid confusion, the cloned incremental images B and A will be marked as
+disabled, so they will not show up in Ops `triton images` listing, but will
+be visible as the image 'origin' and will still be accessible via
+`triton image` operations.
 
-The argument for #2 over #1 is that a set of origin images (i.e. images A
-and B) could be confusing for the receiving account. In our example, when
-Ops "received" a new "image C" (now with a new UUID), they would also see
-copies of images A and B in their `triton image list` output. If the image
-was flattened, then there wouldn't be any origin images to copy over. However,
-that flattening isn't trivial work to do for this transfer, so I'd prefer to
-avoid it.
+#### Incremental images
 
-**The proposal is as follows.** We acknowledge that the origin chain of
-incremental images is confusing to users and the expected benefit (size savings
-in transfer, because the bits in image A and image B may not need to be
-schlepped around as often) hasn't been justified. We propose to **change
-image creation to NOT be incremental by default.** This would bias custom
-images to being non-incremental: larger, but simpler to manage.
-And then **for cross-account image transfer, we'd do option #1** as described
-above.
-
-The expected *common case* would be x-account clone a non-incremental image.
-An image clone with a new UUID is created, and `image.owner` is set to the new
-account.
+We acknowledge that the origin chain of incremental images is confusing to users
+and the expected benefit (size savings in transfer, because the bits in image A
+and image B may not need to be schlepped around as often) hasn't been justified.
+We propose to **change image creation to NOT be incremental by default.** This
+would bias custom images to being non-incremental: larger, but simpler to
+manage.
 
 Another benefit of custom images being non-incremental is that they do not
 depend on operator-provided base images (e.g. minimal, base, etc.) which means
 that operators of a cloud do not *need* to ensure that all base images are
 identical in all DCs as a requirement for x-DC image copying.
 
-* * *
+#### Security
 
-Security considerations. So far the feature as described allows any account
-in the same cloud to add an image with any name@version to your list of
-images. If you are in the habit of using `triton instance create my-image ...`
-or equivalent -- i.e. using client tooling that identifies images by *name*
-for provisioning -- then there is a possible attack where an account can
-inject an image that you might later provision on your private network.
-Some guard against this is justified.
+Image sharing allows any account in the same cloud to add an image with any
+name@version to your list of images. If you are in the habit of using `triton
+instance create my-image ...` or equivalent -- i.e. using client tooling that
+identifies images by *name* for provisioning -- then there is a possible attack
+where an account can inject an image that you might later provision on your
+private network. To guard against this, shared images are not provisionable
+by default, and the user will need to explicitly allow provisioning from a
+shared image.
 
-To guard against this, the receiving account needs to one or more of:
+Note that I (Trent) got the impression from our last customer workshop that
+having to explicitly allow shared images before provisioning was considered too
+much of a burden. Here are some workaround options, and we would welcome
+hearing other opinions.
 
-- Explicitly trust the sending account to do this: i.e. grant permission to
-  specific accounts to transfer images to me.
-
-- Explicitly trust every transferred image: every transferred image goes into
-  a "not yet available for provisioning" bucket until some explicit action by
-  the receiver.
-
-  This is akin to the x-account clone process being a "publish" by the sender
-  and a "pull" by the receiver, except that the Triton imaging system doesn't
-  have a concept of an repository with access control to which customers can
-  publish images.
-
-I got the impression from our last customer workshop that the latter (having
-to explicitly accept every new image transferred before using for provisioning)
-was considered too much of a burden. However, I would welcome hearing opinions.
-
-Potential ways to implement this:
-
-1.  Triton could add support for an account config:
-    `image_clone_trusted_accounts` A receiver would have to explicitly do the
+1.  Triton could add support for an allowed shared account config:
+    `image_share_trusted_accounts` A receiver would have to explicitly do the
     following once:
 
-        triton account update image_clone_trusted_accounts=$uuid-of-allowed-sender
-
-2.  Transferred images could be tracked (with a new
-    `image.transferred_by=$account` manifest field) and client tooling that
-    allows identifying images by name (node-triton, triton-go, terraform) could
-    be written to require that the source account be specified when looking up
-    the image.
-
-    I'm not a big fan of this one. It puts a burden on existing client tooling.
-    For example, I don't have a feel for the impact on Terraform support to
-    require this.
-
-3.  Transferred images could have a new image state=cloned. The receiver
-    would have to `triton image accept-clone IMAGE...` to move it to
-    state=active to have it in the default set of listed images for
-    provisioning. This is an example of the latter "explicitly trust every
-    transferred image".
-
-So far my favourite is #1, but I welcome others' opinions.
+        triton account update image_share_trusted_accounts=$uuid-of-allowed-sharer
 
 
 ### x-DC image copy
@@ -270,18 +223,12 @@ DC *in the same cloud* (i.e. sharing an account database).
 A nice to have would be support (or sugar in tooling?) for copying a given
 image to *all*, or an explicit set of, other DCs.
 
-An original design of this feature discussed image copy being done involving
-IMGAPI (in the receiving DC) to CloudAPI (in the source DC) communication.
-After discussion it was decided to instead pursue direct IMGAPI-to-IMGAPI
-communication for transferring image data. The older proposal is in Appendix
-D below.
-
-For IMGAPI-to-IMGAPI communication, this adds an operational requirement that
-IMGAPI zones in each DC in a cloud can route to each other. Given this,
-x-DC copy ends up being similar to existing image import -- e.g. where a
-new image is imported in to the DC's IMGAPI from an external public image
-repository like <https://images.joyent.com> and <https://updates.joyent.com>.
-See the Milestones section below for implementation details.
+The x-DC copying will use IMGAPI-to-IMGAPI communication, this adds an
+operational requirement that IMGAPI zones in each DC in a cloud can route to
+each other. Given this, x-DC copy ends up being similar to existing image
+import -- e.g. where a new image is imported in to the DC's IMGAPI from an
+external public image repository like <https://images.joyent.com> and
+<https://updates.joyent.com>.
 
 
 ## Milestones
@@ -309,41 +256,47 @@ incremental image. Implementation notes:
   to node-triton and other clients.
 
 
-### M2: x-account image clone
+### M2: x-account image share
+
+<https://jira.joyent.us/browse/TRITON-116>
+
+- `triton image share $image $account` new command in node-triton.
+    - This command uses the existing CloudAPI.UpdateImage API to add the given
+      account uuid to the image ACL list.
+- `triton images` grows support to show shared images.
+    - Node-triton will use 'S' flag to mark shared images.
+
+### M3: x-account image clone
 
 <https://jira.joyent.us/browse/TRITON-53>
 
-See the design notes above for reasoning. This milestone is about the new
-support for x-account image clone. Implementation notes:
-
-- `triton image clone-to-account` new command (`clone` alias) and node-triton
-  library support.
-- New CloudAPI CloneImageToAccount that will call IMGAPI to do the work.
+- `triton image clone $image` new command and node-triton library support.
+    - Only shared images can be cloned
+- New CloudAPI CloneImage that will call IMGAPI to do the work.
   Ideally, given that there is no heavy bit moving here (we are just doing
   `ln` or `mln` of image files on the storage backend), I think this can be
   a synchronous endpoint, i.e. CloudAPI CloneImageToAccount doesn't return until
   the transfer is complete (either successfully or failed).
 - New IMGAPI CloneImageToAccount endpoint:
     - The image must be state=active
+    - The image.acl must include the given account (i.e. it is a shared image)
     - Gather the ancestry of the image to transfer
     - Ensure that all images in the ancestry to be transferred (all those
       up to the first image owned by 'admin', i.e. an operator-provided
-      image) *can* be transferred. It is possible that one of those images
-      is accessible to the original account, only because the account is
-      on the `image.acl`. Being on the image ACL implies read-only access to
-      the image, and should not convey the ability to create a copy of the
-      image on another account. If this situation is hit, it is an error.
+      image) *can* be transferred.
     - Working up from the base of the origin chain to be transferred:
         - copy the image manifests (owner=$newaccount, state=unactivated)
+            - image.acl must be deleted (they don't inherit the ACL)
+            - image.published_at is reset to the current date/time
         - copy the image files
-        - activate the images. Note that if a source image was state=disabled,
-          it should have that same state afterwards. In other words, it is
-          okay to transfer an image if one of its origin images is disabled
-          (disabled just means you can't provision that image).
-- Guards on calling CloneImageToAccount: TODO once a guard design is selected.
-- (TODO: consider this) Adding metadata to cloned images about the source
-  image. This isn't *required* for providing the functionality, however it could
-  be helpful for users to grok the source of images in `triton image list`.
+        - set state=disabled to all images in the origin chain (disabled just
+          means you can't provision that image)
+        - activate the image
+        - remove user from the shared image.acl, so the original image is no
+          longer shared with the user
+- Adding metadata to cloned images about the source image. This isn't *required*
+  for providing the functionality, however it could be helpful for users to grok
+  the source of images in `triton image list`.
     - Q: image.tags (quick hack) or top-level fields (less hacky, API
       versioning, more work)?
     - Q: track both source image UUID and source account? What about exposing
@@ -356,7 +309,7 @@ support for x-account image clone. Implementation notes:
       be useful for internal auditing.
 
 
-### M3: x-DC image copy
+### M4: x-DC image copy
 
 <https://jira.joyent.us/browse/TRITON-52>
 
@@ -364,8 +317,8 @@ Implementation notes:
 
 - If easier, we will error on incremental images for the first pass. The intent
   is to properly fully support incremental images for this milestone.
-- A new `triton image copy-from-dc ...` command.
-- a new CloudAPI CopyImageFromDc, which accepts an image UUID and a source DC
+- new `triton image copy-from-dc ...` command.
+- new CloudAPI CopyImageFromDc, which accepts an image UUID and a source DC
   name. The DC names match those from CloudAPI ListDatacenters.
 - CloudAPI calls IMGAPI ImportDcImage. IMGAPI looks for a local image with that
   UUID, and depending on `image.state`:
@@ -409,12 +362,12 @@ Dev Notes:
       Would we re-use the '$dc imgapi key'? Probably piggyback on that, yes.
 
 
-### M4: triton-go and terraform support for these new features
+### M5: triton-go and terraform support for these new features
 
 TODO: follow up with Go guys on this.
 
 
-### M5: client improvements for listing image usage
+### M6: client improvements for listing image usage
 
 (This section is incomplete.)
 
@@ -462,6 +415,16 @@ A command to see that image's full ancestry, given that it is incremental:
     55010197  my-origin              4.5.6    I      smartos  zone-dataset  2018-01-12
     00a3a25e  minimal-multiarch-lts  17.4.0   P      smartos  zone-dataset  2018-01-04
 
+Or perhaps a tree view of the images which shows the ancestry:
+
+    $ triton images --tree
+    SHORTID       NAME                   VERSION  FLAGS  OS       TYPE          PUBDATE
+    00a3a25e      minimal-multiarch-lts  17.4.0   P      smartos  zone-dataset  2018-01-04
+      55010197    my-origin              4.5.6    I      smartos  zone-dataset  2018-01-12
+        0965c1f4  my-image               1.2.3    I      smartos  zone-dataset  2018-01-12
+      2575ucf3    other-origin           3.5.0    I      smartos  zone-dataset  2018-02-27
+        49fc810a  other-image            1.0.3    I      smartos  zone-dataset  2018-03-10
+
 A command to go the other way to see what images build upon a given one:
 
     $ triton image children my-origin
@@ -482,39 +445,7 @@ Implementation notes:
 
 
 
-## Scratch
-
-### Open Qs and TODOs
-
-- What guard to implement for x-account image transfer? See the design
-  section for this.
-
-- Naming the action for transferring ownership of an image. Alice is giving Bob
-  a *copy* of the image. Alice retains the original. "share"? "transfer"? Some
-  other verb?)
-
-        ... publish?
-            [eng]
-            $ triton image create name=mex version=1.2.3
-            $ triton image publish mex@1.2.3
-        Publish to whom? Where? Who has access to that repo?
-        Publish directly to their account? This could be the verb instead of transfer.
-            $ triton image publish mex@1.2.3 bob
-
-    Angela suggested perhaps "clone". That isn't perfect either.
-
-    How about "CloneImageToAccount"?
-        CloudAPI CloneImageToAccount
-        CloudAPI CopyImage
-            Perhaps better than "CopyImageFromDc" because (a) AWS calls it
-            "CopyFoo" (https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/CopyingAMIs.html#copy-amis-across-regions)
-            and (b) this leaves it unspecified whether Triton images are DC
-            or region-specific. By "region" might come at a later date.
-
-    XXX x-DC copy naming is: "copy". "CopyRemoteImage" -> "IMGAPI ImportDcImage".
-        Q: what is cloudapi name?
-            triton image copy-from-dc ...
-            triton image cp ...             # alias
+## Open Qs and TODOs
 
 - Consider tracking the transfer source account and image UUID. A quick way
   to do this would be to define special *tags* for this. Tags would certainly
@@ -532,472 +463,3 @@ Implementation notes:
 
 - Nice to have: a way to list just *my* custom images easily (to see them from
   the noise of all the public ones)
-
-
-### Trent's scratch area
-
-(If you aren't Trent, you can ignore all this.)
-
-
-    triton imgs           # public and images I own
-    triton imgs -a|--all  # includes inactive image (state=all)
-
-How to show also shared ones, or *just* shared ones? Is the latter really
-that important?
-
-    triton imgs --shared  # also include shared ones? or *just* all shared ones?
-
-Try this:
-
-    triton imgs --shared  # *also* includes shared ones
-
-Is it weird that `triton imgs owner=$alice` can show things not in `triton imgs`
-default list?  Kinda, yes. So that also requires `--shared`:
-
-    triton imgs --shared owner=$alice
-
-To show a particular, UUID works:
-
-    triton img get UUID
-
-but by name you must specify from whom it is being shared?
-
-    alice=<alice's account uuid>
-    triton img get -S $alice cool-image
-
-
-    triton imgs -S
-
-    # how to only list shared ones?
-    triton imgs public=false 'owner!=me'   # too hard
-    # Could consider a 'shared=true'.
-    triton imgs
-
-    triton img get NAME[@VERSION]
-    triton inst create NAME[@VERSION] PACKAGE
-
-
-New "S" flag for shared images. This requires knowing the account uuid.
-Which means extra work if this is client side. Could easily do server side.
-
-
-TODO:
-- a way to unshare
-- a way to see with whom I've shared my images
-- what's the story for account uuid vs login
-
-
-## Appendices
-
-### Appendix A: out of scope
-
-From a review of competitors, Casey suggested in
-[discussion](https://github.com/joyent/rfd/issues/71#issuecomment-337149084)
-that transferring *ownership* of an image **not** be implemented.
-
-However in later discussions at the December workshop it was determined that
-it is image **sharing** (via the `image.acl`) that isn't needed, and that
-transfer of ownership *is* wanted. The use case for transfer of ownership
-is where an engineering or build group creates images for a given service,
-and transfers ownership of the image to a separate deployment ops account
-for deployment. Granted that in an AWS IAM model, these would just be
-subusers under a common account and the need for cross-account transfer would
-be less acute. However, we don't have RBACv2 right now.
-
-This means that for now, this RFD will no longer propose image *sharing*
-via `image.acl`.
-
-* * *
-
-In separate [discussion](https://github.com/joyent/rfd/issues/71) it was
-decided that the following is just *nice to have*: `triton image clone` so Bob
-can create a personal (owned) copy of Alice's shared image? That way he can be
-confident it won't be deleted out from under him if Alice deletes the image.
-Given that image sharing is now out of scope, this use case for `triton image
-clone` is moot.
-
-
-
-### Appendix B: share an image with other accounts
-
-(Note: This appendix is now *moot* because image sharing is now out of scope.
-See Appendix A.)
-
-We expose the ability to share a custom image with other accounts, while
-retaining ownership. Here "share" means read-only access to the image --
-GetImage, ListImages, provisioning. We say "expose" because this is what
-`image.acl` provides.
-
-    [alice]$ triton image share my-image bob
-    Image "my-image" shared with account "bob"
-
-    [alice]$ triton image get my-image
-    {
-        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
-        "name": "my-image",
-        "version": "1.0.0",
-        "owner": "a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef",
-        "owner_login": "alice",     // added this
-        ...
-        "shared_with": [            // not re-using "acl" for discussion
-            "bob"
-        ]
-    }
-
-    [bob]$ triton image list --shared
-    SHORTID   OWNER_LOGIN  NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
-    0965c1f4  alice        my-image   1.0.0    S      smartos  zone-dataset  2017-10-17
-    ...
-
-If Alice fat-fingers the account name to one that doesn't exist, it still
-"works":
-
-    $ triton image share my-image bib
-    Image "my-image" shared with account "bib"
-
-See the "Sharing using account *login* or *uuid*?" appendix below for some
-earlier debate on this functionality.
-
-TODO:
-
-- Still need to spec how to deal with treating shared images separately from
-  public and ones own images. Specifically for matching images by name
-  (a convenience provided by the `triton` CLI), e.g. when providing an image
-  by name for `triton instance create ...`. We want to avoid an attacker
-  being able to affect a user's use of, e.g.,
-  `triton create minimal-multiarch-lts ...`.
-
-
-Implementation notes:
-
-- IMGAPI's acl handling could be updated to support account *login* rather than
-  just UUID for `acl` valies. It would be a new v3 major API version, but we're
-  already doing API versioning, so that should be fine.
-- IMGAPI ListImages and GetImage for API v2 would elide the non-UUID entries
-  of `image.acl`.
-- CloudAPI GetImage and ListImages would add `owner_login`.
-  Q: Do we add `owner_login="admin"` for admin-owned images? We already *do*
-  expose the admin UUID with the `owner` field, FWIW.
-- Decide on the "shared_with" field name. If it maps directly to what IMGAPI
-  stores, then we could/should call it the same "acl" name.
-
-
-### Appendix C: Sharing using account *login* or *uuid*?
-
-(Note: This is now *moot* because image sharing is now out of scope.
-See Appendix A.)
-
-This section discusses the tradeoffs with the API speaking only in terms of
-account UUIDs or account login.
-
-We want to enable Alice (login=alice, uuid=a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef)
-to share here image (name=my-image) with Bob (login=bob,
-uuid=b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4). Here "share" means adding Bob's
-account UUID to the image's [acl](https://images.joyent.com/docs/#manifest-acl).
-
-
-#### take 1: only support account UUIDs
-
-Alice shares her image like this:
-
-    $ triton image share my-image c6512b9a-7835-4fbe-bbfd-8ecb5a7881c4  # typo
-    triton image share: error: account "c6512b9a-7835-4fbe-bbfd-8ecb5a7881c4" does not exist
-    $ triton image share my-image b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4
-    Image "my-image" shared with account "b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4"
-
-And she can see with whom she has shared a given image something like this:
-
-    $ triton image get my-image
-    {
-        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
-        "name": "my-image",
-        "version": "1.0.0",
-        "owner": "a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef",
-        ...
-        "acl": [
-            "b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4"
-        ]
-    }
-
-Then Bob can see the shared image via something like:
-
-    $ triton image list --shared
-    SHORTID   OWNER                                 NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
-    0965c1f4  a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef  my-image   1.0.0    S      smartos  zone-dataset  2017-10-17
-    ...
-
-
-Pros:
-- This is very straightforward to implement and the implementation would be
-  efficient because the semantics of sharing map directly to the current
-  [`image.acl`](https://images.joyent.com/docs/#manifest-acl) behaviour.
-
-Cons:
-- Getting and recognizing Bob's account UUID could be a burden for Alice.
-- Recognizing Alice's account UUID could be a burden for Bob.
-
-
-#### take 2: attempting to support login names
-
-It would be nice (for end users) if login names could be used instead (easy to
-communicate, remember, recognize):
-
-    $ triton image share my-image bob
-    Image "my-image" shared with account "bob"
-
-    $ triton image get my-image
-    {
-        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
-        "name": "my-image",
-        "version": "1.0.0",
-        "owner": "a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef",
-        "owner_login": "alice",     // added this
-        ...
-        "shared_with": [            // not re-using "acl" for discussion
-            "bob"
-        ]
-    }
-
-    # Bob
-    $ triton image list --shared
-    SHORTID   OWNER_LOGIN  NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
-    0965c1f4  alice        my-image   1.0.0    S      smartos  zone-dataset  2017-10-17
-    ...
-
-If Alice fat-fingers the account name:
-
-    $ triton image share my-image bib
-    triton image share: error: account "bib" does not exist
-
-*Problem:* This error message gives end users a way to test if a given login
-name exists. See [MANTA-3356](https://devhub.joyent.com/jira/browse/MANTA-3356)
-for why we don't want to allow that.
-
-A solution for this would be to not validate that given account login names
-exist. Instead they are just stored as given.
-
-    $ triton image share my-image bib
-    Image "my-image" shared with account "bib"
-
-    $ triton image get my-image
-    {
-        "id": "0965c1f4-6995-c095-ecb5-c1a80be2b08e",
-        "name": "my-image",
-        "version": "1.0.0",
-        "owner": "a45c9276-b8e1-11e7-90b1-6fc7cbadf3ef",
-        "owner_login": "alice",     // added this
-        ...
-        "shared_with": [    // the "shared_with" field name is up for discussion
-            "bob",
-            "bib"
-        ]
-    }
-
-Pros:
-- More convenient for Alice and Bob.
-
-Cons:
-- Less straightforward to implement. However, I don't think it is super
-  difficult.
-
-
-Dev Notes:
-- IMGAPI's acl handling could be updated to support account *login* rather than
-  just UUID for `acl` valies. It would be a new v3 major API version, but we're
-  already doing API versioning, so that should be fine.
-- IMGAPI ListImages and GetImage for API v2 would elide the non-UUID entries
-  of `image.acl`.
-- CloudAPI GetImage and ListImages would add `owner_login`.
-  Q: Do we add `owner_login="admin"` for admin-owned images? We already *do*
-  expose the admin UUID with the `owner` field, FWIW.
-- Decide on the "shared_with" field name. If it maps directly to what IMGAPI
-  stores, then we could/should call it the same "acl" name.
-
-
-### Appendix D: Old proposal for copying images x-DC that has IMGAPI talking to a remote CloudAPI
-
-(This is an old proposal. After discussion, the suggestion was to pursue direct
-IMGAPI-to-IMGAPI communication for transferring image data. For the current
-design, see the Milestones section above.)
-
-* * *
-
-The feature is to pull/copy one's own custom image (named "my-image") from one
-DC (us-sw-1) to another DC (us-west-1) in the same cloud.
-
-    # Usage:       triton image pull SOURCE-DC IMAGE
-    $ triton -p us-west-1 image pull us-sw-1   my-image
-    Pulling image 0965c1f4 (my-image) from datacenter us-sw-1.
-    [======>                ] ... progress ...
-
-Per usual, the `triton` CLI provides the sugar to map "my-image" to the actual
-image UUID.
-
-* * *
-
-Here is a proposed implementation plan for this. Names are all open for debate.
-My main questions are whether my "Assumption"s are reasonable and if the
-design seems sane.
-
-- `triton image pull` calls `us-west-1 CloudAPI PullImageFromDc`
-  and then maintains the connection and gets a stream of progress events
-  until the pull is complete.
-
-- `us-west-1 CloudAPI PullImageFromDc` passes on to its `IMGAPI PullImageFromDc`
-  to handle the pull (i.e. the smarts are in IMGAPI).
-
-The IMGAPI in the destination DC (us-west-1) gets the data it needs for the
-image from the source DC's (us-sw-1) *CloudAPI* as follows:
-
-- `us-west-1 IMGAPI PullImageFromDc` calls `us-sw-1 CloudAPI AdminGetImage`
-  (not the existing GetImage) to get the full unadulterated image manifest. This
-  call verifies the user owns the image and that the image is active. IMGAPI
-  authenticates as "admin" using the "$dcName imgapi key", which is already on
-  the admin user.
-
-  **Assumption 1**: Within a cloud (shared UFDS), the IMGAPIs can reach the
-  CloudAPI in the other clouds and can auth as "admin" on them.
-
-- `us-west-1 IMGAPI PullImageFromDc` calls `us-sw-1 CloudAPI AdminGetImageFile`
-
-    - `us-sw-1 CloudAPI AdminGetImageFile` calls its `IMGAPI
-      CreateImageFilePullUrl` which will:
-
-        - Create a snaplink of the image file to an export location in its
-          Manta area. E.g.:
-
-                mls /admin/stor/imgapi/us-sw-1/images/341/341ef22c-9b65-ecec-894a-ff8bb8133f77/file0 \
-                    /admin/stor/imgapi/us-sw-1/pulls/20171023/341ef22c-9b65-ecec-894a-ff8bb8133f77.file0.$req_id
-
-        - Create a signed URL (expiry <1d) to that pulls/... object and respond
-          with that URL.
-
-    - `us-sw-1 CloudAPI AdminGetImageFile` will then respond with an HTTP 307
-      redirect to the signed pull URL.
-
-    - `us-west-1 IMGAPI PullImageFromDc` will then:
-        - If it notices that the Manta URL is the same as its Manta storage,
-          attempt to `mln` that Manta object path. This is shortcut that will
-          greatly benefit a setup like JPC. Otherwise,
-        - download the image file from the signed URL
-
-    **Assumption 2**: Within a cloud, the IMGAPIs can reach the Manta area of the
-    other IMGAPIs.
-
-
-Notes:
-
-- This design requires that pulled images are stored in Manta. The feature is
-  intended for end-user custom images, which are typically stored in Manta, so
-  this should be fine. There is a "typically solely for development"
-  option to [allow custom images without a
-  Manta](https://github.com/joyent/sdc-imgapi/blob/master/docs/operator-guide.md#dc-mode-setup-enable-custom-image-creation-without-manta)
-  but not production TritonDCs should be using this.
-  `IMGAPI CreateImageFilePullUrl` will error out if the given image is not
-  stored in Manta.
-
-- If assumption #2 isn't true (IMGAPIs cannot reach the Manta area of other
-  DCs) for a DC we need to support, then we could handle that as follows.
-  Initially this work would be deferred.
-
-    - `us-west-1 IMGAPI PullImageFromDc` would be configured to used a param
-      to `us-sw-1 CloudAPI AdminGetImageFile` saying that redirects to its
-      Manta are not supported.
-
-    - `us-sw-1 CloudAPI AdminGetImageFile` would then stream the image file
-      via its `IMGAPI GetImageFile`.
-
-  Similarly, if a source DC knows that its Manta won't be externally accessible,
-  it can configure its `CloudAPI AdminGetImageFile` to always stream the image
-  file.
-
-- IMGAPI will need a reaper that cleans up $mantaArea/pulls/$day for days more
-  than 2 days old.
-
-
-* * *
-
-Sequence diagram for <https://bramp.github.io/js-sequence-diagrams/>
-See it rendered here: <https://gist.github.com/trentm/b02c6977c2cacfdb580a2b3c09fcf3a5>
-
-    # for https://bramp.github.io/js-sequence-diagrams/
-
-    title: Proposal for `triton image pull`
-
-    Note right of "triton image pull":*the INTERNET*
-
-    "triton image pull"->"us-west-1 CloudAPI":PullImageFromDc
-
-    "us-west-1 CloudAPI"->"us-west-1 IMGAPI":PullImageFromDc
-
-    Note right of "us-west-1 IMGAPI":*cross-DC network*
-
-    "us-west-1 IMGAPI"->"us-sw-1 CloudAPI":AdminGetImage
-    "us-sw-1 CloudAPI"-->"us-west-1 IMGAPI":image manifest
-    "us-west-1 IMGAPI"-->"triton image pull":{progress}
-
-    "us-west-1 IMGAPI"->"us-sw-1 CloudAPI":AdminGetImageFile
-    "us-sw-1 CloudAPI"->"us-sw-1 IMGAPI":CreateImageFilePullUrl
-    "us-sw-1 IMGAPI"-->"us-sw-1 CloudAPI":signed pull URL
-
-    "us-sw-1 CloudAPI"-->"us-west-1 IMGAPI":HTTP 307 to signed pull URL
-    Note over "us-west-1 IMGAPI":mln or download pull URL
-    "us-west-1 IMGAPI"-->"triton image pull":{progress}
-
-
-### Appendix E: language for x-DC image copy?
-
-What should the language be for the x-DC image copy feature?
-
-Thinking out loud:
-
-    triton pull REPO:IMAGE
-    triton pull DC IMAGE
-
-    sdc-imgadm import -S REPO IMAGE
-
-"Pull" intuition is about pulling from some external repository. When I'm
-making my image available throughout the same cloud... it feels less like a
-"pull" and more like "scp", i.e. "copy".
-
-"Sync"? Not bad, but it could imply there is a live syncing, which there is not.
-You need to explicitly re-copy if you want to transfer metadata changes after
-an earlier copy.
-
-"Copy"? This is the language AWS uses, and otherwise works for me.
-
-Winner: copy
-
-CloudAPI "CopyImage" or "CopyImageFromDc"? The former would be fine. There isn't
-any current overloading of "copy" for images. AWS language at
-<https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/CopyingAMIs.html#copy-amis-across-regions>
-specifies "region" in prose, but the commands (`copy-image`, `Copy-EC2Image`)
-don't. My bias is to be specific on balance, hence the winner is:
-`CloudAPI CopyImageFromDc`. Node-triton would have:
-
-    triton image copy-from-dc ...
-    triton image cp ...                 # shortcut alias
-
-
-### Appendix F: language for x-account image clone?
-
-What should the verb/language be for x-account image transfer/copy? The
-implementation is that a *clone* of the image is created for the target
-account -- with a new UUID. The original image remains unchanged for the sending
-account.
-
-Options:
-
-- `transfer` - The word "transfer" connotes that the sending account would no
-  longer have the image and that the receiving account would get an image with
-  an unchanged UUID.
-- `share` - Implies that both accounts get access to the same shared resource.
-- `copy` - Overloaded, `copy` is being used for x-DC image copying.
-- `clone` - Better. "Clone" implies a new UUID. It does not connote the transfer
-  to a new owner.
-- `clone to account`? We don't have to use a single word here.
-  `CloudAPI CloneImageToAccount`, `IMGAPI CloneImageToAccount`,
-  `triton image clone-to-account IMAGE ACCOUNT`,
-  `triton image clone IMAGE ACCOUNT` (alias).
-
-Winner: "clone to account"
