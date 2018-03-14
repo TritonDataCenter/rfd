@@ -20,29 +20,21 @@ functionality to make the following improvements to Triton custom images:
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
 
 
-- [Status](#status)
 - [Motivation](#motivation)
-- [Background](#background)
-- [tl;dr](#tldr)
+- [Related discussions](#related-discussions)
+- [IMGAPI refresher](#imgapi-refresher)
+- [Example](#example)
 - [Design discussion](#design-discussion)
   - [x-account image clone](#x-account-image-clone)
   - [x-DC image copy](#x-dc-image-copy)
 - [Milestones](#milestones)
   - [M1: make image creation *non*-incremental by default](#m1-make-image-creation-non-incremental-by-default)
-  - [M2: x-account image clone](#m2-x-account-image-clone)
-  - [M3: x-DC image copy](#m3-x-dc-image-copy)
-  - [M4: triton-go and terraform support for these new features](#m4-triton-go-and-terraform-support-for-these-new-features)
-  - [M5: client improvements for listing image usage](#m5-client-improvements-for-listing-image-usage)
-- [Scratch](#scratch)
-  - [Open Qs and TODOs](#open-qs-and-todos)
-  - [Trent's scratch area](#trents-scratch-area)
-- [Appendices](#appendices)
-  - [Appendix A: out of scope](#appendix-a-out-of-scope)
-  - [Appendix B: share an image with other accounts](#appendix-b-share-an-image-with-other-accounts)
-  - [Appendix C: Sharing using account *login* or *uuid*?](#appendix-c-sharing-using-account-login-or-uuid)
-  - [Appendix D: Old proposal for copying images x-DC that has IMGAPI talking to a remote CloudAPI](#appendix-d-old-proposal-for-copying-images-x-dc-that-has-imgapi-talking-to-a-remote-cloudapi)
-  - [Appendix E: language for x-DC image copy?](#appendix-e-language-for-x-dc-image-copy)
-  - [Appendix F: language for x-account image clone?](#appendix-f-language-for-x-account-image-clone)
+  - [M2: x-account image share](#m2-x-account-image-share)
+  - [M3: x-account image clone](#m3-x-account-image-clone)
+  - [M4: x-DC image copy](#m4-x-dc-image-copy)
+  - [M5: triton-go and terraform support for these new features](#m5-triton-go-and-terraform-support-for-these-new-features)
+  - [M6: client improvements for listing image usage](#m6-client-improvements-for-listing-image-usage)
+- [Open Qs and TODOs](#open-qs-and-todos)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
