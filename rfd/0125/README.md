@@ -1,6 +1,7 @@
 ---
 authors: Jan Wyszynski <jan.wyszynski@joyent.com>
 state: predraft
+discussion: https://github.com/joyent/rfd/issues/84
 ---
 
 <!--
