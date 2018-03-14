@@ -520,7 +520,31 @@ it is zero).
 
 ## Further Inquiry
 
-Testing (under load) is required to determine what sorts of schema changes are
-feasible in a production-like environment today. Any changes requiring table
-scans and significant and prolonged CPU and I/O stress must be filtered out,
-or approached in a different way.
+There seem to be two general approaches to addressing schema changes.
+
+One approach is to find existing mechanisms by which we can alter database
+objects with minimal service disruption. It should be clear that due to locking
+and I/O contention, this approach has serious limitations and may even preclude
+some types of changes. The efficiency of this approach will generally be a
+function of the size of the objects we try to alter schemas for.
+
+* Immediate further inquiry for this approach involves testing under load to
+determine which schema changes are feasible.
+
+The other approach is a versioning approach. Instead of trying to change
+existing objects, we create new objects to replace the old ones. This approach
+requires careful coordination to ensure that consumers of the Manta continue to
+see Manta behave normally except in the cases where the schema change affords
+new functionality or is made as part of an intentional API modification.
+
+* Immediate further inquiry for this approach involves testing whether old and new
+objects can be synchronized well under load. An important question to answer
+here is whether we want active synchronization (long running background
+processes) or lazy synchronization (triggers on each new request for records
+living in objects with outdated schemata).
+
+With buckets on the horizon ([RFD
+  116](https://github.com/joyent/rfd/blob/master/rfd/0116/README.md)), we may
+want to consider whether we can generalize the approaches described here to
+different datastores. We may also want to factor in schema change feasibility
+when evaluating new datastores.
