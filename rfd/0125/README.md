@@ -19,7 +19,8 @@ discussion: https://github.com/joyent/rfd/issues/84
 
 ## Overview
 
-This RFD will propose an online schema change system for Manta.
+This RFD will propose an online schema change system for the existing
+Moray/Postgres metadata tier in Manta.
 
 A schema change in Manta is a modification to any part of the database structure
 that Moray is aware of. This includes, but is not limited to: tables, sequences,
