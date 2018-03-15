@@ -38,7 +38,7 @@ simulating incidents in a controlled non-production environment, where engineers
 wishing to practice incident response could develop their incident response
 skills in a low-risk environment.
 
-This RFD proposes This RFD proposes sets of concrete steps for responding to an
+This RFD proposes sets of concrete steps for responding to an
 incident in a production Manta deployment.  For the most part, this generally
 fleshes out what much of the team is already doing.  This RFD proposes one
 change from the current process, which is the introduction of the role of
@@ -103,12 +103,14 @@ in the context of the incident.  **The IC should be empowered to step away from
 direct investigation as long as needed to keep a handle on the overall direction
 and what people are working on.**
 
-**Picking an Investigation Coordinator.**  To keep the process lightweight, it's
-important that the IC be technical enough to infer what people are working on
-based on their reports in chat (instead of having to ask everybody what they're
-doing).  However, it's not necessary that the IC be one of the more experienced
-or senior members of the team -- in fact, just about any member of the technical
-team can take on this role.
+**Picking an Investigation Coordinator.**  It is important that the IC be
+technical enough to understand what people are working on during the
+investigation without a lot of additional explanation, but it is not necessary
+that the IC be among the most experienced or senior members of the team.  In
+fact, taking on the IC role is an excellent learning opportunity for more junior
+members of the team: Summarizing others' work during an investigation can
+often be educational on its own, both in increasing understanding of the Manta
+stack and learning techniques for investigating incidents.
 
 An investigation coordinator should be selected as soon as engineering is
 engaged in incident response (or sooner, if other groups decide to adopt the
@@ -151,7 +153,9 @@ When you're paged for an incident (and you're able to respond):
 1. Acknowledge the incident in PagerDuty. (XXX should that be "resolve"?)
 2. Join the appropriate chat channel ("incidents-jpc" or "incidents-spc").
 3. Determine whether there's already an _engineering investigation coordinator_
-   already.  If not, work (quickly) with other investigators to choose one.
+   already.  If not, work (quickly) with other investigators to choose one.  (If
+   you are the first person to respond to an incident, proceed with the intial
+   steps documented above until more people respond.)
 4. Proceed to help understand and mitigate the problem.
 
 
@@ -183,20 +187,22 @@ channel to them, check with them that the problem seems to be resolved.
 incident, it's important to save any terminal output or the list of core files
 or other output files that were created.
 
-**Nominate someone to provide a brief, immediate update on the INC or SCI
-ticket** that includes a summary of the symptoms, the believed causes, the
-mitigating actions, and the reason we believe the incident is resolved.  (The
-intended audience might be a separate team that gets paged in 3 hours for what
-might seem like the same problem.)  This sounds like a lot, but it can be very
-short.  For example: "The customer reported a 20% throughput degradation.  We
-tracked this to a handful of electric-moray processes, and we believe excessive
-CPU utilization resulted in high latency outliers that caused the overall
-reduction in throughput.  We restarted these instances and confirmed that
-throughput has been restored to the pre-incident level."
+**The IC should ensure someone is nominated to provide a brief, immediate update
+on the INC or SCI ticket** that includes a summary of the symptoms, the believed
+causes, the mitigating actions, and the reason we believe the incident is
+resolved.  (The intended audience might be a separate team that gets paged in 3
+hours for what might seem like the same problem.)  This sounds like a lot, but
+it can be very short.  For example: "The customer reported a 20% throughput
+degradation.  We tracked this to a handful of electric-moray processes, and we
+believe excessive CPU utilization resulted in high latency outliers that caused
+the overall reduction in throughput.  We restarted these instances and confirmed
+that throughput has been restored to the pre-incident level."
 
 **Nominate individuals to file tickets for any new issues found and write up a
 detailed summary of the incident.**  This should include as much raw data as
-possible.
+possible.  If issues associated with existing tickets are found, those tickets
+should also be updated to link to the INC or SCI ticket, as well as any relevant
+data from the investigation.
 
 
 ## General guidance for investigation and mitigation
