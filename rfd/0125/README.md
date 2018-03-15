@@ -62,11 +62,27 @@ implementation to use for fields of the corresponding types. The mapping is
 defined
 [here](https://github.com/joyent/moray/blob/master/lib/types.js#L20-L71).
 
+Another important distinction should be drawn between Moray and Postgres
+'re-indexing'. In Postgres, re-indexing is implemented as a the SQL command
+`REINDEX`. This command is intended to be used to repair corrupt indexes,
+free space held by bloated indexes, and apply certain Postgres storage tunables
+associated with indexes. `REINDEX`s are not concurrent and will interfere with a
+production workload.
+
+In Moray, reindexing is an operation used to make sure the existing indexes on
+buckets are being used for as many objects as possible. Specifically, if an
+`updateBucket` adds a new index to a bucket, *new* objects added to the table
+will be indexed, but *old* objects will not. In order to add old objects to the
+new index, a 'reindex' operation is issued to re-write (`UPDATE`) those objects
+to the bucket with an updated version identifier so they are incorporated into
+the new index. Generally, such reindexing operations need to be batched
+appropriately to prevent slowing down other traffic directed to the bucket.
+
 Indexes are used to implement efficient object search and uniqueness constraints
 for certain endpoints in Moray's API. They are generally defined on bucket
 creation. Indexes may be created later, but doing so will require objects that
-existed in the bucket prior to the index creation to be re-indexed. Reindexing
-can be an expensive operation which locks out writes to the target bucket.
+existed in the bucket prior to the index creation to be re-indexed before the
+new index can be used.
 
 Currently, Manta's Moray uses `BTREE` indexes on single top-level fields. There
 are other types of indexes exposed by Postgres including multi-column or
@@ -79,13 +95,14 @@ Each Moray bucket created via the Moray API with a corresponding `SEQUENCE`
 named `<bucket-name>_serial`. This sequence is used to assign increasing
 integer ids to objects in the bucket as they are inserted.
 
-The implementation of Moray currently includes a mechanism that allows an
-operator to observe the order in which two requests happened by comparing the
-values of `_txn_snap` for two rows in a bucket. These values are drawn from a
-single-row table called `<bucket-name>_locking_serial` using the Postgres
-`SELECT FOR UPDATE` mechanism, and updated with an incremented value after a new
-object is inserted or updated. It's unclear whether this feature is used in any
-Manta deployments.
+The implementation of Moray currently includes a mechanism that is *intended* to
+allow an operator to observe the order in which two transaction occurred by
+comparing the values of `_txn_snap` for two rows in a bucket. The actual
+implementation doesn't allow such deductions because the Moray query that is
+used assign values in this column makes no garuantees about the order in which
+two parallel transactions are started or the order in which they were committed.
+[MORAY-13](https://jira.joyent.us/browse/MORAY-13) has some discussion related
+to this feature that suggests it doesn't support its intended use-case in Marlin.
 
 #### Triggers
 
@@ -322,6 +339,8 @@ severely disrupt and or hinder the datapath.
 
 ### Potential Schema Changes
 
+#### Moray
+
 In the current implementation, a bucket schema from Morays perspective consists
 of the following fields:
 
@@ -343,6 +362,8 @@ of the following fields:
 * `mtime` a timestamp indicating the last time the bucket configuration was
   modified.
 Each of these fields should be considered candidates for schema changes.
+
+#### Postgres
 
 From the perspective of Postgres, the are a number of other schema changes we
 might potentially be able to make. Some of these may overlap with the above.
@@ -389,9 +410,14 @@ multiple retries and are highly sensitive to an incoming workload.
     * Requires a `SHARE ROW EXCLUSIVE` lock.
     * Does not delete the physical backing for the trigger.
 
-It should be noted that if we choose to support schema changes that affect
-fields from both of these sets, we may need to restructure the way a schema is
-represented in `buckets_config` itself.
+#### Priorities
+
+While we may end up supporting the larger set of potential schema changes
+described in this section, we will prioritize those changes that we have
+evident need for:
+* Creating an index concurrently
+* Dropping an index concurrently
+* Adding a column
 
 ## Possible Implementations
 
@@ -457,6 +483,12 @@ There are some considerations that stand out with this approach. These include:
    remain in sync with the actual database schemata.
 6. Can Moray always know whether a given schema change is expensive?
 
+One downside of changing `buckets_config` is that it will require Moray changes
+to use the new configuration, which doesn't allow a Moray with the schema change
+system to run alongside a Moray without it. We could avoid this problem by
+recording schema change metadata in a separate table. This way it wouldn't
+matter that some Morays are oblivious to the change.
+
 One of the constraints described in this RFD is that it should be easy to add
 schema changes and run Morays that are aware of certain possible schema changes
 next to Morays that aren't aware of them. For this reason, we'll need to make
@@ -465,14 +497,25 @@ to it. One example of a change that might give rise to this situation is
 `pgIndexDisabled`, as proposed in MORAY-424. Some Morays may know about this
 schema option, others may not.
 
-One downside of changing `buckets_config` is that it will require Moray changes
-to use the new configuration, which doesn't allow a Moray with the schema change
-system to run alongside a Moray without it. We could, instead of changing `buckets_config`,
-introduce a new one-to-many relation that tracks various schemas for a given
-bucket by version number. This would allow us to store a longer history of
-bucket schema changes. In terms of implementation details, this method would not
-be that much different, though it would require some extra metadata to identify
-the target schema for a transition.
+These considerations can be summarized in two questions that should be posed
+for each potential schema change option:
+
+1. How should a Moray process that is unaware of this option react when it
+   appears in a schema description of a `buckets_config` row?
+2. Are there schema change options that Morays cannot afford to be unaware of?
+
+Object operations on buckets in Moray [only require valid
+json](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L806-L813).
+The Moray index schema is currently only validated in the `createBucket` and
+`updateBucket` paths, which means that the Moray source only needs to be updated
+for Morays that intend to initiate schema changes while the others may continue
+to run. The Morays that would remain oblivious to schema changes may, as a
+result of incomplete information about the actual structure of indexes in
+Postgres, suffer a performance penalty if they are unable to properly enforce
+index requirements for API operations like `findobjects`. However, since the
+structure of indexes is orthogonal to the SQL that Moray emits we should see
+schema changes that are intended to improve performance, improve performance for
+all Morays.
 
 ### Schema Versioning
 
