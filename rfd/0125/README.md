@@ -519,6 +519,68 @@ trigger that migrates an object when it is next read. The trigger would need to
 be able to check the size of the table quickly (or at least determine whether
 it is zero).
 
+#### Design
+
+Given the possible approaches above, there are, broadly speaking, two possible
+structures that an online schema change component could reasonably assume in
+Manta.
+
+1. It could be a module in Moray.
+2. It could be a separate SAPI service.
+
+In option 1, schema change requests become part of the Moray buckets API. The
+advantages of option 1 include:
+
+1. Moray already has schema definitions for tables that are managed with ajv.
+2. Moray already has support for operations like re-indexing.
+3. Any online schema change system we implement will already require some
+   additions to Moray, since it is the primary means by which objects are read
+   and written to Postgres in Manta.
+
+The disadvantages of option 1 include:
+
+1. Moray is supposed to be a stateless component, but migrations are inherently
+   stateful operations. For example, a concurrent index creation will require a
+   retry in the event that a contraint is violated in the process. If we did
+   implement schema changes in Moray, we'd have to ensure that a change would
+   complete in the face of potentially many Morays restarting or getting EOL'd.
+   This could be tough.
+2. Moray is an often-hot component of the datapath in Manta. It is not uncommon
+   to see a Moray process reach its connection limit and induce 503s at the
+   front door in production. Allowing user-facing API operations to influence
+   migrations in this way seems hazardous from a security perspective,
+   particularly because the end state of a schema change permanently influences all
+   future requests.
+3. Coupling this system with Morays may make it more difficult to generalize
+   across multiple data-stores. This may be a relevant concern in the future,
+   especially given RFD 116.
+4. It would go contrary to the design of Moray to have a Moray process of one
+   shard talk to Postgres primaries in other shards. In order to kick off a
+   concurrent schema change across multiple shards, an operator would have to
+   query many Morays, each of which would then have to query their respective
+   primaries.
+
+In option 2, we implement a new SAPI service that talks directly to Postgres.
+The advantages of option 1 include:
+
+1. The new service is not tied to any particular shard, and could kick off
+   operations simultaneously across all shards in the DC, or it could do so
+   serially.
+2. Moray queues would not block schema change requests.
+3. The new service would have the option of caching migration state information
+   about schema changes in a separate data store to avoid affect the state of
+   the data path.
+4. Assuming schema changes don't happen too frequently, the benefit of bundling
+   the logic into a separate SAPI service is that it would be possible to deploy
+   and undeploy the service as needed.
+
+The disadvantages of option 2 include:
+
+1. Since Morays are still a source of inbound traffic, a new SAPI service would
+   still need to communicate schema changes with Morays in some way. This may or
+   may not be a harder synchronization problem than the one described in the
+   disadvantages of option 1.
+
 ## Further Inquiry
 
 There seem to be two general approaches to addressing schema changes.
