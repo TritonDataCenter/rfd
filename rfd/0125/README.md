@@ -172,7 +172,7 @@ as follows:
 count_directories AFTER INSERT OR DELETE ON manta FOR EACH ROW EXECUTE PROCEDURE
 count_manta_directories_v3()
 ```
-At a high level, this trigger is used to udpate a count, the `entries` column, of
+At a high level, this trigger is used to update a count, the `entries` column, of
 the number of metadata records in Manta with `_key` fields whose dirname
 corresponds to a given `_key` in the `manta_directory_counts` table.
 
@@ -186,6 +186,7 @@ which all Manta traffic directed towards Postgres is mediated by Moray. Requests
 involving such modification fall into two categories:
 1. Changes initiated by an operator.
 2. Changes initiated by Manta proper.
+
 The first category includes requests that alter the structure of buckets
 created by the operator via the Moray buckets
 [API](https://github.com/joyent/moray/blob/master/docs/index.md#buckets). Such
@@ -246,6 +247,7 @@ composite indexes to adress the use-case described in the previous ticket.
 disabling Moray indexes to adress the use-case described in MANTA-3399.
 It is clear from these examples that we can expect to change our database schema
 over time.
+
 
 ## Proposal
 
@@ -456,6 +458,7 @@ Once `buckets_config` is updated, any number of failures could occur:
 1. Postgres could fail.
 2. The initiating Moray process could abort.
 3. The schema change query could fail.
+
 Since we cannot predict any of these happening all other Moray processes must be
 able to detect when a schema change has failed, and what must be done to
 complete it. The only logically correct way to do this is to track the query
