@@ -565,7 +565,7 @@ trigger that migrates an object when it is next read. The trigger would need to
 be able to check the size of the table quickly (or at least determine whether
 it is zero).
 
-#### Design
+## Design
 
 Given the possible approaches above, there are, broadly speaking, two possible
 structures that an online schema change component could reasonably assume in
@@ -626,6 +626,186 @@ The disadvantages of option 2 include:
    still need to communicate schema changes with Morays in some way. This may or
    may not be a harder synchronization problem than the one described in the
    disadvantages of option 1.
+
+## Test Plan
+
+Regardless of which direction we move in, we'll want to understand how different
+kinds of schema changes affect Manta's performance. In particular, we'll want to
+understand the impact of the following operations on a Manta table of size
+comparable to those that live in our production environments:
+
+1. Creating an index
+2. Dropping an index
+3. Adding a column
+
+### Setup
+
+At the bare minimum, we'll want all datapath components of Manta deployed in a
+multi-CN environment with a networking setup as similar as possible to that of
+production. Today in Ashburn we have:
+
+* 207 webapi zones
+* 87 electric-moray zones
+* 303 moray zones
+* 291 postgres zones (97 shards)
+
+Since we want a shard that is isolated from jobs tier storage and traffic, the
+testing environment should have two shards. Using that as an anchor, by rough
+approximation of the ratios above the test deployment should have
+* 3 webapi zones
+* 2 electric-moray zones
+* 6 moray zones
+* 6 postgres zones
+
+We may decide to scale these out based on measurements gathered during testing.
+
+To simulate a real workload, we'll want to generate PUT/GET requests
+from a node outside of Manta (a CN on which there are no Manta zones deployed).
+We can then 'pick off' datapath components and direct load at each one to see
+what kind of throughput each 'suffix' of the datapath is capable of handling.
+
+#### Measurements
+
+The measurements we'll want to take fall into two broader categories. The first
+concerns the performance of requests before, during, and after a schema change.
+In this category, we'll want to measure at least:
+1. Read request latency (ns)
+2. Write request latency (ns)
+3. Read request throughput
+    * Requests completed per second
+    * Gigabytes of data read per second
+4. Write request throughput
+    * Requests completed per second
+    * Gigabytes of data written per second
+
+The second category concerns measuring the performance of the schema change
+itself. In this category we'll want to measure at least:
+1. Schema change latency
+    * Time to between start and completion of schema change query
+2. Schema change I/O and memory footprint
+    * Postgres zone `iostat` data (time-series)
+    * Moray queueing (`moraystat.d`)
+3. Schema change CPU footprint
+    * `prstat` data for relevant node processes (time-series)
+    * `mpstat` data for CNs running data-path components (time-series)
+
+We should also deploy an LX zone running Prometheus to keep track of Postgres
+[statistics
+views](https://www.postgresql.org/docs/10/static/monitoring-stats.html) and
+Muskie metrics during all tests.
+
+#### Tools
+
+We'll want to measure the performance of various requests for each suffix of the
+data-path. In order to do this, we'll need to make sure we have clients that are
+capable of sending requests at each of these levels. There are some general
+constraints for these tools:
+
+1. Since we are evaluating only the metadata tier, any API PUTs should not write
+   actual object data.
+2. The tools should not break Manta due to metadata inconsistency. We ought to
+   be able to use them interchangeably to perform different tests on the same
+   Manta deployment.
+3. We'll want to limit the scope of the workload to simple PUTs and GETs to the
+   metadata tier.
+
+
+##### Loadbalancers
+
+To run load against the loadbalancers, we can use a simple node program that
+uses the node-manta APIs to send requests with a configurable concurrency. This
+could be a simple modification over
+[manta-mlive](https://github.com/joyent/manta-mlive) that doesn't write any
+object data. Load generators targeted at each the loadbalancers or Muskie should
+ensure that PUTs are for zero-byte objects, as Muskie is a shark client.
+
+##### Muskie
+
+Whatever tool is used to direct load at the loadbalancer should be usable with
+Muskie as well. Previous metadata tier evaluations have found that load
+generators directed at Muskie are susceptible to performance hits for a variety
+of reasons:
+1. Muskie must
+   [enforce](https://github.com/joyent/manta-muskie/blob/master/lib/obj.js#L940)
+   proper directory counts for all object PUTs
+2. Muskie will,
+   [query](https://github.com/joyent/manta-muskie/blob/master/lib/picker.js#L195)
+   the `manta_storage` table to refresh the set of storage zones it knows about.
+3. Muskie must perform an
+   [additional read](https://github.com/joyent/manta-muskie/blob/master/lib/server.js#L338)
+   of the parent key for each GET and PUT it recieves.
+
+For these reasons, Muskie should not be used with workloads that aim to saturate
+the metadata tier.
+
+##### Electric-moray
+
+[manta-mdshovel](https://github.com/joyent/manta-mdshovel) has been used as an
+electric-moray client in previous metadata tier evaluations. Using
+electric-moray ensures that all metadata records have appropriately assigned
+vnode numbers. There are a couple of concerns associated with the use of
+manta-mdshovel for general load-generation:
+
+1. The master branch in the mdshovel repo produces metadata without
+   references to valid storage zones. Previous experiments have shown this to be
+   safe as far as future experiments in the same deployment are concerned.
+2. The fact that mdshovel repo doesn't write entries in storage zones means that
+   it is difficult to estimate the Manta object count using methods relying on
+   directory listing in storage nodes. However, manta-mdshovel can be (and has
+   been -- see the `dev-sharks` branch) easily extended to make such object
+   estimation methods possible again.
+3. The default manta-mdshovel workload is to simultaneously write many entries
+   to a single 'large' directory, and many subdirectories containing a single
+   directory to another 'small' directory. Since this workload uses uuids in
+   object paths, it targets many different shards in a multi-shard deployment.
+   In some cases, it may be useful to target a particular shard (mdshovel has,
+   again, been modified to serve this purpose -- see the `single-shard` branch).
+4. manta-mdshovel does perform directory count
+   [checks](https://github.com/joyent/manta-mdshovel/blob/one-shard/bin/mdshovel#L354)
+   which can impact load generation intended to simply to fill the `manta`
+   table.
+
+##### Moray
+
+There are currently no well-known Moray-client load generation tools. The only
+extra information that electric-moray adds to an incoming PUT is the vnode
+number which could be sourced by random sampling from a list of valid vnodes
+(fed in via command line), or by reading the hash ring directly.
+
+manta-mdshovel could be modified to use node-moray instead of node-libmanta.
+This modification would also require:
+1. Sourcing vnodes differently
+2. Connecting to the Moray zones in a given shard on start up (the same way
+   electric-moray does).
+
+This modification could branch of the manta-mdshovel `dev-sharks` branch so that
+we could continue to track object counts.
+
+##### Postgres
+
+We can also bypass Moray and write a load-generation tool that issues the same
+SQL that Moray emits on `putObject` and `getObject` RPCs with randomized inputs.
+The challenge here is to make sure we emulate Moray properly.
+
+#### Procedure
+
+1. Deploy Manta with the setup described in the **Setup** section.
+2. Ideally, we would fill shard 2 so that its `manta` table is roughly the size
+   we see in production. In the past, we've used manta-mdshovel as an
+   electric-moray client to try to accomplish this, but found that it takes
+   prohibitively long. Whatever method is used in these experiments, its purpose
+   is to fill up a shard as fast as possible.
+3. Run a production-like workload, collecting the metrics described in
+   **Measurements** section. It's unclear just yet how long we'll run this
+   workload, but its purpose is to establish baseline performance
+   characteristics of a Manta that is not undergoing schema change.
+4. Maintaining the workload from step 3, start a schema change on the shard 2
+   primary. Note the time.
+5. Once the schema change started in step 4 completes, note the time and
+   continue running the workload started in step 3 until the metrics described
+   in the **Measurements** section stabilize.
+6. Repeat steps 3-5 with all suffixes of the data path, using the appropriate
+   tool in each case.
 
 ## Further Inquiry
 
