@@ -276,10 +276,9 @@ avenues of schema changes.
 1. Schema changes must be atomic with respect to inbound requests to a
    particular shard. If a shard transitions from schema A to B, requests must
    use either schema A, or schema B.
-2. Schema changes should be transactional with respect to inbound requests.
-   Requests should not fail before, after, or during the transition. If a schema
-   change fails to transition from schema A to B, the shard should revert to
-   using schema A.
+2. Ideally, requests should not fail before, after, or during the a schema
+   change. If a schema change fails to transition from schema A to B, the shard
+   should revert to using schema A.
 3. Schema changes must not cause request failures due to incompatibility. If a
    shard transitions from schema A to B, no request sent after the transition should
    fail because it depends on schema A.
@@ -367,38 +366,72 @@ Each of these fields should be considered candidates for schema changes.
 
 #### Postgres
 
+The discussion below refers frequently to various locks held by schema change
+operations at the Postgres level. In Postgres, locks are defined in terms of
+which other locks they conflict with. For a summary of the conflict matrix see
+[this](https://www.postgresql.org/docs/9.6/static/explicit-locking.html) (the
+conflict matrix is the same for versions 9.2 and 9.6). In particular, the
+`ACCESS EXCLUSIVE` lock conflicts with every other lock, meaning that no other
+access to the table in question is allowed.
+
 From the perspective of Postgres, the are a number of other schema changes we
 might potentially be able to make. Some of these may overlap with the above.
 * Dropping an index.
-    * A standard `DROP INDEX` operation takes an exclusive lock on the
-      associated relation, making it infeasible in a production environment.
-      Such an operation would also need to run in a transaction. For this
-      reason, we can only consider `DROP INDEX CONCURRENTLY`.
+    * A standard `DROP INDEX` operation takes an `ACCESS EXCLUSIVE` lock on the
+      associated relation, making it infeasible in a production environment
+      since this lock conflicts with all other operations directed towards the
+      table. Such an operation would also need to run in a transaction. For this
+      reason, we can only consider `DROP INDEX CONCURRENTLY`, which will wait
+      for conflicting transactions to complete.
     * We cannot drop unique indexes or primary keys concurrently.
+    * There appear to be no major differences in the documentation for versions
+      [9.2](https://www.postgresql.org/docs/9.2/static/sql-dropindex.html) and
+      [9.6](https://www.postgresql.org/docs/9.6/static/sql-dropindex.html).
 * Creating an index.
-    * A standard `CREATE INDEX` operation blocks writes, but allows reads.
+    * A standard `CREATE INDEX` operation blocks concurrent writes, but allows
+      reads.
     * `CREATE INDEX CONCURRENTLY` does not block write operations. Creating an
       index concurrently is implemented as follows:
         * One transaction to add index metadata to system tables.
-        * Two table scan transactions each blocking on concurrent transactions
+        * Two table scan transactions, each blocking on concurrent transactions
           which may modify the indexes.
         * After the second scan the operation must wait for transactions holding
           snapshots predating the second scan to terminate.
-    * An index created concurrently may not be available for immediate use and
-      may need to wait for transactions predating the start of the index build
-      to terminate.
-    * Concurrent index builds may discover constraint violations and will leave
-      behind partially constructed indexes. These indexes do not interfere with
-      the operation of the database, but may take up substantial disk space.
-      Fixing such broken indexes would require retrying the concurrent build, or
-      performing an expensive `REINDEX` operation in a transaction.
-Concurrent index builds are a fickle, expensive operations that can require
-multiple retries and are highly sensitive to an incoming workload.
+    * An index created concurrently may not be available for immediate use.
+      Consumers may need to wait for transactions predating the start of the
+      index build to terminate.
+    * Introducing an index with a constraint using `CREATE INDEX CONCURRENTLY`
+      implies that the constraint will start being enforced against concurrent
+      transactions once the second table scan begins.
+    * Concurrent index builds may fail, in which case they leave behind an
+      'invalid' index which cannot be used for queries. If an index is created
+      with a constraint, and the index build fails after the second table scan
+      begins, **the constraint is still enforced by the invalid index**.
+    * There appear to be no significant differences in the concurrent index
+      creation documentation for versions
+      [9.2](https://www.postgresql.org/docs/9.2/static/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY)
+      and
+      [9.6](https://www.postgresql.org/docs/9.6/static/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY).
 * Dropping a table column.
+    * Dropping a table column
+      [requires](https://github.com/joyent/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2899)
+      an `ACCESS EXCLUSIVE` lock.
     * Without running a `VACUUM FULL` this operation doesn't get rid of the heap
       space taken up by the column, it just marks the column as invisible.
 * Adding a table column.
-    * This requires an `ACCESS EXCLUSIVE` lock.
+    * Adding a table column
+      [requires](https://github.com/joyent/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2866)
+      an `ACCESS EXCLUSIVE` lock.
+    * Whereas Postgres 9.6 supports the `IF NOT EXISTS` modifier for adding a
+      column, 9.2 does not.
+    * Despite grabbing an access exclusive lock, this operation is supposed to
+      be efficient provided that the new column has either no default, or a
+      default value of NULL
+      ([source](https://github.com/joyent/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L4914-L4918)
+      -- 'phase three' refers to the phase of the alter table pipeline that
+checks constaints and potentially
+      [re-writes](https://github.com/joyent/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2736-L2737)
+      data)
 * Changing a column type.
     * This requires an `ACCESS EXCLUSIVE` lock.
     * This also updates dependent indexes and table constraints.
@@ -409,8 +442,10 @@ multiple retries and are highly sensitive to an incoming workload.
     * Deleting constraints that depend on indexes will also drop the
       corresponding index.
 * Enabling/disabling a trigger.
-    * Requires a `SHARE ROW EXCLUSIVE` lock.
+    * Requires a `SHARE ROW EXCLUSIVE` lock. This lock mode protects against
+      concurrent data changes in the target table.
     * Does not delete the physical backing for the trigger.
+
 
 #### Priorities
 
@@ -630,13 +665,28 @@ The disadvantages of option 2 include:
 ## Test Plan
 
 Regardless of which direction we move in, we'll want to understand how different
-kinds of schema changes affect Manta's performance. In particular, we'll want to
-understand the impact of the following operations on a Manta table of size
-comparable to those that live in our production environments:
+kinds of schema changes affect Manta's performance before we implement a system
+for managing them. In particular, we'll want to understand the impact of the
+following operations on a Manta table of size comparable to those that live in
+our production environments:
 
 1. Creating an index
 2. Dropping an index
 3. Adding a column
+
+Before implementing a schema change system, we need to answer two questions:
+1. What performance-enhancing schema changes exist? Are there enough of them out
+   there to justify building an online schema system?
+2. What is the effect of such schema changes on an incoming workload?
+
+Answering question may require some amount of trial-and-error on production
+hardware to confirm expectations about what schema changes will boost
+performance. It seems reasonable that we'd want to get rid of indexes that are
+often written, but rarely read. The [postgres statistics
+collector](https://www.postgresql.org/docs/9.6/static/monitoring-stats.html) has
+some useful views.
+
+The steps/descriptions below outline how we might go about answering (2).
 
 ### Setup
 
@@ -767,19 +817,12 @@ manta-mdshovel for general load-generation:
 
 ##### Moray
 
-There are currently no well-known Moray-client load generation tools. The only
-extra information that electric-moray adds to an incoming PUT is the vnode
-number which could be sourced by random sampling from a list of valid vnodes
-(fed in via command line), or by reading the hash ring directly.
-
-manta-mdshovel could be modified to use node-moray instead of node-libmanta.
-This modification would also require:
-1. Sourcing vnodes differently
-2. Connecting to the Moray zones in a given shard on start up (the same way
-   electric-moray does).
-
-This modification could branch of the manta-mdshovel `dev-sharks` branch so that
-we could continue to track object counts.
+[manta-mdshovel](https://github.com/joyent/manta-mdshovel) can also point
+directly at a Moray zone, bypassing electric-moray. However, manta-mdshovel was
+not intended to generate valid metadata, so surprising behavior may ensue if
+reads are issued for objects that are written with mdshovel. There may be some
+work to do to modify mdshovel so that we can use it to generate readable
+objects.
 
 ##### Postgres
 
