@@ -1,6 +1,7 @@
 ---
 authors: Jordan Hendricks <jhendricks@joyent.com>, David Pacheco <dap@joyent.com>
-state: predraft
+state: draft
+discussion: https://github.com/joyent/rfd/issues?q="RFD+124"
 ---
 
 <!--
