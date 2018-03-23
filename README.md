@@ -141,7 +141,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 95 Seamless Muppet Reconfiguration](./rfd/0095/README.md) |
 | draft | [RFD 96 Named thread API](./rfd/0096/README.md) |
 | draft | [RFD 97 Project Hookshot - Improved VLAN Handling](./rfd/0097/README.md) |
-| predraft | [RFD 98 Issue Prioritisation Guidelines](./rfd/0098/README.md) |
+| predraft | [RFD 98 Issue Prioritisation Guide](./rfd/0098/README.md) |
 | publish   | [RFD 99 Client Library for Collecting Application Metrics](./rfd/0099/README.md) |
 | draft    | [RFD 100 Improving lint and style checks in JavaScript](./rfd/0100/README.md) |
 | draft | [RFD 101 Models for operational escalation into engineering](./rfd/0101/README.md) |
@@ -162,7 +162,8 @@ formal writing that it has come to represent.)
 | predraft | [RFD 116 Manta Bucket Exploration](./rfd/0116/README.md) |
 | predraft | [RFD 117 Network Traits](./rfd/0117/README.md) |
 | draft    | [RFD 118 MAC Checksum Offload Extensions](./rfd/0118/README.md)
-| predraft | [RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md) |
+| predraft | [RFD 119 The attached_networks Attribute for Fabric Networks](./rfd/0119/README.md)
+| abandoned | [RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md) |
 | predraft | [RFD 121 bhyve brand](./rfd/0121/README.md)
 | draft    | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md)
 | predraft | [RFD 123 Online Manta Garbage Collection](./rfd/0123/README.md)

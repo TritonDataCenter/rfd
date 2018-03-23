@@ -1,6 +1,6 @@
 ---
 authors: Dan McDonald <danmcd@joyent.com>
-state: predraft
+state: abandoned
 discussion: https://github.com/joyent/rfd/issues/73
 ---
 
@@ -15,6 +15,10 @@ discussion: https://github.com/joyent/rfd/issues/73
 -->
 
 # RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)
+
+# NOTE:  Due to reasons of scalability of one router zone per customer per
+# CN, and that it appears competitors place some forwarding logic deeper into
+# their VXLAN fabrics, this RFD is being abandoned.
 
 ## Problem Statement
 
