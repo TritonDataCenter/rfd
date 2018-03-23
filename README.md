@@ -141,7 +141,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 95 Seamless Muppet Reconfiguration](./rfd/0095/README.md) |
 | draft | [RFD 96 Named thread API](./rfd/0096/README.md) |
 | draft | [RFD 97 Project Hookshot - Improved VLAN Handling](./rfd/0097/README.md) |
-| predraft | [RFD 98 Issue Prioritisation Guide](./rfd/0098/README.md) |
+| predraft | [RFD 98 Issue Prioritisation Guidelines](./rfd/0098/README.md) |
 | publish   | [RFD 99 Client Library for Collecting Application Metrics](./rfd/0099/README.md) |
 | draft    | [RFD 100 Improving lint and style checks in JavaScript](./rfd/0100/README.md) |
 | draft | [RFD 101 Models for operational escalation into engineering](./rfd/0101/README.md) |
@@ -167,7 +167,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 121 bhyve brand](./rfd/0121/README.md)
 | draft    | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md)
 | predraft | [RFD 123 Online Manta Garbage Collection](./rfd/0123/README.md)
-| predraft | [RFD 124 Incident Response Guidelines](./rfd/0124/README.md)
+| draft    | [RFD 124 Manta Incident Response Guide](./rfd/0124/README.md)
 | predraft | [RFD 125 Online Schema Changes in Manta](./rfd/0125/README.md)
 | draft    | [RFD 126 Zone Configuration Conversions](./rfd/0126/README.md)
 | predraft | [RFD 127 In-process Brand Hooks](./rfd/0127/README.md)
