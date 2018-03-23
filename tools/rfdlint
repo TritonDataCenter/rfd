@@ -79,7 +79,8 @@ cat > $tmp <<EOF
 		exit 1;
 	}
 
-	if (state != "publish" && state != "draft" && state != "predraft") {
+	if (state != "publish" && state != "draft" && state != "predraft" &&
+	    state != "abandoned") {
 		printf("$prog: illegal state '%s' for RFD %s\n", \$2, rfd);
 		exit 1;
 	}
