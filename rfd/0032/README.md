@@ -131,5 +131,6 @@ with multiple addresses. If multiple addresses are requested on a NIC, VMAPI
 will check if the provisioned NIC contains the `addresses` field. If it doesn't,
 then it will fail the VM provision and release the provisioned NICs.
 
+<!-- Other RFDs -->
 [RFD 11]: ../0011
 [RFD 43]: ../0043
