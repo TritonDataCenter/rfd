@@ -171,6 +171,8 @@ formal writing that it has come to represent.)
 | predraft | [RFD 125 Online Schema Changes in Manta](./rfd/0125/README.md)
 | draft    | [RFD 126 Zone Configuration Conversions](./rfd/0126/README.md)
 | predraft | [RFD 127 In-process Brand Hooks](./rfd/0127/README.md)
+| draft    | [RFD 128 VXLAN Tunneling Performance Improvements](./rfd/0128/README.md)
+
 
 
 ## Contents of an RFD
