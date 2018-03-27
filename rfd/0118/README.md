@@ -58,7 +58,7 @@ information to determine whether a checksum will be calculated in
 software or if it will be calculated in hardware.
 
 Drivers can currently indicate the following flags. These flags are
-documented in [`mac(9E)`](http://illumos.org/man/9e/mac): 
+documented in [`mac(9E)`](http://illumos.org/man/9e/mac):
 
 * `HCKSUM_IPHDRCKSUM`: This indicates that the calculation of a checksum
 of an IPv4 header can be offloaded
@@ -94,7 +94,7 @@ consumers such as DLS, IP, viona, etc.
 Today there are two major issues that we want to bring up.
 
 1. Support for VXLAN encapsulation checksum offload
-2. Clarifying the `HCKSUM_INET_FULL_*` values.
+2. Clarifying the `HCKSUM_INET_FULL_V*` and `HCKSUM_INET_PARTIAL` values.
 
 The first issue is that we want to have the ability to leverage hardware
 checksum offload for encapsulation protocols. Modern hardware has the
@@ -108,30 +108,31 @@ optional to set a checksum in the UDP header. However, if one does, then
 the checksum must be validated.
 
 The second issue is somewhat related. Today, when we have the
-`HCKSUM_INET_FULL_V4` and `HCKSUM_INET_FULL_V6` flags we do not indicate
-the set of L4 protocols that are considered by these. The issue comes to
-the forefront when hardware supports different sets from what the
-operating system expects.
+`HCKSUM_INET_FULL_V4`, `HCKSUM_INET_FULL_V6` and `HCKSUM_INET_PARTIAL` flags
+we do not indicate the set of L4 protocols that are considered by these.
+The issue comes to the forefront when hardware supports different sets from
+what the operating system expects.
 
 The four L4 checksums that come up most often are the ones we mentioned
 earlier: TCP, UDP, ICMP, and SCTP. Of these, the OS implies that those
 values mean TCP, UDP, and ICMP. However, while most hardware supports
 TCP and UDP checksum offload, the same is not true for ICMP. For
-example, drivers like `qede` do not support ICMPv6 checksum offload.
+example, the `qede` driver does not support ICMPv6 checksum offload and
+the `i40e` driver does not support partial checksum calculation for ICMP.
 
 ## Proposals
 
-### Dealing with `HCKSUM_INET_FULL_*`
+### Dealing with `HCKSUM_INET_FULL_V*` and `HCKSUM_INET_PARTIAL`
 
-To deal with the issue around what does `HCKSUM_INET_FULL_V4` and
-`HCKSUM_INET_FULL_V6` mean, I propose that we clarify things in the
-manual page to specifically say that these only refer to the TCP and UDP
-protocols.
+To deal with the question around what does `HCKSUM_INET_FULL_V4`,
+`HCKSUM_INET_FULL_V6` and `HCKSUM_INET_PARTIAL` mean, I propose that we
+clarify things in the manual page to specifically say that these only apply
+to the TCP and UDP protocols.
 
 This does mean that there are some drivers that currently provide ICMP
-checksum support that will be missing out. However, the percentage of
+checksum support which will be missing out. However, the percentage of
 traffic that is ICMP and the corresponding cost for such drivers will be
-minimal. In addition, we should add two new flags to cover ICMP.
+minimal. In addition, we should add three new flags to cover ICMP.
 
 * `HCKSUM_INET_FULL_ICMPv4`
 
@@ -143,10 +144,15 @@ packets.
 This indicates that hardware supports checksum offload for IPv6 ICMP
 packets.
 
+* `HCKSUM_INET_PARTIAL_ICMP`
+
+This indicates that hardware supports partial checksum offload for ICMP
+packets.
+
 These could also be extended to cover SCTP in a similar fashion by
-adding `HCKSUM_INET_FULL_SCTPv4` and `HCKSUM_INET_FULL_SCTPv6`. Or if
-some future IPv4 protocol has hardware checksum offload support, we can
-indicate it in a similar way.
+adding `HCKSUM_INET_FULL_SCTPv4`, `HCKSUM_INET_FULL_SCTPv6` and
+`HCKSUM_INET_PARTIAL_SCTP`. Or if some future IPv4 protocol has hardware
+checksum offload support, we can indicate it in a similar way.
 
 One nice side effect of this is that it does not impact the set of flags
 that we need to offer to use with `mac_hcksum_get(9F)` or
