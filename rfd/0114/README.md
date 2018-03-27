@@ -91,8 +91,10 @@ here is to add the following fields to sysinfo (example for an NVIDIA "GV100
     "Assignable Devices" [
         {
             device: "1db4",
-            id: "0:134:0:0",
+            id: "/devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0",
             revision: "a1",
+            subsystem: "1214",
+            subvendor: "10de",
             vendor: "10de"
         },
         ...
@@ -101,10 +103,11 @@ here is to add the following fields to sysinfo (example for an NVIDIA "GV100
 }
 ```
 
-The format of the `id` field is open for discussion, but should include at
-least the PCI bus, device and function numbers since these are needed when
-doing PCI passthrough. Here it also includes the PCI domain. See "Open
-Questions" section below.
+The format of the `id` field should be enough to uniquely identify this device
+across reboots assuming the physical hardware does not change. Changes in
+hardware such as replacing one card with a different card are not handled here.
+Those will be assumed for now to require updating all VMs on the CN that are
+using the replaced device.
 
 It will be up to the sysinfo tool to determine which devices should be included
 in the "Assignable Devices" array.
@@ -132,7 +135,7 @@ unchanged fields):
     ...
     "assignable_devices": [
         {
-            id: "0:134:0:0",
+            id: "/devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0",
             type: "gpu",
             variant: "NVIDIA_GPU_GEN1"
         }
@@ -196,7 +199,7 @@ device from previous examples, if that were assigned to this LX VM, we'd see:
 
 ```
 "fb91c72c-8c05-eeeb-c076-f1b5eb132fd0": {
-  "assigned_devices": ["0:134:0:0"],
+  "assigned_devices": ["/devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0"],
   "uuid": "fb91c72c-8c05-eeeb-c076-f1b5eb132fd0",
   "owner_uuid": "06cfb495-1865-4cc2-a3f6-6d17920dcf7c",
   "quota": 25,
@@ -237,7 +240,7 @@ something like:
 ```
 {
     ...
-    "assigned_devices": ["0:134:0:0"],
+    "assigned_devices": ["/devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0"],
     ...
 }
 ```
@@ -296,18 +299,6 @@ How this will interact with moray and indexes is not yet worked out in detail.
 
 ## Open Questions
 
-### What form should we use for device identifiers?
-
-Options include at least:
-
- * `<domain>:<bus>:<device>:<function>`
- * `<domain>:<bus>:<device>.<function>`
- * /devices path to the device
-
-but other suggestions are welcome. This identifier will be used to match
-available devices with used devices and also used for generating cmdline
-parameters for PCI passthrough.
-
 ### Do we need changes to images/image fields?
 
 Since we will be using bhyve rather than KVM, do we need to make any changes to
@@ -322,6 +313,28 @@ See `Packages` section above for some more discussion of the issues here.
 
 For example, CNAPI could have endpoints for managing mappings between device
 types and variant names?
+
+### How do we make sure it's safe to use a device that was previously assigned to another customer
+
+When a VM has a device assigned and that VM is deleted, we want to make sure
+we've done what's necessary to "clean" the device before it gets assigned to
+another VM. Things here might include:
+
+ * resetting firmware
+ * zeroing memory
+ * making sure that if VM adds a zpool to a disk device it doesn't get imported by the host
+
+### Should we expose location info, and how?
+
+It was pointed out that device location info like:
+
+```
+"CPU2 SLOT2"
+```
+
+would be helpful to have. Should we include that information for devices in the
+sysinfo? If so: how should we gather and display it? If not: should we show it
+anywhere?
 
 ## Other ideas/things that are being investigated
 
