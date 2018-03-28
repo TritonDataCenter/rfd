@@ -173,6 +173,9 @@ There are several properties of cross-DC routing that guide the solution here:
 - MAC addresses aren't guaranteed to be unique across datacenters, so we can't
   rely on the MAC address of the destination host to map 1-to-1 to an underlay
   IP.
+- Destination subnets are not guaranteed to be unique to a datacenter. (For
+  example, each user has a `My-Fabric-Network` in each datacenter in a region
+  today, each one using the 192.168.128.0/22 subnet.)
 
 To get around these, we will use a special MAC address to determine whether we
 need to inspect the destination IP address (which we can then use to find the

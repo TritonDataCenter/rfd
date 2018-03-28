@@ -34,8 +34,8 @@ Datacenters will be represented as an object with the following attributes:
 # Regions Representation
 
 A region is a group of datacenters that are geographically close to each other,
-and have been grouped together to provide a service (such as Manta). A region
-has the following attributes:
+and have been grouped together to provide a service (such as Manta). A datacenter
+can only belong to a single region. A region has the following attributes:
 
 - `"name"`, the name of the region (e.g. `"us-east"`)
 - `"datacenter"`, an array of datacenters in the region (e.g. `[ "us-east-1", "us-east-2", "us-east-3" ]`)
