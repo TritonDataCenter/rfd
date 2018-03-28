@@ -58,7 +58,7 @@ network object. It will be an array of Triton network UUIDs that VMs on the
 network are able to route to. (For people moving from AWS, this is akin to a VPC
 Route Table.) For now, only fabric networks owned by the same customer will be
 allowed to be attached to a fabric network, but with the introduction of Remote
-Network Objects (see [RFE 2]) and someday AUTHAPI (see [RFD 48]),
+Network Objects (see [RFE 2] and [RFD 130]) and someday AUTHAPI (see [RFD 48]),
 cross-customer, cross-region, and non-Triton peers can be reachable as well.
 
 ### NAPI Changes
@@ -75,7 +75,9 @@ NAPI fabric networks will now have a new property: `attached_networks`.  The
 `attached_networks` property consists of an array of network UUIDs. The
 networks must be owned by same owner as the containing fabric network. When a
 network has other networks attached to it, we will adjust the `"routes"` table
-to include entries for each attached subnet.
+to include entries for each attached subnet. (Using static routes for each
+destination subnet interacts more nicely with existing instances that have a
+primary NIC on the internet and are using its gateway as their default route.)
 
 There are two classes of fabric networks that can be attached to a network, and
 affect the routes that get created for it. There are fabrics that are located on
@@ -181,7 +183,7 @@ the special MAC address being used on the destination fabric network.
 To help the SVP plugin, we will pass additional arguments to `create-overlay`
 (which currently come from booter):
 
-- `dcid`, the local datacenter identifier
+- `dcid`, the local datacenter identifier from DCAPI (see [RFD 131])
 - `svp/router_oui`, the prefix used in the fabric router MAC address
 
 ### Portolan Changes
@@ -318,3 +320,5 @@ Key: `vnet_id,vlan_id,subnet,r_subnet`
 <!-- Other RFDs -->
 [RFD 28]: ../0028
 [RFD 48]: ../0048
+[RFD 130]: ../0130
+[RFD 131]: ../0131
