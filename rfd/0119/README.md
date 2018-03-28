@@ -183,8 +183,8 @@ the special MAC address being used on the destination fabric network.
 To help the SVP plugin, we will pass additional arguments to `create-overlay`
 (which currently come from booter):
 
-- `svcp/dcid`, the local datacenter identifier
-- `svcp/router_oui`, the prefix used in the fabric router MAC address
+- `dcid`, the local datacenter identifier
+- `svp/router_oui`, the prefix used in the fabric router MAC address
 
 ### Portolan Changes
 
