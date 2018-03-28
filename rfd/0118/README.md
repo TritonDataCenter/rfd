@@ -170,7 +170,7 @@ support for VXLAN encapsulation. Inner L4 only refers to TCP and UDP.
 |--------|----------|----------|----------|----------|-------|
 | bnxt | yes | yes | yes | yes | no illumos driver |
 | cxgbe | yes* | yes* | yes* | yes* | Pending verification |
-| i40e | yes | yes | yes | no* | Outer L4 only supported on X722 MAC |
+| i40e | yes | yes | yes | no* | Outer L4 only supported on X722 MAC, Partial Checksums |
 | ixgbe | yes* | yes* | yes* | no* | Only supported on X550 MAC |
 | mlx4x | yes* | yes* | yes* | yes*  | no illumos driver, pending verification |
 | mlx5x | yes* | yes* | yes* | yes* | no illumos driver, pending verification |
@@ -211,17 +211,24 @@ the following:
 There is no checksum in an IPv6 header. However, this indicates that
 an L3 IPv6 header can be understood by the hardware.
 
-* `HCKSUM_VXLAN_FULL_NO_OL4`
+* HCKSUM_VXLAN_PSEUDO
 
-This is similar to the `HCKSUM_VXLAN_FULL`; however, there is no support
+This is similar to `HCKSUM_VXLAN_FULL`; however, both the inner and
+outer L4 checksums require that the psuedo-header be calculated and
+filled into the checksum field. This is similar to, but distinct from
+the traditional HCKSUM_INET_PARTIAL. Importantly, we don't end up being
+able to retreive all the fields that we woul from `HCKSUM_INET_PARTIAL`.
+
+* `HCKSUM_VXLAN_PSEUDO_NO_OL4`
+
+This is similar to the `HCKSUM_VXLAN_PSEUDO`; however, there is no support
 for offloading the checksum of the outer L4 header and instead, the
 checksum must be calculated on its own.
 
-Finally, there are no partial checksum flags or non-verified checksum
-flags present here. The intent is to only support the full header
-checksums that are completely validated by the OS at this time. If
-hardware comes along that requires this mode, then we can add support
-for this.
+Finally, there are no non-verified checksum flags present here. The
+intent is to only support the full header checksums that are completely
+validated by the OS at this time. If hardware comes along that requires
+this mode, then we can add support for this.
 
 We must add a few more flags to the `mac_hcksum_get(9F)` and
 `mac_hcksum_set(9F)` family of functions. First, we suggest that we
@@ -247,6 +254,13 @@ calculate the inner IPv4 header checksum. This is the equivalent of
 * `HCK_INNER_FULLCKSUM_NEEDED`: Indicates that the hardware must
 calculate the inner L4 header checksum. This is the equivalent of
 `HCK_FULLCKSUM`.
+
+* `HCK_INNER_PSEUDO_NEEDED`: Indicates that the hardware must calculate
+the inner L4 header checksum. While this is similar to
+`HCK_PARTIALCKSUM`; however, while the driver requires that the pseudo
+header be present in the L4 checksum, the driver does not require any of
+the other fields from to be available in the data block for performing
+checksum offload.
 
 
 To round this off, we may need to add additional support functions.
