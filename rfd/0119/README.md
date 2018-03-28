@@ -1,5 +1,6 @@
 ---
-authors: Dan McDonald <danmcd@joyent.com>
+authors: Jason King <jbk@joyent.com>, Rui Loura <rui@joyent.com>, Dan
+McDonald <danmcd@joyent.com>, Cody Mello <melloc@joyent.com>
 state: predraft
 discussion: https://github.com/joyent/rfd/issues/88
 ---
@@ -112,20 +113,22 @@ When fetched from NAPI, the field will look something like:
 }
 ```
 
-Note that when a network appears in an `"attached_networks"` array, then it will
-also contain its own mirroring `"attached_networks"` entry, to guarantee that
-two networks are always mutually routable and help prevent users from
-accidentally configuring a network to pass traffic in one direction but
-forgetting to do so in the other.
+Note that when a Triton network appears in an `"attached_networks"` array,
+then it will also contain its own mirroring `"attached_networks"` entry, to
+guarantee that two networks are always mutually routable and help prevent
+users from accidentally configuring a network to pass traffic in one
+direction but forgetting to do so in the other.  Remote Networks (see next
+section) that are not Triton instances may not be able to provide similar
+guarantees about network knowledge.
 
 Since attaching networks together requires changes to instance routing tables,
 the work for this RFD will depend on the [RFD 28] work being done, too.
 
 ### Representing Remote Networks Locally
 
-When a network is attached locally, we will import the properties about it that
-we need to know locally and assign it a local UUID. When fetched from NAPI, it
-will look like:
+When a remote network is attached locally, we will import the properties
+about it that we need to know locally and assign it a local UUID. When
+fetched from NAPI, it will look like:
 
 ```
 # sdc-napi /networks/410fc93e-957a-4344-9112-ec17d5a946b5 | json -H
@@ -141,8 +144,10 @@ will look like:
 }
 ```
 
-In the future `"remote"` may be used to indicate other kinds of remote networks,
-possibly reachable through some kind of authenticated tunnel.
+In the future `"remote"` may be used to indicate other kinds of remote
+networks, possibly reachable through some kind of authenticated tunnel or
+other method.  Remote Network Objects are discussed in more depth in [RFD
+130].
 
 #### Tracking Changes
 
@@ -181,7 +186,9 @@ To get around these, we will use a special MAC address to determine whether we
 need to inspect the destination IP address (which we can then use to find the
 UL3 information), whether we need to rewrite the VL2 information, and what VNET
 identifier to use. We will also need to change the source MAC address to match
-the special MAC address being used on the destination fabric network.
+the special MAC address being used on the destination fabric network. This
+MAC address is assigned to the `"overlay_router"` IP address mentioned
+earlier.
 
 To help the SVP plugin, we will pass additional arguments to `create-overlay`
 (which currently come from booter):
