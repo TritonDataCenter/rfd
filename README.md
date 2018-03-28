@@ -172,6 +172,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 126 Zone Configuration Conversions](./rfd/0126/README.md)
 | predraft | [RFD 127 In-process Brand Hooks](./rfd/0127/README.md)
 | draft    | [RFD 128 VXLAN Tunneling Performance Improvements](./rfd/0128/README.md)
+| predraft | [RFD 129 Manta Performance Bottleneck Investigation](./rfd/0129/README.md)
 
 
 
