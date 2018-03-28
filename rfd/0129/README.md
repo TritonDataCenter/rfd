@@ -1,6 +1,7 @@
 ---
 authors: Tim Kordas <tim.kordas@joyent.com>
 state: predraft
+discussion: https://github.com/joyent/rfd/issues/89
 ---
 
 <!--
@@ -125,9 +126,16 @@ We have had great success with the pg_prefaulter reducing WAL-apply
 lag in our replicated Postgres setup, are there other aspects to our
 replication setup which are impacting performance ?
 
-- Are we limited by the wal-transport ?
+- During shard async-rebuild latency increases substantially, what is
+the limiting resource during rebuild ?
+ - network ?
+- Can the latency impact of async-rebuild be mitigated easily ?
+- During normal operation are we throughput-limited by the wal-transport ?
 - Are there tuneables available for improving performance of
-  replication ?
+replication ?
+ - full_page_writes (turning *off* should reduce volume of WAL)
+ - wal_compression (turning *on* should reduce volume of WAL)
+ - wal_log_hints (turning *off* should reduce volume of WAL)
 
 #### Other
 
@@ -138,6 +146,8 @@ performance ?
 
 ### Moray
 
+- Metrics from large production deployment
+ - median/p90/p99 latencies for requests
 - For a single Moray-instance, what is the upper bound on the number
 of requests it can perform against the database ?
  - create
@@ -151,6 +161,8 @@ We have seen Electric-moray "mis-route" work such that a very heavily
 loaded Moray is assigned more work when there are other Morays in the
 same shard that have no work.
 
+- Metrics from large production deployment
+ - median/p90/p99 latencies for requests
 - Can we measure the distribution of work assigned to Moray instances
 by an Electric-Moray instance ? (we currently collect little
 performance data from deployed Electric-moray instances).
@@ -164,11 +176,17 @@ between shards ?
 
 ### Muskie
 
+- Metrics from large production deployment
+ - median/p90/p99 latencies for requests
 - How many requests per second (for each endpoint) does Muskie receive
 in production ?
 - How fast can Muskie complete requests for zero-duration Moray
 requests ?
-- What are the intrinsic rate limits per Muskie-instance on create/delete/update of objects ?
+- What are the intrinsic rate limits per Muskie-instance on
+create/delete/update of objects ?
+- How many requests execute for a complete manta-put of a particular
+  object. That is /dirA/dirB/dirC/dirD/objABCD likely involves a
+  series of putdir requests followed by a putobj request)
 
 ### Other services
 
@@ -191,15 +209,25 @@ limits have been hit.
 
 #### Authcache/Mahi
 
+- Metrics from large production deployment
+ - median/p90/p99 latencies for requests
 - What are the limits in Mahi to the number of requests ?
 - Is Mahi caching effective ?
 - Are there any important edge cases to Mahi caching ?
 
 #### Loadbalancer
 
+- Metrics from large production deployment
+ - median/p90/p99 latencies for requests
 - Are there important limits to the number of external-IPs in the
   A-record for the manta-loadbalancer (related to DNS above, but
   externally-facing).
+
+#### Additional measurements
+
+- Metrics from large production deployment
+ - median/p90/p99 latencies by shard
+ - request rate by shard
 
 ### Tools
 
