@@ -173,6 +173,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 127 In-process Brand Hooks](./rfd/0127/README.md)
 | draft    | [RFD 128 VXLAN Tunneling Performance Improvements](./rfd/0128/README.md)
 | predraft | [RFD 129 Manta Performance Bottleneck Investigation](./rfd/0129/README.md)
+| predraft | [RFD 130 The Triton Remote Network Object](./rfd/0130/README.md)
 
 
 
