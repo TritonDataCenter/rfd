@@ -1,6 +1,5 @@
 ---
-authors: Jason King <jbk@joyent.com>, Rui Loura <rui@joyent.com>, Dan
-McDonald <danmcd@joyent.com>, Cody Mello <melloc@joyent.com>
+authors: Jason King <jbk@joyent.com>, Rui Loura <rui@joyent.com>, Dan McDonald <danmcd@joyent.com>, Cody Mello <melloc@joyent.com>
 state: predraft
 discussion: https://github.com/joyent/rfd/issues/88
 ---
