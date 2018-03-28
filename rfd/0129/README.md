@@ -77,9 +77,9 @@ frontend order.
 
 ### Postgres/Manatee
 
-- How many transactions per second are production deploys capable of
+* How many transactions per second are production deploys capable of
 performing ?
-- Are non-moray benchmarking tools helpful for testing our Postgres
+* Are non-moray benchmarking tools helpful for testing our Postgres
   instances (e.g. pgbench or others).
 
 #### Autovacuum
@@ -88,13 +88,13 @@ We have observed autovacuum operations on manta database tables (especially
 xid-wraparound autovacuum) having a deleterious effect on manta
 performance.
 
-- Can we demonstrate the impact on manta-object creation performance
+* Can we demonstrate the impact on manta-object creation performance
 in a test rig ?
-- Can the autovacuum cost limit/delay tuneables mitigate impact ?
+* Can the autovacuum cost limit/delay tuneables mitigate impact ?
 (what are appropriate values for such tuneables)
-- What is the mechanism by which autovacuum causes impact on manta
+* What is the mechanism by which autovacuum causes impact on manta
   work (IO starvation ?)
-- Does the impact of xid-wraparound autovacuum differ appreciably from
+* Does the impact of xid-wraparound autovacuum differ appreciably from
 ordinary autovavuum ?
 
 #### SSD vs. HDD
@@ -103,10 +103,10 @@ We have preliminary results which are disappointing; and which
 indicate that random-IO is not the limiting factor for manta postgres
 storage.
 
-- What are the bottlenecks on our HDD-based database storage ?
-- Do SSDs help when faced with competing workloads (e.g. make the
+* What are the bottlenecks on our HDD-based database storage ?
+* Do SSDs help when faced with competing workloads (e.g. make the
 system more autovacuum resistant)
-- Why do we consistently see SSDs perform only slightly better than
+* Why do we consistently see SSDs perform only slightly better than
   HDDs ?
 
 #### Memory
@@ -115,9 +115,9 @@ For future manta metadata deployments, it would be good to understand
 the performance impact of adding or reducing the amount of main memory
 in the metadata tier systems.
 
-- When allocating memory, should we dedicate more to shared_buffers ?
+* When allocating memory, should we dedicate more to shared_buffers ?
 or leave it available for filesystem cache ?
-- Does additional memory (as buffers or not) make the system more
+* Does additional memory (as buffers or not) make the system more
 resistant or more vulnerable to autovacuum issues?
 
 #### Replication
@@ -126,34 +126,35 @@ We have had great success with the pg_prefaulter reducing WAL-apply
 lag in our replicated Postgres setup, are there other aspects to our
 replication setup which are impacting performance ?
 
-- During shard async-rebuild latency increases substantially, what is
+* During shard async-rebuild latency increases substantially, what is
 the limiting resource during rebuild ?
- - network ?
-- Can the latency impact of async-rebuild be mitigated easily ?
-- During normal operation are we throughput-limited by the wal-transport ?
-- Are there tuneables available for improving performance of
+    * network ?
+* Can the latency impact of async-rebuild be mitigated easily ?
+* During normal operation are we throughput-limited by the wal-transport ?
+* Are there tuneables available for improving performance of
 replication ?
- - full_page_writes (turning *off* should reduce volume of WAL)
- - wal_compression (turning *on* should reduce volume of WAL)
- - wal_log_hints (turning *off* should reduce volume of WAL)
+    * full_page_writes (turning *off* should reduce volume of WAL)
+    * wal_compression (turning *on* should reduce volume of WAL)
+    * wal_log_hints (turning *off* should reduce volume of WAL)
+	* commit_delay (group commit time-window)
 
 #### Other
 
-- Are there other tuneables for query execution which we should be
+* Are there other tuneables for query execution which we should be
 modifying for our write-heavy workload ? (wal_buffers etc).
-- Are any particular manta schema updates likely to improve
+* Are any particular manta schema updates likely to improve
 performance ?
 
 ### Moray
 
-- Metrics from large production deployment
- - median/p90/p99 latencies for requests
-- For a single Moray-instance, what is the upper bound on the number
+* Metrics from large production deployment
+   * median/p90/p99 latencies for requests
+* For a single Moray-instance, what is the upper bound on the number
 of requests it can perform against the database ?
- - create
- - update
- - delete
-- We have seen Moray consume lots of CPU, is this expected ?
+   * create
+   * update
+   * delete
+* We have seen Moray consume lots of CPU, is this expected ?
 
 ### Electric-moray
 
@@ -161,30 +162,30 @@ We have seen Electric-moray "mis-route" work such that a very heavily
 loaded Moray is assigned more work when there are other Morays in the
 same shard that have no work.
 
-- Metrics from large production deployment
- - median/p90/p99 latencies for requests
-- Can we measure the distribution of work assigned to Moray instances
+* Metrics from large production deployment
+   * median/p90/p99 latencies for requests
+* Can we measure the distribution of work assigned to Moray instances
 by an Electric-Moray instance ? (we currently collect little
 performance data from deployed Electric-moray instances).
-- What is the upper-bound on Electric-Moray's routing performance ?
-- Are there any edge cases for very large numbers of shards ?
-- Are there any edge cases for very large numbers of instances for a
+* What is the upper-bound on Electric-Moray's routing performance ?
+* Are there any edge cases for very large numbers of shards ?
+* Are there any edge cases for very large numbers of instances for a
 single-shard ?
-- Are there any edge cases for very "skew" in numbers of instances
+* Are there any edge cases for very "skew" in numbers of instances
 between shards ?
-- Does a non-random work assignment strategy improve performance ?
+* Does a non-random work assignment strategy improve performance ?
 
 ### Muskie
 
-- Metrics from large production deployment
- - median/p90/p99 latencies for requests
-- How many requests per second (for each endpoint) does Muskie receive
+* Metrics from large production deployment
+    * median/p90/p99 latencies for requests
+* How many requests per second (for each endpoint) does Muskie receive
 in production ?
-- How fast can Muskie complete requests for zero-duration Moray
+* How fast can Muskie complete requests for zero-duration Moray
 requests ?
-- What are the intrinsic rate limits per Muskie-instance on
+* What are the intrinsic rate limits per Muskie-instance on
 create/delete/update of objects ?
-- How many requests execute for a complete manta-put of a particular
+* How many requests execute for a complete manta-put of a particular
   object. That is /dirA/dirB/dirC/dirD/objABCD likely involves a
   series of putdir requests followed by a putobj request)
 
@@ -202,36 +203,36 @@ records, but we don't know how close current deployed systems are to
 those limits, nor do we have any mechanism for alerting that such
 limits have been hit.
 
-- How does the system behave when we hit this limit
-- How close are we to EDNS global response size limit (64Kbytes)
-- How does the behavior of the system change when DNS responses grow
+* How does the system behave when we hit this limit
+* How close are we to EDNS global response size limit (64Kbytes)
+* How does the behavior of the system change when DNS responses grow
   beyond the 512-byte message limit for UDP ?
 
 #### Authcache/Mahi
 
-- Metrics from large production deployment
- - median/p90/p99 latencies for requests
-- What are the limits in Mahi to the number of requests ?
-- Is Mahi caching effective ?
-- Are there any important edge cases to Mahi caching ?
+* Metrics from large production deployment
+   * median/p90/p99 latencies for requests
+* What are the limits in Mahi to the number of requests ?
+* Is Mahi caching effective ?
+* Are there any important edge cases to Mahi caching ?
 
 #### Loadbalancer
 
-- Metrics from large production deployment
- - median/p90/p99 latencies for requests
-- Are there important limits to the number of external-IPs in the
+* Metrics from large production deployment
+    * median/p90/p99 latencies for requests
+* Are there important limits to the number of external-IPs in the
   A-record for the manta-loadbalancer (related to DNS above, but
   externally-facing).
 
 #### Additional measurements
 
-- Metrics from large production deployment
- - median/p90/p99 latencies by shard
- - request rate by shard
+* Metrics from large production deployment
+   * median/p90/p99 latencies by shard
+   * request rate by shard
 
 ### Tools
 
-- mdshovel with single-shard enhancements
-- a tool for harvesting/comparing configuration (possibly archiving
+* mdshovel with single-shard enhancements
+* a tool for harvesting/comparing configuration (possibly archiving
 such configs over time ?)
-- a tool for generating load based on muskie-logs
+* a tool for generating load based on muskie-logs
