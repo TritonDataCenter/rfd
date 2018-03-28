@@ -7,9 +7,7 @@ discussion: <Coming soon>
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
-    file, You can obtain one at http://mozilla.org/MPL/2.0/.
--->
-
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.  --> 
 <!--
     Copyright 2018 Joyent
 -->
@@ -192,16 +190,99 @@ Portolan will need to be informed by NAPI what a network is allowed to route to,
 so that it can supply the information needed by [overlay(5)]. We will introduce
 two new message types, `SVP_ROUTE_REQ` and `SVP_ROUTE_ACK`:
 
-```c
+```
+{ "name": "struct svp_route_req", "struct": [
+		{ "name": "srr_vnetid", "type": "uint32_t" },
+		{ "name": "srr_vlanid", "type": "uint16_t" },
+		{ "name": "srr_pad", "type": "uint8_t [2]" },
+		{ "name": "srr_srcip", "type": "uint8_t [16]" },
+		{ "name": "srr_dstip", "type": "uint8_t [16]" }
+] },
+{ "name": "struct svp_route_ack", "struct": [
+		{ "name": "sra_status", "type": "uint32_t" },
+		{ "name": "sra_dcid", "type": "uint32_t" },
+		{ "name": "sra_vnetid", "type": "uint32_t" },
+		{ "name": "sra_vlanid", "type": "uint16_t" },
+		{ "name": "sra_port", "type": "uint16_t" },
+		{ "name": "sra_ul3ip", "type": "uint8_t [16]" },
+		{ "name": "sra_vl2_srcmac", "type": "uint8_t [6]" },
+		{ "name": "sra_vl2_dstmac", "type": "uint8_t [6]" },
+		{ "name": "sra_src_prefixlen", "type": "uint8_t" },
+		{ "name": "sra_dst_prefixlen", "type": "uint8_t" }
+] },
 
 ```
+
+#### SVP_ROUTE_REQ
+
+| Field      | Type        | Description            |
+|------------|-------------|------------------------|
+| srr_vnetid | uint32_t    | Source VNET id         |
+| srr_vlanid | uint16_t    | Source VLAN id         |
+| srr_pad    | uint8_t[2]  | Padding                |
+| srr_srcip  | uint8_t[16] | Source IP address      |
+| srr_dstip  | uint8_t[16] | Destination IP address |
+
+
+
+#### SVP_ROUTE_ACK
+
+| Field             | Type       | Description                         |
+|-------------------|------------|-------------------------------------|
+| sra_status        | uint32_t   | Status Code                         |
+| sra_dcid          | uint32_t   | Destination datacenter id           |
+| sra_vnetid        | uint32_t   | Source VNET id                      |
+| sra_vlanid        | uint16_t   | Source VLAN id                      |
+| sra_port          | uint16_t   | Destination UL port                 |
+| sra_ul3ip         | uint16_t   | Destination UL IP                   |
+| sra_vl2_srcmac    | uint8_t[6] | Source VL MAC address               |
+| sra_vl2_dstmac    | uint8_t[6] | Destination VL MAC address          |
+| sra_src_prefixlen | uint8_t    | Source VL subnet prefix length      |
+| sra_dst_prefixlen | uint8_t    | Destination VL subnet prefix length |
+
+
+
+#### SVP_ROUTE operation
+
+When portolan receives an `SVP_ROUTE_REQ`, it will query the `portolan_vnet_routes` [moray bucket] for all objects containing the combination of `srr_vnetid,srr_vlanid`.  It will then check each matching object to see if the `srr_srcip` and `srr_dstip` are included in the object's `subnet` and `r_subnet` respectively.  If a match is found portolan will fill out the `SVP_ROUTE_ACK` message and return it to the caller.
+
+
+
+#### Shootdowns
+
+```
+
+```
+
+
+#### Other Portolan Improvements
 
 We will also add source VLAN information to VL3 requests so that we can allow
 overlapping subnets on different VLANs within a datacenter. This will allow
 people to create parallel setups that look exactly alike for testing purposes.
 
-Portolan, like NAPI, will need to start querying Portolans in other datacenters
-within the region to share their mappings locally.
+_remove ?_ Portolan, like NAPI, will need to start querying Portolans in other datacenters within the region to share their mappings locally.
+
+
+
+### Moray Buckets
+
+A new moray bucket will be created named `portolan_vnet_routes`:
+
+Key: `vnet_id,vlan_id,subnet,r_subnet`
+
+| Field      | Type   | Description                                    |
+|------------|--------|------------------------------------------------|
+| vnet_id    | number | Local VNET id                                  |
+| vlan_id    | number | Local VLAN id                                  |
+| subnet     | string | Source subnet                                  |
+| r_dc_id    | number | Remote DC id                                   |
+| r_vnet_id  | number | Remote VNET id                                 |
+| r_vlan_id  | number | Remote VLAN id                                 |
+| r_subnet   | string | Remote Subnet                                  |
+| r_send_mac | number | MAC address that the remote VM should reply to |
+
+
 
 
 ### Platform Changes
@@ -220,6 +301,8 @@ within the region to share their mappings locally.
 
 <!-- GitHub links -->
 [sdc-changefeed]: https://github.com/joyent/node-sdc-changefeed/
+[moray bucket]: https://github.com/joyent/rfd/blob/master/rfd/0119/README.md#moray-buckets
+
 
 <!-- Issue links -->
 [OS-6816]: https://smartos.org/bugview/OS-6816
