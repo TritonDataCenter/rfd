@@ -88,13 +88,15 @@ here is to add the following fields to sysinfo (example for an NVIDIA "GV100
 ```
 {
     ...
-    "Assignable Devices" [
+    "PCI Devices" [
         {
             device: "1db4",
+            driver: "-",
             id: "/devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0",
             revision: "a1",
             subsystem: "1214",
             subvendor: "10de",
+            used_by: "6ffa6b0e-3377-11e8-967e-abff9784e7f6",
             vendor: "10de"
         },
         ...
@@ -109,15 +111,54 @@ hardware such as replacing one card with a different card are not handled here.
 Those will be assumed for now to require updating all VMs on the CN that are
 using the replaced device.
 
-It will be up to the sysinfo tool to determine which devices should be included
-in the "Assignable Devices" array.
+Note: See "Open Questions" below for discussion of whether we should include
+this in sysinfo or send it via another mechanism to CNAPI.
+
+## Designating devices to be used for passthrough
+
+We need some mechanism to mark a given device to be reserved for passthrough.
+One suggestion has been something like:
+
+```
+pptadm add /devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0
+```
+
+this would mark that device as a passthrough device and update CNAPI. We would
+then need to make changes to booter so that when a device is marked for
+passthrough it adds a bootfs module that includes the list of devices reserved
+for passthrough. SmartOS would then need to know not to attach those devices to
+other drivers.
+
+For example, if we mark a storage device for passthrough, we want to make sure
+that the host does not attach a driver to that device and potentially import a
+zpool from the device. Instead reserving it only for passthrough.
+
+A tool will be written that outputs something like:
+
+```
+10de 1db4 1214 10de a1 /devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0 -
+```
+
+with the fields being:
+
+ * vendor
+ * device
+ * subsystem
+ * subvendor
+ * revision
+ * device name
+ * driver ('-' for no driver attached)
+
+for all PCI devices on the system. The sysinfo tool can take this list along
+with the set of devices that are assigned to VMs (from the VM's configs
+themselves) and setting the `used_by` field for those that are assigned.
 
 ### CNAPI Sever Objects
 
 In CNAPI, the core abstraction is the "server". Servers include both head nodes
 and compute nodes. These server objects already include a "sysinfo" parameter
 which, once sysinfo has been modified as described in the previous section, will
-include the new "Assignable Devices" property. When sysinfo is updated in CNAPI,
+include the new "PCI Devices" property. When sysinfo is updated in CNAPI,
 it also maintains other fields. Things like: traits, disk/memory/cpu utilization
 and so-forth. This allows consumers of CNAPI to access these parameters without
 having to dig into the sysinfo object directly.
@@ -136,11 +177,12 @@ unchanged fields):
     "assignable_devices": [
         {
             id: "/devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0",
+            state: "unassigned",
             type: "gpu",
+            used_by: "6ffa6b0e-3377-11e8-967e-abff9784e7f6",
             variant: "NVIDIA_GPU_GEN1"
         }
     ],
-    gpus: 1,
     ...
 }
 ```
@@ -153,24 +195,6 @@ The variants should be configurable within a given DC and it should only ever be
 CNAPI that does translation. Everything else in the APIs (packages, etc.) should
 only need to reference devices via variant, type and id. The variant definition
 should also include the type (here: "gpu").
-
-You can also see here we've added a `gpus: 1` field. This will simply represent
-the count of objects in `assignable_devices` that have type 'gpu'. When a CNAPI
-client wishes to find all systems that are capable of hosting any GPU workloads,
-they can first query the set of servers that have a non-zero value for gpus and
-from there, they can narrow down to the system(s) they're looking for. As a
-possible enhancement, we could potentially also add a:
-
-```
-{
-    ...
-    gpus_available: 1,
-    ...
-}
-```
-
-field which takes into account those `assignable_devices` which have already
-been assigned. This could make searching easier.
 
 #### servers.vms
 
@@ -223,7 +247,9 @@ reserve that device for the VM as part of the provisioning process.
 ### CNAPI Endpoints
 
 It's an open question as to whether we should add endpoints to CNAPI (or
-elsewhere) for managing variants of devices.
+elsewhere) for managing variants of devices at this point, or leave that for
+future enhancement. For now it might be fine to just have an array in SAPI
+metadata that ends up in CNAPI's config.
 
 
 ### VM Objects
@@ -245,7 +271,8 @@ something like:
 }
 ```
 
-in the VM objects.
+in the VM objects. This device should not also show up under any other fields in
+the VM object.
 
 In the initial implementation, assigned devices would not be searchable via
 `vmadm lookup` or included in the `vmadm list` output, and the devices will not
@@ -297,7 +324,101 @@ The proposal here is that a package should contain something like:
 
 How this will interact with moray and indexes is not yet worked out in detail.
 
+## Preventing duplicate reservation
+
+When provisioning a VM with a passthrough device, we want to make sure that we
+mark the device reserved so that parallel provisions do not end up trying to use
+the same device. In the "Open Questions" section below there's some discussion
+of using CNAPI waitlists to do this.
+
+## Summary of overall process
+
+### Provisioning
+
+* something (cn-agent or sysinfo) reports to CNAPI which PCI devices exist on
+  the CN that are not being used by the host itself.
+* CNAPI has a list of variants of hardware that are supported for passthrough,
+  it turns any devices on the list it receives from the CN into an
+  `assignable_devices` array on the server object.
+* When a provision request is made, a package may contain a `devices` property
+  which specifies device variant(s) that are required for the VM. CNAPI/DAPI
+  will take that information and choose a CN with the required devices with some
+  mechanism to prevent choosing the same CN for two simultaneous provisions. It
+  will also mark the device state as "provisioning" and set the `used_by` field.
+* The provision will get to cn-agent and cn-agent will set the device for
+  passthrough (perhaps `pptadm add`) so that the device is attached now for ppt
+  and the system is updated to ensure the device is marked for passthrough on
+  subsequent reboots. It also marks the `state` as `used` for that device in
+  CNAPI on the server record.
+* The bhyve VM is then provisioned with the ppt device attached.
+
+If anything goes wrong in the provision, the system should attempt to undo the
+work it has done to CNAPI's device objects (e.g. reset state back to unassigned)
+and the system (unmark for ppt on next boot) along with cleaning up the VM.
+
+### Destroying
+
+* the VM itself is destroyed (via an API call that eventually gets to CNAPI then
+  cn-agent)
+* the device is marked as 'dirty' in CNAPI
+* the `used_by` is unset in CNAPI
+* the device is setup to not be attached to ppt on reboot
+* some cleaning process (yet to be defined) runs on the device to prepare it for
+  re-use.
+* device is marked 'unused' in CNAPI and is ready for provisioning again.
+
+
+## Work to be done
+
+* bhyve brand will need to be updated to make the full device path work with
+  passthrough. Currently setting `/devices/pci@7b,0/pci8086,6f08@3/pci10b5,8747@0/pci10b5,8747@10/pci10de,1214@0:ppt`
+  does not work and `/devices` is not mounted.
+* a tool will need to be written that lists all the PCI devices on the system as
+  described above (tentatively called lspci)
+* sysinfo/cn-agent will need to be updated to utilize the output of the lspci tool
+  to send the information about devices to CNAPI.
+* CNAPI will need to know how to filter the PCI device info using a list of
+  variants to vendor/device mappings to build its `assignable_devices` server
+  property. It will also need a mechanism to update this based on updates from
+  the CN itself.
+* CNAPI will also need an `assigned_devices` property on its server.vm objects.
+* need to add a `devices` parameter to PAPI packages
+* DAPI will need to know how to discard CNs that don't support the requested
+  devices options.
+* The provision workflow will need to ensure the waitlist (or some other
+  mechanism) is used properly to ensure we don't assign the same device twice
+  with parallel provisions.
+* the `machine_create` cn-agent task will need to know how to setup a device for
+  ppt now and for future boots.
+* vmadm will need to know about the `assigned_devices` array for create and get
+  at minimum.
+* the `machine_destroy` cn-agent task will need to know how to unmark a device
+  for ppt and how to mark the device as 'dirty' in CNAPI.
+* some mechanism for cleaning devices before reuse will need to be developed.
+
 ## Open Questions
+
+### How should we ensure we don't assign the same device twice when parallel provisioning
+
+Can we use the CNAPI waitlist feature here for VMs that require devices so that
+the device selection happens serially and then add a state property to the
+device(s) selected indicating that they're being used by a VM that's
+provisioning and not available?
+
+### Should we include all the devices in sysinfo
+
+Instead of including all the devices in sysinfo (which has become somewhat of a
+grab-bag of properties at this point, it would also be possible to have cn-agent
+just report the available devices separately from the sysinfo, at boot and any
+time the device assignments change.
+
+This would have the added benefits that:
+
+ * it doesn't require as much change to the platform
+ * it doesn't add a bunch more things to sysinfo that aren't needed in SmartOS
+ * this mechanism is more easily updated (cn-agent) independently of the platform
+ * it can be updated without updating all of sysinfo (which currently causes a
+   workflow job to run to check for new NICs for example)
 
 ### Do we need changes to images/image fields?
 
@@ -336,6 +457,10 @@ would be helpful to have. Should we include that information for devices in the
 sysinfo? If so: how should we gather and display it? If not: should we show it
 anywhere?
 
+### Do we really need server.vms?
+
+Perhaps just having the `used_by` and `state` on devices is enough.
+
 ## Other ideas/things that are being investigated
 
 Since most Triton development is done on systems that do not have GPU hardware,
@@ -347,5 +472,4 @@ actually have GPUs.
 
 * Changes to Ops' migration scripts (not part of Triton) in order to change
   assigned devices and only migrate where a compatible device is available.
-
 
