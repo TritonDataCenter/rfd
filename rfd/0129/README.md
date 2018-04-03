@@ -144,6 +144,8 @@ replication ?
 modifying for our write-heavy workload ? (wal_buffers etc).
 * Are any particular manta schema updates likely to improve
 performance ?
+   * change fill_factor parameter on existing indexes (should help with large
+     volume of random inserts
 
 ### Moray
 
