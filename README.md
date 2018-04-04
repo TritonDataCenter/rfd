@@ -175,6 +175,11 @@ formal writing that it has come to represent.)
 | predraft | [RFD 129 Manta Performance Bottleneck Investigation](./rfd/0129/README.md)
 | predraft | [RFD 130 The Triton Remote Network Object](./rfd/0130/README.md)
 | predraft | [RFD 131 The Triton Datacenter API (DCAPI)](./rfd/0131/README.md)
+| publish  | [RFD 132 Conch: Unified Rack Integration Process](./rfd/0132/README.md) |
+| publish  | [RFD 133 Conch: Improved Device Validation](./rfd/0133/README.md) |
+| publish  | [RFD 134 Conch: User Access Control](./rfd/0134/README.md) |
+| draft    | [RFD 135 Conch: Job Queue and Real-Time Notifications](./rfd/0135/README.md) |
+| draft    | [RFD 136 Conch: Orchestration](./rfd/0136/README.md) |
 
 
 
