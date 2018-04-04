@@ -1,6 +1,6 @@
 ---
 authors: Lane Seppala <lane.seppala@joyent.com>
-state: delivered
+state: publish
 ---
 
 <!--

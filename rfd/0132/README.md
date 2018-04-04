@@ -1,6 +1,6 @@
 ---
 authors: Bryan Horstmann-Allen <bdha@joyent.com>
-state: delivered
+state: publish
 ---
 
 <!--
