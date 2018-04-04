@@ -1,0 +1,63 @@
+# Entities are declared in '[' ... ']'. All attributes after the entity header
+# up until the end of the file (or the next entity declaration) correspond
+# to this entity.
+#
+# red #fcecec
+# blue #ececfc
+# green #d0e0d0
+# yellow #fbfbdb
+# orange #eee0a0
+[user_account] {bgcolor: "#ececfc"}
+*id
+name
+password_hash
+
+[user_workspace_role] {bgcolor: "#fbfbdb"}
++*user_id
++*workspace_id
++*role_id
+
+[role] {bgcolor: "#ececfc"}
+id
+name
+
+[workspace] {bgcolor: "#ececfc"}
+*id
+name
++parent_workspace_id
+
+[workspace_datacenter_room] {bgcolor: "#fbfbdb"}
+*id
++workspace_id
++datacenter_room
+
+[datacenter_room] {bgcolor: "#d0e0d0"}
+*id
+
+[datacenter_rack] {bgcolor: "#d0e0d0"}
+*id
++datacenter_room_id
+
+[device] {bgcolor: "#d0e0d0"}
+*id
++datacenter_rack
+
+# Each relationship must be between exactly two entities, which need not
+# be distinct. Each entity in the relationship has exactly one of four
+# possible cardinalities:
+#
+# Cardinality    Syntax
+# 0 or 1         ?
+# exactly 1      1
+# 0 or more      *
+# 1 or more      +
+user_account 1--* user_workspace_role
+#user_account ?--* workspace {label: "created by"}
+user_workspace_role *--1 role
+workspace 1--* user_workspace_role
+workspace 1--* workspace_datacenter_room
+datacenter_room 1--* workspace_datacenter_room
+datacenter_room 1--* datacenter_rack
+datacenter_rack 1--* device
+
+workspace 1--* workspace {label: "parent of", size: "14" }

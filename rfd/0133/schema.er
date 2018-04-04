@@ -1,0 +1,81 @@
+# Entities are declared in '[' ... ']'. All attributes after the entity header
+# up until the end of the file (or the next entity declaration) correspond
+# to this entity.
+#
+# red #fcecec
+# blue #ececfc
+# green #d0e0d0
+# yellow #fbfbdb
+# orange #eee0a0
+#
+#
+[validation_plan] {bgcolor: "#fbfbdb"}
+*id
+name
+description
+created
+
+[validation_plan_member] {bgcolor: "#fbfbdb"}
+*+validation_plan_id
+*+validation_id
+
+[validation] {bgcolor: "#fbfbdb"}
+*id
+name
+version
+description
+persistence { label: "bool" }
+created
+
+[hardware_product] {bgcolor: "#ececfc"}
+*id
+
+[device] {bgcolor: "#ececfc"}
+*id
+
+
+[validation_result] {bgcolor: "#d0e0d0"}
+*id
++device_id
++hardware_product_id
+component_id
+component_type
+created
+got
+expected
+message
+status
+comparison_hash
+
+[validation_state_member] {bgcolor: "#d0e0d0"}
++*validation_state_id
++*validation_result_id
+
+[validation_state] {bgcolor: "#d0e0d0"}
+*id
++device_id
++validation_plan_id
+
+
+# Each relationship must be between exactly two entities, which need not
+# be distinct. Each entity in the relationship has exactly one of four
+# possible cardinalities:
+#
+# Cardinality    Syntax
+# 0 or 1         ?
+# exactly 1      1
+# 0 or more      *
+# 1 or more      +
+#
+#
+validation_plan 1--* validation_plan_member
+validation 1--* validation_plan_member
+
+
+validation_state *--1 validation_plan
+validation_state *--1 device
+validation_result *--1 device
+
+validation_result *--1 hardware_product
+validation_state 1--* validation_state_member
+validation_result 1--* validation_state_member
