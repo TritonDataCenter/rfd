@@ -227,12 +227,6 @@ their particular workspace.
 
 Only Administrators in the GLOBAL zone can created or modify workflows.
 
-
-## Project Management
-
-This work will be managed in LiquidPlanner in the [Conch SaaS
-Project](https://app.liquidplanner.com/space/174715/projects/show/36216545).
-
 ## Related Work
 
 * [RFD 132 Conch: Unified Rack Integration Process)](../rfd/0132/README.md)
