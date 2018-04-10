@@ -36,9 +36,94 @@ strategies include:
 
 ### Same-region Remote Triton VXLAN with SVP discovery.
 
-[RFD 119] Discusses same-region remote Triton VXLANS in more detail.  Two or
-more Triton DCs can have cross-DC-reachable underlay infrastructure, allowing
-AWS-style availability zones in a region.
+Two or more Triton DCs can have cross-DC-reachable underlay infrastructure,
+allowing AWS-style availability zones in a region. This creates several
+problems:
+
+* The Virtual Network identifier (VNET ID) is not guaranteed to be the same per
+  customer across datacenters.
+* MAC addresses may be duplicated in different datacenters.
+* Network UUIDs may collide across datacenters.
+
+When a remote network is attached locally, we will import the properties
+about it that we need to know locally and assign it a local UUID. When
+fetched from NAPI, it will look like:
+
+```
+# sdc-napi /networks/410fc93e-957a-4344-9112-ec17d5a946b5 | json -H
+{
+    "uuid": "410fc93e-957a-4344-9112-ec17d5a946b5",
+    "remote": true,
+    "remote_uuid": "025133ae-d107-47ab-aa08-27bb5e16e699",
+    "remote_dc": "us-east-3",
+    "subnet": "10.0.34.0/24",
+    "fabric": true,
+    "vnet_id": 56634,
+    "vlan_id": 23
+}
+```
+
+#### NAPI changes for same-region Remote Triton
+
+The Networking API (NAPI), will need to begin communicating with remote NAPIs
+in the same region in order to get the information that it needs to validate
+and set up fabrics to communicate with each other: owner UUID, destination
+subnet, VNET identifier, VLAN identifier, and the MAC address the network
+uses for fabric routing.
+
+#### Tracking Changes
+
+Since each NAPI will have a different backing store, they'll need to track
+changes made in the other datacenter. To do this, they will use
+[sdc-changefeed] to learn about updates as they happen, similar to what
+[net-agent] will start doing for [RFD 28]. This will allow NAPI to generate
+shootdowns for Portolan to distribute locally whenever it sees a network or
+fabric NIC destroyed in the remote datacenter.
+
+As part of deploying this work, we will want to start deploying multiple NAPI
+instances for high availability. Since changefeed currently only supports a
+single publisher mode, we will want to add support for multiple publishers as
+part of this work (see [TRITON-276]).
+
+#### Overlay changes
+
+There are several properties of cross-DC routing that guide the solution
+here:
+
+- VNET identifiers differ from datacenter to datacenter, so they need to be set
+  to match the destination network.
+
+- MAC addresses aren't guaranteed to be unique across datacenters, so we can't
+  rely on the MAC address of the destination host to map 1-to-1 to an underlay
+  IP.
+
+- Destination subnets are not guaranteed to be unique to a datacenter. (For
+  example, each user has a `My-Fabric-Network` in each datacenter in a region
+  today, each one using the 192.168.128.0/22 subnet.)
+
+One new addition to the SVP overlay lookup service for cross-DC encapsulation
+is:
+
+- `dcid`, the local datacenter identifier from DCAPI (see [RFD 131])
+
+#### Portolan changes
+
+We will also add source VLAN information to VL3 requests so that we can allow
+overlapping subnets on different VLANs within a datacenter. This will allow
+people to create parallel setups that look exactly alike for testing
+purposes.
+
+_remove ?_ Portolan, like NAPI, will need to start querying Portolans in
+other datacenters within the region to share their mappings locally.
+
+#### Platform changes
+
+* Since we'll need to route between datacenters within a region, we'll need to
+  make sure that the underlay networks can reach each other. In case the
+  traffic needs to be routed through something other than the admin network's
+  default gateway, we should add support for setting up static routes in the
+  global zone network initialization script. (See [OS-6816].)
+
 
 ### OEM VXLAN
 
@@ -95,3 +180,6 @@ be fed into the OEM network configuration tool(s).
 
 <!-- Other RFDs -->
 [RFD 119]: ../0119
+
+
+
