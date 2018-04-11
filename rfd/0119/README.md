@@ -54,7 +54,7 @@ to include entries for each attached subnet. (Using static routes for each
 destination subnet interacts more nicely with existing instances that have a
 primary NIC on the internet and are using its gateway as their default route.)
 
-There are two classes of fabric networks that can be attached to a network,
+There are two classes of fabric networks that can be attached to a network
 and affect the routes that get created for it. There are fabrics that are
 located on the same Virtual Layer 2 (VL2) network (same datacenter, same VNET
 identifier, and same VLAN identifier), and there are fabrics that are located
@@ -69,7 +69,7 @@ for supporting interface routes in Triton.)
 When attaching to the second class of networks, NAPI will select an IP
 address from the source network, save it in the `"overlay_router"` field, and
 use it as the next-hop address in the `"routes"` object. This IP address will
-be mapped in Portolan to a special MAC address recognized by the overlay
+be mapped in Portolan to a designated MAC address recognized by the overlay
 devices. (See the Overlay Changes section for more here.)
 
 When fetched from NAPI, the field will look something like:
@@ -113,13 +113,13 @@ communicates with Portolan to resolve overlay IPs (VL3 addresses) to overlay
 MACs (VL2 addresses), and the VL2 addresses to underlay addresses (UL3). This
 information gets cached in the kernel for future packets.
 
-To expand this to include attached fabric networks, we will use a special MAC
-address to determine whether we need to inspect the destination IP address
-(which we can then use to find the UL3 information), how we need to rewrite
-the VL2 information, and what VLAN identifier to use for the destination
-fabric. This includes the source MAC address to match the special MAC address
-being used on the destination fabric network. This MAC address is assigned to
-the `"overlay_router"` IP address mentioned earlier.
+To expand this to include attached fabric networks, we will use a designated
+MAC address to determine whether we need to inspect the destination IP
+address (which we can then use to find the UL3 information), how we need to
+rewrite the VL2 information, and what VLAN identifier to use for the
+destination fabric. This includes the source MAC address to match the
+designated MAC address being used on the destination fabric network. This MAC
+address is assigned to the `"overlay_router"` IP address mentioned earlier.
 
 To help the SVP plugin, we will pass additional arguments to `create-overlay`
 (which currently come from booter):
@@ -206,8 +206,37 @@ data, in addition to version 1's SVP_LOG_VL2 and SVP_LOG_VL3.
 
 ```
 
+{ "name": "struct svp_log_route", "struct": [
+		{ "name": "svlr_type", "type": "uint32_t" },
+		{ "name": "svlr_id", "type": "uint8_t [16]" },
+		{ "name": "svlr_src_vnetid", "type": "uint32_t" },
+		{ "name": "svlr_dst_vnetid", "type": "uint32_t" },
+		{ "name": "svlr_dcid", "type": "uint32_t" },
+		{ "name": "svlr_srcip", "type": "uint8_t [16]" },
+		{ "name": "svlr_dstip", "type": "uint8_t [16]" },
+		{ "name": "svlr_src_vlan", "type": "uint16_t" },
+		{ "name": "svlr_dst_vlan", "type": "uint16_t" },
+		{ "name": "svlr_src_prefixlen", "type": "uint8_t" },
+		{ "name": "svlr_dst_prefixlen", "type": "uint8_t" },
+		{ "name": "svlr_pad", "type": "uint16_t" },
+] },
+
 ```
 
+| Field              | Type        | Description               |
+|--------------------|-------------|---------------------------|
+| svlr_type          | uint32_t    | Type, SVP_LOG_ROUTE       |
+| svlr_id            | uint8_t[16] | 16-byte UUID              |
+| svlr_src_vnetid    | uint32_t    | Source VNET id            |
+| svlr_dst_vnetid    | uint32_t    | Destination VNET id       |
+| svlr_src_dcid      | uint32_t    | Destination DCID (future) |
+| svlr_srcip         | uint8_t[16] | Source IP address base    |
+| svlr_dstip         | uint32_t    | Dest. IP address base     |
+| svlr_src_vlan      | uint16_t    | Source VLAN id            |
+| svlr_dst_vlan      | uint16_t    | Destination VLAN id       |
+| svlr_src_prefixlen | uint8_t     | Source IP prefix length   |
+| svlr_dst_prefixlen | uint8_t     | Dest. IP prefix length    |
+| svlr_pad           | uint16_t    | Padding for alignment     |
 
 ### Moray Buckets
 
