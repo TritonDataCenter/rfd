@@ -132,7 +132,7 @@ GitHub does have the notion of "Teams" that can contain repositories.  Today for
  * Limited API access, making use on workstations or jenkins awkward.
  * Modifying tags becomes an arduous mouse clicking contest instead of editing a text file.
 
-GitHub teams may be a worthwhile complimentary approach for very coarse grained grouping. GitHub also now supports a notion of [archiving](https://help.github.com/articles/archiving-a-github-repository/) old repsoitories to make them read-only.
+GitHub teams may be a worthwhile complimentary approach for very coarse grained grouping.  The mapping of Joyent roles to GitHub teams could also be clearer.
 
 
 ### In-repo Piggyback
@@ -170,11 +170,11 @@ There are also several ways of taking an existing large repository and working w
 
 Q: Are in-active/dead/archived things listed as such in the manifest, implicit by being ignored, or stuck in their own GitHub team "graveyard"?
 
-Q: Now that [archiving](https://help.github.com/articles/archiving-a-github-repository/) exists as a GitHub, that should be satisfactory as a graveyard.
+Q: Now that [archiving](https://help.github.com/articles/archiving-a-github-repository/) exists as a GitHub, that should be satisfactory as a graveyard.  Manifests do not need to include zombies.
 
 Q: Do we need to handle the private repos at all, since they are not part of the main product offering?
 
-A: The use case that include non-public repositories are unclear.  Bringing together internal and public docs is one likely use case.  It's possible that *listing* the existence of a small number of private repositories would also be satisfactory.
+A: The use case that include non-public repositories are unclear.  Bringing together internal and public docs is one likely use case.  It's possible that listing the *existence* of a small number of private repositories in a public manifest would also be satisfactory.
 
 ## Resources and other Prior Art
 
@@ -183,6 +183,12 @@ The [triton](https://github.com/joyent/triton/blob/master/docs/developer-guide/r
 Internal `RELENG` tooling has a `repos.json` with partial coverage.
 
 Some of the doc building tools (ie apidocs) have a [smaller list](https://github.com/joyent/apidocs.joyent.com/blob/master/etc/config.json) of repos to pull from.
+
+## Archiving
+
+GitHub now supports a notion of [archiving](https://help.github.com/articles/archiving-a-github-repository/) old repositories to make them read-only.  That is no new commits, comments, issues, wiki articles, etc. can be created.  Archiving can be reversed by clicking through the same series of steps.
+
+Archiving provides a clear UI banner to humans and is a machine readable field in the API.  Joyent repositories that are only historical artifacts should be archived for both human clarity and so they type of maintenance tooling uses cases described in this RFD can ignore them.
 
 ## Appendix
 
