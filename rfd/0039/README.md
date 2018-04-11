@@ -10,7 +10,7 @@ state: draft
 -->
 
 <!--
-    Copyright 2016 Joyent, Inc.
+    Copyright 2018 Joyent, Inc.
 -->
 
 # RFD 39 VM Attribute Cache (vminfod)
@@ -37,6 +37,7 @@ There are different flavors of these zones including:
  - SmartOS (joyent and joyent-minimal brand)
  - LX (lx brand)
  - KVM (kvm brand which utilizes Qemu and HVM)
+ - BHYVE (bhyve brand which uses HVM via bhyve)
  - docker (can be either LX or SmartOS but contain some additional properties)
 
 All of these are for the purposes of this discussion "VMs".
@@ -85,39 +86,39 @@ on the CNs directly. The primary one that's relevant here is
 ### The problem
 
 When SDC APIs are used, all changes made to VMs will go through vmadm. If
-changes were only allowed through vmadm, vmadm itself could store a consistent
+changes were only allowed through vmadm, `vmadm` itself could store a consistent
 view of a VM and update that view whenever it made changes. This is not
 possible however, because SDC does not prevent operators from logging into CNs
 and making arbitrary changes with tools other than vmadm.
 
 Since a VM object is made up of many components and each of these components can
 be modified by an operator without any notification and possibly even putting
-the VM in an invalid state, vmadm must load all of the data about a VM every
+the VM in an invalid state, `vmadm` must load all of the data about a VM every
 time it wants to use it.
 
-When an operator runs `vmadm list` for instance, the code in /usr/vm (mostly in
-this case /usr/vm/node\_modules/vmload) will reach out to various parts of the
-system to create a list of all VMs on the system, typically through forking
-userland tools such as `zfs(1M)`, `zoneadm(1M)`, reading files from /etc/zones
-and /zones/<uuid>/config, and reading from kstats.
+When an operator runs `vmadm list` for instance, the code in `/usr/vm` (mostly
+in this case `/usr/vm/node_modules/vmload`) will reach out to various parts of
+the system to create a list of all VMs on the system, typically through forking
+userland tools such as `zfs(1M)`, `zoneadm(1M)`, reading files from
+`/etc/zones` and `/zones/$uuid/config`, and reading from kstats.
 
 This process can be slow.
 
 Every time a VM's attributes are queried, through `vmadm list`, `vmadm lookup`
 or `vmadm get`, all the required data to is queried directly from its source
-(e.g. dataset data comes from ZFS and zone config comes from the /etc/zones
+(e.g. dataset data comes from ZFS and zone config comes from the `/etc/zones`
 files). Loading this data can take in the range of hundreds of milliseconds, to
 multiple minutes on systems with high load or many VMs or
 [many zfs snapshots](https://github.com/joyent/smartos-live/pull/151). Because
-the rest of SDC relies on vmadm as the ultimate source of truth (which in turn
+the rest of SDC relies on `vmadm` as the ultimate source of truth (which in turn
 relies on the OS itself) any slowdown here is seen all over the system,
 manifesting in long provision times, long VM modification or deletion times,
 and generally poor user experience.
 
 If we didn't load this data each time however, an operator could change the
-quota for a VM using /usr/sbin/zfs and vmadm would be operating with an
+quota for a VM using `/usr/sbin/zfs` and `vmadm` would be operating with an
 incorrect quota until it *did* load this data from zfs. And since there's no
-current mechanism to notify vmadm that something has changed, there's not much
+current mechanism to notify `vmadm` that something has changed, there's not much
 it can do other than assume its environment is entirely hostile and load all the
 data it needs from the ultimate source each time. This is true for all
 components of a VM object, not just zfs datasets.
@@ -149,14 +150,14 @@ be reflected before returning to the caller. See the Guarantees/
 On top of this static interface for looking up VM information in `vminfod`, there
 is a second streaming interface that can be used, that will emit an event
 anytime an update is done on the system (whether the source of the change was
-vmadm or not).  To be specific, there is an `/events` endpoint that will remain
-open when connected to, and spit out newline-separated JSON whenever a change to
+`vmadm` or not).  To be specific, there is an `/events` endpoint that will remain
+open when connected to, and send newline-separated JSON whenever a change to
 the system is made - for example when a VM is created or deleted, or a property
 of an existing VM is modified.
 
 ### History
 
-Originally conceived soon after vmadm was created, work was finally started on
+Originally conceived soon after `vmadm` was created, work was finally started on
 this project in 2014 by [Josh Wilsdon](https://github.com/joshwilsdon).
 Unfortunately due to unrelated issues the project stalled but was picked up
 again from outside Joyent by [Tyler Flint](https://github.com/tylerflint) who
@@ -186,18 +187,22 @@ The fswatcher tool uses event ports to watch all files associated with VMs and
 directories where additional files could be created so that any files that might
 change in relation to a VM will result in an event. Files at this point include:
 
- - /etc/zones/index
- - /etc/zones/<uuid>.xml
- - /tmp/.sysinfo.json
- - /zones/<uuid>/config/metadata.json
- - /zones/<uuid>/config/routes.json
- - /zones/<uuid>/config/tags.json
- - /zones/<uuid>/lastexited
+Globally
+
+1. `/tmp/.sysinfo.json`
+
+Per VM
+
+1. `/etc/zones/<uuid>.xml`
+2. `/zones/<uuid>/lastexited`
+3. `/zones/<uuid>/config/tags.json`
+4. `/zones/<uuid>/config/routes.json`
+5. `/zones/<uuid>/config/metadata.json`
 
 If a file changes (including creation or deletion), the in-memory VM object
 will be updated for the appropriate VM(s).
 
-The sysevent tool receives sysevent messages from the kernel. When a zone
+The `sysevent` tool receives sysevent messages from the kernel. When a zone
 changes state an event is emitted with the old and new state. When a zfs
 filesystem is created or modified (anything that will result in a `zpool
 history` change) a zfs event should be emitted. Unfortunately however,
@@ -237,35 +242,46 @@ Guarantees
 
 When the vminfod daemon is disabled, the system should be able to continue to
 perform all actions with information looked up directly from the system. I.e.
-vmadm must be able to fall back to loading the data directly. This way if there
+`vmadm` must be able to fall back to loading the data directly. This way if there
 are critical bugs found in vminfod, it can be disabled until such time as these
 bugs are fixed. Once confidence in vminfod has been achieved we can consider
 phasing this requirement out in order to simplify the implementation.
 
+**Update:**  This constraint was dropped due to how deeply into the
+implementation of the system vminfod has become as its been developed - once
+vminfod is enabled a node it can not be disabled without rebooting a new
+platform, or LOFS mounting a lot of files and restarting a lot of services.
+
+However, there is no "upgrade" required for vminfod to work.  Meaning, if a
+vminfod platform is rolled out to a node, and then sometime later rolled back,
+the node will work the same before vminfod was introduced and after it was
+removed.
+
 ### Read-after-write consistency
 
-Any change made successfully through vmadm should be visible immediately after
-success by any client using vmadm to lookup that VM.
+Any change made successfully through `vmadm` should be visible immediately after
+success by any client using `vmadm` to lookup that VM.
 
 As an example, if an operator deletes a VM using `vmadm delete $uuid`,
-the vmadm process will delete the VM, but will wait for the delete event for
+the `vmadm` process will delete the VM, but will wait for the delete event for
 that VM to be fired in `vminfod` before returning success.  This ensures read
 after write consistency.  Which means we avoid problems such as 404 on GET
 immediately after PUT, or in this case, "VM Not Found" on `vmadm get`
 immediately after `vmadm create`.
 
-Actions which are performed *without* vmadm will not have this guarantee. If a
+Actions which are performed *without* `vmadm` will not have this guarantee. If a
 change is made with `zonecfg(1M)` or by editing one of the files that makes up a
 zone manually, a `vmadm get` immediately following may not include this
 information. In these cases the guarantee becomes one of eventual consistency.
-Once vmadm has received an event or otherwise noticed that this action has
+Once `vmadm` has received an event or otherwise noticed that this action has
 happened it will reflect this change, even if there are other changes in the
 interim. The exception is when there are conflicting changes in which case the
 most recent state will be returned. A specific example:
 
- - an action is performed with /usr/sbin/zfs that sets the zoneroot quota to 10g
- - an action is performed with vmadm that sets the zoneroot quota to 20g
- - a vmadm get is performed on this VM
+ - an action is performed with `/usr/sbin/zfs` that sets the zoneroot quota to
+   10g
+ - an action is performed with `vmadm` that sets the zoneroot quota to 20g
+ - a `vmadm` get is performed on this VM
 
 When the `vmadm get` here occurs the value will be 20g and there will be no
 indication to the consumer that the value was ever 10g.
@@ -287,23 +303,17 @@ Implementation
 
 ### Where this lives
 
-The `vminfod` project currently spans the following repositories:
+The `vminfod` project most recently lives in one repo.
 
 1. [smartos-live](https://github.com/joyent/smartos-live) - majority of the
 code here
-2. [illumos-joyent](https://github.com/joyent/illumos-joyent) - ZFS patch
-for sysevents only
 
-Note: The Illumos change is not `vminfod` specific, and as such has been proposed
-to the OpenZFS project on GitHub through this pull request.
+### History
 
-https://github.com/openzfs/openzfs/pull/101
+There used to be vminfod specific code in the `vminfod` branch of
+illumos-joyent, but this has since been merged to master:
 
-If this can be merged, and pulled into the `illumos-joyent` repo, then all
-of the `vminfod` code will *only* live in the `smartos-live` repo.
-
-For now though, in both repositories there is a `vminfod` branch that contains
-the latest code for the project.
+1. https://github.com/openzfs/openzfs/pull/101
 
 ### What makes `vminfod`
 
@@ -314,17 +324,19 @@ in `/usr/vm/node_modules/vminfod` in the following files:
 
 - [client.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/client.js):
 vminfod client library, this is used by VM.js and `vmadm`
-- [diff.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/diff.js):
-a generic JavaScript object diff'ing library, this is used by `vminfod` to
-figure out what events to fire when an object is updated
-- [fswatcher.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/fswatcher.js):
-a JavaScript wrapper for `fswatcher.c` to watch files for modifications
 - [vminfo.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/vminfo.js):
 majority of the code for the `vminfod` daemon
 - [zonewatcher.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/zonewatcher.js):
 thin wrapper around `sysevent-stream.js` to watch for Zone sysevents
 - [zpoolwatcher.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/zpoolwatcher.js):
 thin wrapper around `sysevent-stream.js` to watch for ZFS sysevents
+- [diff.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/diff.js):
+a generic JavaScript object diff'ing library, this is used by `vminfod` to
+figure out what events to fire when an object is updated
+- [fswatcher.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/fswatcher.js):
+a JavaScript wrapper for `fswatcher.c` to watch files for modifications
+- [queue.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/queue.js)
+a JavaScript queueing and serializing module for running tasks asynchronously
 
 ### VM properties
 
@@ -367,61 +379,69 @@ With the following VM created
 ```
 
     # vmadm create < vm.json
-    Successfully created VM 6af640c5-9042-6985-bc94-ed532f779664
+    Successfully created VM 698fed0c-b754-4073-e230-9f37c6b4d79f
 
 ### Updating an alias
 
-    # vmadm update 6af640c5-9042-6985-bc94-ed532f779664 alias=bar
-    Successfully updated VM 6af640c5-9042-6985-bc94-ed532f779664
+    # vmadm update 698fed0c-b754-4073-e230-9f37c6b4d79f alias=bar
+    Successfully updated VM 698fed0c-b754-4073-e230-9f37c6b4d79f
 
 Relevant log lines from `vminfod`
 
-    [2016-06-07T16:12:19.233Z] DEBUG: vminfo/1002 on headnode: /etc/zones/6af640c5-9042-6985-bc94-ed532f779664.xml modified
-    [2016-06-07T16:12:19.233Z] DEBUG: vminfo/1002 on headnode: refreshing zoneData for 6af640c5-9042-6985-bc94-ed532f779664
-    [2016-06-07T16:12:19.233Z] DEBUG: vminfo/1002 on headnode: requesting new vmobj for 6af640c5-9042-6985-bc94-ed532f779664
+    [2018-04-11T17:04:44.146Z] DEBUG: vminfod/4670 on headnode: handleFsEvent: pathname: /etc/zones/698fed0c-b754-4073-e230-9f37c6b4d79f.xml (FILE_EXCEPTION,FILE_RENAME_TO)
+    [2018-04-11T17:04:44.147Z] DEBUG: vminfod/4670 on headnode: /etc/zones/698fed0c-b754-4073-e230-9f37c6b4d79f.xml modified
+    [2018-04-11T17:04:44.147Z] DEBUG: vminfod/4670 on headnode: refreshing zoneData for 698fed0c-b754-4073-e230-9f37c6b4d79f
+    [2018-04-11T17:04:44.157Z] DEBUG: vminfod/4670 on headnode: requesting new vmobj for 698fed0c-b754-4073-e230-9f37c6b4d79f
+    [2018-04-11T17:04:44.158Z]  INFO: vminfod/4670 on headnode: emitting "modify" event, 30 VMs total
     ...
 
-This change is detected from the zone's XML file (in /etc/zones) being modified,
-which triggers a refresh of the VM's data.
+This change is detected from the zone's XML file (in `/etc/zones`) being
+modified, which triggers a refresh of the VM's data.
 
-Output from `vminfod events` - these are the events emitted from `vminfod`
+Output from `vminfod events` - these are the events emitted from `vminfod`.
 
-    [2016-06-07T16:12:19.453Z] 6af640c5 modify: alias changed :: "foo" -> "bar"
-    [2016-06-07T16:12:19.453Z] 6af640c5 modify: last_modified changed :: "2016-06-07T16:11:39.000Z" -> "2016-06-07T16:12:19.000Z"
+    [17:04:44.158Z] 698fed0c bar modify: alias changed :: "foo" -> "bar"
+    [17:04:44.158Z] 698fed0c bar modify: last_modified changed :: "2018-04-11T17:03:53.000Z" -> "2018-04-11T17:04:44.000Z"
 
 ### Updating memory
 
-    # vmadm update 6af640c5-9042-6985-bc94-ed532f779664 max_physical_memory=128
-    Successfully updated VM 6af640c5-9042-6985-bc94-ed532f779664
+    # vmadm update 698fed0c-b754-4073-e230-9f37c6b4d79f max_physical_memory=128
+    Successfully updated VM 698fed0c-b754-4073-e230-9f37c6b4d79f
 
 Relevant log lines from `vminfod`
 
-    [2016-06-07T16:44:39.132Z] DEBUG: vminfo/8192 on headnode: /etc/zones/6af640c5-9042-6985-bc94-ed532f779664.xml modified
-    [2016-06-07T16:44:39.132Z] DEBUG: vminfo/8192 on headnode: refreshing zoneData for 6af640c5-9042-6985-bc94-ed532f779664
-    [2016-06-07T16:44:39.132Z] DEBUG: vminfo/8192 on headnode: requesting new vmobj for 6af640c5-9042-6985-bc94-ed532f779664
+    [2018-04-11T17:07:37.733Z] DEBUG: vminfod/4670 on headnode: handleFsEvent: pathname: /etc/zones/698fed0c-b754-4073-e230-9f37c6b4d79f.xml (FILE_EXCEPTION,FILE_RENAME_TO)
+    [2018-04-11T17:07:37.733Z] DEBUG: vminfod/4670 on headnode: /etc/zones/698fed0c-b754-4073-e230-9f37c6b4d79f.xml modified
+    [2018-04-11T17:07:37.734Z] DEBUG: vminfod/4670 on headnode: refreshing zoneData for 698fed0c-b754-4073-e230-9f37c6b4d79f
+    [2018-04-11T17:07:37.745Z] DEBUG: vminfod/4670 on headnode: requesting new vmobj for 698fed0c-b754-4073-e230-9f37c6b4d79f
+    [2018-04-11T17:07:37.746Z]  INFO: vminfod/4670 on headnode: emitting "modify" event, 30 VMs total
+    ...
 
 Like the alias change, this change was triggered from the zone's XML file
 being updated.
 
 Output from `vminfod events`
 
-    [2016-06-07T16:44:39.388Z] 6af640c5 modify: max_physical_memory changed :: 256 -> 128
-    [2016-06-07T16:44:39.388Z] 6af640c5 modify: max_locked_memory changed :: 256 -> 128
-    [2016-06-07T16:44:39.388Z] 6af640c5 modify: tmpfs changed :: 256 -> 128
-    [2016-06-07T16:44:39.388Z] 6af640c5 modify: last_modified changed :: "2016-06-07T16:44:30.000Z" -> "2016-06-07T16:44:39.000Z"
+    [17:07:37.746Z] 698fed0c bar modify: max_physical_memory changed :: 256 -> 128
+    [17:07:37.746Z] 698fed0c bar modify: max_locked_memory changed :: 256 -> 128
+    [17:07:37.746Z] 698fed0c bar modify: tmpfs changed :: 256 -> 128
+    [17:07:37.746Z] 698fed0c bar modify: last_modified changed :: "2018-04-11T17:04:44.000Z" -> "2018-04-11T17:07:37.000Z"
 
 ### Updating a ZFS property
 
-    [root@headnode (emy-12) ~]# vmadm update 6af640c5-9042-6985-bc94-ed532f779664 quota=20
-    Successfully updated VM 6af640c5-9042-6985-bc94-ed532f779664
+    # vmadm update 698fed0c-b754-4073-e230-9f37c6b4d79f quota=20
+    Successfully updated VM 698fed0c-b754-4073-e230-9f37c6b4d79f
 
 Relevant log lines from `vminfod`
 
-    [2016-06-07T16:29:05.994Z] DEBUG: vminfo/1002 on headnode: handling zfs event for zones/6af640c5-9042-6985-bc94-ed532f779664
-    [2016-06-07T16:29:05.995Z] DEBUG: vminfo/1002 on headnode: refreshing vmobj 6af640c5-9042-6985-bc94-ed532f779664 after zfs event
-    [2016-06-07T16:29:05.995Z] DEBUG: vminfo/1002 on headnode: executing zfs
-    cmdline: /usr/sbin/zfs list -H -p -t filesystem,snapshot,volume -o compression,creation,filesystem_limit,mountpoint,name,quota,recsize,refreservation,snapshot_limit,type,userrefs,volblocksize,volsize,zoned
-    [2016-06-07T16:29:06.029Z] DEBUG: vminfo/1002 on headnode: zfs[7147] running
+    [2018-04-11T17:09:42.201Z] DEBUG: vminfod/4670 on headnode: handleZpoolEvent: dsname: zones/698fed0c-b754-4073-e230-9f37c6b4d79f action: set quota=21474836480
+    [2018-04-11T17:09:42.203Z] DEBUG: vminfod/4670 on headnode: executing zfs
+        cmdline: /usr/sbin/zfs list -H -p -t filesystem,snapshot,volume -o compression,creation,filesystem_limit,mountpoint,name,quota,recsize,refquota,refreservation,snapshot_limit,type,userrefs,volblocksize,volsize,zoned -r zones/698f
+        ed0c-b754-4073-e230-9f37c6b4d79f
+    [2018-04-11T17:09:42.246Z] DEBUG: vminfod/4670 on headnode: zfs[45295] running
+    [2018-04-11T17:09:42.254Z] DEBUG: vminfod/4670 on headnode: zfs[45295] exited with code: 0 (1 lines to stdout)
+    [2018-04-11T17:09:42.255Z] DEBUG: vminfod/4670 on headnode: refreshing vmobj 698fed0c-b754-4073-e230-9f37c6b4d79f after zfs event
+    [2018-04-11T17:09:42.258Z]  INFO: vminfod/4670 on headnode: emitting "modify" event, 30 VMs total
 
 This change is detected using sysevents fired from ZFS core, which
 triggers a refresh of the ZFS data for the VM.
@@ -429,13 +449,13 @@ triggers a refresh of the ZFS data for the VM.
 Output from `vminfod events` - events emitted from `vminfod` after the VM
 abstraction/translation has been applied
 
-    [2016-06-07T16:29:06.172Z] 6af640c5 modify: last_modified changed :: "2016-06-07T16:29:01.000Z" -> "2016-06-07T16:29:06.000Z"
-    [2016-06-07T16:29:06.172Z] 6af640c5 modify: quota changed :: 10 -> 20
+    [17:09:42.258Z] 698fed0c bar modify: quota changed :: 10 -> 20
+    [17:09:42.927Z] 698fed0c bar modify: last_modified changed :: "2018-04-11T17:07:37.000Z" -> "2018-04-11T17:09:42.000Z"
 
 **NOTE:** because of the nature of the sysevents, the same effect could be seen
 with `vminfod` by running the following command instead
 
-    # zfs set quota=20G zones/6af640c5-9042-6985-bc94-ed532f779664
+    # zfs set quota=20G zones/698fed0c-b754-4073-e230-9f37c6b4d79f
 
 ### Adding a nic
 
@@ -455,22 +475,24 @@ with `vminfod` by running the following command instead
 }
 ```
 
-    # vmadm update 6af640c5-9042-6985-bc94-ed532f779664 < nics.json
-    Successfully updated VM 6af640c5-9042-6985-bc94-ed532f779664
+    # vmadm update 698fed0c-b754-4073-e230-9f37c6b4d79f < nics.json
+    Successfully updated VM 698fed0c-b754-4073-e230-9f37c6b4d79f
 
 Relevant log lines from `vminfod`
 
-    [2016-06-07T16:48:11.072Z] DEBUG: vminfo/8192 on headnode: /etc/zones/6af640c5-9042-6985-bc94-ed532f779664.xml modified
-    [2016-06-07T16:48:11.073Z] DEBUG: vminfo/8192 on headnode: refreshing zoneData for 6af640c5-9042-6985-bc94-ed532f779664
-    [2016-06-07T16:48:11.073Z] DEBUG: vminfo/8192 on headnode: requesting new vmobj for 6af640c5-9042-6985-bc94-ed532f779664
+    [2018-04-11T17:12:24.047Z] DEBUG: vminfod/4670 on headnode: handleFsEvent: pathname: /etc/zones/698fed0c-b754-4073-e230-9f37c6b4d79f.xml (FILE_EXCEPTION,FILE_RENAME_TO)
+    [2018-04-11T17:12:24.048Z] DEBUG: vminfod/4670 on headnode: /etc/zones/698fed0c-b754-4073-e230-9f37c6b4d79f.xml modified
+    [2018-04-11T17:12:24.049Z] DEBUG: vminfod/4670 on headnode: refreshing zoneData for 698fed0c-b754-4073-e230-9f37c6b4d79f
+    [2018-04-11T17:12:24.061Z] DEBUG: vminfod/4670 on headnode: requesting new vmobj for 698fed0c-b754-4073-e230-9f37c6b4d79f
+    [2018-04-11T17:12:24.063Z]  INFO: vminfod/4670 on headnode: emitting "modify" event, 30 VMs total
 
 Same as the alias and memory changes, this refresh was caused by the zone's XML
 file being modified.
 
 Output from `vminfod events`
 
-    [2016-06-07T16:48:11.299Z] 6af640c5 modify: nics.0 added :: null -> {"interface":"net0","mac":"b2:1e:ba:a5:6e:71","nic_tag":"external","gateway":"10.2.121.1","gateways":["10.2.121.1"],"netmask":"255.255.0.0","ip":"10.2.121.71","ips":["10.2.121.71/16"]}
-    [2016-06-07T16:48:11.299Z] 6af640c5 modify: last_modified changed :: "2016-06-07T16:44:39.000Z" -> "2016-06-07T16:48:11.000Z"
+    [17:12:24.063Z] 698fed0c bar modify: nics.* added :: undefined -> {"interface":"net0","mac":"b2:1e:ba:a5:6e:71","nic_tag":"external","gateway":"10.2.121.1","gateways":["10.2.121.1"],"netmask":"255.255.0.0","ip":"10.2.121.71","ips":["10.2.121.71/16"]}
+    [17:12:24.063Z] 698fed0c bar modify: last_modified changed :: "2018-04-11T17:09:42.000Z" -> "2018-04-11T17:12:24.000Z"
 
 API
 ---
@@ -481,7 +503,7 @@ Returns a JSON object:
 
 ``` json
 {
-    ping: 'pong'
+    "ping": "pong"
 }
 ```
 
@@ -489,11 +511,6 @@ Returns a JSON object:
 
 Returns a JSON object. See the Management/Health section for details on the
 format of this object.
-
-### GET /data
-
-Returns a JSON object representing the raw data the vminfod is storing to watch
-for changes.
 
 ### GET /vms
 
@@ -508,8 +525,8 @@ Returns a VM Object for the VM with :uuid, or 404 if not found.
 This endpoint returns JSON objects as single '\n'-terminated lines. These
 objects have at least:
 
- - ts: (timestamp: new Date())
- - type: (string in the set: ['ack', 'create', 'delete', 'modify'])
+ - date: (timestamp: `new Date()`)
+ - type: (string in the set: ['ready', 'create', 'delete', 'modify'])
 
 But will also have:
 
@@ -517,23 +534,54 @@ But will also have:
  - vm: (JSON VM object) -- for 'create' and 'modify'
  - zonename: (string: uuid) -- for 'create' and 'delete'
 
-When you first GET /events you should immediately get an 'ack' event which
+When you first GET /events you should immediately get a 'ready' event which
 allows you to know events will be streamed. After that, you'll get an additional
 JSON line for each new event with the above properties.
 
-The changes objects for 'modify' actions look like an array of:
+The ready event contains a `vms` property that contains a snapshot of every VM
+on the system when the events listener was created, so any modify events seen
+thereafter can be applied to the original snapshot for an up-to-date view of
+all VMs on the system.
+
+**Note:** For performance reasons, vminfod maintains the full list of VMs in a
+pre-serialized way so it can handle requests to `/vms` very quickly.  Because
+of this, the `vms` key in the ready event must be JSON parsed, as it contains a
+JSON stringified array of objects.
 
 ``` json
 {
-    path: key,
-    action: 'changed',
-    from: a,
-    to: b
+    "type": "ready",
+    "date": "2018-04-11T17:28:12.046Z",
+    "uuid": "f93c9a88-6c3d-66a9-f5ea-c08068d803a3",
+    "vms": "[{...},{...},...]"
 }
 ```
 
-where action is one of: 'changed', 'removed', 'added' and `a` and `b` are the
-before and after values (or null).
+A modify event will look like this:
+
+``` json
+{
+  "type": "modify",
+  "date": "2018-04-11T17:32:30.147Z",
+  "zonename": "c4103a37-356c-4898-fe9e-bc61fd3f7ac8",
+  "uuid": "c4103a37-356c-4898-fe9e-bc61fd3f7ac8",
+  "vm": { ... },
+  "changes": [
+    {
+      "prettyPath": "quota",
+      "path": [
+        "quota"
+      ],
+      "action": "changed",
+      "oldValue": 10,
+      "newValue": 20
+    }
+  ]
+}
+```
+
+where `vm` is the full new VM object and `changes.*.action` is one of:
+'changed', 'removed', 'added'
 
 Management
 ----------
@@ -550,33 +598,103 @@ and goes to the default SMF location for logs, ie.
 
 `GET /ping` to ensure the daemon is running
 
-    # curl localhost:9090/ping
-    {
-      "ping": "pong"
-    }
+``` json
+# curl localhost:9090/ping
+{
+  "ping": "pong"
+}
+```
 
 `GET /status` to get various stats about the process and current
 running tasks
 
-    # curl localhost:9090/status
-    {
-      "pid": 3601,
-      "uptime": 1427,
-      "memory": {
-        "rss": 50143232,
-        "heapTotal": 28908416,
-        "heapUsed": 9082576
-      },
-      "state": "running",
-      "status": "working",
-      "queue": {
-        "paused": false,
-        "working": 0,
-        "max_jobs": 2,
-        "channels": [],
-        "backlog": []
-      }
+``` json
+# curl localhost:9090/status
+{
+  "pid": 4670,
+  "uptime": "54632.555733604s (15.18h)",
+  "memory": {
+    "rss": 59695104,
+    "heapTotal": 31955456,
+    "heapUsed": 14105164
+  },
+  "state": "running",
+  "status": "working",
+  "numVms": 30,
+  "curDate": "2018-04-11T17:16:47.353Z",
+  "curTime": "54859.766171547",
+  "queue": {
+    "now": "54859.766305453",
+    "paused": false,
+    "idle": true,
+    "vasync_queue": {
+      "concurrency": 1,
+      "npending": 0,
+      "nqueued": 0,
+      "pending": {},
+      "queued": []
     }
+  },
+  "lastRefresh": "113.349678424s (1.88m)",
+  "refreshErrors": [],
+  "eventsListeners": {
+    "7ab5cb99-18d6-42d1-aa98-f8312bbd68c6": {
+      "userAgent": "VM.js events - zoneevent CLI (amon-agent) - headnode/5651 (/usr/vm/sbin/zoneevent)",
+      "createdTime": "239.302449140",
+      "createdDate": "2018-04-11T02:06:25.203Z",
+      "createdAgo": "54620.463900351s (15.17h)"
+    },
+    "f9f02fc5-92bb-434e-84ed-bebe91c6d7fa": {
+      "userAgent": "VM.js events - zoneevent CLI (amon-zoneevents) - headnode/6071 (/usr/vm/sbin/zoneevent)",
+      "createdTime": "239.454193578",
+      "createdDate": "2018-04-11T02:06:25.355Z",
+      "createdAgo": "54620.312155913s (15.17h)"
+    },
+    "7df1ddfa-6b12-c4bd-ac55-825c8eb31393": {
+      "userAgent": "Metadata Agent - VminfodWatcher - headnode/6100 (/usr/vm/sbin/metadata)",
+      "createdTime": "239.814803846",
+      "createdDate": "2018-04-11T02:06:25.716Z",
+      "createdAgo": "54619.951545645s (15.17h)"
+    },
+    "845fb199-27ae-6918-a086-9a3f4c93aadb": {
+      "userAgent": "VM.js events - vmadm CLI - VM Agent - headnode/22159 (/usr/sbin/vmadm)",
+      "createdTime": "363.563448727",
+      "createdDate": "2018-04-11T02:08:29.262Z",
+      "createdAgo": "54496.202900764s (15.14h)"
+    },
+    "e6553333-d807-cb56-d1a0-af10e1a31427": {
+      "userAgent": "VM.js events - zoneevent CLI (net-agent) - headnode/22358 (/usr/vm/sbin/zoneevent)",
+      "createdTime": "384.786879657",
+      "createdDate": "2018-04-11T02:08:50.486Z",
+      "createdAgo": "54474.979469834s (15.13h)"
+    },
+    "b6548475-8be6-6c4b-e29c-81f64186dc24": {
+      "userAgent": "VM.js events - zoneevent CLI (cn-agent) - headnode/22383 (/usr/vm/sbin/zoneevent)",
+      "createdTime": "387.299505713",
+      "createdDate": "2018-04-11T02:08:52.999Z",
+      "createdAgo": "54472.466843778s (15.13h)"
+    },
+    "3b9c6fb9-8650-47fa-e0ac-a361781d217c": {
+      "userAgent": "VM.js events - vmadmd ZoneEvent - headnode/15125 (/usr/vm/sbin/vmadmd)",
+      "createdTime": "4836.906985918",
+      "createdDate": "2018-04-11T03:23:02.761Z",
+      "createdAgo": "50022.859363573s (13.9h)"
+    },
+    "5bee83ee-c6f6-44ff-ee45-cfd65820b702": {
+      "userAgent": "VM.js events - zoneevent CLI (amon-relay) - headnode/24704 (/usr/vm/sbin/zoneevent)",
+      "createdTime": "13431.857157978",
+      "createdDate": "2018-04-11T05:46:18.010Z",
+      "createdAgo": "41427.909191513s (11.51h)"
+    },
+    "3c74ab1e-e35b-e8a5-dfc0-8c5aaa48d860": {
+      "userAgent": "VM.js events - vmadm CLI - headnode/44500 (/usr/sbin/vmadm)",
+      "createdTime": "54071.550631206",
+      "createdDate": "2018-04-11T17:03:39.110Z",
+      "createdAgo": "788.215718285s (13.13m)"
+    }
+  }
+}
+```
 
 ### CLI tool
 
@@ -584,21 +702,23 @@ running tasks
 more like `sdcadm` or `manta-adm` - ie. give something more user friendly
 than raw JSON that can be seen by curling the endpoints directly.
 
-There is `vminfod` CLI tool that can be used to query the daemon.
+There is `vminfo` CLI tool that can be used to query the daemon.
 This was mostly written for debugging purposes but has proven itself
 sufficiently useful to warrant being shipped with the platform.
 
-    # vminfod ping
-    {
-      "ping": "pong"
-    }
+    # vminfo ping
+    pong
 
-`vminfod ping` is a thin wrapper around `GET /ping`
+`vminfo ping` is a thin wrapper around `GET /ping`
+
+    # vminfo status [-f]
+
+Get status (`-f` for "full" output).
 
 List of vms on the system (`GET /vms`).  This is what `vmadm list` now uses
 under-the-hood.
 
-    # vminfod vms | json -ag uuid state alias | head -5
+    # vminfo vms | json -ag uuid state alias | head -5
     25df11d6-70c2-485b-92a6-4ab651e8fd88 running assets0
     874d1b68-88ae-4d69-abf0-39168835d1dc running sapi0
     96f0d23a-6123-477d-8c97-2bd7d4122de9 running binder0
@@ -608,7 +728,7 @@ under-the-hood.
 Get a specific vm (`GET /vms/:uuid`).  This is what `vmadm get` and `vmadm
 lookup` now use under-the-hood.
 
-    # vminfod vm 25df11d6-70c2-485b-92a6-4ab651e8fd88 | json alias quota max_physical_memory
+    # vminfo vm 25df11d6-70c2-485b-92a6-4ab651e8fd88 | json alias quota max_physical_memory
     assets0
     25
     128
@@ -616,51 +736,51 @@ lookup` now use under-the-hood.
 And finally, watch for events in realtime on the system (`GET /events`).
 These commands were run in two separate terminals on the same machine.
 
-    # vmadm create < minimal.json
+    # vmadm create < vm.json
+    Successfully created VM c4103a37-356c-4898-fe9e-bc61fd3f7ac8
 
 and
 
-    # vminfod events
-    [2016-05-31T16:29:09.477Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec create
-    [2016-05-31T16:29:09.634Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: zone_state changed :: "configured" -> "incomplete"
-    [2016-05-31T16:29:09.882Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: quota added :: null -> 10
-    [2016-05-31T16:29:09.882Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: zfs_root_recsize added :: null -> 131072
-    [2016-05-31T16:29:09.882Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: zfs_filesystem added :: null -> "zones/5595d88c-6e4d-4bda-b58e-97dd02e32bec"
-    [2016-05-31T16:29:09.882Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: zpool added :: null -> "zones"
-    [2016-05-31T16:29:10.403Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: zone_state changed :: "incomplete" -> "installed"
-    [2016-05-31T16:29:10.556Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: last_modified changed :: "2016-05-31T16:29:09.000Z" -> "2016-05-31T16:29:10.000Z"
-    [2016-05-31T16:29:10.556Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: customer_metadata added :: null -> {}
-    [2016-05-31T16:29:10.556Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: internal_metadata added :: null -> {}
-    [2016-05-31T16:29:11.259Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: zone_state changed :: "installed" -> "ready"
-    [2016-05-31T16:29:11.259Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: zoneid changed :: null -> 24
-    [2016-05-31T16:29:11.259Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: boot_timestamp added :: null -> "1970-01-01T00:00:00.000Z"
-    [2016-05-31T16:29:11.259Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: pid added :: null -> 0
-    [2016-05-31T16:29:11.974Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: zone_state changed :: "ready" -> "running"
-    [2016-05-31T16:29:11.974Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: boot_timestamp changed :: "1970-01-01T00:00:00.000Z" -> "2016-05-31T16:29:11.000Z"
-    [2016-05-31T16:29:11.974Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: pid changed :: 0 -> 20374
-    [2016-05-31T16:29:15.221Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: state changed :: "provisioning" -> "running"
-    [2016-05-31T16:29:15.221Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: transition_to removed :: "running" -> null
-    [2016-05-31T16:29:15.221Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: transition_expire removed :: 1464712449309 -> null
-    [2016-05-31T16:29:15.221Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: last_modified changed :: "2016-05-31T16:29:10.000Z" -> "2016-05-31T16:29:15.000Z"
+    # vminfo events
+    [17:19:03.015Z] c4103a37 foo create
+    [17:19:03.230Z] c4103a37 foo modify: zone_state changed :: "configured" -> "incomplete"
+    [17:19:03.528Z] c4103a37 foo modify: quota added :: undefined -> 0
+    [17:19:03.528Z] c4103a37 foo modify: zfs_root_recsize added :: undefined -> 131072
+    [17:19:03.528Z] c4103a37 foo modify: zfs_filesystem added :: undefined -> "zones/c4103a37-356c-4898-fe9e-bc61fd3f7ac8"
+    [17:19:03.528Z] c4103a37 foo modify: zpool added :: undefined -> "zones"
+    [17:19:04.144Z] c4103a37 foo modify: quota changed :: 0 -> 10
+    [17:19:06.810Z] c4103a37 foo modify: zone_state changed :: "incomplete" -> "installed"
+    [17:19:08.154Z] c4103a37 foo modify: zone_state changed :: "installed" -> "ready"
+    [17:19:08.154Z] c4103a37 foo modify: zoneid changed :: null -> 611
+    [17:19:08.154Z] c4103a37 foo modify: last_modified changed :: "2018-04-11T17:19:02.000Z" -> "2018-04-11T17:19:06.000Z"
+    [17:19:08.154Z] c4103a37 foo modify: boot_timestamp added :: undefined -> "1970-01-01T00:00:00.000Z"
+    [17:19:08.154Z] c4103a37 foo modify: pid added :: undefined -> 0
+    [17:19:08.473Z] c4103a37 foo modify: zone_state changed :: "ready" -> "running"
+    [17:19:08.473Z] c4103a37 foo modify: boot_timestamp changed :: "1970-01-01T00:00:00.000Z" -> "2018-04-11T17:19:08.000Z"
+    [17:19:08.473Z] c4103a37 foo modify: pid changed :: 0 -> 45822
+    [17:19:11.953Z] c4103a37 foo modify: state changed :: "provisioning" -> "running"
+    [17:19:11.953Z] c4103a37 foo modify: transition_to removed :: "running" -> undefined
+    [17:19:11.953Z] c4103a37 foo modify: transition_expire removed :: 1523467442755 -> undefined
+    [17:19:11.953Z] c4103a37 foo modify: last_modified changed :: "2018-04-11T17:19:06.000Z" -> "2018-04-11T17:19:12.000Z"
 
 Now, updating the zone
 
-    # vmadm update 5595d88c-6e4d-4bda-b58e-97dd02e32bec quota=20
+    # vmadm update c4103a37-356c-4898-fe9e-bc61fd3f7ac8 quota=20
+    Successfully updated VM c4103a37-356c-4898-fe9e-bc61fd3f7ac8
 
 results in
 
-    [2016-05-31T16:29:59.967Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: last_modified changed :: "2016-05-31T16:29:15.000Z" -> "2016-05-31T16:29:59.000Z"
-    [2016-05-31T16:29:59.967Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: quota changed :: 10 -> 20
+    [17:20:09.634Z] c4103a37 foo modify: quota changed :: 10 -> 20
+    [17:20:09.928Z] c4103a37 foo modify: last_modified changed :: "2018-04-11T17:19:12.000Z" -> "2018-04-11T17:20:09.000Z"
 
 And, because sysevents are used, `vminfod` will catch any update to the
 underlying system
 
-    # zfs set quota=10G zones/5595d88c-6e4d-4bda-b58e-97dd02e32bec
+    # zfs set quota=10G zones/c4103a37-356c-4898-fe9e-bc61fd3f7ac8
 
 showing
 
-    [2016-05-31T16:34:39.145Z] 5595d88c-6e4d-4bda-b58e-97dd02e32bec modify: quota changed :: 20 -> 10
-
+    [17:20:56.635Z] c4103a37 foo modify: quota changed :: 20 -> 10
 
 Deployment
 ----------
@@ -669,27 +789,24 @@ Deployment
 
 Before `vminfod` can be merged to master:
 
- - The ZFS sysevent kernel change must be in place (either via the OpenZFS pull
+ - (Done) The ZFS sysevent kernel change must be in place (either via the OpenZFS pull
    request, or a flag day set for the SmartOS release)
- - All tests in `/usr/vm/test` must pass
- - All vm-agent tests must pass
- - All vmapi tests must pass
- - All sdc-docker tests must pass
- - All cloudapi tests must pass
- - All the above tests must pass on a vminfod-enabled platform with vminfod
+ - (Done) All tests in `/usr/vm/test` must pass
+ - (Done) All vm-agent tests must pass
+ - (Done) All vmapi tests must pass
+ - (Done) All sdc-docker tests must pass
+ - (Done) All cloudapi tests must pass
+ - (N/A) All the above tests must pass on a vminfod-enabled platform with vminfod
    disabled.
- - `make check` must pass
- - All code must have passed review
- - The authors must be confident that all reasonable tests have been completed.
+ - (Done) `make check` must pass
+ - (In Progress) All code must have passed review
+ - (In Progress) The authors must be confident that all reasonable tests have been completed.
 
 ### Initial deployment
 
 Actual deployment of `vminfod` will be done via the normal platform update
 mechanism. Booting a CN onto a vminfod-enabled platform will cause it to start
-using vminfod immediately. The fact that everything works *without* vminfod
-means that if there are any problems with the vminfod deployment, it should be
-possible to `svcadm disable vminfod` and have the system continue to function as
-though it did not have vminfod.
+using vminfod immediately.
 
 The expected order of deployment would be:
 
@@ -708,14 +825,6 @@ After vminfod has been deployed for some time and confidence has been
 established in its correct operation, it should be possible:
 
  - to consider raising the `ALLOC\_FILTER\_VM\_COUNT` value in production
- - to have other components (vm-agent, cn-agent, net-agent, metadata agent,
-   smartlogin etc.) start relying on vminfod on platforms that have it enabled.
-
-Everything that's currently using its own zoneevent or sysevent watcher to watch
-for zone changes should eventually be switched to being a vminfod client. This
-will actually also make the sysevents more reliable since eventually vminfod can
-be the only consumer of these events and other processes will not fill up the
-queue and cause vminfod to miss events.
 
 ### Backporting
 
@@ -781,7 +890,7 @@ Open Questions
 
 ### Naming of CLI
 
-Should the cli be named `vminfo` or `vminfoadm` instead of `vminfod`?
+Should the cli be named something like `vminfoadm` instead of `vminfo`?
 
 ### Logical Events
 
@@ -805,8 +914,8 @@ Other Notes
 
 Miscellaneous notes:
 
- - vminfod must expose VMs with do\_not\_inventory set so that vmadm works in a
-   backward compatible way. Consumers should be aware of this.
+ - vminfod must expose VMs with `do_not_inventory` set so that `vmadm` works in
+   a backward compatible way. Consumers should be aware of this.
 
 <!-- Repo Links -->
 [heartbeater]: https://github.com/joyent/sdc-heartbeater-agent
