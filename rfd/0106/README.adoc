@@ -1,11 +1,11 @@
 ---
 authors: Sean Chittenden <seanc@joyent.com>
-state: predraft
+state: abandoned
 ---
 = RFD 106 Engineering Guide - Go Best Practices
 :author: Sean Chittenden
 :email: seanc@joyent.com
-:state: predraft
+:state: abandoned
 :revnumber: 0.1.0
 :keywords: rfd 106, go, golang, best practices, joyent, engineering, software
 include::front-matter.adoc[]

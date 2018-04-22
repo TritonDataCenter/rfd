@@ -149,7 +149,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 103 Operationalize Resharding](./rfd/0103/README.md) |
 | draft    | [RFD 104 Engineering Guide - General Principles](./rfd/0104/README.md) |
 | draft    | [RFD 105 Engineering Guide - Node.js Best Practices](./rfd/0105/README.md) |
-| predraft | [RFD 106 Engineering Guide - Go Best Practices](./rfd/0106/README.adoc) |
+| abandoned | [RFD 106 Engineering Guide - Go Best Practices](./rfd/0106/README.adoc) |
 | publish  | [RFD 107 Self assigned IP's and reservations](./rfd/0107/README.md) |
 | draft    | [RFD 108 Remove Support for the Kernel Memory Cage](./rfd/0108/README.md) |
 | predraft | [RFD 109 Run Operator-Script Earlier during Image Creation](./rfd/0109/README.md) |
