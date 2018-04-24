@@ -16,12 +16,12 @@ discussion:
 
 # RFD 138 Multi-subnet Admin Networks
 
-Today, the admin network consists of a single subnet over which all of the services across each host and rack communicate.  The goal of this change is to increase scalability and reduce size of L2 domain, by changing to a Clos (spine leaf) topology.  The result of this change will be support for a multi-subnet admin networks so that each rack will be on its own L2 admin broadcast domain, and rack-to-rack (cross subnet) traffic will be done via L3 switching.  
+Today, the admin network consists of a single subnet over which all of the services across each host and rack communicate.  The goal of this change is to allow multiple admin subnets within a single AZ so that deployments can scale the number of CNs, while keeping a reduced L2 domain, and allow for Clos (spine leaf) network topologies.  Triton and Manta administration tools will be updated to allow provisioning to an "admin" network pool which aggregates all of the admin subnets.
 
 ## Feature 
 The feature will allow for CNs to be assigned different networks over which admin traffic will traverse.  Each one of these networks will need to be part of an admin network pool.  When a CN boots it will be assigned a nic from the network in the "admin" network pool that matches the desired nictag. 
 
-This feature is dependent upon [RFD 48](../0043/README.md), and a prerequisite for OPS-RFD 27.
+This feature is dependent upon [RFD 43](../0043/README.md), and a prerequisite for OPS-RFD 27.
 
 ## DHCP (sdc-booter) considerations
 
@@ -60,7 +60,7 @@ _many of these could be implemented as future work_
 restrict 10.99.99.0 mask 255.255.255.0
 restrict 10.222.222.0 mask 255.255.255.0
 ```
-* Apply firewall rules to allow traffic to core services from the new rack(subnet).  Example:
+* Apply firewall rules to allow traffic to core services from the new rack(subnet). [RFD 117 Network Traits](../0117/README.md) would be useful here. Example:
 ```
 {
     "description": "SDC zones: allow all TCP from admin_rack99 net",
@@ -106,39 +106,7 @@ b) Add a new property "admin_tag" to denote an alternately tagged admin network 
 Currently (b) is the preferred approach because it keeps the changes well partitioned, and backwards compatible.  Also docs that refer to the current property format (<tag name>_nic=<mac addr>) would still be valid. (e.g. https://wiki.smartos.org/display/DOC/extra+configuration+options)
 
 
-There is a general desire to move the CN networking configuration towards being completely contained in the `networking.json` file received from the booter (dhcpd service).  With this in mind, a new object "adminNic" will be added to the networking.json file.  This object will hold all the properties for THE admin NIC for the receiving CN's multi-subnet (or even single subnet) admin network.  
-
-```
-    "adminNic": {
-        "belongs_to_type": "server",
-        "belongs_to_uuid": "fcdde9c2-9947-434c-afd4-a2440ab50e1b",
-        "mac": "d2:9c:54:2c:8c:a4",
-        "owner_uuid": "930896af-bf8c-48d4-885c-6573a94b1853",
-        "primary": false,
-        "state": "provisioning",
-        "created_timestamp": "2018-04-18T13:45:40.366Z",
-        "modified_timestamp": "2018-04-19T20:53:05.532Z",
-        "ip": "10.222.222.8",
-        "gateway": "10.222.222.1",
-        "mtu": 1500,
-        "netmask": "255.255.255.0",
-        "nic_tag": "admin_rack99",
-        "resolvers": [
-            "10.99.99.5"
-        ],
-        "vlan_id": 0,
-        "network_uuid": "de4754e9-c77d-4d70-b479-fe8c96148dc7",
-        "nic_tags_provided": [
-            "admin_rack99",
-            "admin"
-        ]
-    }
-```
-
-In net-boot-config set the following:
-```
-    admin_tag=adminNic.nic_tag
-```
+There is a general desire to move the CN networking configuration towards being completely contained in the `networking.json` file received from the booter (dhcpd service).  With this in mind, a new property "admin_tag" will be added to the networking.json file.  This property will be set to the nictag value of the admin NIC. 
 
 In the `usbkey/config` or `node.config` files the same property will be valid:
 ```
