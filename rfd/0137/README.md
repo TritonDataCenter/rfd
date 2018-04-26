@@ -147,7 +147,7 @@ that now has support for the synthetic serial number.
 serial numbers and rebooted to a system prior to this support.
 
 * FM detected an error on a new system that supports the synthetic
-serial numbers and a BIOS change locked the ability to snthesize the
+serial numbers and a BIOS change locked the ability to synthesize the
 serial number.
 
 * FM detected an error on a new system that does not support the
