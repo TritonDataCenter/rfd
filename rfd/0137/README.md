@@ -133,3 +133,41 @@ be added to the `nvlist_t` payload that is consumed by `/dev/fm`
 through its `FM_IOC_PHYSCPU_INFO` ioctl. This will then be consumed
 by the corresponding FM topology modules in user land to allow for
 autoreplace to work.
+
+#### FRU changes
+
+One of the biggest challenges that we have with this scheme is that the
+FRU of the processor can change in this scheme. This can happen for a
+couple of reasons:
+
+* FM detected an error on an older system and we rebooted to a system
+that now has support for the synthetic serial number.
+
+* FM detected an error on a new system that supports the synthetic
+serial numbers and rebooted to a system prior to this support.
+
+* FM detected an error on a new system that supports the synthetic
+serial numbers and a BIOS change locked the ability to snthesize the
+serial number.
+
+* FM detected an error on a new system that does not support the
+synthetic serial number, but was rebooted and a BIOS change unlocked the
+ability to synthesize the serial number.
+
+All of these cases represent instances where we cannot know for certain
+whether or not a replacement occurred. In fact, the odds are high that
+the replacement did not occur. As such, we need to make sure that FM is
+enhanced such that in all of these cases a fault is not considered to
+have been autoreplaced and that instead the operator must manually clear
+such faults.
+
+This means that the only time the hc schema CPU module would consider a
+replacement as having occured is if the original faulted FMRI had a
+synthesized serial number and the replacement part did as well.
+Othewrise, we will always consider the fault as persisting.
+
+The only caveat wiht this approach is that if we have one of these
+changes and the part has not been replaced, we can end up with two FRUs
+that both have faults (one with and one without). However, because
+these FRUs will refer to the same logical CPUs, we should still see them
+being retired.
