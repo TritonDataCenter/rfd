@@ -1,7 +1,7 @@
 ---
 authors: Han Solo <han@example.com>, Frodo Baggins <frodo@example.com>
 state: predraft
-discussion: <link to a github issue>
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+<Number>%22
 ---
 
 <!--
@@ -11,7 +11,7 @@ discussion: <link to a github issue>
 -->
 
 <!--
-    Copyright 2018 <contributor>
+    Copyright (c) 2018, <contributor>
 -->
 
 # RFD <Number> <Title>
