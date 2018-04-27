@@ -63,7 +63,7 @@ in Triton repos or in Trent's head, is `tape`. However, I want more.
 Goals:
 
 - a node.js server-side code test framework
-- tape-like test file usage would be a plus, for migration (this biases us
+- tape-like test file usage would be a plus for migration (this biases us
   towards TDD-style rather than BDD-style, FWIW)
 - a test file can be run on its own, e.g. `node test/foo.test.js`
 - a CLI for more conveniently running multiple test files, e.g.
@@ -95,7 +95,7 @@ support below.
 
 ## Choosing node-tap
 
-- [x] tape-like test file usage would be a plus, for migration
+- [x] tape-like test file usage would be a plus for migration
 
 Yes. `tape`'s usage was originally designed to be compatible with node-tap.
 Even better, because `tap` runs each test file in its own process and without
@@ -103,26 +103,28 @@ anything special (it just execs `node $testFile` and parses TAP output),
 the migration process to using node-tap can be piecemeal: during migration
 some test files can continue to use `tape`, for example.
 
+
 - [x] a test file can be run on its own, e.g. `node test/foo.test.js`
 
 Yes, by design for tap and tape.
+
 
 - [x] a CLI for more conveniently running multiple test files
 
 Yes, `tap`.
 
+
 - [x] [TAP](https://testanything.org/tap-version-13-specification.html) output
 
 Yes, via `tap -R tap ...`.
 
-Two other good things about node-tap's TAP output. One is that
 
 - [x] good reporting for failing tests
 
 Yes.
 
 By default `tap` uses a more compact formatted output ostensibly for a better
-interactive experience. That's fair, the output does a good job of exposing
+interactive experience. That's fair and the output does a good job of exposing
 failing tests, e.g.:
 
 ![tap default error reporting of `t.deepEqual`](./tap-default-error-reporting.png)
@@ -130,7 +132,32 @@ failing tests, e.g.:
 With admittedly limited recent testing, node-tap does a better job of reporting
 error context.
 
-Node-tap handles "skip"-test more correctly:
+
+- [x] **parallel running of test files**
+
+Yes, via `tap -j N ...`.
+
+Anecdotally this worked to run the node-triton test suite in about 12 minutes
+whereas a serial run can talk, IIRC, one hour.
+
+
+- [x] **test files are run in separate processes for isolation**
+
+Yes.
+
+Anecdotally, with the node-triton test suite, there was recently/currently
+a bug in "test/integration/cli-affinity.test.js" where it would screw up
+and run `t.end()` twice. [`tap` handled
+this](https://gist.github.com/trentm/f7cacc1b275653cd548489e39ef7a9e2#file-test-log-L205-L281)
+and carried on with other
+test files. [`tape` blew
+up](https://gist.github.com/trentm/af857dcc19c5544d9b451b135afe21a5#file-test-log-L128-L257)
+and exited without running the other test files.
+
+
+- [x] other bonuses over tape
+
+Node-tap handles "skip"-tests correctly:
 
 ```
 $ cat skipping.test.js
@@ -191,25 +218,6 @@ $ echo $?
 The above `tap` example also shows that tap does a much better job of
 clearly reporting subtests.
 
-- [x] **parallel running of test files**
-
-Yes, via `tap -j N ...`.
-
-Anecdotally this worked to run the node-triton test suite in about 12 minutes
-where as a serial run can talk, IIRC, one hour.
-
-- [x] **test files are run in separate processes for isolation**
-
-Yes.
-
-Anecdotally, with the node-triton test suite, there was recently/currently
-a bug in "test/integration/cli-affinity.test.js" where it would screw up
-and run `t.end()` twice. [`tap` handled
-this](https://gist.github.com/trentm/f7cacc1b275653cd548489e39ef7a9e2#file-test-log-L205-L281)
-and carried on with other
-test files. [`tape` blew
-up](https://gist.github.com/trentm/af857dcc19c5544d9b451b135afe21a5#file-test-log-L128-L257)
-and exited without running the other test files.
 
 
 ### The bad with node-tap
@@ -283,7 +291,7 @@ node-tap is worth the size gain.
 ### But I want coverage!
 
 That's fine. It is a per-Triton-component decision whether the install footprint
-is worth it.
+is worth it. Use either `tap` or `@smaller/tap` accordingly.
 
 
 ## Guidelines for using node-tap in Triton repos
