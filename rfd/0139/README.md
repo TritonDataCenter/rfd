@@ -11,12 +11,27 @@ Triton repos, suggest a winner, and give some guidelines/suggestions
 for using it effectively.
 
 tl;dr: Let's switch to using [node-tap](https://www.node-tap.org/).
-
-XXX: a link directly to guidelines
+If you are here just for guidelines on using node-tap, [jump to the guidelines
+here](#guidelines-for-using-node-tap-in-triton-repos).
 
 
 <!-- START doctoc generated TOC please keep comment here to allow auto update -->
 <!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+
+
+- [Status](#status)
+- [History, Current State, and Goals](#history-current-state-and-goals)
+- [Choosing node-tap](#choosing-node-tap)
+  - [The bad with node-tap](#the-bad-with-node-tap)
+  - [`npm install @smaller/tap`](#npm-install-smallertap)
+  - [But I want coverage!](#but-i-want-coverage)
+- [Guidelines for using node-tap in Triton repos](#guidelines-for-using-node-tap-in-triton-repos)
+- [Appendices](#appendices)
+  - [Appendix A: rastap](#appendix-a-rastap)
+  - [Appendix B: tape](#appendix-b-tape)
+  - [Appendix C: nodeunit](#appendix-c-nodeunit)
+  - [Appendix D: mocha](#appendix-d-mocha)
+  - [Appendix E: lab](#appendix-e-lab)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -440,5 +455,3 @@ Points against `lab` usage for Triton repos:
     $ du -sh node_modules/lab/
      28M	node_modules/lab/
     ```
-
-
