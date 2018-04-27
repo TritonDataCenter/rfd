@@ -182,7 +182,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 136 Conch: Orchestration](./rfd/0136/README.md) |
 | draft    | [RFD 137 CPU Autoreplacement and ID Synthesis](./rfd/0137/README.md) |
 | predraft | [RFD 138 Multi-subnet Admin Networks](./rfd/0138/README.md) |
-| predraft | [RFD 139 Node.js test frameworks and guidelines](./rfd/0139/README.md) |
+| predraft | [RFD 139 Node.js test frameworks and Triton guidelines](./rfd/0139/README.md) |
 
 
 
