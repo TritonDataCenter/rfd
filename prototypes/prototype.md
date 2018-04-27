@@ -1,6 +1,7 @@
 ---
 authors: Han Solo <han@example.com>, Frodo Baggins <frodo@example.com>
 state: predraft
+discussion: <link to a github issue>
 ---
 
 <!--
@@ -10,7 +11,7 @@ state: predraft
 -->
 
 <!--
-    Copyright 2017 <contributor>
+    Copyright 2018 <contributor>
 -->
 
 # RFD <Number> <Title>
