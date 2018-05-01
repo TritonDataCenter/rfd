@@ -296,6 +296,102 @@ is worth it. Use either `tap` or `@smaller/tap` accordingly.
 
 ## Guidelines for using node-tap in Triton repos
 
+This section provides some guidelines/suggestions for `tap` CLI usage and
+node-tap library usage in tap files. (For guidelines on setting up setup testing
+in general in Joyent Triton repos, I defer to the hopefully coming
+<https://github.com/joyent/node-triton-package-boilerplate> for Node.js packages
+and <https://github.com/joyent/triton-service-boilerplate> repos.)
+
+### Use `tap -T ...` to disable default 30s test timeout.
+
+`tap` defaults to a timeout of 30s for a given `test`. That's fine for
+unit test-y stuff, but less so for provisioning tests, etc.
+
+### Write your test files to be fully independent.
+
+If your test files can run independently, it makes it much easier to test
+subsets of the suite for development and to be able to run tests in parallel for
+faster test runs.
+
+### Use `tap -j <number> ...` to run test files in parallel
+
+...if your test files support this (highly recommended, see previous
+suggestion).
+
+
+### Use subtest-style in test files.
+
+The node-tap getting started guide shows minimal tap usage like this:
+
+```js
+// AVOID DOING THIS.
+var tap = require('tap');
+tap.pass('this is fine');
+tap.fail('boom');
+```
+
+Let's instead use the subtest style more typical from tape usage:
+
+```js
+var test = require('tap').test;
+test('test 1', function (t) {
+    t.pass('this is fine');
+    t.fail('boom');
+    t.end();
+});
+test('test 2', function (t) {
+    t.equal(1, 1, 'all good');
+    t.end();
+});
+```
+
+And for larger test files, grouping all the tests in one file under one
+top-level test like this:
+
+```js
+// ...
+test('affinity (triton create -a RULE ...)', testOpts, function (tt) {
+
+    tt.test('triton create -n db1 -a instance==db0', function (t) {
+        //...
+        t.end();
+    });
+
+    // ...
+});
+```
+
+can allow one to set a skip or a test timeout in the one place, `testOpts` in
+the example above, if a test config says to skip this set of tests. For example,
+[this](https://github.com/joyent/node-triton/blob/6015cf2145cd4dbd312cd30d4904b65146dc6ab8/test/integration/cli-affinity.test.js#L25-L39)
+is from the node-triton integration test suite:
+
+
+```js
+var h = require('./helpers');
+
+var testOpts = {
+    skip: !h.CONFIG.allowWriteActions || h.CONFIG.skipAffinityTests
+};
+
+test('affinity (triton create -a RULE ...)', testOpts, function (tt) {
+```
+
+TODO: ^^ This hierarchy was used with `tape`. Perhaps with node-tap we could
+do something simpler like the following?
+
+```
+// ...
+if (!h.CONFIG.allowWriteActions || h.CONFIG.skipAffinityTests) {
+    test.skip('skipping affinity tests per config');
+    process.exit(0);
+}
+```
+
+
+This represents some of Trent's (possibly biased) suggestions for laying out
+a test suite in a node.js repo.
+
 TODO
 
 
@@ -306,8 +402,17 @@ feel obliged to read this section.
 
 ### Appendix A: rastap
 
-TODO: commit what I have and point to it at least
+Leading up to this RFD, I started working on a new test framework and tool
+called rastap. It started as a re-take on `tape` with the intent of adding
+the functionality for the goals listed above. The experimental was helpful
+for me to understand tape and TAP better. In the process I found that
+node-tap, while not scoring full marks, was sufficient and already working and
+supported. Spending time implementing and maintaining node-rastap given node-tap
+is hard to justify, so I've stopped work on node-rastap. I include the link
+here only in case in some future world we decide that node-tap is no longer
+our cup of tea.
 
+<https://github.com/trentm/node-rastap>
 
 ### Appendix B: tape
 
