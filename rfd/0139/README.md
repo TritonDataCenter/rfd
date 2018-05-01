@@ -73,7 +73,7 @@ Goals:
 - a CLI for more conveniently running multiple test files, e.g.
   `<testtool> test/*.test.js`
 - [TAP](https://testanything.org/tap-version-13-specification.html) output,
-  this has served use well
+  this has served us well
 - good reporting for failing tests
 - **parallel running of test files**
 - **test files are run in separate processes for isolation**
