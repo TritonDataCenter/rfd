@@ -319,7 +319,7 @@ faster test runs.
 suggestion).
 
 
-### Use subtest-style in test files.
+### Use subtest-style in test files
 
 The node-tap getting started guide shows minimal tap usage like this:
 
@@ -389,10 +389,6 @@ if (!h.CONFIG.allowWriteActions || h.CONFIG.skipAffinityTests) {
 ```
 
 
-This represents some of Trent's (possibly biased) suggestions for laying out
-a test suite in a node.js repo.
-
-TODO
 
 
 ## Appendices
