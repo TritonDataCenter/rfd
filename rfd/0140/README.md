@@ -116,61 +116,38 @@ When an operator selects a Tile in their Datacenter Room UI, they will need to a
 
 We will need UI around managing Tile Templates.
 
-#### Name
 
-A descriptive name given to the operator. For instance: `equinix_19in_42U_8KW`.
 
-#### Default Max Height
-
-The max height a given tile can support.
-
-#### Default Max Weight
-
-The max weight a given Tile can support.
-
-#### Default Max Rack Dimension
-
-TODO
+| Name          | Description                                                  |
+| ------------- | ------------------------------------------------------------ |
+| Name          | A descriptive name given to the operator. For instance: `equinix_19in_42U_8KW`. |
+| Max Weight    | The max weight a given Tile can support.                     |
+| Max Height    | The max height (in RU?) a given Tile can support.            |
+| Max Dimension |                                                              |
 
 ### datacenter_tile
 
 When an operator places a Tile Template into a Tile Slot in a Datacenter Room, that specific Tile is created with these attributes:
 
-#### Name
-
-Most datacenters provide a name for available tile on their floor. These names often map to what we call the Datacenter Rack, but not always.
-
-#### datacenter_tile_template_id
-
-A reference to `datacenter_tile_template.id`.
-
-### datacenter_tile_location
-
-#### datacenter_room_map_id
-
-A reference to `datacenter_room_map.id`, which gives us the physical location of `datacenter_tile.id`.
+| Name                        | Description                                                  |
+| --------------------------- | ------------------------------------------------------------ |
+| Name                        | Most datacenters provide a name for available tile on their floor. These names often map to what we call the Datacenter Rack, but not always. |
+| datacenter_tile_template_id | A reference to `datacenter_tile_template.id`.                |
+| datacenter_tile_location    | A reference to `datacenter_room_map.id`, which gives us the physical location of `datacenter_tile.id`. |
 
 ### datacenter_tile_circuits
 
-#### Name
+A Tile may or may not contain active power circuilts in it. If the rack only contains spare hardware, it probably will not have circuits. However, the common case is we will have at least one, but usually two, circuits plugged into a Tile.
 
-Most power circuilts provided by the datacenter will be labeled.
 
-#### Voltage
 
-TODO
-
-#### Amperage
-
-TODO
-
-#### Usable Capacity
-
-TODO 80% usage rule?
-
-#### Current Usage
-
-TODO
+| Name            | Description                                                  |
+| --------------- | ------------------------------------------------------------ |
+| Name            | Most power circuilts provided by the datacenter will be labeled. |
+| Voltage         | Provided voltage of the circuirt.                            |
+| Amperage        | Provided amerage of the circuit.                             |
+| Usable Capacity | Based off the 80% rule, what is the capacity of the circuit? |
+| Current Usage   | By polling the PDUs, we can collect the current draw for a given circuit. |
 
 ## Racks and Tiles
 
