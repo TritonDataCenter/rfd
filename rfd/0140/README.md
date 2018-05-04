@@ -96,15 +96,22 @@ Described in more detail below, the overall topology of a Datacenter Room design
 
 Maps should be associated with a given Workspace.
 
-We need a way to map Tiles to specific locations in the grid of a Datacenter Rooms.
+We need a way to map Tiles to specific locations in the grid of a Datacenter Rooms. Rooms are generally comprised of rows and columns of Tiles.
 
 ### datacenter_room_map
 
-TODO: DB table that contains the map of a given room.
+**TODO**: DB table that contains the map of a given room.
 
 ## Tiles
 
-A Datacenter Room is a grid of Tiles.
+A Datacenter Room is a grid of Tiles. Tiles are comprised of several different physical attributes:
+
+* A name
+* A location
+* Power circuits
+* Max weight and height
+* Dimension
+* A direction (for airflow)
 
 Tiles are defined in the following database tables:
 
@@ -134,6 +141,7 @@ When an operator places a Tile Template into a Tile Slot in a Datacenter Room, t
 | Name                        | Most datacenters provide a name for available tile on their floor. These names often map to what we call the Datacenter Rack, but not always. |
 | datacenter_tile_template_id | A reference to `datacenter_tile_template.id`.                |
 | datacenter_tile_location    | A reference to `datacenter_room_map.id`, which gives us the physical location of `datacenter_tile.id`. |
+| datacenter_tile_direction   | Defines the direction the rack is facing, so we can ensure that airflow is moving in the right direction. |
 
 ### datacenter_tile_circuits
 
@@ -167,4 +175,3 @@ Examples of Validations we want the Designer to provide
 
 * [RFD 132 Conch: Unified Rack Integration Process](https://github.com/joyent/rfd/blob/master/rfd/0132/README.md)
 * [RFD 133 Conch: Improved Device Validation](https://github.com/joyent/rfd/blob/master/rfd/0133/README.md)
-
