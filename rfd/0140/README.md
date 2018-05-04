@@ -162,3 +162,9 @@ Examples of Validations we want the Designer to provide
 * Do not allow the operator to overcommit power on a given Tile
 * Require that all Racks be placed such that their air flow is correct
 * Surface cooling or airflow issues to the operator if environmental data is available
+
+## Related Work
+
+* [RFD 132 Conch: Unified Rack Integration Process](https://github.com/joyent/rfd/blob/master/rfd/0132/README.md)
+* [RFD 133 Conch: Improved Device Validation](https://github.com/joyent/rfd/blob/master/rfd/0133/README.md)
+
