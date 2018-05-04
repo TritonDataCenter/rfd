@@ -32,7 +32,7 @@ In the Map, the operator selects a Tile, selects a Tile Template to give it some
 
 It will be useful to limit the selection of Datacenter Racks to specific Workspaces.
 
-In Design Mode, the application should certain constraints into consideration. For instance, it should not allow the operator to place a Rack that requires 20KW onto a Tile that can only provide 8KW. This action would raise an error. See the [Validations](#Validations) section for more.
+In Design Mode, the application should certain constraints into consideration. For instance, it should not allow the operator to place a Rack that requires 20KW onto a Tile that can only provide 8KW. This action would raise an error. See the [Validations](#validations) section for more.
 
 ## View Mode
 
