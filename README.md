@@ -184,6 +184,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 138 Multi-subnet Admin Networks](./rfd/0138/README.md) |
 | predraft | [RFD 139 Node.js test frameworks and Triton guidelines](./rfd/0139/README.md) |
 | predraft | [RFD 140 Conch: Datacenter Designer](./rfd/0140/README.md) |
+| predraft | [RFD 141 Platform Image Build v2 (PIBv2)](./rfd/0141/README.md) |
 
 
 
