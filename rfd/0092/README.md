@@ -37,6 +37,7 @@ fabric network MAC address resolution to fail, whereas docker outage prevents
 users from attaching to docker containers or copying files in/out of them.
 
 At this time, Triton components are at different levels of readiness for HA.
+
 ### Already support HA-deployment
 - binder
 - cmon
@@ -44,17 +45,18 @@ At this time, Triton components are at different levels of readiness for HA.
   relevant for large installations)
 - manatee
 - moray*
+- papi
+- portolan
+- workflow
 
 (*) Moray clients using a version prior to v2 doesn't survive certain Moray
 failures without operator intervention. For better Moray HA support, client
 upgrade is essential.
 
 ### _Should_ be ready for HA-deployment
+
 - adminui
 - cloudapi
-- papi
-- portolan
-- workflow
 
 ### Work required to support HA-deployment
 - amon
@@ -72,7 +74,9 @@ upgrade is essential.
 ### Not considered for HA enhancements (deprecation planned)
 - ca
 - rabbitmq
-- ufds
+- ufds. Note that if we need to keep ufds around for a while, we could
+  just move ufds-replicator into `sdc` zone and move forward. Everything
+  else is HA-ready and has been tested [CAPI-414](https://jira.joyent.us/browse/CAPI-414)
 
 Transitioning the entire stack to the HA deployment model is a major
 undertaking. With some careful planning and focus based on criticality would
@@ -95,9 +99,14 @@ the single point of failure for the control plane will also be addressed.
 
 The broad steps to break up the work are:
 - Enhance sdcadm to support a simpler way of provisioning and upgrading
-  multiple instances for stateless services.
+  multiple instances for stateless services. Done `sdcadm create` support
+  all the stateless services. For some of the services not yet HA-ready
+  there are pending issues like [TOOLS-1966](https://jira.joyent.us/browse/TOOLS-1966)
+  and [TOOLS-1963](https://jira.joyent.us/browse/TOOLS-1963)
 - Through analysis and testing, identify HA-ready services and those that
-  are considered low-hanging fruits to be HA-capable.
+  are considered low-hanging fruits to be HA-capable. We've already tested
+  that `papi`, `portolan` and `workflow` are HA-ready and have been running
+  in beta environment for at least 6 months now.
 - Services that are known to require a fair amount of work to support HA
   (e.g. napi, cnapi) will have individual RFDs to scope the work properly.
 - Apply cueball to Triton service management; this is not a strict dependency
@@ -117,11 +126,13 @@ Feature in scope
 Feature not in scope (existing `binder` gaps)
 - Ability to load balance
 - Ability to fail over inflight requests
-- Drain connections before shutting down a node for update
+- Drain connections before shutting down a node for update (already done by
+  sdcadm, which takes each instance of HA services out of DNS before updating
+  the instance).
 
 Related tickets:
-[TOOLS-1644](https://devhub.joyent.com/jira/browse/TOOLS-1644),
-[TOOLS-1682](https://devhub.joyent.com/jira/browse/TOOLS-1682)
+[TOOLS-1644](https://devhub.joyent.com/jira/browse/TOOLS-1644) done,
+[TOOLS-1682](https://devhub.joyent.com/jira/browse/TOOLS-1682) done
 
 ### Cueball changes for better connection management
 
@@ -142,8 +153,8 @@ advantage of all the DNS related functionalities that it provides in order to
 simplify sdcadm itself. (See [TOOLS-1643](https://devhub.joyent.com/jira/browse/TOOLS-1643))
 
 Related tickets:
-[TOOLS-1642](https://devhub.joyent.com/jira/browse/TOOLS-1642),
-[TOOLS-1643](https://devhub.joyent.com/jira/browse/TOOLS-1643)
+[TOOLS-1642](https://devhub.joyent.com/jira/browse/TOOLS-1642) done,
+[TOOLS-1643](https://devhub.joyent.com/jira/browse/TOOLS-1643) waiting for review
 
 ### Analyze and test HA-ready candidates
 
@@ -192,6 +203,11 @@ Service Functional Behavior
 
 ## HA for services that have known gaps
 
+### DHCPD
+Need to analyze what it means to have multiple dhcpd servers and how that
+interacts with the broadcast. Does it just work? can the request packets
+end up serviced by different instances, is that a problem?
+
 ### CNAPI
 CNAPI maintains the source of truth about servers through agents. The data allow
 DAPI (a service deployed within CNAPI) to identify an appropriate server for
@@ -206,10 +222,69 @@ contention is the changefeed service which can result in dropped updates. A
 RFD or bug ticket will be required to outline the approach for remediation.
 
 ### NAPI
-The main issue with multiple NAPI instances is the potential race conditions
-in assigning IP addresses. There may be other issues that need to be resolved
-to allow NAPI tasks to be distributed without any contention. A RFD will be
-required for NAPI HA work.
+There are no potential race conditions in assigning IP addresses.
+
+The main issue is the upcoming changefeed implementation which can result in
+dropped updates. (TRITON-284)[https://jira.joyent.us/browse/TRITON-284]
+
+There may be other issues that need to be resolved to allow NAPI tasks to be
+distributed without any contention. A RFD will be required for NAPI HA work.
 
 ### FWAPI
-...
+Improve update logic to support multiple instances.
+
+FWAPI also has the same problem than NAPI. Firewaller is subscribed to updates
+from FWAPI using a long running "node-fast" request. So it needs something like
+a changefeed too.
+
+### HA-changefeed
+Work has been started to add changefeed support for multiple publishers, i.e.
+HA support for services publishing changefeed updates from different instances
+(TRITON-276)[https://jira.joyent.us/browse/TRITON-276]
+
+
+### AMON/AMONREDIS
+Amon should drop in-memory caching. Amonredis should be removed once amon moves
+to using moray for storing alarms.
+
+There might be a conflict between (a) scaling and (b) HA here.  If Amon alarm
+data moves to moray... then the load on Moray might very likely go up
+as well... alarm data is using redis data structures that Moray doesn't support,
+so that might be a real effort. Need to evaluate if it's worth it from a Triton
+POV.
+
+### IMGAPI
+Work to be done:
+
+- imgapi stops any in-memory caching
+- we discuss and decide on how imgapi handles locally-stored image files being
+  shared across to other imgapi instances (probably low-tech). This could be
+  really complex ... or it could just be: there is a 1min/5min background job
+  that rsync's local file image data between imgapi's + imgapi0 knowing how to
+  redirect to imgapi1 to get a locally stored image.
+- we get nightly-1 doing multiple imgapis as a matter of course to see if other
+  bugs result
+
+- The biggest issue will likely be docker images because they are still local.
+  Really would be better if they were in Manta, but there is a long standing
+  bug for that.
+
+### DOCKER
+
+Are we gonna put more work into Docker instance? Meaning any work not being
+strictly maintenance.
+
+### CNS
+In theory there is no problem with two CNS instances running at once.
+It's just that if you configure a BIND slave to follow both of them at once
+it can get confused and inconsistent. 
+We don't serve records directly from the CNS zone anyway so bringing it down
+has only the impact that changes to DNS may be delayed. 
+Records continue to be served as normal. The data in the dataset is always
+safe to throw away, it'll just rebuild it again and the BINDs will have to do
+full AXFRs to catch up.
+
+### SAPI
+At a minimum we need the work required to properly handle DB updates HA
+friendly. Also, we need work on SAPI-294 finished in order to break circular
+dependency "SAPI first boot (in non-proto mode) depends on SAPI".
