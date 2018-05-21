@@ -278,15 +278,15 @@ necessarily having to have fully moved off the agentsshar.
   wrong. (See below)
 - Include `params.image_uuid` in all SAPI instances (since we can have more than one instance for a given service and
   these could be using different images). [SAPI-296](https://smartos.org/bugview/SAPI-296)
-- Include `params.server_uuid` in all SAPI agent instances. [AGENT-1087](https://smartos.org/bugview/AGENT-1087
-- [SAPI-285](https://smartos.org/bugview/SAPI-285): 'Create Service should not validate presence of provide image_uuid
+- Include `params.server_uuid` in all SAPI agent instances. [AGENT-1087](https://smartos.org/bugview/AGENT-1087)
+- [SAPI-285](https://smartos.org/bugview/SAPI-285): 'Create Service should not validate presence of provide `image_uuid`
   into local IMGAPI'. Done.
-- Update SAPI to index and provide search options for instances image_uuid and
-  server_uuid. [SAPI-297](https://smartos.org/bugview/SAPI-297)
+- Update SAPI to index and provide search options for instances `image_uuid` and
+  `server_uuid`. [SAPI-297](https://smartos.org/bugview/SAPI-297)
+- SAPI `CreateInstance`, `UpgradeInstance` and `DeleteInstance` should work for agent
+  instances. [TRITON-415](https://smartos.org/bugview/TRITON-415)
 - Any call to CNAPI factory-reset or delete for a given server should remove
-  every agent instance existing into that server from SAPI.
-- SAPI CreateInstance, UpgradeInstance and DeleteInstance should work for agent
-  instances.
+  every agent instance existing into that server from SAPI. [TRITON-416](https://smartos.org/bugview/TRITON-416)
   
 ### CNAPI server.agents
 
@@ -314,10 +314,10 @@ The following issues are required:
 - sdcadm: Create `sdcadm check server-agents` subcommand, which should be able to go
   through the available information for the given server(s) - or all of them if nothing
   else has been specified - and provide feedback about the status of agents property fo
-  these servers. (TOOLS-XXXX)
+  these servers. [TRITON-413](https://smartos.org/bugview/TRITON-413)
 - sdcadm: This `sdcadm check server-agents` subcommand could provide an option to fix
   any problems it may detect, waiting for interactive user input or just proceeding
-  by itself if the usual `--yes` option is given. (TOOLS-XXXX)
+  by itself if the usual `--yes` option is given. [TRITON-414](https://smartos.org/bugview/TRITON-414)
 - Implementation note:
   Can use CNAPI client methods `getTask`, `waitTask` or `pollTask` in order to
   know about task completion and lookup again at server's agents using CNAPI's `getServer`.
@@ -333,8 +333,10 @@ This section is optional for this RFD.
 - 'sdcadm check sapi-services sapi-instances' to help deal with out of sync
   SAPI service and instance data.
 - 'sdcadm experimental update-other' steps to ensure have the 'assets' service.
+  Note this is related to [RFD 67](../../0067/README.md) and should be implemented.
 - Update headnode setup to create the 'assets' service and other missing ones,
-  if any.
+  if any. Note this is related to [RFD 67](../../0067/README.md) and should be
+  implemented.
 - Update 'sdcadm svcs' to no longer have the hack that manually adds the
   'assets' service.
 - TODO: Is this the only consistent missing SAPI data from headnode install?
