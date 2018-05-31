@@ -1,6 +1,6 @@
 ---
 authors: Jason King <jbk@joyent.com>, Rui Loura <rui@joyent.com>, Dan McDonald <danmcd@joyent.com>, Cody Mello <melloc@joyent.com>
-state: predraft
+state: draft
 discussion: https://github.com/joyent/rfd/issues/88
 ---
 
