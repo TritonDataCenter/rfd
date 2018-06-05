@@ -13,17 +13,18 @@ state: predraft
     copyright 2018 joyent, inc.
 -->
 
-# rfd 138 Conch: Datacenter Switch Automation
+# RFD 143 Conch: Datacenter Switch Automation
 
-## the problem
+## Problem
+
 Today, Conch doesn't maintain the state of the switch/network configuration. To
 extend Conch's visibility to an overall datacenter design, it needs to routinely
 run health check and to maintain up to date configuration. By centralizing the
 deployment of a switch this should speed up the replacement of a device when it
 turns to the dark side.
 
+## Requirements
 
-## requirements
 - vendor-agnostic configuration process
   - tacacs servers/keys
   - syslog servers
@@ -34,11 +35,12 @@ turns to the dark side.
 - decommission switch/replacement
 - ability to resolve device mgmt ip
 
+## Proposed Solution
 
-## proposed solution
 TODO:
 
-### health check process
+### Health Check Process
+
 - get running config
 - banner exists
 - dns resolvers
@@ -60,15 +62,19 @@ TODO:
 - acl rules
 
 
-### switch path/stages to production and death
+### Switch path/stages to production and death
+
 Lets start by breaking down each stage of a switch so the right tool can be
 utilized. The basic workflow of a switch promotion would be as follows.
+
 ```
 build -> burn-in -> shipped -> staging -> production -> maintenance -> decommission
                                                              |
                                                               -> staging -> production
 ```
-#### integration/build
+
+#### Integration / Build
+
 During the build phase, the DRD device needs to access the arista and cisco switches
 because it is responsible for pxe booting the CNs and managing switch config changes. There are
 some limitations on what we can test during this because this rack is isolated
@@ -110,11 +116,13 @@ enable remote access of the network gear.
 >```
 
 #### Burn-in test
+
 We will be able to generate traffic flow to analyze the switch. Since this is
 isolated the test will only be able to test the local rack/cns.
 > **Q:** TODO: 
 
 #### Shipped
+
 This is where the real configuration will needed. Once the rack passed the
 burn-in test the switches will be reset to factory defaults and will ZTP their
 production configuration.
@@ -123,6 +131,7 @@ production configuration.
 > delivery time.
 
 #### Staging/pre-prod
+
 The rack will be delivered to the destination and there will be validation tests
 that will check to see switches are ready to be promoted to production. Since
 there is lead time for a rack to be delivered we need to validate the
@@ -137,6 +146,7 @@ don't have SSH access?
 This also gives us a back door into the switches.
 
 #### Live/Production
+
 Now the switch is considered production ready, we should restrict what routine
 checks we run on the switches. Once the switch is in this phase we can start
 validating the CNs again and running other burn-in tests since we have a larger
@@ -144,6 +154,7 @@ scope to test.
 > **Q:** Will the DRD setup be different for after the build phase?
 
 #### Maintenance
+
 The goal is to be able to put a device into maintenance mode so we could run
 a full intrusive diagnostics on the switch. This phase might also be utilized to
 upgrade a switch to the latest supported version. If the switch needs to go back
@@ -152,13 +163,16 @@ entering production.
 > **Q:** Can conch run particular scripts to put device in maintenance mode?
 >
 > **A:** Yes that is the goal so the system can do most of the legwork.
+
 #### Decommissioned
+
 For a device to be decommissioned it will have to be in maintenance mode first.
 This will only be used for EOL or RMAs. Of course there should be another device
 replacing this which will then flow through the same staging->production
 workflow.
 
 ### IPAM
+
 To have Conch take over the network automation portion, it would need to retain
 network information like VLAN, Subnet, VRFs, etc. To first allocate a new data
 center it needs to know what private network space it will use. It would be nice
@@ -190,6 +204,7 @@ to only use one network per vlan. A VLAN would be applied to a
 datacenter/site, if not it would default to the global site.
 
 ### Integration test
+
 This would be an intrusive test, usually when a rack is promoted to production
 that means it went through some sort of intrusive test. For this test it might
 consist a switch failover to make sure connectivity still exists. This can range
@@ -199,6 +214,7 @@ bandwidth utilization test to make sure port utilizations are consistent. This i
 mostly to check the hashing on the switches are correct. 
 
 ### Device mgmt IP
+
 This part is useless if Conch is acting as the IPAM solution, but since it
 doesn't do that today then for Conch to maintain a switch it will need to be
 able to resolve the switch. It should be utilizing dns for this, now to do this
@@ -211,9 +227,11 @@ convention could be {region}-{location}-{az}-{vendor 2 characters}-{serial numbe
 8 characters}
 
 examples:
+
 ```
 us-west-1a-FT-ABC123 (US West 1a Force10 ABC123)
 us-east-1a-JU-ABCDEF (Us East 1a Juniper ABCDEF)
 ```
 ### Vlan provision process
+
 TODO:
