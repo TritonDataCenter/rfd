@@ -185,9 +185,6 @@ formal writing that it has come to represent.)
 | predraft | [RFD 139 Node.js test frameworks and Triton guidelines](./rfd/0139/README.md) |
 | predraft | [RFD 140 Conch: Datacenter Designer](./rfd/0140/README.md) |
 | predraft | [RFD 141 Platform Image Build v2 (PIBv2)](./rfd/0141/README.md) |
-| draft    | [RFD 142 Use SMF logging for Manta services](./rfd/0142/README.md) |
-| predraft | [RFD 143 Manta Scalable Garbage Collection Plan](./rfd/0143/README.md) |
-| draft | [RFD 144 Conch: Datacenter Switch Automation](./rfd/0144/README.md) |
 
 
 
