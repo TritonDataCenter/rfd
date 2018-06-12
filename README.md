@@ -188,6 +188,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 142 Use SMF logging for Manta services](./rfd/0142/README.md) |
 | predraft | [RFD 143 Manta Scalable Garbage Collection Plan](./rfd/0143/README.md) |
 | predraft | [RFD 144 Conch: Datacenter Switch Automation](./rfd/0144/README.md) |
+| predraft | [RFD 145 Lullaby 3: Improving the Triton/Manta builds](./rfd/0145/README.md) |
 
 ## Contents of an RFD
 
