@@ -91,6 +91,8 @@ For the following examples, the following accounts and images already exist:
   image "my-image" built in DC "us-sw-1".
 - Bob (login=bob, uuid=b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4).
 
+### Image sharing
+
 Alice shares her image "my-image" with Bob.
 
     [alice]$ triton image share my-image b6512b9a-7835-4fbe-bbfd-8ecb5a7881c4
@@ -110,6 +112,8 @@ allow provisioning of shared images (default is no).
     SHORTID   NAME      VERSION  FLAGS   OS       TYPE          PUBDATE
     6d1bd84b  my-image  1.2.3    S       smartos  zone-dataset  2017-10-17
 
+### Image cloning
+
 Bob can clone Alice's shared image into his own account, which gives Bob full
 control over the image.
 
@@ -122,6 +126,8 @@ shared with Bob.
     [bob]$ triton image list
     SHORTID   NAME      VERSION  FLAGS   OS       TYPE          PUBDATE
     0965c1f4  my-image  1.2.3            smartos  zone-dataset  2017-10-17
+
+### Image coping across DCs
 
 Alice copying image from us-sw-1 to us-west-1:
 
@@ -284,8 +290,6 @@ incremental image. Implementation notes:
         - set state=disabled to all images in the origin chain (disabled just
           means you can't provision that image)
         - activate the image
-        - remove user from the shared image.acl, so the original image is no
-          longer shared with the user
 - Adding metadata to cloned images about the source image. This isn't *required*
   for providing the functionality, however it could be helpful for users to grok
   the source of images in `triton image list`.
