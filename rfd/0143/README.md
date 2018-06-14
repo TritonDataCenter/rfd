@@ -187,7 +187,7 @@ because:
 2. Any rows inserted into `manta_fastdelete_queue` must have had no snaplinks
 when they were removed from the `manta` table
 
-(2) implies both that a row in `manta_fastdelete_queue` can be neither a delete
+(2) implies that a row in `manta_fastdelete_queue` can be neither a delete
 record for a snaplink nor a delete record for an object that could at some point
 be snaplinked to a different path (that object id will never be in the manta
 bucket again). It follows from (1) that all insertions into
