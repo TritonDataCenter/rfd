@@ -88,9 +88,10 @@ vast majority of objects in most Manta deployments are never snaplinked.  We
 propose modifying the data path so that Manta can tell when an object is being
 removed that has never had a snaplink created from it.  In that case, instead of
 recording the delete to the delete log, it would be recorded to a new table
-that's used for accelerated deletion.  A new component would periodically read
-entries from this table and immediately queue objects for deletion, rather than
-going through the expensive part of the GC process.
+that's used for accelerated deletion (see 'Accelerated Delete Table').  A new
+component would periodically read entries from this table and immediately queue
+objects for deletion, rather than going through the expensive part of the GC
+process.
 
 The essence of the mechanism is as follows:
 
@@ -151,6 +152,68 @@ significant burden on the operator, since incorrectly setting this flag could
 result in data loss, where an object was removed when it was still referenced.
 Real business situations exist where we believe this can be verified reliably
 and it would be worthwhile to do so.
+
+## Accelerated Delete Table
+
+As described in the previous sections, the accelerated delete mechanism will
+keep track of objects deleted in a new table called `manta_fastdelete_queue`.
+We propose the following Postgres schema for this new table:
+
+```
+                                      Table "public.manta_fastdelete_queue"
+  Column   |     Type     |                                   Modifiers
+-----------+--------------+--------------------------------------------------------------------------------
+ _id       | integer      | default nextval('manta_fastdelete_queue_serial'::regclass)
+ _txn_snap | integer      |
+ _key      | text         | not null
+ _value    | text         | not null
+ _etag     | character(8) | not null
+ _mtime    | bigint       | default ((date_part('epoch'::text, now()) * (1000)::double precision))::bigint
+ _vnode    | bigint       |
+Indexes:
+    "manta_fastdelete_queue_pkey" PRIMARY KEY, btree (_key)
+    "manta_fastdelete_queue__etag_idx" btree (_etag) WHERE _etag IS NOT NULL
+    "manta_fastdelete_queue__id_idx" btree (_id) WHERE _id IS NOT NULL
+    "manta_fastdelete_queue__mtime_idx" btree (_mtime) WHERE _mtime IS NOT NULL
+    "manta_fastdelete_queue__vnode_idx" btree (_vnode) WHERE _vnode IS NOT NULL
+```
+
+This schema differs from the `manta_delete_log` in that we omit the `objectId`
+column (and its corresponding index). We opt to store the object id of the
+deleted object in the `_key` column of the table instead. This is safe to do
+because:
+
+1. Object ids are unique
+2. Any rows inserted into `manta_fastdelete_queue` must have had no snaplinks
+when they were removed from the `manta` table
+
+(2) implies both that a row in `manta_fastdelete_queue` can be neither a delete
+record for a snaplink nor a delete record for an object that could at some point
+be snaplinked to a different path (that object id will never be in the manta
+bucket again). It follows from (1) that all insertions into
+`manta_fastdelete_queue` will have unique values under the proposed accelerated
+delete mechanism.
+
+The `_value` column of the table will store the same contents as the
+identically named column in `manta_delete_log` does. Crucially, these contents
+include
+
+1. The `manta_storage_id`s of the sharks on which the object is located
+2. The the uuid of the account that created object
+
+These two pieces of information are needed to identify the backing file for
+the object on a Mako. For context, the backing file is stored at the following
+path on some subset of the Makos:
+
+```
+/manta/<creator-uuid>/<object-id>
+```
+
+We choose to keep the remaining contents of `_value` because they may be useful
+in the future. Further, `manta_fastdelete_queue` is unlikely to ever grow that
+much since it is processed continuously by a new component described in the
+previous sections. The suggests that any space gains that might come from paring
+away at the contents `_value` column would likely be minimal.
 
 ## A concrete plan
 
