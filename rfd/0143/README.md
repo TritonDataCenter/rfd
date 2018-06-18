@@ -153,17 +153,17 @@ result in data loss, where an object was removed when it was still referenced.
 Real business situations exist where we believe this can be verified reliably
 and it would be worthwhile to do so.
 
-## Accelerated Delete Table
+#### Accelerated Delete Table
 
 As described in the previous sections, the accelerated delete mechanism will
-keep track of objects deleted in a new table called `manta_fastdelete_queue`.
+keep track of objects deleted in a new table called `manta\_fastdelete\_queue`.
 We propose the following Postgres schema for this new table:
 
 ```
                                       Table "public.manta_fastdelete_queue"
   Column   |     Type     |                                   Modifiers
 -----------+--------------+--------------------------------------------------------------------------------
- _id       | integer      | default nextval('manta_fastdelete_queue_serial'::regclass)
+ _id       | bigint       | default nextval('manta_fastdelete_queue_serial'::regclass)
  _txn_snap | integer      |
  _key      | text         | not null
  _value    | text         | not null
@@ -178,27 +178,30 @@ Indexes:
     "manta_fastdelete_queue__vnode_idx" btree (_vnode) WHERE _vnode IS NOT NULL
 ```
 
-This schema differs from the `manta_delete_log` in that we omit the `objectId`
-column (and its corresponding index). We opt to store the object id of the
-deleted object in the `_key` column of the table instead. This is safe to do
-because:
-
+This schema differs from the `manta\_delete\_log` in that we omit the `objectId`
+column (and its corresponding index). We opt to include the object id of the
+deleted object in the `\_key` column of the table instead. The `_key` column
+will now contiain entries like this:
+```
+objectid/manta\_storage\_id
+```
+This sort of identifier is unique under the described scheme because:
 1. Object ids are unique
-2. Any rows inserted into `manta_fastdelete_queue` must have had no snaplinks
+2. Any rows inserted into `manta\_fastdelete\_queue` must have had no snaplinks
 when they were removed from the `manta` table
 
-(2) implies that a row in `manta_fastdelete_queue` can be neither a delete
+(2) implies that a row in `manta\_fastdelete\_queue` can be neither a delete
 record for a snaplink nor a delete record for an object that could at some point
 be snaplinked to a different path (that object id will never be in the manta
 bucket again). It follows from (1) that all insertions into
-`manta_fastdelete_queue` will have unique values under the proposed accelerated
+`manta\_fastdelete\_queue` will have unique `_key` values under the proposed accelerated
 delete mechanism.
 
-The `_value` column of the table will store the same contents as the
-identically named column in `manta_delete_log` does. Crucially, these contents
+The `\_value` column of the table will store the same contents as the
+identically named column in `manta\_delete\_log` does. Crucially, these contents
 include
 
-1. The `manta_storage_id`s of the sharks on which the object is located
+1. The `manta\_storage\_id`s of the sharks on which the object is located
 2. The the uuid of the account that created object
 
 These two pieces of information are needed to identify the backing file for
@@ -209,11 +212,87 @@ path on some subset of the Makos:
 /manta/<creator-uuid>/<object-id>
 ```
 
-We choose to keep the remaining contents of `_value` because they may be useful
-in the future. Further, `manta_fastdelete_queue` is unlikely to ever grow that
+We choose to keep the remaining contents of `\_value` because they may be useful
+in the future. Further, `manta\_fastdelete\_queue` is unlikely to ever grow that
 much since it is processed continuously by a new component described in the
-previous sections. The suggests that any space gains that might come from paring
-away at the contents `_value` column would likely be minimal.
+next section. The suggests that any space gains that might come from paring
+away at the contents `\_value` column would likely be minimal.
+
+#### Moray Fast Delete Component
+
+We couple the new `manta\_fastdelete\_queue` with a component that periodically
+reads delete records added to the queue and makes arrangements for the
+corresponding objects to be garbage collected.
+
+This component performs a function roughly analagous to the existing GC job that
+reads unpacked database dumps from `/posiedon/stor/manatee\_backups` and
+uploads Moray and Mako instructions to Manta for later processing. There are two
+main functional differences between the existing GC and the proposed component:
+
+1. Instead of reading unpacked database dumps, this component will periodically query
+   the `manta\_fastdelete\_queue` to learn about recently deleted objects.
+2. Instead of generating Moray instructions, the new component will first upload
+   Mako instructions for the deleted objects to Manta and, on success, delete the
+   corresponding rows from `manta\_fastdelete\_queue`
+
+There is a case that is not covered by (1) or (2) above which at first appears
+to leak `manta\_fastdelete\_queue` entries. If the components reads an entry from
+`manta\_fastdelete\_queue`, uploads an instruction to Manta, and then crashes,
+then there may be a row in the `manta\_fastdelete\_queue` that corresponds to an
+object that doesn't exist anymore. This is fine as long as the process removing
+backing files on Mako nodes ignores delete requests for objectids that don't
+exist. We can simply restart the new delete component and process the entry
+again.
+
+Function (1) described above requires that the fast delete component be able to
+interface with Postgres. Broadly, there are two options
+
+* We can connect to the Postgres primary directly (as the Manta Resharding
+   system does)
+* We can point the node-moray client at Moray (as the existing offline GC
+   system does)
+
+Technically we could also point the node-moray client at electric-moray (as
+Muskie does today). However, this component has no need for routing and so
+introducing the extra network roundtrip is probably unnecessary.
+
+We choose to use the Moray interface since it is the component used to create
+`manta\_fastdelete\_queue`. Using the node-moray client will also allow us to
+leverage the work done to improve cueball queueing. Additionally, using a
+collection of node-moray clients affords us the option of tuning the subset of
+Moray shards that a given (or all) garbage collectors poll for new records.
+
+Function (2) can be accomplished with the node-manta client API.
+
+##### Tuning/Control
+
+We'll want the ability to alter the behavior of the new garbage collection
+component to mitigate impact to the datapath or speed up
+`manta\_fastdelete\_queue` processing when necessary. Additionally, we may want
+to avoid polling certain shards that might be undergoing maintenance operations
+or are otherwise unresponsive. To these ends, the garbage collection component
+should allow an operator to do the following:
+
+* Pause/resume a garbage collector
+* Get/set the subset shards that a given worker polls for new delete records
+* Get/set the polling batch size (how many records are read from
+  `manta\_fastqueue\_delete` per database transaction)
+* Get/set the polling concurrency (how many outstanding `findobjects` are allowed at
+  a time)
+* Get/set the delete batch size
+* Get/set the delete concurrency
+* Get/set the Manta upload concurrency (for uploading Mako instructions).
+* Get/set the cueball target and maximum connection count
+* Get/set the cueball recovery spec options
+
+We can expose these options via a restify server in a manner similar to that of
+the Manta Reshard system. We may consider exposing some of these options on a
+per-shard basis, though we should balance the number of tunables we expose with
+the complexity of the API to avoid configurations that result in performance
+pathologies.
+
+We'll determine the default configuration of the tunables with performance
+impact testing on SPC-like hardware.
 
 ## A concrete plan
 
