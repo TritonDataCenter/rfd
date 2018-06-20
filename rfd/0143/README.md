@@ -198,7 +198,7 @@ perform any kind of snaplink operation.
 
 The second check captures the case in which a _different_ account is attempting
 to create a cross-account snaplink to an object owned by a snaplink-disabled
-account. We'll want to prevent this because the point of the saplink-disabled
+account. We'll want to prevent this because the point of the snaplink-disabled
 account is to ensure that the accelerated GC mechanism can be used to garbage
 collect any of its objects.
 
