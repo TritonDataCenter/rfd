@@ -257,7 +257,7 @@ identically named column in `manta_delete_log` does. Crucially, these contents
 include
 
 1. The `manta_storage_id`s of the sharks on which the object is located
-2. The the uuid of the account that created object
+2. The the uuid of the account that created the object
 
 These two pieces of information are needed to identify the backing file for
 the object on a Mako. For context, the backing file is stored at the following
