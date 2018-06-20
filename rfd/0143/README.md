@@ -1,5 +1,5 @@
 ---
-authors: David Pacheco <dap@joyent.com>, with input from Joshua Clulow, Alex Wilson
+authors: David Pacheco <dap@joyent.com>, Jan Wyszynski <jan.wyszynski@joyent.com> with input from Joshua Clulow, Alex Wilson
 state: predraft
 ---
 
@@ -153,6 +153,61 @@ result in data loss, where an object was removed when it was still referenced.
 Real business situations exist where we believe this can be verified reliably
 and it would be worthwhile to do so.
 
+#### Operator-Controlled Per-Account Flag to Disable Snaplinks
+
+As described previously there are some accounts that we'd like to flag as being
+snaplink-disabled. The benefit of this flag is that it signals to the delete
+object codepath that an object is eligible to be garbage collected via the fast
+delete mechanism proposed in this RFD.
+
+We can implement this flag as an array of account uuids stored in the Manta SAPI
+application. This way, we can retrieve and update the array with the `sapiadm`
+tools. An operator might disable snaplinks for an account as follows:
+
+```
+headnode $ sapiadm get $(sdc-sapi /applications?name=manta | json -Hag uuid) \
+	> manta.json
+...
+Add the following JSON object to a SAPI array called ACCOUNTS_SNAPLINKS_DISABLED:
+{
+	"uuid": "<account-uuid>"
+}
+...
+headnode $ sapiadm update $(sdc-sapi /applications?name=manta | json -Hag uuid) \
+	-f manta.json
+```
+
+Deployment-wide updates will have to be made per-DC. We considered augmenting
+`manta-adm` to serve the above purpose, but reasoned enabling/disabling
+snaplinks is a rather heavyweight operation with the potential to impact
+multiple customers. It shouldn't be _too_ easy to do.
+
+To enforce that snaplinks are forbidden for acount uuids in the array, Muskie can
+read the array from it configuration file and perform permission checks in the
+Muskie `putlink` handler. Using SAPI to store this extra information implies that
+enforcing an update requires a Muskie restart. We'll need to embed two new checks
+in this handler:
+
+1. A check that determines whether the callers uuid is in the array of acount
+   uuids for which snaplinks have been disabled
+2. A check that determines whether source object is owned by an account for
+   which snaplinks have been disabled
+
+The first check captures the basic case in which an account is attempting to
+perform any kind of snaplink operation.
+
+The second check captures the case in which a _different_ account is attempting
+to create a cross-account snaplink to an object owned by a snaplink-disabled
+account. We'll want to prevent this because the point of the saplink-disabled
+account is to ensure that the accelerated GC mechanism can be used to garbage
+collect any of its objects.
+
+Though the two checks may seem redundant, having a preemptive check early on in
+the `putlink` handler saves at least two metadata tier roundtrips.
+
+Work done for this item is tracked in
+[MANTA-3768](https://jira.joyent.us/browse/MANTA-3768).
+
 #### Accelerated Delete Table
 
 As described in the previous sections, the accelerated delete mechanism will
@@ -218,6 +273,55 @@ much since it is processed continuously by a new component described in the
 next section. The suggests that any space gains that might come from paring
 away at the contents `_value` column would likely be minimal.
 
+Setting up the new bucket will require a Muskie restart to run node-libmanta's
+bucklets setup
+[routine](https://github.com/joyent/node-libmanta/blob/master/lib/moray.js#L99).
+
+Work which introduces this new Moray bucket is tracked in
+[MANTA-3764](https://jira.joyent.us/browse/MANTA-3764).
+
+#### Modifying the Object Delete Path
+
+Currently, object delete records are added to the `manta_delete_log` from a
+Moray-level [trigger](https://github.com/joyent/node-libmanta/blob/master/lib/moray.js#L267-L316)
+defined in the node-libmanta. Today, Moray invokes this trigger for
+`putobject`, `delobject`, and `delMany` operations. Both delete operations and
+overwriting put operations are distinguished from non-replacing puts via a header
+included in the Moray request object passed to the trigger called `x-muskie-prev-metadata`.
+Crucially, the Moray post trigger runs in the same database transaction as the
+other queries issued by Moray to service the `putObject` or `delObject` RPCs.
+
+In order for Manta deployment to leverage the new GC mechanism, the Manta object
+delete codepath must be updated to, under certain conditions, insert object delete
+records  into the `manta_fastdelete_queue` _instead_ of the `manta_delete_log`. In
+the short term, the condition that must be met for the alternate insertion is that
+the object being deleted must belong to a snaplink-disabled account. The natural
+place to add this branch is in the `recordDeleteLog` Moray trigger.
+
+To implement the branch described in the previous paragraph, we'll need to pass
+information about whether a delete operation should be treated as a "fast"
+delete operation from Muskie to Moray. We propose adding an `doFastDelete` option
+to node-libmanta's `putMetadata` and `delMetadata`. This option will be passed
+into the `recordDeleteLog` trigger by Moray and subsequently used to decide
+whether to insert to `manta_fastdelete_queue`.
+
+In the future, we'll also need to branch based on whether the object being
+delete/overwritten has the `singlePath` property set, but this change will not
+require modifying any private interfaces, since the `recordDeleteLog` trigger
+already has access to metadata of the delete object. Work to introduce and
+manage the `singlePath` property on objects is tracked in
+[MANTA-3779](https://jira.joyent.us/browse/MANTA-3779).
+
+This change relies on Muskie updating the Moray `recordDeleteLog` post trigger,
+which will be done by updating the Manta bucket
+[schema](https://github.com/joyent/node-libmanta/blob/master/lib/moray.js#L103-L111)
+(this will include version bump). The Muskie restart needed for this change to
+take effect can be rolled into the same restart used to make Muskie aware of the
+array of snaplink-disabled accounts.
+
+Work to update the object delete and replacement path is tracked in
+[MANTA-3774](https://jira.joyent.us/browse/MANTA-3774).
+
 #### Moray Fast Delete Component
 
 We couple the new `manta_fastdelete_queue` with a component that periodically
@@ -262,7 +366,10 @@ leverage the work done to improve cueball queueing. Additionally, using a
 collection of node-moray clients affords us the option of tuning the subset of
 Moray shards that a given (or all) garbage collectors poll for new records.
 
-Function (2) can be accomplished with the node-manta client API.
+Function (2) can be accomplished with the node-manta client API where the
+instructions will have the same format as those which are created by the
+existing offline GC job. Maintaining this compatibility will allow us to
+leverage the existing `mako_gc.sh` cron script in the fast delete mechanism.
 
 ##### Tuning/Control
 
@@ -275,6 +382,8 @@ should allow an operator to do the following:
 
 * Pause/resume a garbage collector
 * Get/set the subset shards that a given worker polls for new delete records
+* Get/set the subset of Mako nodes a given worker is responsible for generating
+  cleanup instructions for
 * Get/set the polling batch size (how many records are read from
   `manta_fastdelete_queue` per database transaction)
 * Get/set the polling concurrency (how many outstanding `findobjects` are allowed at
@@ -293,6 +402,33 @@ pathologies.
 
 We'll determine the default configuration of the tunables with performance
 impact testing on SPC-like hardware.
+
+Work to develop the new fast delete component is tracked in
+[MANTA-3776](https://jira.joyent.us/browse/MANTA-3776). The new component has
+its own [repository](https://github.com/joyent/manta-garbage-collector) and will
+be deployed and run in a manner similar to the Manta Resharding system.
+
+## Component Change Summary
+
+The master ticket for all work described in this RFD is
+[MANTA-3769](https://jira.joyent.us/browse/MANTA-3769).
+
+- [manta-muskie](https://github.com/joyent/manta-muskie)
+	- [MANTA-3764](https://jira.joyent.us/browse/MANTA-3764)
+	- [MANTA-3768](https://jira.joyent.us/browse/MANTA-3768)
+	- [MANTA-3779](https://jira.joyent.us/browse/MANTA-3779)
+- [node-libmanta](https://github.com/joyent/node-libmanta)
+	- [MANTA-3774](https://jira.joyent.us/browse/MANTA-3774)
+- [manta-garbage-collector](https://github.com/joyent/manta-garbage-collector)
+	- [MANTA-3776](https://jira.joyent.us/browse/MANTA-3776)
+
+
+## Security Impact
+
+As there are no planned public API changes yet, there is no expected security
+impact for this change. The primary operator facing change included in this RFD
+is per-account snaplink enabled/disabled toggle, which will be interfaced with
+through `sapiadm`.
 
 ## A concrete plan
 
