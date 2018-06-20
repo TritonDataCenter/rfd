@@ -280,10 +280,10 @@ a node's hardware crypto token. Clearly it would be undesirable to create a
 single point of hardware failure that results in all data on the node being
 irretrievable. As a result, an additional step is added where as well as
 creating an encrypted DH box keyed to the hardware token for that CN, we create
-a second box keyed to an offline "recovery key" for the datacenter. The public
-half of the recovery key is distributed to all CNs for this purpose, but the
-private half is kept in offline redundant secure storage to only be used in
-emergencies. This is explored further in <<prov-backups>>.
+a second box keyed to a set of offline "recovery keys" for the datacenter. The
+public half of the recovery keys are distributed to all CNs for this purpose,
+but the private half is kept in offline redundant secure storage to only be used
+in emergencies. This is explored further in <<prov-backups>>.
 
 ### Overview: authentication
 
@@ -301,8 +301,11 @@ shortly).
 
 Unfortunately, hardware tokens are generally only capable of storing a small
 number of asymmetric keys, and the number of zones on a CN or headnode may be
-quite large by comparison. So the keys used for zone-to-zone authentication
-cannot reside directly on the hardware tokens.
+quite large by comparison. The performance limitations of hardware tokens (given
+the "inexpensive" price constraint we've already accepted) also mean that
+scaling their usage up with the number of customer zones on a machine is likely
+to be infeasible. So the keys used for zone-to-zone authentication cannot reside
+directly on the hardware tokens.
 
 Instead, a "soft token" design will be used. A randomly generated symmetric key
 will be used to encrypt a keystore for that zone, and the key will be placed in
@@ -518,7 +521,7 @@ data protected by them (meaning loss of customer data). To guard against this
 for the ZFS on-disk encryption keys, as explained earlier, we make use of a
 scheme similar to key escrow, where a second DH box is created that enables the
 retrieval of the ZFS encryption key using either the node's own key, *or* an
-offline recovery key.
+offline recovery key (or keys).
 
 This recovery key, as well as the root key used to bootstrap the headnode chain
 of trust, must be stored offline in a way that is both very secure and very
@@ -530,26 +533,59 @@ M piece secret recovery (while revealing no information in the case of fewer
 pieces being held).
 
 If the pieces are stored in separate geographic locations with separate access
-controls, this can enable a form of the "2-person rule" to be enforced, where
-these valuable "master" keys can only be used with the co-operation of multiple
-trusted members of the organization.
+controls, this can enable a form of the "2-person rule" (or "N-person rule") to
+be enforced, where these valuable "master" keys can only be used with the
+co-operation of multiple trusted members of the organization.
 
-The scheme we propose is as follows:
+While the "root" key can truly be treated as an offline master key that is only
+for serious (and rare) emergencies, hardware failures in a large datacentre are
+a regular, expected event. As a result, the recovery keys must receive different
+treatment for storage to enable efficient operation.
 
- * Generation and preparation of the root key and recovery keys will take place
-   in an environment away from the data center, and will be done in advance by
-   administrators.
- * The administrators must initialize backup media that have been chosen to
-   store the backed up key pieces. Initializing the media writes metadata to
-   it describing its contents and purpose.
- * The root and recovery keys will both be split into 3 pieces, in a Shamir
-   arrangement requiring 2 pieces for recovery. Each of the pieces will be
-   written to separate media.
+Our proposal is have hardware tokens assigned personally to trusted staff, have
+these tokens generate a public-private EC key pair, and write the set of N
+public keys for all of them into the Trusted CN chain as a separate kind of
+chain entry that has to be signed by all current Trusted CNs.
+
+Then, on each CN we take the symmetric disk encryption key and split it into
+N Shamir pieces. Each of these pieces is then placed in an ECDH box targetting
+one of the public keys registered in the lastest backup instruction entry in
+the chain.
+
+During recovery, we perform a challenge-response procedure (detailed later,
+designed to resist replay attacks and not reveal the key if exposed) using these
+ECDH boxes with the remote hardware tokens to reconstruct the original symmetric
+key from the decrypted pieces in memory.
+
+As individuals come and go from this set, a new recovery key chain entry will
+be written and signed by the Trusted CNs. Then, all other CNs will regenerate
+their Shamir pieces and ECDH boxes from scratch with the new set of public
+keys.
+
+The chain entry can also specify the number of the N pieces that will be
+required for recovery, so that it can be changed if the group shrinks or
+expands.
+
+In summary:
+
+ * Generation and preparation of the root key will take place in an environment
+   away from the data center, and will be done in advance by administrators.
+ * The root key will both be split into 3 pieces, in a Shamir arrangement
+   requiring 2 pieces for recovery. Each of the pieces will be written to
+   separate backup media.
  * The media may then be stored in a secure location (e.g. a safe).
- * The public keys and initial headnode trust chain can then be written to the
-   boot USB flash media for the initial headnodes, and transported to the
-   datacenter as part of the deployment process.
-    - As an alternative, the headnode setup process will accept the public keys
+ * The recovery keys will be generated on dedicated devices held by trusted
+   individuals.
+ * CNs will split their symmetric disk encryption keys into pieces and ECDH box
+   them to each of the recovery public keys.
+ * During recovery, a challenge-response procedure will be used to contact the
+   trusted individuals and their hardware tokens and collect N/M responses to
+   reconstruct the key.
+ * The root public key and initial headnode trust chain (including the first
+   recovery configuration entry) can be written to the boot USB flash media for
+   the initial headnodes, and transported to the datacenter as part of the
+   deployment process.
+    - As an alternative, the headnode setup process will accept the public key
       and trust chain root on the console.
 
 This scheme will be implemented using a set of tools that can run on at least
@@ -563,11 +599,6 @@ A recommended outline of the full deployment procedure is included in the
 sections <<green-field>> and <<brown-field>>, which include examples for both
 a "small setup" deployment not using a pre-flight environment, and a larger
 deployment using one.
-
-The three Shamir pieces must be stored separately on independent backup media,
-generally recommended to be either archival paper, or LTO or DAT magnetic tape.
-Optical media is the next most reliable option, followed by flash media such as
-high quality SD cards.
 
 The following table highlights the recommended options for long-term key backup,
 as well as a recommended verification and refresh interval for each.
@@ -796,6 +827,9 @@ This will likely be the subject of a future RFD.
 [[green-field]]
 ## Green-field deployment step-by-step
 
+NOTE: This section needs updating after the change to personal recovery keys
+and updates on the trust chain.
+
 This section will run through the full set of steps needed to deploy Triton
 with full RFD 77 security enabled.
 
@@ -839,13 +873,12 @@ Writing session... 10% 25% 50% 75% 100% done
 <1> `-y` means "don't prompt me for confirmation", and `-n` is used to give the
     media short name.
 
-Now we generate the root and ZFS recovery keys for the datacenter:
+Now we generate the root keys for the datacenter:
 
 [source,shell]
 ----
 alex@mbp:~$ triton-keymaster init-dc us-west-1 -m sfo-001,ord-001,nyc-001 <1>
 Number of backup media required to recover root key? [2] <2>
-Number of backup media required to recover ZFS recovery keys? [2]
 Generating root key... done
 Generating ZFS recovery keys... done
 Ready to write piece for backup media sfo-001.
@@ -1090,17 +1123,25 @@ cryptography, and dedicated pages for this purpose pinned into cache so they
 cannot be flushed out (containing both the code and data used in the sensitive
 operation).
 
-This prevents most known mechanisms of memory timing side-channel leakage from
-the cryptographic algorithms run in the soft-token, including Flush+Reload and
-other related attacks. We are also aided here by the fact that KSM (kernel
-same-page merging) is not implemented or supported by illumos (and will not be),
-and the fact that the soft-token binary will not be in any of the filesystems
-accessible to non-global zones (so they cannot `mmap` it, or any of its
-cryptographic libraries, which are statically linked into the binary).
+At the same time, we plan to make use of improvements in hyperthread scheduling
+to avoid sharing any L1 cache between soft-tokens or between soft-tokens and
+customer workloads.
+
+Soft-token processes also will not share any memory pages (including code pages)
+with each other or any other part of the system -- this is aided by an operating
+system facility to mark binaries and shared objects are "unshared" so that they
+are always duplicated into each process that maps them. KSM (kernel same-page
+merging) and other similar mechanisms are not (and will not be) supported by
+illumos.
 
 As well as this direct mitigation, the algorithms chosen (see the
 <<crypto-algos>> section) for soft-token usage are chosen with side-channel
 leak prevention in mind.
+
+The chosen algorithms combined with these mitigation techniques should prevent
+most known mechanisms of memory timing side-channel leakage from the
+cryptographic algorithms run in the soft-token, including Flush+Reload and
+other related attacks.
 
 [[hardware]]
 ## Hardware implementation
