@@ -182,13 +182,13 @@ Deployment-wide updates will have to be made per-DC. We considered augmenting
 snaplinks is a rather heavyweight operation with the potential to impact
 multiple customers. It shouldn't be _too_ easy to do.
 
-To enforce that snaplinks are forbidden for acount uuids in the array, Muskie can
+To enforce that snaplinks are forbidden for account uuids in the array, Muskie can
 read the array from it configuration file and perform permission checks in the
 Muskie `putlink` handler. Using SAPI to store this extra information implies that
 enforcing an update requires a Muskie restart. We'll need to embed two new checks
 in this handler:
 
-1. A check that determines whether the callers uuid is in the array of acount
+1. A check that determines whether the callers uuid is in the array of account
    uuids for which snaplinks have been disabled
 2. A check that determines whether source object is owned by an account for
    which snaplinks have been disabled
