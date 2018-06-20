@@ -16,6 +16,11 @@ discussion: <Coming soon>
 
 # RFD 130 The Triton Remote Network Object
 
+<!--
+TODO:
+- need dcapi for coordinating who's in a region
+- MORE -- FILL ME IN!
+-->
 
 ## Problem Statement
 
