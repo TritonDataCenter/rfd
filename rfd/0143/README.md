@@ -190,14 +190,14 @@ in this handler:
 
 1. A check that determines whether the callers uuid is in the array of account
    uuids for which snaplinks have been disabled
-2. A check that determines whether source object is owned by an account for
+2. A check that determines whether source object is created by an account for
    which snaplinks have been disabled
 
 The first check captures the basic case in which an account is attempting to
 perform any kind of snaplink operation.
 
 The second check captures the case in which a _different_ account is attempting
-to create a cross-account snaplink to an object owned by a snaplink-disabled
+to create a cross-account snaplink to an object created by a snaplink-disabled
 account. We'll want to prevent this because the point of the snaplink-disabled
 account is to ensure that the accelerated GC mechanism can be used to garbage
 collect any of its objects.
