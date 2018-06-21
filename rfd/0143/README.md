@@ -334,10 +334,11 @@ uploads Moray and Mako instructions to Manta for later processing. There are two
 main functional differences between the existing GC and the proposed component:
 
 1. Instead of reading unpacked database dumps, this component will periodically query
-   the `manta_fastdelete_queue` to learn about recently deleted objects.
+   the `manta_fastdelete_queue` (and `manta_delete_log`, if the account is
+   flagged as snaplink disabled) to learn about deleted objects.
 2. Instead of generating Moray instructions, the new component will first upload
-   Mako instructions for the deleted objects to Manta and, on success, delete the
-   corresponding rows from `manta_fastdelete_queue`
+   Mako instructions for the deleted objects to Manta then, after successfully
+   uploading them, delete the corresponding rows from `manta_fastdelete_queue`.
 
 There is a case that is not covered by (1) or (2) above which at first appears
 to leak `manta_fastdelete_queue` entries. If the components reads an entry from
@@ -366,10 +367,18 @@ leverage the work done to improve cueball queueing. Additionally, using a
 collection of node-moray clients affords us the option of tuning the subset of
 Moray shards that a given (or all) garbage collectors poll for new records.
 
+Note that function (1) also involves the new component knowing whether an account
+is snaplink disabled to determine whether it is safe to process entries from
+`manta_delete_log`. Hence, garbage collection of objects in this table depends
+on the work done in MANTA-3768.
+
 Function (2) can be accomplished with the node-manta client API where the
 instructions will have the same format as those which are created by the
 existing offline GC job. Maintaining this compatibility will allow us to
 leverage the existing `mako_gc.sh` cron script in the fast delete mechanism.
+
+Work involved in the implementation of the new component described in this
+section is tracked in [MANTA-3776](https://jira.joyent.us/browse/MANTA-3776).
 
 ##### Tuning/Control
 
