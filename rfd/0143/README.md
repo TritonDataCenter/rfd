@@ -1,6 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>, Jan Wyszynski <jan.wyszynski@joyent.com> with input from Joshua Clulow, Alex Wilson
-state: predraft
+state: draft
+discussion: https://github.com/joyent/rfd/issues/107
 ---
 
 <!--
