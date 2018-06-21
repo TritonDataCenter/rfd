@@ -484,11 +484,3 @@ In terms of deployment, in each deployment where this issue is important, we wou
    (This could likely happen at any time, since without the above flags, this
    process won't be used.)
 6. Deploy the rest of the online GC project when ready.
-
-## TODO
-
-- write up list of components that need to be changed (including repositories)
-- write up how users and operators will interact with this
-- write up changes to public, private interfaces
-- write up upgrade impact
-- write up security impact
