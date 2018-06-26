@@ -1,6 +1,6 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>, Todd Whiteman
-state: draft
+state: publish
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+113%22
 ---
 
@@ -24,6 +24,9 @@ functionality to make the following improvements to Triton custom images:
 - [Related discussions](#related-discussions)
 - [IMGAPI refresher](#imgapi-refresher)
 - [Example](#example)
+  - [Image sharing](#image-sharing)
+  - [Image cloning](#image-cloning)
+  - [Image coping across DCs](#image-coping-across-dcs)
 - [Design discussion](#design-discussion)
   - [x-account image clone](#x-account-image-clone)
   - [x-DC image copy](#x-dc-image-copy)
@@ -32,9 +35,6 @@ functionality to make the following improvements to Triton custom images:
   - [M2: x-account image share](#m2-x-account-image-share)
   - [M3: x-account image clone](#m3-x-account-image-clone)
   - [M4: x-DC image copy](#m4-x-dc-image-copy)
-  - [M5: triton-go and terraform support for these new features](#m5-triton-go-and-terraform-support-for-these-new-features)
-  - [M6: client improvements for listing image usage](#m6-client-improvements-for-listing-image-usage)
-- [Open Qs and TODOs](#open-qs-and-todos)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -338,124 +338,3 @@ Implementation notes:
 - `triton image wait IMAGE` should be able to either poll (minimally) for
   an image going to state=active; or perhaps call a
   `CopyImageFromDc?do_not_restart=true` to attach to the progress stream.
-
-Dev Notes:
-
-- must handle origin images... does this have a confirmation? Perhaps just
-  client side? Meh. Adding `triton img ancestry IMG` might be nice to
-  be able to predict.
-- it would be *really* good if this could share the same "import from IMGAPI"
-  (e.g. images.jo) code in IMGAPI already
-- what about 'DeleteImage' on the target image to cancel the copy job?
-- think about failed file transfer
-- think about retry
-- think about range-gets for retries to cope with huge image files
-- think about concurrent attempts
-- think about DeleteImage on the src DC during the copy
-- operational setup
-    - fwrule updates for IMGAPI zones, which typically drop in-bound requests.
-    - Would want 'sdcadm post-setup' command to assist with linking IMGAPIs.
-      Would we re-use the '$dc imgapi key'? Probably piggyback on that, yes.
-
-
-### M5: triton-go and terraform support for these new features
-
-TODO: follow up with Go guys on this.
-
-
-### M6: client improvements for listing image usage
-
-(This section is incomplete.)
-
-From workshop discussion, it was suggested that some client support to be
-able to list some usage/dependency details about images would be helpful. E.g.:
-
-- which images does this image depend upon
-- which images are derived from this one
-- which instances use this image
-
-TODO: a design section above on this would be good
-
-    $ triton image ls
-    SHORTID   NAME                    VERSION        FLAGS  OS       TYPE          PUBDATE
-    ...
-    7b5981c4  ubuntu-16.04            20170403       P      linux    lx-dataset    2017-04-03
-    04179d8e  ubuntu-14.04            20170403       P      linux    lx-dataset    2017-04-03
-    bc33164c  ubuntu-certified-14.04  20170619       P      linux    zvol          2017-06-19
-    80e13c87  ubuntu-certified-17.04  20170619.1     P      linux    zvol          2017-06-21
-    6aac0370  centos-6                20170621       P      linux    zvol          2017-06-21
-    00a3a25e  minimal-multiarch-lts   17.4.0         P      smartos  zone-dataset  2018-01-04
-    915b500a  base-multiarch-lts      17.4.0         P      smartos  zone-dataset  2018-01-04
-    55010197  my-origin               4.5.6          I      smartos  zone-dataset  2018-01-12
-    0965c1f4  my-image                1.2.3          I      smartos  zone-dataset  2018-01-12
-
-Perhaps an option to list just my custom images:
-
-    $ triton image ls -m
-    SHORTID   NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
-    55010197  my-origin  4.5.6    I      smartos  zone-dataset  2018-01-12
-    0965c1f4  my-image   1.2.3    I      smartos  zone-dataset  2018-01-12
-
-And perhaps just leaf images (i.e. more likely to be ones used for provisioning
-rather than for image creation):
-
-    $ triton image ls -me
-    SHORTID   NAME       VERSION  FLAGS  OS       TYPE          PUBDATE
-    0965c1f4  my-image   1.2.3    I      smartos  zone-dataset  2018-01-12
-
-A command to see that image's full ancestry, given that it is incremental:
-
-    $ triton image ancestry my-image
-    SHORTID   NAME                   VERSION  FLAGS  OS       TYPE          PUBDATE
-    0965c1f4  my-image               1.2.3    I      smartos  zone-dataset  2018-01-12
-    55010197  my-origin              4.5.6    I      smartos  zone-dataset  2018-01-12
-    00a3a25e  minimal-multiarch-lts  17.4.0   P      smartos  zone-dataset  2018-01-04
-
-Or perhaps a tree view of the images which shows the ancestry:
-
-    $ triton images --tree
-    SHORTID       NAME                   VERSION  FLAGS  OS       TYPE          PUBDATE
-    00a3a25e      minimal-multiarch-lts  17.4.0   P      smartos  zone-dataset  2018-01-04
-      55010197    my-origin              4.5.6    I      smartos  zone-dataset  2018-01-12
-        0965c1f4  my-image               1.2.3    I      smartos  zone-dataset  2018-01-12
-      2575ucf3    other-origin           3.5.0    I      smartos  zone-dataset  2018-02-27
-        49fc810a  other-image            1.0.3    I      smartos  zone-dataset  2018-03-10
-
-A command to go the other way to see what images build upon a given one:
-
-    $ triton image children my-origin
-    SHORTID   NAME                   VERSION  FLAGS  OS       TYPE          PUBDATE
-    0965c1f4  my-image               1.2.3    I      smartos  zone-dataset  2018-01-12
-
-An perhaps a command (could be client-side sugar) to list instances using a
-given image:
-
-    $ triton ls --image=my-image@1.2.3
-    SHORTID   NAME  IMG             STATE    FLAGS  AGE
-    2c37513d  mex0  my-image@1.2.3  running  -      3w
-    76cc521f  mex1  my-image@1.2.3  running  -      2d
-
-Implementation notes:
-
-- TODO
-
-
-
-## Open Qs and TODOs
-
-- Consider tracking the transfer source account and image UUID. A quick way
-  to do this would be to define special *tags* for this. Tags would certainly
-  be quick, but it is a little weak to use that. We *do* already use tags for
-  structured info, e.g. for `tags.kernel_version`, so this wouldn't be the
-  first time. That doesn't make it a Good Thing.
-
-  IMO, we should spec out what field or tag names we would use, and then
-  see what effort/issues there would be in using first-class manfiest fields
-  for this, before considering falling back to the "quick hack" use of tags.
-
-- Consider adding all this behind a feature flag -- whether that is a generic
-  TritonDC feature flag mechanism that this RFD guinea pigs, or a simple/quick
-  SAPI metadata var on the IMGAPI service.
-
-- Nice to have: a way to list just *my* custom images easily (to see them from
-  the noise of all the public ones)
