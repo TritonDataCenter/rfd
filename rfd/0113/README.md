@@ -338,3 +338,7 @@ Implementation notes:
 - `triton image wait IMAGE` should be able to either poll (minimally) for
   an image going to state=active; or perhaps call a
   `CopyImageFromDc?do_not_restart=true` to attach to the progress stream.
+- Note that re-import of an image is not supported (a user can delete and
+  re-import), it may be nice in the future to allow re-importing in case a
+  user just wants to update a part of the image (or image metadata) in one
+  DC and populate that change everywhere.
