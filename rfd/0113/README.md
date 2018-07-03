@@ -31,10 +31,9 @@ functionality to make the following improvements to Triton custom images:
   - [x-account image clone](#x-account-image-clone)
   - [x-DC image copy](#x-dc-image-copy)
 - [Milestones](#milestones)
-  - [M1: make image creation *non*-incremental by default](#m1-make-image-creation-non-incremental-by-default)
-  - [M2: x-account image share](#m2-x-account-image-share)
-  - [M3: x-account image clone](#m3-x-account-image-clone)
-  - [M4: x-DC image copy](#m4-x-dc-image-copy)
+  - [M1: x-account image share](#m1-x-account-image-share)
+  - [M2: x-account image clone](#m2-x-account-image-clone)
+  - [M3: x-DC image copy](#m3-x-dc-image-copy)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
@@ -165,20 +164,6 @@ disabled, so they will not show up in Ops `triton images` listing, but will
 be visible as the image 'origin' and will still be accessible via
 `triton image` operations.
 
-#### Incremental images
-
-We acknowledge that the origin chain of incremental images is confusing to users
-and the expected benefit (size savings in transfer, because the bits in image A
-and image B may not need to be schlepped around as often) hasn't been justified.
-We propose to **change image creation to NOT be incremental by default.** This
-would bias custom images to being non-incremental: larger, but simpler to
-manage.
-
-Another benefit of custom images being non-incremental is that they do not
-depend on operator-provided base images (e.g. minimal, base, etc.) which means
-that operators of a cloud do not *need* to ensure that all base images are
-identical in all DCs as a requirement for x-DC image copying.
-
 #### Security
 
 Image sharing allows any account in the same cloud to add an image with any
@@ -231,30 +216,7 @@ external public image repository like <https://images.joyent.com> and
 
 ## Milestones
 
-### M1: make image creation *non*-incremental by default
-
-<https://jira.joyent.us/browse/TRITON-51>
-
-See the x-account image transfer design discussion above. This milestone is
-about making image creation (cloudapi CreateImageFromMachine) *non*-incremental
-by default and then support an option for the old behaviour of making an
-incremental image. Implementation notes:
-
-- I *believe* the cloudapi code that calls IMGAPI CreateImageFromVm need only
-  pass `incremental=false`. Currently the cloudapi code is always passing
-  `incremental=true`. If possible, this means we don't need a platform
-  update or cn-agent update for new imgadm functionality, which is great.
-- CloudAPI CreateImageFromMachine should add a new `incremental` option
-  and document implications of incremental and non-incremental images.
-- `triton image create` should expose this incremental option.
-- Q: Need we bump the cloudapi major version for this? It *is* a behaviour
-  change. However, I believe there is wiggle room given the limited
-  current capabilities the user has for image management. I'd still bias
-  to a major version bump for this, which would mean a required update
-  to node-triton and other clients.
-
-
-### M2: x-account image share
+### M1: x-account image share
 
 <https://jira.joyent.us/browse/TRITON-116>
 
@@ -264,7 +226,14 @@ incremental image. Implementation notes:
 - `triton images` grows support to show shared images.
     - Node-triton will use 'S' flag to mark shared images.
 
-### M3: x-account image clone
+#### API and Triton CLI changes
+
+- CloudAPI already has the [UpdateImage](https://apidocs.joyent.com/cloudapi/#UpdateImage)
+  endpoint, which can be used to update the image ACL.
+- Triton CLI will gain the `triton image share` command.
+
+
+### M2: x-account image clone
 
 <https://jira.joyent.us/browse/TRITON-53>
 
@@ -304,8 +273,14 @@ incremental image. Implementation notes:
     - Note: Even if added fields were not exposed via CloudAPI, then could
       be useful for internal auditing.
 
+#### API and Triton CLI changes
 
-### M4: x-DC image copy
+- CloudAPI will gain the [CloneImage](https://apidocs.joyent.com/cloudapi/#CloneImage)
+  endpoint, which can be used to make a copy of an existing shared image.
+- Triton CLI will gain the `triton image clone` command.
+
+
+### M3: x-DC image copy
 
 <https://jira.joyent.us/browse/TRITON-52>
 
@@ -342,3 +317,9 @@ Implementation notes:
   re-import), it may be nice in the future to allow re-importing in case a
   user just wants to update a part of the image (or image metadata) in one
   DC and populate that change everywhere.
+
+#### API and Triton CLI changes
+
+- CloudAPI will gain the [ImportImageFromDatacenter](https://apidocs.joyent.com/cloudapi/#ImportImageFromDatacenter)
+  endpoint, which can be used to import an image into another datacenter.
+- Triton CLI will gain the `triton image copy` command.
