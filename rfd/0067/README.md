@@ -77,24 +77,23 @@ A properly setup TritonDC (see below):
   instances to other headnodes;
 - can maintain service availability with the loss of any single node, other
   than the primary headnode;
-    TODO: modify this one if we don't have a "primary" headnode concept; which
-    might allow an operator to put some of the core single-inst zones on
-    server other than headnode0.
+  (TODO: modify this one if we don't have a "primary" headnode concept; which
+  might allow an operator to put some of the core single-inst zones on
+  server other than headnode0.)
 - can be quickly (say within 1h) recovered on a secondary headnode with the
   loss of the primary headnode;
-- can boot CNs while the primary headnode is down; and
-    Q: CN booting DHCP request: Does that broadcast? Or does it need the
-        dhcpd zone IP?
+- can boot CNs while the primary headnode is down;
+  (Q: CN booting DHCP request: Does that broadcast? Or does it need the dhcpd zone IP?)
 - the customer data path (i.e. fabric overlay networking) is working while
   the primary headnode is down.
-    Q: Is the data path broken with the headnode down? I.e. Can portolan still
-        work with the primary headnode down?
-    TODO: Decide if this is a goal. I hope it can be.
-- Q: what about CNS services? ... at least in a production configuration where
+  (Q: Is the data path broken with the headnode down? I.e. Can portolan still
+  work with the primary headnode down? TODO: Decide if this is a goal. I hope it
+  can be.)
+- (Q: what about CNS services? ... at least in a production configuration where
   there are DNS servers (details?) slaving off the internal CNS zone. Does a
   short TTL kill DNS while the primary is down?  The issue here is that DNS
-  could be considered data-path now.
-- Q: what about CMON services while headnode is down?
+  could be considered data-path now.)
+- (Q: what about CMON services while headnode is down?)
 
 Non-goals:
 
@@ -200,13 +199,14 @@ headnode:
 A DC "properly setup" for resiliency has setup a few services to be HA:
 binder, manatee, moray.
 
-    sdcadm post-setup ha-binder -s $HN1,$HN2
+    # TODO: note move to args rather than opt for servers in TOOLS-1977
+    sdcadm post-setup ha-binder $HN0 $HN1 $HN2
     sdcadm post-setup ha-manatee -s $HN1,$HN2
     sdcadm create moray -s $HN1,$HN2
 
-
 TODO: It would be nice to update these commands to *default* to using the
-set of headnodes on which to deploy so that these would become:
+set of headnodes on which to deploy so that these would become the following.
+This has somewhat been started in TOOLS-1977.
 
     sdcadm post-setup ha-binder
     sdcadm post-setup ha-manatee
@@ -248,7 +248,7 @@ re-establish three HA instances of binder, manatee, and moray via the following
 on some new server.
 
     sdcadm server headnode-setup $SERVER
-    sdcadm post-setup ha-binder -s $SERVER
+    sdcadm post-setup ha-binder $HN1 $HN2 $SERVER
     sdcadm post-setup ha-manatee -s $SERVER
     sdcadm create moray -s $SERVER
 
@@ -278,7 +278,7 @@ operator follow up relatively soon with an additional headnode:
 
 and re-establishing three HA instances of those services:
 
-    sdcadm post-setup ha-binder -s $SERVER
+    sdcadm post-setup ha-binder $HN1 $HN2 $SERVER
     sdcadm post-setup ha-manatee -s $SERVER
     sdcadm create moray -s $SERVER
 
@@ -288,15 +288,11 @@ comes back up? Can we explicitly ensure that services on all other servers don't
 start talking to the "deposed" server's instances again? Should a booting
 primary headnode go "deposed" if it sees another primary? Should cn-agent do
 that? What is the mechanism for seeing other primaries? Presumably from CNAPI
-talking to manatee (because manatee is the authority). The "authority" could be
-in the config (the 'sdc' application metadata.headnode_primary) and retrieved
-via config-agent or not. Basically I think this should be at the service level:
-if a service FOO doesn't support multiple instances... then perhaps it should be
-required to only operate on the primary headnode. It should check that config
-var and not start if it isn't on the primary. Does this work? HA services should
-behave fine if the deposed primary comes back to life. Requiring a new version
-of all services for this is quite a bit. I suppose the sdcadm service could stop
-VMs on a deposed headnode if it can detect.
+talking to manatee (because manatee is the authority). Basically I think this
+should be at the service level. HA services should behave fine if the deposed
+primary comes back to life. Requiring a new version of all services for this is
+quite a bit. I suppose the sdcadm service could stop VMs on a deposed headnode
+if it can detect.
 
 
 ### Other new commands
@@ -454,8 +450,10 @@ From discussion at YVR office:
 
 ### sapi
 
-Need to break sapi's silly circular dep on config-agent.
-TODO: ticket for this.
+With SAPI-294 and TOOLS-1896 we have broken SAPI's circular dep on config-agent
+so updating it is now easy. I *think* SAPI should be HA'able now. TODO: verify
+this.
+
 
 
 ### ufds
@@ -469,17 +467,20 @@ TODO: We'd want docs about possible need to update FW rules to allow replication
 to continue. Or perhaps the "migrate/restore" command could warn/wait/fail
 on ufds-replicator trying and failing.
 
-TODO: amon alarm for ufds-replication failing and/or falling behind.
+TODO: amon alarm for ufds-replication failing and/or falling behind, or if
+dropping amon usage for core, then artedi metrics for this and perhaps
+`sdcadm status` could report.
 
 
 ### sdc
 
-- Q: Consider doing the sdc key change thing (there is a ticket I think) to
-  (a) not have the sdc priv key in SAPI data and (b) to support rotation of
-  it. If not in SAPI we'd need to have that in a delegate dataset and
-  carry that.
-- TODO: We'd want docs about possible need to update FW rules to allow
-  replication to continue.
+TODO: Work through how either HA sdc could work (coordinating which one runs
+hermes, hourly data dumps, etc.) or issues with migration/recovery of the sdc
+zone on the primary (FW rules to allow napi-ufds-watcher access, sdc key
+sharing via delegate dataset or separate sdc key for each sdc zone, etc.).
+
+Note: CM-753 for sdc key rotation, TOOLS-1607 for sdc key changes to just
+be in the sdc zone(s).
 
 
 ## Milestones
@@ -518,7 +519,8 @@ The eventual suggested/blessed DC setup will then be:
   "headnode".
 - Tooling and docs to convert a CN to a secondary headnode: i.e.
   `sdcadm server headnode-setup ...`.
-- Change default headnode setup to use "headnode0" as the hostname.
+- Perhaps change headnode setup to take a hostname for the headnode other than
+  the current hardcoded "headnode".
 - Whatever syncing or data backup between headnodes that is required.
 
 
@@ -632,14 +634,22 @@ XXX
 
 - A replaced my COAL primary headnode, keeping an older secondary CN running
   an older platform. The result was:
-        [root@headnode0 (coal hn) ~]# sdcadm server ls
-        HOSTNAME   UUID                                  STATUS   FLAGS  ADMIN IP
-        cn2        564dc847-1949-276a-8eb3-8d3a1df000ca  running  SHB    10.99.99.45
-        headnode0  564dd1ac-164d-cc50-247c-b2eb0cf21ce5  running  SH     10.99.99.7
+
+    ```
+    [root@headnode0 (coal hn) ~]# sdcadm server ls
+    HOSTNAME   UUID                                  STATUS   FLAGS  ADMIN IP
+    cn2        564dc847-1949-276a-8eb3-8d3a1df000ca  running  SHB    10.99.99.45
+    headnode0  564dd1ac-164d-cc50-247c-b2eb0cf21ce5  running  SH     10.99.99.7
+    ```
+
   The "B" flag is that boot_platform differs from current_platform:
-        [root@headnode0 (coal hn) ~]# sdc-cnapi /servers/564dc847-1949-276a-8eb3-8d3a1df000ca | grep platform
-          "boot_platform": "20170911T231447Z",
-          "current_platform": "20170828T221743Z",
+
+    ```
+    [root@headnode0 (coal hn) ~]# sdc-cnapi /servers/564dc847-1949-276a-8eb3-8d3a1df000ca | grep platform
+      "boot_platform": "20170911T231447Z",
+      "current_platform": "20170828T221743Z",
+    ```
+
   Why is that? How is "boot_platform" set for a new headnode server record?
   Is it just some sense of "default" boot platform in CNAPI?
   Anyway this isn't a big issue. "boot_platform" for headnode is only relevant
@@ -665,8 +675,8 @@ fully evacuate a headnode with minimal service downtime.
 
 The ideal is to be able to do the following in nightly-1:
 
-- Full regular setup (perhaps with the hostname="headnode0" change) with two
-  secondary headnodes setup.
+- Full regular setup (perhaps with the hostname not hardcoded to "headnode")
+  with two secondary headnodes setup.
 - Optionally have a "tlive" tool a la `mlive` for watching service availability
   and health over a period of time.
 - Move all service instances off headnode0 onto one of the secondary HNs while
@@ -705,14 +715,15 @@ Moved vmapi to cn2 with:
 
 ##### appendix: how to migrate
 
-TODO: move this to an appendix about how to handle min-downtime migration
-TODO: get discussion and review from others on it
+- TODO: move this to an appendix about how to handle min-downtime migration
+- TODO: get discussion and review from others on it
 
 What is vmapi *migrate*?
 
 For *migration* we assume the stack is up. If not, then we are *restoring* and
 that's different... possibly with slightly less correctness (up to date data
 for, e.g., selecting alias).
+
 - Take 1 (no new support for APIs required):
     - put DC in maint mode
     - create the new instance on target HN
@@ -724,6 +735,7 @@ for, e.g., selecting alias).
       itself.
     - destroy the old instance on the source HN
     - take DC out of maint mode
+
 - Take 2 (cutesy proxying):
     - Bring up new inst on target HN (assuming here a svc that can handling having
       multiple unused insts; e.g. this excludes the 'sdc' zone for which there
@@ -740,6 +752,7 @@ for, e.g., selecting alias).
     - Q: work for sdc (crontabs, hermes, possible IP whitelisting to Manta)?
     - Q: work for ufds (possible IP whitelisting to master UFDS)?
     - Q: work for imgapi (large delegate dataset)?
+
 Might prefer take 1 because KISS. The *right* answer is for each service to
 get to being HA. Better to spend time on that, than on cutesy "proxy mode".
 
@@ -1152,7 +1165,7 @@ Trent's WiP:
     - ready to go to master
         - logToFile improvements
             TODO: get this to master
-        - Procedure.viable
+        - Procedure.viable  (XXX lost this?)
             TODO: move this to master?
     - done, but stays in rfd67:
         - `sdcadm server list`
