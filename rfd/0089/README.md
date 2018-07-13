@@ -774,10 +774,10 @@ property group should have the following fields:
 Today, that would be one of `sff` and `usb`.
 
 Various types may have more information in an additional property group
-of the titled group. This group should be named as `%type-port`. When
-we're a bit further along with the USB efforts, we'll come back with a
-scheme for the `usb-port` property group. At this time, there is no
-plans for an sff specific property group.
+of the titled group. This group should be named as `%type-port`. At this
+time, there is no plans for an sff specific property group. For more
+information on the USB port definition, see [RFD 147 Project Tiresias:
+USB Topology](../0147).
 
 ### Transceiver
 
@@ -841,3 +841,4 @@ impacted.
 * [RFD 6 Improving Triton and Manta RAS Infrastructure](../0006/)
 * [RFD 7 Datalink LLDP and State Tracking](../0007/)
 * [RFD 88 DC and Hardware Management Futures](../0088/)
+* [RFD 147 Project Tiresias: USB Topology](../0147)

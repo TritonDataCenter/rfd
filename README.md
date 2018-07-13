@@ -190,6 +190,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 144 Conch: Datacenter Switch Automation](./rfd/0144/README.md) |
 | predraft | [RFD 145 Lullaby 3: Improving the Triton/Manta builds](./rfd/0145/README.md) |
 | predraft | [RFD 146 Conch: Inventory System](./rfd/0146/README.md) |
+| draft    | [RFD 147 Project Tiresias: USB Topology](./rfd/0147/README.md) |
 
 ## Contents of an RFD
 
