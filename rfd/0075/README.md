@@ -1,6 +1,6 @@
 ---
 authors: Jerry Jelinek <jerry@joyent.com>
-state: draft
+state: abandoned
 ---
 
 # RFD 75 Virtualizing the number of CPUs

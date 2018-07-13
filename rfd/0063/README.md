@@ -1,6 +1,6 @@
 ---
 authors: Patrick Mooney <patrick.mooney@joyent.com>
-state: predraft
+state: abandoned
 ---
 
 <!--
