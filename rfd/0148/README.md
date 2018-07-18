@@ -1,6 +1,6 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
-state: predraft
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+148%22
 ---
 
@@ -50,6 +50,10 @@ may, however, be retained for some time to allow for rapid rollback in those
 cases where the compute node has an abundance of available disk space.  Either
 the bookmark or the snapshot (if it still exists) may be used for sending future
 incremental snapshots.
+
+XXX for on-prem customers, we may need a store other than manta.  Do we do this
+by streaming snapshots via `zfs send $snap | ssh $snap_host "cat > $snap_path"`
+or via some simple webapp that needs to run in an infrastructure container?
 
 ## Snapshot Operations
 
@@ -160,7 +164,7 @@ it is successfully sent to manta.  Before the hold is removed, a bookmark should
 be created so that it may be used as the incremental source for future
 snapshots.
 
-The system (DAPI?) should be aware of the space that may be freed by removing
+The system should be aware of the space that may be freed by removing
 snapshots that do not have holds.  This freeable space should be considered free
 space for the purposes of VM placement.  During image import and instance
 creation, imgapi and cnapi (?) should free space by deleting unheld snapshots,
@@ -181,3 +185,80 @@ imgadm recover VM <snapname>
 
 Grabs the metadata associated with the VM from manta, finds a suitable CN and
 does the same thing as a rollback.
+
+## Open questions
+
+These are here for the sake of discussion.  They will be removed before this RFD
+is published.
+
+### Would it be better to base this on IMGAPI?
+
+IMGAPI already knows how to store images in manta and files.
+
+This would make rollback and recovery able to reuse the instance create code.
+
+Complications:
+
+- Creating a VM from an image involves downloading the image file, sending that
+  image file into the pool, then cloning the the image.  Consider what this
+  means for a 1 TB image.
+  - 1 TB of reads from the network
+  - 1 TB of writes to disk (storing the file)
+  - 1 TB of reads from disk (reading the file)
+  - 1 TB of writes to disk (receiving the stream)
+  - There's a 1 TB image sitting around that can't be destroyed because there's
+    an instance that depends on it.
+- Does storing to manta involve writing to a file, then copying that file to
+  manta?  If so, we probably want to revisit that for the TB+ snapshot case.
+
+Mitigations:
+
+- Ensure that we can stream directly between zfs(1M) and manta.
+- After creating a VM from a snapshot
+  - Promote the VM's datasets
+  - Destroy the image datasets
+  - Create a bookmark of the snapshot used during the clone
+  - Destroy aforementioned snapshot
+
+### What if there is no manta?
+
+When deployed outside of JPC, manta may not be a viable option.
+
+As mentioned above, an IMGAPI based solution would be able to store to files.
+Customers could potentially use NFS to easily store off the compute node, else
+move them using scp or similar after creation.
+
+### Very large snapshots issues
+
+Suppose there is a 1 TB snapshot that needs to be sent.  If it is allowed to
+saturate a 10 gigabit link, it would take nearly half an hour to complete the
+transfer.  It is quite likely that such a high data rate would have significant
+impact on workloads on the CN.  A more moderate rate of 1 Gb/s would require
+nearly 3 hours.
+
+If the sending or receiving of a large stream is interrupted (network outage,
+reboot, etc.) it will need to be restarted from the beginning.  One may argue
+this is a reason to stream to a local file first, then copy the file.
+
+### Stream to a live ZFS pool?
+
+The initial thought for off-host snapshots was to stream to an off-host zpool.
+Ideally, that would be to multiple off-host zpools.  This would solve several
+problems that are not solved with streaming to files in manta (or not in manta).
+In particular:
+
+- It would be possible to remove any snapshot without having any impact on the
+  usability of later snapshots.
+- Rollback to any snapshot could involve sending a single stream without having
+  to send intermediate streams that may have no useful data.
+- It becomes feasible to have scheduled snapshots that are always incremental
+  without accumulating a large number of intermediate incrementals.  This could
+  be part of a strategy to make it so that snapshots of multi-terabyte VMs are
+  quite fast without excessive storage cost or rollback complication.
+- Instead of sharing code with IMGAPI, this code would be shared with instance
+  migration (See RFD 34).
+
+The manta approach is currently viewed as the best option, largely because it
+relies on a battle-tested solution to storage resilience in the face of
+failures.  Getting a ZFS-based solution that handles storage node outages,
+failures, and replacements well is a big task.
