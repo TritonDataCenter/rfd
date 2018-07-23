@@ -10,10 +10,10 @@ state: predraft
 
 
 - [Introduction](#introduction)
-  - [Types of Migration](#types-of-migration)
-    - [Live Migration](#live-migration)
-    - [Offline migration](#offline-migration)
-    - [Semi-live migration](#semi-live-migration)
+- [Types of Migration](#types-of-migration)
+  - [Live Migration](#live-migration)
+  - [Offline migration](#offline-migration)
+  - [Semi-live migration](#semi-live-migration)
 - [The state of migration in SmartOS](#the-state-of-migration-in-smartos)
 - [The state of migration in Triton](#the-state-of-migration-in-triton)
 - [A vision for the future](#a-vision-for-the-future)
@@ -48,7 +48,7 @@ Migration of instances is a common feature among virtualization platforms. Smart
 
 Nevertheless, at times it has been necessary to migrate instances within the Triton Cloud between compute nodes.
 
-## Types of Migration
+# Types of Migration
 
 There are three types of migration.
 
@@ -56,17 +56,17 @@ There are three types of migration.
 * Offline migration
 * Semi-live (incremental) migration
 
-### Live Migration
+## Live Migration
 
 This is when an instance compute task is transferred between physical compute nodes. This is generally done using shared storage, requiring only the memory state and execution context to be synchronized leveraging instance "pausing" to briefly quiesce the instance before resuming on the destination compute node. Due to design choices (vis. the exclusion of shared storage) in SDC, and the nature of OS virtualization in SmartOS (containers, not virtual machines*) live migration is not considered for implementation at this time.
 
 \* Even KVM instances are qemu in a *container*.
 
-### Offline migration
+## Offline migration
 
 Where an instance is stopped completely (i.e., the guest performs a shutdown procedure), the dataset backing the storage for the instance is synced, and the instance is booted on the destination compute node. Offline migration is the most straightforward type of migration and works in almost any circumstance, but has the disadvantage that the instance will be down for the entire time it takes to transfer the storage dataset.
 
-### Semi-live migration
+## Semi-live migration
 
 Occurs when the dataset backing the storage for the instance is synced while the instance is running. Once the dataset is within an acceptable delta on both the source and destination compute node the instance is stopped, a final sync is performed, and the instance is booted on the destination compute node. This allows for both dedicates storage and significantly reduced down time (though, still not as little as live migration).
 
