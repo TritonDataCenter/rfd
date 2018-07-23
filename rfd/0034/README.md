@@ -52,9 +52,9 @@ Nevertheless, at times it has been necessary to migrate instances within the Tri
 
 There are three types of migration.
 
-* Live migration
-* Offline migration
-* Semi-live (incremental) migration
+- Live migration
+- Offline migration
+- Semi-live (incremental) migration
 
 ## Live Migration
 
@@ -96,7 +96,7 @@ so the created instance will be placed on the correct server and that all of the
 same services are available (e.g. CNS, Volumes, Networks, etc...) without having
 to duplicate the creation of these services.
 
-## Offline migration
+## Offline migration implementation
 
 1. CNAPI /servers/:server_uuid/vms/:uuid/migrate endpoint will start the
    migration process for this (source) instance.
@@ -108,10 +108,10 @@ to duplicate the creation of these services.
    necessary supporting zones (e.g. NAT zone).
 3. Run a cn-agent task on the source and target CN which will setup a
    communication channel (TCP socket) on the admin network which the two CNs can
-   use to peform the migration operation. (this may be combined with step #1 and
-   step #2)
+   use to perform the migration operation. (this may be combined with step #1
+   and step #2)
 4. Stop the source instance (if it was running).
-5. Vmadm send (i.e. zfs snaptshot and zfs send each zfs dataset used by) the
+5. Vmadm send (i.e. zfs snapshot and zfs send each zfs dataset used by) the
    source instance to the waiting vmadm receive (zfs receive) on the target CN.
 6. Unregister the source instance from systems (set do_not_inventory on the
    source instance) and ensure it no longer auto-restarts.
@@ -120,7 +120,7 @@ to duplicate the creation of these services.
 8. Start the target instance (if it was previously running).
 9. Cleanup (remove source zone, or schedule for later removal).
 
-## Semi-live migration
+## Semi-live migration implementation
 
 TODO. Similar to offline, but with initial zfs send before stopping the instance
 and then a smaller incremental send to fetch the remaining delta after stopping
@@ -168,7 +168,7 @@ tasks to control and monitor the migration.
 
 - add CNAPI API migration endpoint
 - add workflow tasks for control of the migration states
-- create cn-agent tasks to initiate sending/recieving
+- create cn-agent tasks to initiate sending/receiving
 - other actions on source/target instance cannot occur during a migration
 - instance cleanup
 - update sdc-clients to add CNAPI migration API wrappers
@@ -195,7 +195,7 @@ CN/Headnode:
 ## M6: End user migration
 
 Add CN traits (controlled by Admin) to flag whether a CN allows migrations, such
-that an annoucement can then be sent and end users can then migrate their own
+that an announcement can then be sent and end users can then migrate their own
 instances via CloudAPI or Triton command line.
 
 - add CloudAPI migration APIs
@@ -204,7 +204,7 @@ instances via CloudAPI or Triton command line.
 - add Triton cli instance migration support:
 
       $ triton $instance migrate
-      Migrating $foo - this will take a long time, continue y/n? 
+      Migrating $foo - this will take a long time, continue y/n?
 
 ## M7: Migration estimate
 
@@ -243,7 +243,7 @@ demand? Alternative would be the migration happens all in one operation.
 
 - can we optimize migration (and or zfs send) to make use of base images (i.e.
   to just perform a zfs incremental send from the base/source image)? c.f.
-  https://github.com/joyent/smartos-live/issues/204
+  [joyent/smartos-live#204](https://github.com/joyent/smartos-live/issues/204)
   If the target instance provisioning (reservation) also installs the source
   image to the target CN, then this should be able to work?
 
@@ -302,7 +302,6 @@ demand? Alternative would be the migration happens all in one operation.
 - Guest within a guest is not supported?
 - Cannot migrate core Triton services?
 
-
 # Tests
 
 This is mostly a dev notes section to run tests on these items:
@@ -314,7 +313,6 @@ This is mostly a dev notes section to run tests on these items:
 - ensure other actions to the instance (start, stop, delete, etc...) cannot be
   performed while an instance is migrating
 - failure cases, by the truckload
-
 
 # References
 
