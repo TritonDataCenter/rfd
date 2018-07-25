@@ -96,10 +96,19 @@ so the created instance will be placed on the correct server and that all of the
 same services are available (e.g. CNS, Volumes, Networks, etc...) without having
 to duplicate the creation of these services.
 
+The migrating instance will be marked with a "migrating" vm state to ensure no
+other operations (e.g. "start", "stop", "reprovision") can occur on the instance
+whilst the migration is ongoing (including another migration attempt).
+
+It will be possible to manually stop/abort a migration, though it may take some
+time before the migration process can be safely interrupted and before the
+instance can return to it's previous state.
+
 ## Offline migration implementation
 
 1. CNAPI /servers/:server_uuid/vms/:uuid/migrate endpoint will start the
-   migration process for this (source) instance.
+   migration process for this (source) instance by acquiring a ticket/lock on
+   the instance and then changing the instance state to "migrating".
 2. DAPI will be used to provision a new (target) instance with the same set of
    provisioning parameters (you can think of this as an instance reservation) on
    a different CN (the target CN). Keep the same uuid but flag it as
