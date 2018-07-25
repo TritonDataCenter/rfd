@@ -34,6 +34,7 @@ state: predraft
   - [Images](#images)
   - [Provisioning](#provisioning)
   - [Networking](#networking)
+    - [Rack Aware Networks](#rack-aware-networks)
   - [Progress](#progress)
   - [Other](#other)
 - [Caveats](#caveats)
@@ -281,6 +282,12 @@ demand? Alternative would be the migration happens all in one operation.
   IP address/MAC etc... does it initially provision the target instance without
   networks and then later remove these networks from the source and then re-add
   to the target instance?
+
+### Rack Aware Networks
+
+In the case of a CN being in a rack aware network - the DAPI provisioning
+process will need to take into account (if not already done) that the newly
+provisioned instance must reside in a CN in the same rack.
 
 ## Progress
 
