@@ -40,6 +40,9 @@ database.
 
 We want the ability to manage spares and defective inventory.
 
+As much as possible, inventory information should be automatically updated via
+Conch reports.
+
 A primary objective is to provide primitives so other applications can consume
 the asset system and build atop it -- for instance, a rack or datacenter
 designer app to identify assets that can be used, and to define resulting
@@ -60,9 +63,19 @@ Other phases may be noted, but are not required for the first revision.
 
 (TODO)
 
-## Requirements
+## User Stories (Basic)
 
-Management of the following object types are required.
+* "How many servers are deployed in all regions?"
+* "How many switches are in us-east-1?"
+* "How many hard drives of x type are in eu-central-1?"
+* "How many DIMMs of brand y have failed in the last year?"
+* "I want to design a server, and have a JSON specification I can use Conch to validate against"
+* "I want to design a rack, and be sure that the resulting BOM has accurate cable lengths"
+* "I want to design a datacenter and I want to be sure that based on rack BOM metadata's power footprints I am not exceeding my power budget"
+* "What tools are required to work on server class y?"
+* "Who is our vendor contact for product z?"
+
+## Resource Types
 
 ### Businesses
 
