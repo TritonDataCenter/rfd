@@ -105,11 +105,30 @@ based on the selected PSUs.
 
 Once the design is complete and validated, the entire BOM would be stored back
 in the inventory system as an available asset. Other applications can then call
-on this designed system for use.
+on this designed system for use. The required power to run that server would
+also be stored as part of the BOM, for later use.
 
 ### Rack Designer
 
-#### Cable Lengths
+As DCOPS, CloudOps, or a customer, I want the ability to take server and switch
+designs and design a rack.
+
+Each rack asset in the inventory system has a number of attributes associated
+with it, including height and depth, max weight, if it supports 0U PDUs, and so
+forth.
+
+Once a rack chassis has been selected, the application would keep track of the
+total power required to run the rack as devices are added to it. All of this is
+based on the metadata and device attributes stored in the inventory system.
+
+As a device is slotted into the rack, this application would keep track of what
+kind of cables are required -- as defined in the device attributes -- and
+calculate the length of cable required based on the devices location in the
+rack. These cables would be automatically selected from the inventory system.
+
+Once the rack has been designed, it can then be saved in the inventory system
+as a complete BOM, with total power required, weight, etc, stored in the system
+as attributes.
 
 ### Datacenter Designer
 
