@@ -15,11 +15,12 @@ state: predraft
 
 # RFD 146 Conch: Inventory System
 
+**This document is very WIP.**
+
 ## Problem
 
-We are running into inventory management problems. Conch provides physical
-tracking of switches and servers in racks, but does not have features commonly
-found in asset management systems.
+Conch currently provides physical tracking of switches and servers in racks,
+but does not have features commonly found in asset management systems.
 
 There are off-the-shelf solutions for inventory tracking and computerized
 maintenance management systems (CMMS), but they cannot leverage the data we
@@ -31,6 +32,10 @@ practices](http://www.plant-maintenance.com/articles/CMMS_systems.shtml) but
 the initial design here should be moderately simple.
 
 ## Goals
+
+We want to automate as much of asset and inventory tracking as we possibly can.
+We do not want humans doing a bunch of manual data entry work when we can
+gather all of that information from the systems we have deployed.
 
 We want the ability to track every component in every device in each
 datacenter, throughout the course of its life.
@@ -74,6 +79,14 @@ Other phases may be noted, but are not required for the first revision.
 * "I want to design a datacenter and I want to be sure that based on rack BOM metadata's power footprints I am not exceeding my power budget"
 * "What tools are required to work on server class y?"
 * "Who is our vendor contact for product z?"
+
+## Example Inventory System Consumers
+
+### Server Designer
+
+### Rack Designer
+
+#### Cable Lengths
 
 ## Resource Types
 
