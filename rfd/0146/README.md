@@ -82,11 +82,36 @@ Other phases may be noted, but are not required for the first revision.
 
 ## Example Inventory System Consumers
 
+The inventory system must catalog every component in every device we deploy.
+Partially this is so we can track things, perform inventory and audits,
+generate RFQs, but also so we can build applications on top of the inventory
+catalog. These applications would be domain specific, but all deal with
+specific parts of managing the physical world of the datacenter.
+
+### Parts Manager
+
 ### Server Designer
+
+As DCOPS, CloudOps, or a customer, I want the ability to design server classes.
+
+Each server chassis in the system has metadata associated with it, defining how
+many CPUs, DIMM slots, disks, PCI slots, PSUs, etc, it contains. It also has a
+list of the type of hardware it can allow -- PCIe/PCIx, 2.5" vs 3.5" disks, and
+so forth. These constraints ensure that the system design is viable.
+
+The designer leverages these component attributes. As the user builds selects
+components, the application would keep monitor the power budget for the system
+based on the selected PSUs.
+
+Once the design is complete and validated, the entire BOM would be stored back
+in the inventory system as an available asset. Other applications can then call
+on this designed system for use.
 
 ### Rack Designer
 
 #### Cable Lengths
+
+### Datacenter Designer
 
 ## Resource Types
 
