@@ -103,6 +103,11 @@ The designer leverages these component attributes. As the user builds selects
 components, the application would keep monitor the power budget for the system
 based on the selected PSUs.
 
+As components are added to the design, they bring along their own requirements
+and constraints. For instance, adding a dual port 10Gbs NIC will require add
+the cables as a requirement of the overall BOM once completed. (An override
+system of some sort might be necessary too.)
+
 Once the design is complete and validated, the entire BOM would be stored back
 in the inventory system as an available asset. Other applications can then call
 on this designed system for use. The required power to run that server would
