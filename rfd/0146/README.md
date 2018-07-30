@@ -90,6 +90,14 @@ specific parts of managing the physical world of the datacenter.
 
 ### Parts Manager
 
+As DCOPS, CloudOps, Finance, or a customer, I want the ability to manage all
+parts in the datacenter. This includes adding all information about the part,
+vendor information, potentially pricing information, custom internal SKUs, and
+so forth.
+
+I want reporting interfaces to identify what our stock is for a given part
+(wheter that's a single hard drive type, or a type of server, or type of rack).
+
 ### Server Designer
 
 As DCOPS, CloudOps, or a customer, I want the ability to design server classes.
