@@ -65,7 +65,7 @@ cloudapi.
 [CreateMachineSnapshot](https://apidocs.joyent.com/cloudapi/#CreateMachineSnapshot)
 will be updated as follows.
 
-** Inputs **
+**Inputs**
 
 | Add/Change | Field | Type | Description |
 | ---------- | ----- | ---- | ----------- |
@@ -75,7 +75,7 @@ will be updated as follows.
 XXX For backwards compatibility, do we need to use a per-brand CN trait?  Flesh
 this out after discussion.
 
-** Errors **
+**Errors**
 
 | Add/Change | Error Code | Description |
 | ---------- | ---------- | ----------- |
@@ -92,7 +92,7 @@ is not changed.
 [GetMachineSnapshot](https://apidocs.joyent.com/cloudapi/#GetMachineSnapshot)
 will be updated as follows.
 
-** Returns **
+**Returns**
 
 | Add/Change | Field | Type | Description |
 | ---------- | ----- | ---- | ----------- |
@@ -109,7 +109,7 @@ the completion of `zfs send`, what will it be?
 [DeleteMachineSnapshot](https://apidocs.joyent.com/cloudapi/#DeleteMachineSnapshot)
 will be updated as follows.
 
-** Errors **
+**Errors**
 
 | Add/Change | Error Code | Description |
 | ---------- | ---------- | ----------- |
@@ -187,7 +187,7 @@ For the typical bhyve zone, the essential space-related properties are:
 
 The `quota` and `reservation` properties should never be used in this scheme.
 
-When a VM is snapshotted, the pool's available space will descrease by the sum
+When a VM is snapshotted, the pool's available space will decrease by the sum
 of values of the `written` properties on each of the VM's volumes and
 filesystem.  The pool's available space is obtained via `zfs list -Ho available
 zones`, or equivalent commands.  This value is typically very different from the
@@ -235,7 +235,7 @@ This would make rollback and recovery able to reuse the instance create code.
 Complications:
 
 - Creating a VM from an image involves downloading the image file, sending that
-  image file into the pool, then cloning the the image.  Consider what this
+  image file into the pool, then cloning the image.  Consider what this
   means for a 1 TB image.
   - 1 TB of reads from the network
   - 1 TB of writes to disk (storing the file)
