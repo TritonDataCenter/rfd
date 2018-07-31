@@ -40,7 +40,7 @@ of the information stored in the zone's dataset (`zones/<uuid>`) and its
 descendants.
 
 A VM snapshot uses a recursive ZFS snapshot of the `zones/<uuid>` filesystem.
-Each snapshot is then sent from the ZFS pool and stored in manta along with
+Each snapshot may then be sent from the ZFS pool and stored in manta along with
 metadata.  The initial snapshot is sent as a full stream.  Subsequent snapshots
 may be sent as full or incremental streams.
 
@@ -62,23 +62,58 @@ cloudapi.
 
 ### Snapshot Create
 
-XXX When sending
-  - First snapshot is always a full
-  - Customer may specify
-    - full
-    - incremental - delta from previous snapshot
-    - differential - delta from a specific snapshot
+[CreateMachineSnapshot](https://apidocs.joyent.com/cloudapi/#CreateMachineSnapshot)
+will be updated as follows.
+
+** Inputs **
+
+| Add/Change | Field | Type | Description |
+| ---------- | ----- | ---- | ----------- |
+| Add | `backup` | Boolean | Optional. Should this snapshot be stored off this compute node?  This attempts to override the default CN trait `snapshot.backup.enabled`. |
+| Add | `from_name` | String | Optional.  Implies `backup` is True.  When backing up a snapshot, save an incremental stream from the specified snapshot.  If not specified, the most recent snapshot will be used.  If this is the first snapshot, a full stream will be generated. |
+
+XXX For backwards compatibility, do we need to use a per-brand CN trait?  Flesh
+this out after discussion.
+
+** Errors **
+
+| Add/Change | Error Code | Description |
+| ---------- | ---------- | ----------- |
+| Change | InvalidArgument | If `name` or `from_name` was invalid. |
+| Add | NotAuthorized | If `backup` is True or `from_name` is specified and the CN does not allow backups due to `snapshot.backup.enabled` being set to `force-false`. |
 
 ### Snapshot List
 
-Lists existing snapshots, their sizes, and metadata (maybe?).
+[ListMachineSnapshots](https://apidocs.joyent.com/cloudapi/#ListMachineSnapshots)
+is not changed.
 
-XXX probably need some means to verify that the snapshot copy to manta has
-completed.
+### Snapshot Get
+
+[GetMachineSnapshot](https://apidocs.joyent.com/cloudapi/#GetMachineSnapshot)
+will be updated as follows.
+
+** Returns **
+
+| Add/Change | Field | Type | Description |
+| ---------- | ----- | ---- | ----------- |
+| Add | `created` | Timestamp | The time that the snapshot was created |
+| Add | `backup_size` | Integer | The size in bytes of a single copy of the backup.  A value of 0 means there is no backup. |
+| Add | `children` | List of Strings | Snapshots that must be removed before this snapshot can be removed.  The snapshots listed here may also have children which do not appear in this list (children, not descendants). |
+
+XXX If `backup` is True during creation, the `state` return value will become
+"created" once the backup is complete.  Between completion of `zfs snapshot` and
+the completion of `zfs send`, what will it be?
 
 ### Snapshot Delete
 
-Delete a specific snapshot, but not if it is the origin for another snapshot.
+[DeleteMachineSnapshot](https://apidocs.joyent.com/cloudapi/#DeleteMachineSnapshot)
+will be updated as follows.
+
+** Errors **
+
+| Add/Change | Error Code | Description |
+| ---------- | ---------- | ----------- |
+| Add | InUseError | If removal of this snapshot is blocked by the existence of one or more child snapshots. |
 
 ### Boot from a Snapshot
 
