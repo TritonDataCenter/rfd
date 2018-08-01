@@ -1,5 +1,5 @@
 ---
-authors: Bryan Horstmann-Allen <bdha@joyent.com>
+authors: Bryan Horstmann-Allen <bdha@joyent.com>, Chris Prather <chris.prather@joyent.com>
 state: predraft
 ---
 
@@ -74,9 +74,6 @@ Other phases may be noted, but are not required for the first revision.
 * "How many switches are in us-east-1?"
 * "How many hard drives of x type are in eu-central-1?"
 * "How many DIMMs of brand y have failed in the last year?"
-* "I want to design a server, and have a JSON specification I can use Conch to validate against"
-* "I want to design a rack, and be sure that the resulting BOM has accurate cable lengths"
-* "I want to design a datacenter and I want to be sure that based on rack BOM metadata's power footprints I am not exceeding my power budget"
 * "What tools are required to work on server class y?"
 * "Who is our vendor contact for product z?"
 
@@ -151,32 +148,122 @@ design a full datacenter deployment. This is discussed in [RFD
 core data the designer does would again be stored back in the inventory system
 as a BOM.
 
-## Resource Types
 
-### Businesses
+## Affordances
 
-* Classification (supplier, manufacturer, client)
-* Location
-* Contact information
+### Data Collection
 
-### Sites
+Initially the primary data collection will be from Conch, or Conch related
+services (c.f. Conch::Reporter). To that end the system should consume the
+output formats from the Conch system.
 
-A site is a building. It references a business, address, etc.
+### Querying / Filtering
 
-Sites contain rooms.
+Every data object discussed in the Data Model below should have an independent
+method of retrieving and filtering the list of entities associated with it. For
+example if we wanted to know:
 
-A room can contain an aisle/row and bins. When stock references a location, it
-is this.
+* "How many servers are deployed in all regions?"
 
-(In the case of e.g., realized assets -- servers, switches -- which are located
-in a datacenter room and rack, we should decide how to reference Conch's
-`device_location` table.)
+    curl -v https://example.com/assets?category=server
+
+* "How many hard drives of x type are in eu-central-1?"
+
+    curl -v https://example.com/assets?category="Hard Drive";vendor="Seagate";capacity="2TB";region="eu-cenral-1"
+
+* "How many DIMMs of brand y have failed in the last year?"
+
+    curl -v https://example.com/assets?category=DIMM;state=FAILED;since=1y
+
+Each of these requests would return a paginated response containing the relevant data. While the query:
+
+* "What tools are required to work on server class y?"
+
+    curl -v https://example.com/assets?category=server;name=smci-2u-storage-256g-12-sas-12tb
+
+Might return a response with a single result it would contain a link to the manifest of tools required to work on it. Or inversely:
+
+    curl -v https://example.com/assets?category=tools;name="1mm star headed driver"
+
+Might return a result for a specific tool which would contain links to all the assets it could be used for.
+
+## Data Model
+
+### Assets
+
+Assets are any pieces of equipment we want to track for business reasons. They
+may be discrete components (e.g. a Hard Drive,, DIMM chip, PDU, Chassis etc.),
+or they may be aggregates.
+
+Aggregates are things which consist of a dozen or so high-level parts (e.g.
+racks, servers, switches, PDUs), or a "hard drive kit" that would contain the
+drive itself, the required cables, and the referenced tools.
+
+Each asset has a state, NEW, BROKEN, REFURB, WONTFIX, etc..
+
+    CREATE TABLE asset (
+        id uuid DEFAULT gen_random_uuid() NOT NULL,
+        name text NOT NULL,
+        type text NOT NULL,
+        part_id uuid,
+        sku str NOT NULL,
+        category str NOT NULL,
+        state str NOT NULL,
+        comissioned timestamp with time zone NOT NULL,
+        decomissioned timestamp with time zone,
+		audit_id uuid NOT NULL,
+        metadata jsonb
+    );
+
+#### Server Asset Example
+
+An example server asset attributes:
+
+| Key        | Type  | Example                          	|
+|------------|-------|--------------------------------------|
+| id 		 | UUID  | 00000000-0000-0000-0000-000000000000 |
+| name       | Str   | smci-2u-storage-256g-12-sas-12tb 	|
+| category   | Ref   | Storage Server                   	|
+| SKU        | Str   | 600-0033-001                     	|
+| Generation | Str   | Joyent-S12G5                     	|
+
+#### Rack Asset Example
+
+Name: Storage Rack v4
+
+| Qty | PN                                | Descr                              |
+|-----|-----------------------------------|-----------------------------|
+| 18  | smci-2u-storage-256g-12-sas-12tb  | Storage Server              |
+| 2   | DCS-7160-48YC6-R                  | TOR switch                  |
+| 1   | WS-C2960X-24TS-LL                 | OOB switch                  |
+| 2   | PDU-001                           | PDU                         |
+| 1   | RACK-001                          | NetShelter SX 45U           |
+
+etc...
+
+#### Asset Categories
+
+* Server
+* Hard Drive Kit
+* Computer Rack
+* Storage Rack
+* ...
 
 ### Parts
 
-Parts may be consumable or field replaceable when installed in a given asset.
+Parts are the discrete components and consumables. These are the things we
+purchase, replace, or repair in our environment.
 
-Parts can have the following criteria:
+    CREATE TABLE part (
+        id uuid DEFAULT gen_random_uuid() NOT NULL,
+        name text NOT NULL,
+        vendor_id uuid,
+        decomissioned timestamp with time zone,
+		audit_id uuid NOT NULL,
+        metadata jsonb
+    );
+
+Parts may have the following metadata:
 
 | Name          | Example                                     |
 |---------------|---------------------------------------------|
@@ -192,7 +279,7 @@ Parts can have the following criteria:
 #### Part: Custom Fields
 
 When a part is instantiated into stock, the following attributes are
-automatically created for it:
+may be created for it:
 
 | Name          | Type            | Extra |
 |---------------|-----------------|-------|
@@ -201,9 +288,6 @@ automatically created for it:
 | PN            | Ref: PN         |       |
 | Serial Number | Str             |       |
 | QR/barcode    |                 |       |
-| Location      | Ref: Site (bin) |       |
-
-Each attribute has a boolean "required" field.
 
 ### Part Categories
 
@@ -239,30 +323,35 @@ created for that new part.
 
 Each attribute has a boolean "required" field.
 
-### Assets
+### Manifests
 
-Assets are a template, an equipment model comprised of a name and a list of
-parts.
+The Manifests track which assets are where, this is the heart of the "tracking"
+in asset tracking. The manifests are split into two parts, a Manifest table
+that tracks the specific collections of items, and the ManifestItems table that
+tracks which items are included in each manifest.
 
-This may be things like server BOMs, which will consist of a dozen or so
-high-level parts, or a "hard drive kit" that would contain the drive itself,
-the required cables, and the referenced tools.
+Every aggregate component should have a manifest associated with it.
 
-A rack BOM would consist of the follow asset types: rack, servers, switches,
-PDUs, ...
+Manifests may be used to create BOMs and potentially budgets.
 
-#### Server Asset Example
+    CREATE TABLE manifest (
+        id uuid DEFAULT gen_random_uuid() NOT NULL,
+        name text NOT NULL,
+		audit_id uuid NOT NULL,
+        metadata jsonb
+    );
 
-An example server asset attributes:
+    CREATE TABLE manifest_item (
+        id uuid DEFAULT gen_random_uuid() NOT NULL,
+        manifest_id uuid NOT NULL,
+        asset_id uuid NOT NULL,
+		audit_id uuid NOT NULL,
+        metadata jsonb
+    );
 
-| Key        | Type  | Example                          |
-|------------|-------|----------------------------------|
-| Name       | Str   | smci-2u-storage-256g-12-sas-12tb |
-| Category   | Ref   | Storage Server                   |
-| SKU        | Str   | 600-0033-001                     |
-| Generation | Str   | Joyent-S12G5                     |
+#### Server Manifests
 
-And its parts list, which are references to the parts database:
+An example manifest of parts for a specific server
 
 | Qty | PN                       | Descr                              |
 |-----|--------------------------|------------------------------------|
@@ -289,43 +378,72 @@ have to fulfill that requirement.
 Tracking anything manually will lead to broken BOMs, however, so ideally cables
 will have some magical properties that allow us to manage this.
 
-#### Rack Asset Example
+### Locations
 
-Name: Storage Rack v4
+Locations are exactly that, they are the locations of an asset or
+sub-location.
 
-| Qty | PN                                | Descr                              |
-|-----|-----------------------------------|-----------------------------|
-| 18  | smci-2u-storage-256g-12-sas-12tb  | Storage Server              |
-| 2   | DCS-7160-48YC6-R                  | TOR switch                  |
-| 1   | WS-C2960X-24TS-LL                 | OOB switch                  |
-| 2   | PDU-001                           | PDU                         |
-| 1   | RACK-001                          | NetShelter SX 45U           | 
+    CREATE TABLE location (
+        id uuid DEFAULT gen_random_uuid() NOT NULL,
+        name text NOT NULL,
+        parent_id uuid,
+        room_id uuid,
+        data_center_id uuid,
+		audit_id uuid NOT NULL,
+        metadata jsonb
+    );
 
-etc...
 
-#### Asset: Custom Fields
+### Businesses
 
-### Asset Categories
+Businesses are vendors, contractors, manufacturers, suppliers, clients etc.
+Anybody we need to track who the human contact is basically.
 
-* Server
-* Hard Drive Kit
-* Computer Rack
-* Storage Rack
-* ...
+    CREATE TABLE business (
+        id uuid DEFAULT gen_random_uuid() NOT NULL,
+        name text NOT NULL,
+        audit_id uuid NOT NULL,
+        metadata jsonb
+    );
 
-#### Asset Category: Custom Fields
 
-### Stock
+### Auditing
 
-Stock of parts and assets we have on hand.
+Because data integrity is vital to this system, we need to track every change
+to the system at an atomic level. We do this via a mandatory audit_log. This is borrowed
+heavily from https://github.com/2ndQuadrant/audit-trigger/blob/master/audit.sql
 
-Stock is owned by a business, and has a location.
+    CREATE TABLE audit_log (
+        id uuid DEFAULT gen_random_uuid() NOT NULL primary key,
+        schema_name text not null,
+        table_name text not null,
+        relid oid not null,
+        session_user_name text,
+        action_tstamp_tx TIMESTAMP WITH TIME ZONE NOT NULL,
+        action_tstamp_stm TIMESTAMP WITH TIME ZONE NOT NULL,
+        action_tstamp_clk TIMESTAMP WITH TIME ZONE NOT NULL,
+        transaction_id bigint,
+        application_name text,
+        client_addr inet,
+        client_port integer,
+        client_query text,
+        action TEXT NOT NULL CHECK (action IN ('I','D','U', 'T')),
+        row_data hstore,
+        changed_fields hstore,
+        statement_only boolean not null
+    );
 
 ## Future Features
 
-### Warranty management
+### Design Tools
+
+* "I want to design a server, and have a JSON specification I can use Conch to validate against"
+* "I want to design a rack, and be sure that the resulting BOM has accurate cable lengths"
+* "I want to design a datacenter and I want to be sure that based on rack BOM metadata's power footprints I am not exceeding my power budget"
 
 ### Maint management
+
+### Warranty management
 
 ### Stock rules
 
