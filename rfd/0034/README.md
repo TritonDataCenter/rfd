@@ -13,22 +13,42 @@ state: predraft
 - [Types of Migration](#types-of-migration)
   - [Live Migration](#live-migration)
   - [Offline migration](#offline-migration)
-  - [Semi-live migration](#semi-live-migration)
+  - [Incremental offline migration](#incremental-offline-migration)
 - [The state of migration in SmartOS](#the-state-of-migration-in-smartos)
 - [The state of migration in Triton](#the-state-of-migration-in-triton)
 - [A vision for the future](#a-vision-for-the-future)
-- [High Level Implementation Overview](#high-level-implementation-overview)
-  - [Offline migration implementation](#offline-migration-implementation)
-  - [Semi-live migration implementation](#semi-live-migration-implementation)
+- [Design](#design)
+  - [Migration phases](#migration-phases)
+    - [Begin phase](#begin-phase)
+    - [Sync phase](#sync-phase)
+    - [Switch phase](#switch-phase)
+  - [Interfaces](#interfaces)
+    - [CloudAPI](#cloudapi)
+    - [Triton CLI](#triton-cli)
+    - [Portal](#portal)
+- [Persistent storage](#persistent-storage)
+- [User migrations](#user-migrations)
+- [Re-sync algorithm](#re-sync-algorithm)
+- [Limits](#limits)
+  - [Open questions for limits](#open-questions-for-limits)
+- [Error handling](#error-handling)
+  - [Transient errors](#transient-errors)
+    - [Resumable zfs send/receive](#resumable-zfs-sendreceive)
+  - [Fatal errors](#fatal-errors)
+- [Scheduling](#scheduling)
+- [Migration service](#migration-service)
+- [Operator Installation](#operator-installation)
+  - [Triton migration agent](#triton-migration-agent)
+  - [Triton migration scheduler](#triton-migration-scheduler)
 - [Milestones](#milestones)
-  - [M1: Check vmadm send/receive](#m1-check-vmadm-sendreceive)
-  - [M2: Update vmadm send/receive](#m2-update-vmadm-sendreceive)
+  - [M1: Initial setup](#m1-initial-setup)
+  - [M2: Brand specific migration](#m2-brand-specific-migration)
   - [M3: Update DAPI (CN provisioning/reservation)](#m3-update-dapi-cn-provisioningreservation)
   - [M4: Update CNAPI](#m4-update-cnapi)
   - [M5: Create sdc-migrate tooling](#m5-create-sdc-migrate-tooling)
   - [M6: End user migration](#m6-end-user-migration)
   - [M7: Migration estimate](#m7-migration-estimate)
-  - [M8: Add support for semi-live migration](#m8-add-support-for-semi-live-migration)
+  - [M8: Migration scheduling](#m8-migration-scheduling)
 - [Open Questions and TODOs](#open-questions-and-todos)
   - [Backups](#backups)
   - [Images](#images)
@@ -55,7 +75,7 @@ There are three types of migration.
 
 - Live migration
 - Offline migration
-- Semi-live (incremental) migration
+- Incremental offline migration
 
 ## Live Migration
 
@@ -67,11 +87,9 @@ This is when an instance compute task is transferred between physical compute no
 
 Where an instance is stopped completely (i.e., the guest performs a shutdown procedure), the dataset backing the storage for the instance is synced, and the instance is booted on the destination compute node. Offline migration is the most straightforward type of migration and works in almost any circumstance, but has the disadvantage that the instance will be down for the entire time it takes to transfer the storage dataset.
 
-## Semi-live migration
+## Incremental offline migration
 
 Occurs when the dataset backing the storage for the instance is synced while the instance is running. Once the dataset is within an acceptable delta on both the source and destination compute node the instance is stopped, a final sync is performed, and the instance is booted on the destination compute node. This allows for both dedicates storage and significantly reduced down time (though, still not as little as live migration).
-
-Semi-live migration is preferred with SmartOS in general and Triton in particular.
 
 # The state of migration in SmartOS
 
@@ -89,7 +107,10 @@ Instance migration should be a first-class supported feature in Triton. This wou
 
 Product messaging via CloudAPI and/or the user portal would notify customers of upcoming scheduled migration, and at their option choose to migrate ahead of the predefined schedule.
 
-# High Level Implementation Overview
+# Design
+
+The incremental offline migration will be the only migration type implemented
+(it effectively covers the complete offline migration type as well).
 
 Migration will make use of existing provisioning and placement APIs (e.g. CNAPI)
 to ensure compatibility with the regular instance creation workflows. This is
@@ -97,19 +118,39 @@ so the created instance will be placed on the correct server and that all of the
 same services are available (e.g. CNS, Volumes, Networks, etc...) without having
 to duplicate the creation of these services.
 
-The migrating instance will be marked with a "migrating" vm state to ensure no
-other operations (e.g. "start", "stop", "reprovision") can occur on the instance
-whilst the migration is ongoing (including another migration attempt).
+A migration can be performed immediately or be [scheduled](#scheduling) to run
+at a later time.
+
+All migrations will store information in a [migrations](#persistent-storage)
+Moray bucket, that includes the details for the migration event (owner,
+instance, servers, state, etc...).
+
+When necessary, the migrating instance will be marked with a special "migrating"
+vm state to ensure no other operations (e.g. "start", "stop", "reprovision") can
+occur on the instance whilst the migration is ongoing (including another
+migration attempt).
 
 It will be possible to manually stop/abort a migration, though it may take some
 time before the migration process can be safely interrupted and before the
-instance can return to it's previous state.
+source instance can return to it's prior state.
 
-## Offline migration implementation
+## Migration phases
+
+All migrations will run in three phases, the user (or operator) can set the
+migration to run these phases all at once "automatic", or they can be performed
+individually as needed "on-demand". The three phases are "begin", "sync" and
+"switch".
+
+### Begin phase
+
+This phase starts the migration process, provisions the target instance and
+performs the initial full synchronization of data (without stopping the
+instance).
 
 1. CNAPI /servers/:server_uuid/vms/:uuid/migrate endpoint will start the
    migration process for this (source) instance by acquiring a ticket/lock on
-   the instance and then changing the instance state to "migrating".
+   the instance, creating the migrations bucket entry, and then changing the
+   instance state to "migrating".
 2. DAPI will be used to provision a new (target) instance with the same set of
    provisioning parameters (you can think of this as an instance reservation) on
    a different CN (the target CN). Keep the same uuid but flag it as
@@ -120,45 +161,416 @@ instance can return to it's previous state.
    communication channel (TCP socket) on the admin network which the two CNs can
    use to perform the migration operation. (this may be combined with step #1
    and step #2)
-4. Stop the source instance (if it was running).
-5. Vmadm send (i.e. zfs snapshot and zfs send each zfs dataset used by) the
-   source instance to the waiting vmadm receive (zfs receive) on the target CN.
-6. Unregister the source instance from systems (set do_not_inventory on the
+4. Send initial filesystem data to the target CN. For each filesystem dataset,
+   this will create a zfs snapshot and then zfs send that dataset to the waiting
+   zfs receive on the target CN.
+
+### Sync phase
+
+This phase synchronizes the zfs datasets of the source instance with the zfs
+datasets in the target instance (without stopping the instance).
+
+1. Send the filesystem delta to the target CN. For each filesystem dataset,
+   this will create a zfs snapshot and then zfs send the difference from the
+   previous snapshot to the zfs receive running on the target CN.
+2. When in "automatic" mode, evaluate whether to re-sync (step 5 again) or
+   perform the final switch. The migration process will repeat this sync phase
+   (with expectedly smaller incremental filesystem updates each time) until
+   certain [criteria](#re-sync-algorithm) are met - then it will move on to the
+   "switch" phase.
+
+### Switch phase
+
+This phase stops the instance from running, synchronizes the zfs datasets of the
+source instance with the zfs datasets in the target instance, then moves control
+to the target instance and restarts the target instance.
+
+1. Stop the source instance (if it was running).
+2. Send the final filesystem delta to the target CN. For each filesystem
+   dataset, this will create a zfs snapshot and then zfs send the difference
+   from the previous snapshot to the zfs receive running on the target CN.
+3. Unregister the source instance from systems (set do_not_inventory on the
    source instance) and ensure it no longer auto-restarts.
-7. Register the target instance with systems (remove do_not_inventory from the
+4. Register the target instance with systems (remove do_not_inventory from the
    target instance).
-8. Start the target instance (if it was previously running).
-9. Cleanup (remove source zone, or schedule for later removal).
+5. Start the target instance (if it was previously running).
+6. Cleanup (remove source zone, or schedule for later removal).
 
-## Semi-live migration implementation
+## User Interfaces
 
-TODO. Similar to offline, but with initial zfs send before stopping the instance
-and then a smaller incremental send to fetch the remaining delta after stopping
-the instance.
+### CloudAPI
+
+The following endpoints will be available for customers:
+
+- ListMigrations (POST /:login/migrations
+  Return a list of migrations (completed, running, scheduled, failed, ...).
+
+- MigrateMachine (POST /:login/machines/migrate?action=automatic)
+  Starts a full "automatic" migration.
+
+- CancelMigrateMachine (POST /:login/machines/migrate?action=cancel)
+  Cancels the current migration of this instance.
+
+- BeginMigrateMachine (POST /:login/machines/migrate?action=begin)
+  Starts an on-demand migration (i.e. just the "begin" phase) for an instance.
+
+- SyncMigrateMachine (POST /:login/machines/migrate?action=sync)
+  Runs the "sync" phase for an "on-demand" instance migration.
+
+- SwitchMigrateMachine (POST /:login/machines/migrate?action=switch)
+  Runs the final "switch" phase for an "on-demand" instance migration.
+
+- WatchMigrateMachine (POST /:login/machines/migrate?action=watch)
+  Will output events for a migration. There can be multiple watchers of a
+  migration.
+
+- ScheduleMigrateMachine (POST /:login/machines/migrate?action=schedule)
+  Schedule a migration of this instance.
+
+### Triton CLI
+
+    $ triton ls
+    SHORTID   NAME        IMG       STATE    FLAGS  AGE
+    4a364ec6  myinstance  46b4ceef  running  DF     3d
+
+    $ triton instance migrate --help
+    This will allow you to move an instance to a new server. A new
+    instance will be reserved and all of the instance filesystems will copied
+    across to the new instance. After the filesystems have been initially
+    synced, there will be a brief downtime of the instance and re-syncing of
+    the filesystems to the new instance, after that the new instance will be
+    started on the new server and the old instance will removed.
+
+    $ triton instance migrate --list
+    INSTANCE   STATUS   PROGRESS
+
+    $ triton instance migrate 4a364ec6
+    This will migrate instance 4a364ec6 (myinstance).
+    Do you wish to continue y/n? y
+    Migration of 4a364ec6 has started.
+    You can watch the migration using:
+      triton instance migrate --watch 4a364ec6
+    or you can cancel the migration using:
+      triton instance migrate --cancel 4a364ec6
+
+    $ triton ls  # shows 'M' flag meaning the instance is migrating
+    SHORTID   NAME        IMG       STATE     FLAGS  AGE
+    4a364ec6  myinstance  46b4ceef  running   MDF    3d
+
+    $ triton instance migrate --watch $id
+    This will migrate instance $shortId. Do you wish to continue y/n? y
+    Starting migration ($migrateUuid):
+    ✓ making a reservation (3m18s)
+    ✓ synchronizing filesystems (1h52m07s)
+    ✓ stopping instance (19s)
+    ✓ re-synchronizing filesystems (1m19s)
+    ✓ switching instance information (0m30s)
+    ✓ restarting instance (22s)
+    Migration was successful.
+
+Scheduling example:
+
+    $ triton instance migrate --schedule "2 days from now" $id
+    This will migrate instance $shortId. Do you wish to continue y/n?
+    Scheduling migration.
+    You can watch the migration using:
+      triton instance migrate --watch 4a364ec6
+    or you can cancel the migration using:
+      triton instance migrate --cancel 4a364ec6
+    Initial scheduling complete - migration will commence at $date.
+
+TODO: a way to list migrations.
+
+### Portal
+
+TODO: I'm not sure who looks after this?
+
+# Persistent storage
+
+A record of all migration operations will be stored in a reliable datastore
+(e.g. Moray). This will be used to report state to users and operators for past,
+ongoing and future migrations.
+
+The following is an example Moray bucket schema to be used for migration
+operations:
+
+    migrations {
+
+      uuid: "UUID"
+        // The unique migration identifier.
+
+      account_uuid: "UUID"
+        // The account who invoked (and thus controls) this migration. The admin
+        // user will always be able to control (schedule/abort) all migrations,
+        // but non-admin accounts will only be allowed to control their own
+        // migrations.
+
+      vm_uuid: "UUID"
+        // The uuid of the instance to be migrated.
+
+      source_server_uuid: "UUID"
+        // The uuid of the server where the source instance resides.
+
+      target_server_uuid: "UUID"
+        // The uuid of the server where the instance will be migrated to.
+
+      state: "string"
+        // The state the migration operation is currently in. It can be one of
+        // the following states:
+        //  "scheduled"  - the migration is scheduled, see "scheduled_timestamp"
+        //  "running"    - migration is running, see "job_uuid" and "step"
+        //  "pending"    - the "begin" phase (and possibly "sync" phase) has
+        //                 ben run - now waiting for a call to "sync"
+        //                 or "switch"
+        //  "failed"     - migration operation could not complete, see "error"
+        //  "aborted"    - user or operator aborted the migration attempt
+        //  "successful" - migration was successfully completed, you can use the
+        //                 workflow job_uuid to find when the migration started
+        //                 and how long it took.
+
+      created_timestamp: "string"
+        // The ISO timestamp when the migration was first created. This will
+        // also be used for queuing - migrations created first will be closer
+        // to the start of the queue than those created later.
+        // Example:
+        //   2018-08-18T10:55:39.785Z
+
+      scheduled_timestamp: "string"
+        // The ISO timestamp when the migration should commence. The migration
+        // service will be responsible to start this migration at the
+        // appropriate time.
+        // Example:
+        //   2018-08-19T22:30:00.000Z
+
+      started_timestamp: "string"
+        // The ISO timestamp when the migration started. This is useful to see
+        // how long a migration has taken.
+        // Example:
+        //   2018-08-19T22:30:05.142Z
+
+      job_uuid: "UUID"
+        // The workflow job uuid (if it was started).
+
+      phase: "string"
+        // XXX This could come from the workflow job?
+        // The workflow stage that the migration is currently running, one of:
+        //  ""                 - nothing running yet
+        //  "begin"            - just starting the migration operation
+        //  "sync"             - updating filesystems using the "sync" phase
+        //  "switch"           - sending final zfs datasets and switching
+        //  "finished"         - completed
+
+      num_update_phases: "number"
+        // The number of successful "update" phases this migration has
+        // performed.
+
+      error: "string"
+        // If a migration fails - this is the error message of why it failed.
+    }
+
+# User migrations
+
+There will be two settings controlling whether a user is allowed to migrate
+their instances. These settings can only be set by an operator.
+
+- **CN.traits.user_migration_allowed** (boolean) trait
+
+  - should we also allow the **eol** trait?
+
+  Example:
+
+      $ sdc-cnapi /servers/$CN -X POST -d '{"traits": { "allow_user_migration": true }}'
+      $ sdc-migrate allow-cn $CN
+
+- **vm.internal_metadata.user_migration_allowed** (boolean) property on the
+  instance can be set to 'true' to allow *user migration* of this instance, a
+  missing value (the default) or 'false' will mean the user cannot start a
+  migration on this instance. This value overrides the CN trait.
+
+      $ sdc-vmapi "/vms/$VM?action=update" -X POST -d '{ "internal_metadata": { "user_migration_enabled": true }}'
+      $ sdc-migrate allow-instance $VM
+
+# Re-sync algorithm
+
+During the incremental filesystem update, the migration system will make a
+calculation to see if it needs to continue re-syncing the filesystem or perform
+the final sync and switch. The idea is that further re-syncing will reduce the
+time needed for the final sync (as the snapshots become smaller and the time
+needed to perform the sync becomes faster and faster), and thus reducing the
+downtime for the instance.
+
+These are the criteria for when the migration can proceed to the final sync and
+switch:
+
+- the incremental snapshot size is less than a configured max size (e.g. 50MB)
+- the number of re-sync attempts exceeds a limit (e.g. 10)
+- the snapshot size has not reduced significantly in the last N re-sync attempts
+  (e.g. last 3 re-syncs)
+
+# Limits
+
+There are limits placed on migrations, to ensure that they do not affect (or
+limitedly affect) other tenants on the source/target CN.
+
+The migration limit configuration will be stored in SAPI (initially set during
+the migration service installation, or falling back to defaults) as:
+
+    $ sdc-sapi /services?name=migration
+    {
+      "zfs_send_mbps_limit": 500,  // megabits per second
+      "max_migrations_per_cn": 5
+    }
+
+The zfs send limits can be enforced by the application (e.g. Node.js), by
+adjusting the amount of data being sent/received (piped) to the target.
+
+## Open questions for limits
+
+- can these limits be set (overwritten) on a per CN basis too? Can changes to
+  these limits be propagated to migrations that are currently running? Maybe a
+  running migration task can check these settings every X minutes and apply
+  updates when they change.
+
+- do we need a zfs_receive_bps_limit too - in case of different server
+  hardware configurations?
+
+- what happens when we exceed the number of migrations allowed - is that a hard
+  error back to the caller? Note that "pending" migrations would not be included
+  in this count.
+
+- what happens when it cannot start a scheduled migration at the scheduled time,
+  how much leeway is allowed there?
+
+# Error handling
+
+## Transient errors
+
+Transient errors during a migration, like a network failure, or a triton
+component failure, will be handled and the migration process will retry to
+complete the migration step which failed. The migration workflow will have a
+hard coded number of retry operations per migration step with a backoff setting
+to allow a flexible delay between the step retry operations.
+
+### Resumable zfs send/receive
+
+The zfs send/receive operations (long/sustained network usage) will make use of
+the (resumable zfs send/receive)[#resumable-zfs-sendreceive] feature, so that
+the migration operation can resume in the case of an interruption, without
+needing to resend all of the zfs data.
+
+In the case of a zfs send/recv failure, a *receive_resume_token* marker is
+set in the zfs filesystem, which can be used as an argument to zfs send,
+allowing the stream to continue from where it left off:
+
+    $ zfs receive -s  # Keep track of stream position
+    $ zfs send -s token  # Continue from this point in the send stream
+
+Note that to use this flag, the storage pool must have the extensible_dataset
+feature enabled, which can be queried using:
+
+    $ zpool get -H -o value "feature@extensible_dataset" zones
+    enabled
+
+## Fatal errors
+
+Fatal errors, such as:
+
+- source CN is no longer visible/responding
+
+  A "partially" migrated instance will reside on the target CN. This will
+  require operator intervention (to bring back the source CN).
+  XXX: Can the instance owner delete that failed target instance?
+
+- target CN is no longer visible/responding
+
+  The migration will be aborted and the source instance will be restored to
+  it's prior state. A record of the failure is kept in the migrations database.
+
+- when both the source and target CN are not visible/responding
+
+  Not much can be done here - this will require operator intervention.
+  If one or both of these CNs come back, then we move to above two items.
+
+# Scheduling
+
+A migration can be scheduled to begin running at a configured time/date. In this
+case the migration will (immediately on receiving the migration schedule call)
+start the migration process which will provision the target instance and perform
+the initial zfs snapshot synchronization. At this point the migration process
+(if the scheduled time has not yet occurred) will pause, then at the scheduled
+time the final shutdown and re-synchronize will occur and will finish the
+migration process.
+
+# Migration service
+
+A "triton-migrate-service" zone will be used to control scheduled migrations.
+It does this by loading the currently running/scheduled migrations from the
+migrations database (Moray bucket) and then periodically checks for updates.
+
+Roles:
+
+- initiates the migration at the scheduled time
+
+Needs to communicates with:
+
+- CNAPI
+- VMAPI
+- Moray
+
+Note: This service could later be expanded to handle complete CN evacuations,
+but that is outside the scope of this RFD.
+
+# Operator Installation
+
+Migration is separated into two main components:
+
+## Triton migration agent
+
+The _triton-migration-agent_ contains the executables (code) needed to perform
+an instance migration from one compute node to another. It must be installed in
+the GZ on all of the CNs which will support migration (i.e. all CNs). The
+triton-migration-agent can be installed and updated via sdcadm:
+
+    $ sdcadm experimental update-agents --latest --all
+
+This agent can be installed anytime, but a migration from or to this CN cannot
+occur until this agent has been installed.
+
+## Triton migration scheduler
+
+The scheduler's job is to start migration of instances at a predetermined time.
+
+    $ sdcadm post-setup migration-scheduler
+
+This will create the triton-migration-scheduler zone on a headnode.
+
+This zone is only necessary for migration scheduling, without this zone an
+instance migration cannot be scheduled (it will raise an error), but an
+on-demand instance migration can still be performed (if the
+triton-migration-agent is installed).
 
 # Milestones
 
-## M1: Check vmadm send/receive
+## M1: Initial setup
 
-We need to fully test and understand what vmadm send currently supports. Brand
-changes in the platform occur all of the time, so having a base test suite to
-verify what is/isn't working is essential.
+Setup the initial repository and testing infrastructure.
 
-- write tests for vmadm send/receive
-  - create small test images (maybe Alpine based) instead of using Ubuntu...
-- verify vmadm send/receive is working for all brands (SmartOS, Docker, LX, Kvm, Bhyve)
+- write brand specific tests for migration
+  - create small test images (maybe Alpine based) instead of using Ubuntu?
+- initial handling for zfs snapshots and incremental zfs send/receive
+- verify zfs send/receive is working for all brands (SmartOS, Docker, LX, Kvm,
+  Bhyve)
 
-## M2: Update vmadm send/receive
+## M2: Brand specific migration
 
-Update vmadm to support all (needed?) brands. For datasets that are nearly full,
+Concentrate on getting KVM and Bhyve working. For datasets that are nearly full,
 the destination quota may need to be increased slightly, just enough for all
 necessary write operations. Ideally, the quota could be reduced to its original
 size after migration is complete.
 
-- modify vmadm send/receive to support brands needed (some brands may be
-  initially scoped), concentrate on KVM/Bhyve?
-- modify vmadm send to support multiple disks
-- add workaround for nearly full instances
+- modify zfs send/receive handling to support the brands needed
+- support multiple disks and different zfs filesystem layouts
+- add quota workaround for nearly full instances
 
 ## M3: Update DAPI (CN provisioning/reservation)
 
@@ -188,54 +600,76 @@ tasks to control and monitor the migration.
 Operators will need a tool to be able to perform a migration from inside of a
 CN/Headnode:
 
-    $ sdc-migrate $instance [$cn]
-    Migrating $instance in job $job
+    $ sdc-migrate settings [$CN]
+    {
+        "max_migrations_per_cn": 5
+        "zfs_send_mbps_limit": 500
+    }
+    # Allow updating too?
+
+    $ sdc-migrate list [$CN1 $CN2 $CN3]
+    ...<Show ongoing migrations, state, percentage>
+
+    $ sdc-migrate allow-cn $CN
+    Success - compute node $CN now allows user migrations.
+    $ sdc-migrate disallow-cn $CN
+    Success - user migrations are no longer allowed on compute node $CN.
+
+    $ sdc-migrate allow-instance $VM
+    Success - instance $VM can now be user migrated.
+    $ sdc-migrate disallow-instance $VM
+    Success - user migration not allowed for instance $VM.
+
+    $ sdc-migrate $INSTANCE [$CN]
+    Migrating $INSTANCE in job $JOB
     ...<progress events>
-
-    $ sdc-migrate list [--fromCn=$CN]
-    ...<see ongoing migrations, state, percentage>
-
-    $ sdc-migrate watch $job
     ...<progress events>
+    <Ctrl-C ... workflow job still continues>
 
-- add cli tool to allow operators to perform an instance migration
-- allow operators to specify the target CN?
-- allow migration to be monitored ()
+    $ sdc-migrate watch $JOB
+    ...<progress events>
+    Success - instance $VM has been migrated to server $CN.
+
+Once a CN (or instance) has been flagged as allowing migrations then the
+operator can send an announcement to end users allowing them to migrate their
+own instances via CloudAPI or Triton command line. The portal (AdminUI) may make
+use of these flags to notify that a CN is going down and that they can migrate
+their instances.
 
 ## M6: End user migration
 
-Add CN traits (controlled by Admin) to flag whether a CN allows migrations, such
-that an announcement can then be sent and end users can then migrate their own
-instances via CloudAPI or Triton command line.
+Allow users to perform or schedule their own instance migrations.
 
 - add CloudAPI migration APIs
   - this may want to be a workflow job
   - add support for polling migration job
-- add Triton cli instance migration support:
-
-      $ triton $instance migrate
-      Migrating $foo - this will take a long time, continue y/n?
+- add Triton cli instance migration support
 
 ## M7: Migration estimate
 
 Add APIs that will return an estimate of the time taken to perform a migration.
+It should also be possible to get an estimate for a currently running migration.
 
-## M8: Add support for semi-live migration
+## M8: Migration scheduling
 
-TODO. How will this be controlled, it could be separate migration phases
-("initial", "incrementing", and "final"), where each step can be initiated on
-demand? Alternative would be the migration happens all in one operation.
+Add ability to schedule a migration.
+
+- create the migration scheduling zone
+- write queue handling for migrations
+- connect with CNAPI for performing migrations
+- update tooling (sdc-migrate, node-triton and portal) to support migration
+  scheduling
 
 # Open Questions and TODOs
 
 ## Backups
 
 - do we want to create a permanent (or for a limited time) snapshot/backup of
-  the migrated machine (e.g. stored in Manta) in case something goes amiss, i.e.
-  it looks like migration was successful and the source instance was deleted,
-  but in actual fact the target instance is not functioning and now we are SOL?
-  An alternative to this is that we mark the original source instance as
-  migrated and leave it around for later possible restoration, but this would
+  the migrated instance (e.g. stored in Manta) in case something goes amiss,
+  i.e. it looks like migration was successful and the source instance was
+  deleted, but in actual fact the target instance is not functioning and now we
+  are SOL? An alternative to this is that we mark the original source instance
+  as migrated and leave it around for later possible restoration, but this would
   not be good in the case of a CN being decommissioned.
 
 ## Images
@@ -247,7 +681,7 @@ demand? Alternative would be the migration happens all in one operation.
   CN then do it, but if not it's not a deal breaker - maybe a warning should be
   issued in this case as some Triton features would no longer work.
 
-- can KVM (and Bhyve?) skip the vmadm send of the zone root dataset and just
+- can KVM (and Bhyve?) skip the zfs send of the zone root dataset and just
   send the uuid-disk* datasets? Since the root dataset is created again by the
   target instance provisioning.
 
@@ -295,13 +729,7 @@ provisioned instance must reside in a CN in the same rack.
 
 ## Other
 
-- are there controls or limitations needed on a migration, to ensure that it
-  does not affect (or limitedly affects) other tenants on the source/target CN.
-  If yes, what are they?
-
-- should migration compress the vmadm send data?
-
-- what are the differences for semi-live migration? (i.e. scope semi-live work)
+- should migration compress the zfs send data?
 
 - draw up an activity/flow diagram to show what happens (especially in case of
   failure) in each step of the migration process.
@@ -328,6 +756,9 @@ This is mostly a dev notes section to run tests on these items:
 - ensure cannot migrate the same instance at the same time (double migration)
 - ensure other actions to the instance (start, stop, delete, etc...) cannot be
   performed while an instance is migrating
+- ensure an owner cannot stop (abort) an operator controlled migration
+- for incremental, ensure the instance has not been reprovisioned in the time
+  between the initial snapshot send and the incremental snapshot send.
 - failure cases, by the truckload
 
 # References
