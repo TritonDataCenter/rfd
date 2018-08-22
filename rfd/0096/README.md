@@ -74,6 +74,8 @@ is specified is `/proc` accessed.  The functions can return `ERANGE` if the
 name is too long (set) or the buffer to hold the name is too small (get), as
 well as any error returned by `open(2)`.  Again, the man page is slightly
 misleading -- it returns `ERANGE` if `strlen(name) > 16` (set) or `len < 16`.
+Since `comm` is also the process name, a new thread will inherit the process name
+is its thread name.
 
 On Solaris, it appears to silently truncate any oversized names.  It will
 return `ESRCH` if the thread id doesn't exist, and in the get case, `EINVAL` if
@@ -286,7 +288,7 @@ daryl      66
 12          2
 843         5
 ```
- 
+
 ## Behavior
 
 As noted above, Linux implements these commands either via `prctl()` or
@@ -319,6 +321,9 @@ permissions or privileges beyond those needed to run `ps(1)` or `prstat(1m)` to
 read this data seems sufficient.  Updating this information should be
 restricted to the owner of the process and/or root.
 
+It should also be noted that unlike default, by default new threads will not
+have a name assigned to them until one is assigned to it.
+
 ## Implementation
 
 Given that almost all the intended utilities already heavily utilize `proc(4)`
@@ -340,19 +345,30 @@ that glibc currently (as of 2.25) performs this length check as well.
 
 Initially, we believe that adding a pointer in `kthread_t` (tentatively
 named `t_name`) should work.  The pointer will be initialized to `NULL` when
-a `kthread_t` is first allocated.  When a thread name is set for the first
-time, a `PTHREAD_MASX_NAMELEN_NP` sized buffer will be allocated and the
-`t_name` field will be set to point to this buffer.  This buffer will persist
-for the lifetime of the `kthread_t` structure.  Any subsequent modifications
-to the thread name will re-use the existing buffer.  This should allow for
-safe reading and writing of the value within the context of DTrace.  Using
-`kthread_t` vs. `kwlp_t` also allows for extending the ability to kernel
-threads (as there's a `kthread_t` for each `klwp_t`, but kernel threads only
-have a `kthread_t` structure allocated).   Allocating the buffer for the name
-will add 8 bytes of overhead for each buffer, however it seems unlikely that
-every thread on a system will have a name set (e.g. single threaded processes
-are unlikely to set a name on their thread), so that overall this should
-minimize the additional memory footprint.
+a `kthread_t` is first allocated.  Since there are potentially multiple places
+where a thread name is set (such as via `proc(4)`, lx-proc, or the lx prctl),
+a kernel function with the name and signature `thread_setname(kthread_t *,
+const char *)` will be created.  In addition, a macro `THREAD_NAME_MAX` will
+be created with a value of 32 and `PTHREAD_MAX_NAMELEN_NP` will either
+be set to `THREAD_NAME_MAX`, or if visibility issues make this too complicated
+to do, it will explicitly set to 32 with a note to keep the two values in sync. 
+When called, if the given `kthread_t` has not had a thread name set on it
+(i.e. `t_name` is `NULL`), it will allocate a `THREAD_NAME_MAX` sized buffer
+and set `t_name` to point to this buffer.  This buffer will hold the name.
+If a thread has already had a name set, the existing buffer will be reused,
+and any existing value will be overwritten.  Reusing an existing buffer should
+allow for the safe reading and writing of the value within the context of
+DTrace.  At worst it might see a partially overwritten value if the thread
+name is read while being changed.  We feel this is an acceptable risk.  By
+adding the additional field to `kthread_t`, it will add an additional 8 bytes
+(`sizeof (char *)` in a 64-bit kernel), of overhead for each thread created
+on a system, and of course for every thread that sets a name, an additional
+32 bytes of kernel memory will be used.  However, it seems likely that many
+threads will not have names set, so this approach (vs. allocating all 32 bytes
+for the name inside `kthread_t`) should hopefully minimize the kernel
+footprint.  Initially at least, `thread_setname` will not be part of the DDI,
+though nothing should preclude it's inclusion (or a DDI equivalent) in the
+future.
 
 For native processes, given the large number of planned consumers that currently make heavy use of `proc(4)`, it seems reasonable to expose the thread names
 via `/proc` for reading.  The privileges required should match those currently
@@ -386,13 +402,15 @@ that read this from core files do so in a backwards compatible manner.  If not,
 it could complicate the analysis of core dumps generated from systems that
 predate this implementation.  This should be able to be addressed via
 two ways.  First, the field is added at the end of the existing struct so that
-the existing field offsets are unchanged.  Second, as the lwpsinfo data is read
-from core files in a backwards compatible manner.  Since the lwpsinfo structs
-are saved as ELF notes in core file (one note per thread), and the ELF note
-itself contains the size of the note, as long as that value is used (vs.
+the existing field offsets are unchanged.  Second, ensure the lwpsinfo data is
+read from core files in a backwards compatible manner.  Since the lwpsinfo
+structs are saved as ELF notes in core file (one note per thread), and the ELF
+note itself contains the size of the note, as long as that value is used (vs.
 the size of the struct on the host system) and it is read into a zero
 initialized memory, this should be sufficient (and likely a good idea
-regardless of this RFD).
+regardless of this RFD) -- basically older versions that are read will then
+read these newer fields as zero, equivalent to not having the thread name
+set.
 
 An open question that remains is around the interaction of these features and
 `chroot(2)`.  As /proc is typically unavailable within a `chroot(2)`
