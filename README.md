@@ -192,6 +192,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 146 Conch: Inventory System](./rfd/0146/README.md) |
 | draft    | [RFD 147 Project Tiresias: USB Topology](./rfd/0147/README.md) |
 | draft    | [RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md) |
+| predraft | [RFD 149 PostgreSQL Schema For Manta buckets](./rfd/0149/README.md) |
 
 ## Contents of an RFD
 
