@@ -1,7 +1,7 @@
 ---
 authors: Kelly McLaughlin <kelly.mclaughlin@joyent.com>
-state: predraft
-discussion:
+state: draft
+discussion: https://github.com/joyent/rfd/issues/112
 ---
 
 <!--
@@ -72,8 +72,8 @@ The table to model an object in manta is named `manta_bucket_object` and has
 fourteen columns. The description each column is as follows:
 
   * `id` - A unique identifier for the object
-  * `name` - A string representing the name of the bucket
-  * `owner` - The unique identifier of the account owner of the bucket
+  * `name` - A string representing the name of the object
+  * `owner` - The unique identifier of the account owner of the object
   * `bucket_id` - The id of the incarnation of a named bucket that the object is
     associated with
   * `created` - The timestamp indicating when the object was created
@@ -129,7 +129,7 @@ may be *live* for a bucket at any time.
 The `manta_bucket_deleted_bucket` table is used to maintain records of deleted
 buckets to ensure the storage resources for objects from the bucket are properly
 released before the record of the bucket is permanently discarded. The table has
-three columns:
+five columns:
 
   * `id` - The unique identifier of the bucket incarnation
   * `name` - The name of the deleted bucket
@@ -305,7 +305,10 @@ VALUES ('06d40bb8-a581-11e8-84b2-93ddb053d02b',
 'text/plain', 'm-custom-header1=>value1,m-custom-header2=>value2',
 'us-east-1=>1.stor.us-east.joyent.com,us-east1=>3.stor.us-eas.joyent.com')
 ON CONFLICT (owner, bucket_id, name) DO UPDATE
-SET id = EXCLUDED.id, vnode = EXCLUDED.vnode,
+SET id = EXCLUDED.id,
+  vnode = EXCLUDED.vnode,
+  created = current_timestamp,
+  modified = current_timestamp,
   content_length = EXCLUDED.content_length,
   content_md5 = EXCLUDED.content_md5,
   content_type = EXCLUDED.content_md5,
@@ -314,11 +317,31 @@ SET id = EXCLUDED.id, vnode = EXCLUDED.vnode,
   properties = EXCLUDED.properties;
 ```
 
-One interesting thing to note about this query is that in the case of an
-`INSERT` conflict the resulting update should be able to be done as a [Heap Only Tuple
-(HOT) update](https://github.com/postgres/postgres/blob/REL_10_5/src/backend/access/heap/README.HOT) which may have performance benefits and help us avoid vacuuming
-costs that might otherwise be incurred. The following query can be used to
-observe this before and after running the above object query:
+This query may appear complicated at first glance so here is a brief
+explanation. Each higher level *write object* operation may result in a previous
+version of an object with the same name being overwritten. Each time an object
+version is overwritten we need to record the old version's details for future
+garbage collection.
+
+In the above query the action of *recording the object details
+for future garbage collection* is represented using a (Common Table Expression)[https://www.postgresql.org/docs/10/static/queries-with.html]. This allows all of the
+ actions to be expressed in a single statement and is to show that the actions
+in the above query are all a part of implementing the higher level operation. It
+also facilitates testing in `psql`. It is not expressed this way out of
+necessity and it could just as easily be expressed as two statements in the same
+transaction.
+
+The `UPSERT` portion of the query takes care of either inserting a new
+record for the object if no object with that name exists or overwriting the
+record for the object if an object with the name does exist.  An interesting
+thing to note about this portion of the query is that in the case of an
+`INSERT` conflict the resulting update should be able to be done as a [Heap Only
+Tuple (HOT) update](https://github.com/postgres/postgres/blob/REL_10_5/src/backend/access/heap/README.HOT) which
+may have performance benefits and help us avoid
+vacuuming costs that might otherwise be incurred. This is the reason it is
+expressed this way rather than with separate `INSERT` and `DELETE`
+statements. The following query can be used to observe this before and after
+running the above object query:
 
 ```
 SELECT n_tup_upd, n_tup_del, n_tup_hot_upd FROM pg_stat_user_tables
