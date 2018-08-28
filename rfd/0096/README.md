@@ -1,5 +1,5 @@
 ---
-authors: Jason King <jason.king@joyent.com>
+authors: Jason King <jason.king@joyent.com>, John Levon <john.levon@joyent.com>
 state: draft
 discussion: https://github.com/joyent/rfd/issues/61
 ---
@@ -53,7 +53,7 @@ end with `...`, however \[[3]\] is not clear on this).
 
 FreeBSD only defines a single set name function:
 ```
-    int pthread_set_name_np(pthread_t tid, const char *name);
+    void pthread_set_name_np(pthread_t tid, const char *name);
 ```
 
 With the exception of FreeBSD (which doesn't specify), all the other
@@ -84,6 +84,8 @@ a NULL buffer is supplied.
 NetBSD returns `EINVAL` if the sizes in questions are larger than
 `PTHREAD_MAX_NAMELEN_NP`.
 
+On Linux, threads by default inherit the process name.
+
 ## Use
 
 The primary use envisioned would be for utilities such as mdb(1), ps(1),
@@ -91,9 +93,10 @@ pstack(1), and prstat(1m) to be able to display the thread name (when present)
 in addition to the thread id.  Additionally, it seems useful to make this
 information available within core dumps for post-mortem analysis.  This of
 course doesn't preclude additional uses beyond this, but merely a suggested
-list of initial consumers.  Solaris also allows names to be set on kernel
-threads \[[4]\].  In addition, they also define the `uthreadname` and
-`kthreadname` functions in `dtrace(1m)` for use within dtrace scripts \[[4]\].
+list of initial consumers.  Aside from userspace, it's also useful for kernel
+threads to have names as well.
+
+In addition, we should support reporting thread names within dtrace(1) descripts.
 
 NOTE: The thread names in the below examples are merely illustrative.
 
@@ -179,7 +182,7 @@ Currently for each thread, `pstack(1)` prints the lwpid.  This can be supplement
  0805eae6 fork_configd_thread (ffffffff, 0, 0, 0) + 14b
  feedd3dd _thrp_setup (fec50240) + 88
  feedd570 _lwp_start (fec50240, 0, 0, 0, 0, 0)
------------------  lwp# 3 / thread# 3 (restarter_timeout)————————
+-----------------  lwp# 3 / thread# 3 [restarter_timeout] ————————
  feedd5c9 lwp_park (0, 0, 0)
  feed7568 cond_wait_queue (8162f80, 8162f68, 0, 805663f, 0, 80590e0) + 6a
  feed783c cond_wait_common (8162f80, 8162f68, 0, fef40000, fec50a40, 815eea4) + 27b
@@ -189,7 +192,7 @@ Currently for each thread, `pstack(1)` prints the lwpid.  This can be supplement
  080719e8 restarter_timeouts_event_thread (0, 0, 0, 0) + 7a
  feedd3dd _thrp_setup (fec50a40) + 88
  feedd570 _lwp_start (fec50a40, 0, 0, 0, 0, 0)
------------------  lwp# 4 / thread# 4 (restarter_event) ----
+-----------------  lwp# 4 / thread# 4 [restarter_event] ----
  feedd5c9 lwp_park (0, 0, 0)
  feed7568 cond_wait_queue (8162fb0, 8162f98, 0, fea9a950, 80c1010, 80c4280) + 6a
  feed783c cond_wait_common (8162fb0, 8162f98, 0, feed7198, 815eec4, 0) + 27b
@@ -201,38 +204,11 @@ Currently for each thread, `pstack(1)` prints the lwpid.  This can be supplement
  feedd570 _lwp_start (fec51240, 0, 0, 0, 0, 0)
 ```
 
-### Doors (maybe)
-
-Door servers implement a thread pool to service door client requests.
-Typically, door servers let `door_create(3C)` handle the creation of the
-thread pool, though a server can optionally use `door_server_create(3C)` to
-specify a custom thread creation routine.  The latter function would allow door
-servers to set the thread name if they desire, but does add additional
-complexity.  It is proposed that `door_create(3C)` be extended in the
-following compatible manner:
-
-```
-    int door_create(void (*server_procedure)(void *cookie, char *argp,
-        size_t arg_size, door_desc_t *dp, uint_t n_desc), void *cookie,
-        uint_t attributes, ...);
-```
-
-In addition, a new attribute is proposed: `DOOR_NAME`.  When present, it
-indicates that included at the end of the arguments is a `const char *` value
-pointing to the name to use when creating the door server threads.  Otherwise,
-any additional arguments after attributes is ignored.
-
-This could be especially useful in the somewhat more unusual situations where a
-process contains multiple door servers.  An example of this would be a process
-that acts as both a door server in implementing it’s normal day to day tasks,
-but is also a `syseventd(1M)` event publisher as  `libsysevent(3LIB)` creates
-it’s own private door server in publishers.
 
 ### mdb
 
 The `mdb(1)` command includes the genunix module which is used to both examine
-system crash dumps as well as allow examination of a live system.  Two commands
-of note are `::ps` and `::threadlist`.
+system crash dumps as well as allow examination of a live system.
 
 When `::ps -l` (show LWPs) is run, it is proposed to include the name after the LWP id when present:
 
@@ -247,47 +223,47 @@ R  18040   7990  18040  18040      0 0x42000000 ffffff04a2430028 nscd
         L  0xffffff04ad81ea40 ID: 2
         L  0xffffff0423db9040 ID: 3
         L  0xffffff04cdeb18c0 ID: 4
-        L  0xffffff04ccd95780 ID: 5 NAME: reaper
-        L  0xffffff042fb350c0 ID: 6 NAME: revalidate
-        L  0xffffff042fb48200 ID: 7 NAME: reaper
-        L  0xffffff04bbcc8100 ID: 8
-        L  0xffffff04aa367ec0 ID: 9
-        L  0xffffff0430619c00 ID: 10
+        L  0xffffff04ccd95780 ID: 5 [reaper]
+        L  0xffffff042fb350c0 ID: 6 [revalidate]
+        L  0xffffff042fb48200 ID: 7 [reaper]
 ```
 
-When `::threadlist` is run, for user threads, it is proposed to append the thread name to the CMD/LWPID column when a thread name has been set:
+The `::threadlist` command already has some support for useful thread names; this will be extended as seen in these examples:
 
 ```
             ADDR             PROC              LWP CMD/LWPID
 fffffffffbc38660 fffffffffbc37680 fffffffffbc3a160 sched/1
-ffffff000f405c40 fffffffffbc37680                0 idle()
+...
 ffffff000f40bc40 fffffffffbc37680                0 thread_reaper()
 ffffff000f411c40 fffffffffbc37680                0 tq:kmem_move_taskq
-ffffff000f417c40 fffffffffbc37680                0 tq:kmem_taskq
-ffffff000f41dc40 fffffffffbc37680                0 tq:pseudo_nexus_enum_tq
-ffffff000f423c40 fffffffffbc37680                0 scsi_hba_barrier_daemon()
 ...
-ffffff03e2c3a080 ffffff03d6020028 ffffff03d7dea740 nscd/2
-ffffff03e2c340a0 ffffff03d6020028 ffffff03d8309600 nscd/3
-ffffff03d7efd7e0 ffffff03d6020028 ffffff03d7de6e80 nscd/6 revalidate
-ffffff03e2c3b400 ffffff03d6020028 ffffff03d7c9b500 nscd/7 reaper
-ffffff03e2c1bae0 ffffff03d6020028 ffffff03d7c7e080 nscd/8
-ffffff03d9052b40 ffffff03d6020028 ffffff03d7de03c0 nscd/9
+fffffe23871160c0 fffffe23e34f8098 fffffe25a8bae3c0 bhyve/50 [vcpu 27]
+fffffe249ceefc20 fffffe23e34f8098 fffffe2382d630c0 bhyve/51 [viona_rx_fffffe23939456d0]
+```
+
+Both the userspace and the kernel version of `::findstack` will report thread names:
+
+```
+> ::pgrep bhyve | ::walk thread | ::findstack  
+stack pointer for thread fffffe25a8c83460 (bhyve/1 [mevent]): fffffcc26cacebb0
+[ fffffcc26cacebb0 _resume_from_idle+0x12b() ]
+  fffffcc26cacebe0 swtch+0x141()
+  fffffcc26cacec70 cv_wait_sig_swap_core+0x1b9()
 ```
 
 ### dtrace
 
-`dtrace(1m)` will have the `uthreadname` function which returns the name of the user thread, or the LWPID as a string if not set:
+`dtrace(1m)` will have the `threadname` function which returns the name of the thread, or an empty string if not set.
 
 ```
-$ dtrace -n ‘profile-997 /pid == $target/ { @[uthreadname] == count(); }’ -c ./mycmd
+$ dtrace -n ‘profile-997 /pid == $target && threadname != ""/ { @[threadname] == count(); }’ -c ./mycmd
 
 larry     345
 darrell    72
 daryl      66
-12          2
-843         5
 ```
+
+The Solaris version of `dtrace(1m)` has both `uthreadname` and `kthreadname` \[[4]\].  This proposal doesn't have two separate names for LWPs and kernel threads, so we are diverging here.
 
 ## Behavior
 
@@ -307,12 +283,11 @@ consistency, it is recommend we do the same for our
 Solaris behavior, however it should be noted that this differs from the
 documented Linux behavior.  On Linux, it should appear that the return value is
 that of a file not found (`ENOENT`).  This should be taken into consideration
-for lx-branded zones.  Solaris also returns `EINVAL` from
-`pthread_getname_np()` if passed a NULL buffer.  This is somewhat inconsistent
-with other functions, for example `read(2)` is documented as returning `EFAULT`
-if given an invalid address (which NULL presumably is).  Solaris also silently
-truncates names greater than its max (32), while Linux returns `ERANGE`.  The
-Linux approach seems better here.
+for lx-branded zones.
+
+Solaris also returns `EINVAL` from `pthread_getname_np()` if passed a NULL buffer;
+we will do the same. Solaris also silently truncates names greater than its max (32),
+while Linux returns `ERANGE`; we will do what Linux does.
 
 None of the implementations place any apparent restrictions on reading this
 data, and there do not appear any expectations that the thread name should
@@ -321,17 +296,16 @@ permissions or privileges beyond those needed to run `ps(1)` or `prstat(1m)` to
 read this data seems sufficient.  Updating this information should be
 restricted to the owner of the process and/or root.
 
-It should also be noted that unlike default, by default new threads will not
-have a name assigned to them until one is assigned to it.
+We will not ape Linux's default thread names; it seems of little use to default
+to the process name.
 
 ## Implementation
 
 Given that almost all the intended utilities already heavily utilize `proc(4)`
 to operate, it seems natural to expose thread names via `proc(4)` as well.
-This also strongly suggests that the information should reside within the
-kernel (though doesn't preclude libc from caching values in userland).  For
-lx-brand, it is suggested that we match the existing Linux behavior and allow
-the reading/setting of thread names via the lx-brand proc (via
+
+For the lxbrand, it is suggested that we match the existing Linux behavior
+and allow the reading/setting of thread names via the lx-brand proc (via
 `/proc/<pid>/task/<tid>/comm`) as well as `prctl()`.
 
 As magic numbers are generally frowned upon, we will follow what NetBSD does
@@ -343,15 +317,14 @@ gratuitous incompatibility.  We can optionally limit this for lx-branded zones
 to the expected 16 characters (including trailing `\0`).  It should be noted
 that glibc currently (as of 2.25) performs this length check as well.
 
-Initially, we believe that adding a pointer in `kthread_t` (tentatively
-named `t_name`) should work.  The pointer will be initialized to `NULL` when
-a `kthread_t` is first allocated.  Since there are potentially multiple places
+To support the lx brand, we already have a `kthread_t->t_name` member,
+initialized to NULL. Since there are potentially multiple places
 where a thread name is set (such as via `proc(4)`, lx-proc, or the lx prctl),
 a kernel function with the name and signature `thread_setname(kthread_t *,
-const char *)` will be created.  In addition, a macro `THREAD_NAME_MAX` will
-be created with a value of 32 and `PTHREAD_MAX_NAMELEN_NP` will either
-be set to `THREAD_NAME_MAX`, or if visibility issues make this too complicated
-to do, it will explicitly set to 32 with a note to keep the two values in sync. 
+const char *)` will be created, along with a convenience routine `thread_setvname()`.
+
+In addition, a macro `THREAD_NAME_MAX` will be created with a value of 32.
+
 When called, if the given `kthread_t` has not had a thread name set on it
 (i.e. `t_name` is `NULL`), it will allocate a `THREAD_NAME_MAX` sized buffer
 and set `t_name` to point to this buffer.  This buffer will hold the name.
@@ -370,47 +343,39 @@ footprint.  Initially at least, `thread_setname` will not be part of the DDI,
 though nothing should preclude it's inclusion (or a DDI equivalent) in the
 future.
 
-For native processes, given the large number of planned consumers that currently make heavy use of `proc(4)`, it seems reasonable to expose the thread names
-via `/proc` for reading.  The privileges required should match those currently
-required for reading non-sensitive information from `/proc`.  In other words,
-the same privileges required for `ps(1)` or `prstat(1m)` to run should also
-allow the reading of thread names via `/proc`.
+In `proc(4)`, we introduce a new `/proc/<pid>/lwp/<lwpid>/lwpname` file.
+The privileges required should match those currently required for reading
+non-sensitive information from `/proc`.  In other words, the same privileges
+required for `ps(1)` or `prstat(1m)` to run should also allow the reading
+of thread names via `/proc`. As mentioned, writing would be restricted as
+elsewhere.
 
-A natural follow-up question is where in `/proc` this information should
-reside.  Since this is per-thread, the natural location for this would be
-under `/proc/self/lwp/\<lwpid\>`.  In there, there are two possibilities that
-seem like reasonable candidates:
+Using a new file has the advantage of not causing any compatibility problems,
+at the cost of slightly more complex API.
 
-  1. A brand new file such as 'name'
-  1. A new field within the lwpsinfo file / struct
+The contents of the file is simply a `THREAD_NAME_MAX` char buffer. If a thread
+name is not set, reading from the buffer will return an empty string for
+convenience.
 
-Creating a new file is fairly straightforward, as well as modifying all the
-extant utilities that would want to utilize the information, however it does
-mean that to have the information available in core dumps, a new ELF note
-would need to be created to save the information (likely writing a note for
-each thread).  There could be some mild complexity in then matching this
-back to the rest of the per-thread data, though nothing too terrible.
+Note that we don't intend to introduce a `/proc/<pid>/llwpname` file.
 
-Extending the `lwpsinfo_t` to contain the name would be advantageous in so much
-as all the initially targeted consumers already read this information, so the
-amount of modification required should be less (as it just becomes another
-field that can be displayed vs. reading a new file, matching it the names to
-the lwpsinfo, etc).  In addition, since they are already saved in core files,
-the amount of changes required would be minimal (essentially strcpy() the value
-into the struct).  However, care would need to be taken to ensure utilities
-that read this from core files do so in a backwards compatible manner.  If not,
-it could complicate the analysis of core dumps generated from systems that
-predate this implementation.  This should be able to be addressed via
-two ways.  First, the field is added at the end of the existing struct so that
-the existing field offsets are unchanged.  Second, ensure the lwpsinfo data is
-read from core files in a backwards compatible manner.  Since the lwpsinfo
-structs are saved as ELF notes in core file (one note per thread), and the ELF
-note itself contains the size of the note, as long as that value is used (vs.
-the size of the struct on the host system) and it is read into a zero
-initialized memory, this should be sufficient (and likely a good idea
-regardless of this RFD) -- basically older versions that are read will then
-read these newer fields as zero, equivalent to not having the thread name
-set.
+### Core file contents
+
+We will introduce a new note type NT_LWPNAME, which contains an `prlwpname_t`
+structure. This is simply:
+
+```
+    uint64_t pr_lwpid;
+    char pr_lwpname[THREAD_NAME_MAX];
+```
+
+We do this to make it easier to correlate a particular note entry back to the
+LWP.
+
+(If needed, we can rev this interface by introduce a new note type, so there
+should be no need to sub-version this struct itself.)
+
+### chroot
 
 An open question that remains is around the interaction of these features and
 `chroot(2)`.  As /proc is typically unavailable within a `chroot(2)`
@@ -432,7 +397,76 @@ any concerns surrounding a `/proc` only solution.
 Searching on https://grok.pkgsrc.pub for both pthread\_setname\_np and chroot
 showed that only ruby contained both.  These appear to just be autoconf checks.
 
+This proposal does not plan to change this.
+
 ## Man Pages
+
+### pthread\_getname\_np
+
+```
+PTHREAD_GETNAME_NP(3C)   Standard C Library Functions   PTHREAD_GETNAME_NP(3C)
+
+NAME
+     pthread_getname_np, pthread_setname_np - get or set the name of a thread
+
+SYNOPSIS
+     #include <pthread.h>
+
+     int
+     pthread_getname_np(pthread_t tid, char *name, size_t len);
+
+     int
+     pthread_setname_np(pthread_t tid, const char *name);
+
+DESCRIPTION
+     The pthread_getname_np() and pthread_setname_np() functions,
+     respectively, get and set the names of the thread whose id is given by
+     the tid parameter.  For pthread_getname_np(), len indicates the size of
+     name.
+
+     Thread names are limited to PTHREAD_MAX_NAMELEN_NP including the
+     terminating NIL.
+
+     To clear a thread name, call pthread_setname_np() with NULL.
+
+     Unlike some other systems, threads do not inherit the process name by
+     default.
+
+RETURN VALUES
+     Upon successful completion, the pthread_getname_np() and
+     pthread_setname_np() functions return 0.  Otherwise, an error number is
+     returned to indicate the error.  If the thread identified by tid does not
+     have a name set, pthread_getname_np will be set to an empty string
+     (length = 0).
+
+ERRORS
+     Errors from open(2), pread(2), or pwrite(2) are possible.  In addition,
+     the pthread_getname_np() function will fail with:
+
+     EINVAL             The name argument is NULL.
+
+     ERANGE             The size of name as given by len was not large enough
+                        to contain the name of the thread.
+
+     ESRCH              The thread tid was not found.
+
+     The pthread_setname_np() function will fail with:
+
+     ERANGE             The length of name exceeds the maximum allowed size.
+
+     ESRCH              The thread tid was not found.
+
+INTERFACE STABILITY
+     Uncommitted
+
+MT-LEVEL
+     MT-Safe
+
+SEE ALSO
+     pthread_attr_getname_np(3c), pthread_create(3c)
+
+illumos                         August 22, 2018                        illumos
+```
 
 ### pthread\_attr\_getname\_np
 
@@ -458,12 +492,13 @@ DESCRIPTION
      respectively, set and get the thread name attribute in attr to name.  For
      pthread_attr_getname_np(), len is the size of name.  Any threads created
      with pthread_create(3c) using attr will have their name set to name upon
-     creation.  Thread names are limited to XX characters.
+     creation.  Thread names are limited to PTHREAD_MAX_NAMELEN_NP including
+     the terminating NIL.
 
 RETURN VALUES
      Upon successful completion, the pthread_attr_getname_np() and
-     pthread_attr_setname_np() functions return 0.  Otherwise, and error
-     number is returned to indicate the error.
+     pthread_attr_setname_np() functions return 0.  Otherwise, an error number
+     is returned to indicate the error.
 
 ERRORS
      The pthread_attr_getname_np() function may fail with:
@@ -487,66 +522,7 @@ MT-LEVEL
 SEE ALSO
      pthread_create(3c), pthread_getname_np(3c)
 
-illumos                          May 18, 2017                          illumos
-```
-
-### pthread\_getname\_np
-
-```
-PTHREAD_GETNAME_NP(3C)   Standard C Library Functions   PTHREAD_GETNAME_NP(3C)
-
-NAME
-     pthread_getname_np, pthread_setname_np - get or set the name of a thread
-
-SYNOPSIS
-     #include <pthread.h>
-
-     int
-     pthread_getname_np(pthread_t tid, char *name, size_t len);
-
-     int
-     pthread_setname_np(pthread_t tid, const char *name);
-
-DESCRIPTION
-     The pthread_getname_np() and pthread_setname_np() functions,
-     respectively, get and set the names of the thread whose id is given by
-     the tid parameter.  For pthread_getname_np(), len indicates the size of
-     name.  Thread names are limited to XX characters. To clear a thread name,
-     call pthread_setname_np() with NULL.
-
-RETURN VALUES
-     Upon successful completion, the pthread_getname_np() and
-     pthread_setname_np() functions return 0.  Otherwise, an error number is
-     returned to indicate the error.  If the thread identified by tid does not
-     have a name set, pthread_getname_np will be set to an empty string
-     (length = 0).
-
-ERRORS
-     The pthread_getname_np() function will fail with:
-
-     EINVAL             The name argument is NULL.
-
-     ERANGE             The size of name as given by len was not large enough
-                        to contain the name of the thread.
-
-     ESRCH              The thread tid was not found.
-
-     The pthread_setname_np() function will fail with:
-
-     ERANGE             The length of name exceeds the maximum allowed size.
-
-     ESRCH              The thread tid was not found.
-
-INTERFACE STABILITY
-     Uncommitted
-
-MT-LEVEL
-     MT-Safe
-
-SEE ALSO
-     pthread_attr_getname_np(3c), pthread_create(3c)
-
-illumos                          May 18, 2017                          illumos
+illumos                         August 22, 2018                        illumos
 ```
 
 # References
