@@ -1,7 +1,7 @@
 ---
 authors: Jason King <jason.king@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q="RFD+96"
+discussion: https://github.com/joyent/rfd/issues/61
 ---
 
 <!--
