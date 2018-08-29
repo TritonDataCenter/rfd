@@ -22,12 +22,21 @@ state: predraft
     - [Begin phase](#begin-phase)
     - [Sync phase](#sync-phase)
     - [Switch phase](#switch-phase)
-  - [Interfaces](#interfaces)
+  - [User Interfaces](#user-interfaces)
     - [CloudAPI](#cloudapi)
     - [Triton CLI](#triton-cli)
     - [Portal](#portal)
 - [Persistent storage](#persistent-storage)
-- [User migrations](#user-migrations)
+- [Provisioning](#provisioning)
+  - [Supporting services](#supporting-services)
+  - [Server next reboot date](#server-next-reboot-date)
+  - [Affinity constraints](#affinity-constraints)
+  - [Traits and reserved CNs](#traits-and-reserved-cns)
+  - [Modified instances](#modified-instances)
+  - [Network NICs](#network-nics)
+  - [Rack Aware Networks](#rack-aware-networks)
+  - [Provisioning Questions](#provisioning-questions)
+- [Allowing user migrations](#allowing-user-migrations)
 - [Re-sync algorithm](#re-sync-algorithm)
 - [Limits](#limits)
   - [Open questions for limits](#open-questions-for-limits)
@@ -35,6 +44,9 @@ state: predraft
   - [Transient errors](#transient-errors)
     - [Resumable zfs send/receive](#resumable-zfs-sendreceive)
   - [Fatal errors](#fatal-errors)
+- [Aborting a migration](#aborting-a-migration)
+- [Progress](#progress)
+  - [Progress events](#progress-events)
 - [Scheduling](#scheduling)
 - [Migration service](#migration-service)
 - [Operator Installation](#operator-installation)
@@ -52,10 +64,7 @@ state: predraft
 - [Open Questions and TODOs](#open-questions-and-todos)
   - [Backups](#backups)
   - [Images](#images)
-  - [Provisioning](#provisioning)
   - [Networking](#networking)
-    - [Rack Aware Networks](#rack-aware-networks)
-  - [Progress](#progress)
   - [Other](#other)
 - [Caveats](#caveats)
 - [Tests](#tests)
@@ -141,6 +150,9 @@ migration to run these phases all at once "automatic", or they can be performed
 individually as needed "on-demand". The three phases are "begin", "sync" and
 "switch".
 
+Q. Do we want to put a time limit on how long a migration can stay in the "sync"
+phase, or do we not care if/can the user will be billed for this?
+
 ### Begin phase
 
 This phase starts the migration process, provisions the target instance and
@@ -156,7 +168,8 @@ instance).
    a different CN (the target CN). Keep the same uuid but flag it as
    'do_not_inventory' to ensure that no systems know/use it yet. This step
    should install the necessary source images on the target CN and/or setup
-   necessary supporting zones (e.g. NAT zone).
+   necessary supporting zones (e.g. NAT zone). See the
+   [provisioning](#provisioning) section for more details on this step.
 3. Run a cn-agent task on the source and target CN which will setup a
    communication channel (TCP socket) on the admin network which the two CNs can
    use to perform the migration operation. (this may be combined with step #1
@@ -182,19 +195,22 @@ datasets in the target instance (without stopping the instance).
 ### Switch phase
 
 This phase stops the instance from running, synchronizes the zfs datasets of the
-source instance with the zfs datasets in the target instance, then moves control
-to the target instance and restarts the target instance.
+source instance with the zfs datasets in the target instance, moves the NICs
+from the source to the target instance, moves control to the target instance and
+then restarts the target instance.
 
 1. Stop the source instance (if it was running).
 2. Send the final filesystem delta to the target CN. For each filesystem
    dataset, this will create a zfs snapshot and then zfs send the difference
    from the previous snapshot to the zfs receive running on the target CN.
-3. Unregister the source instance from systems (set do_not_inventory on the
+3. Swap NICs - reserve NIC IP addresses in the source instance, delete the
+   source NICs and then add same NICs to the target instance.
+4. Unregister the source instance from systems (set do_not_inventory on the
    source instance) and ensure it no longer auto-restarts.
-4. Register the target instance with systems (remove do_not_inventory from the
+5. Register the target instance with systems (remove do_not_inventory from the
    target instance).
-5. Start the target instance (if it was previously running).
-6. Cleanup (remove source zone, or schedule for later removal).
+6. Start the target instance (if it was previously running).
+7. Cleanup (remove source zone, or schedule for later removal).
 
 ## User Interfaces
 
@@ -205,14 +221,18 @@ The following endpoints will be available for customers:
 - ListMigrations (POST /:login/migrations
   Return a list of migrations (completed, running, scheduled, failed, ...).
 
-- MigrateMachine (POST /:login/machines/migrate?action=automatic)
-  Starts a full "automatic" migration.
+- MigrateMachine (POST /:login/machines/migrate?action=automatic&affinity=AFF)
+  Starts a full "automatic" migration. Affinity rules can be added - see the
+  [provisioning](#provisining) section for details.
 
 - CancelMigrateMachine (POST /:login/machines/migrate?action=cancel)
-  Cancels the current migration of this instance.
+  Cancels the current migration of this instance. See
+  [aborting a migration](#aborting-a-migration).
 
-- BeginMigrateMachine (POST /:login/machines/migrate?action=begin)
+- BeginMigrateMachine (POST /:login/machines/migrate?action=begin&affinity=AFF)
   Starts an on-demand migration (i.e. just the "begin" phase) for an instance.
+  Affinity rules can be added - see the [provisioning](#provisining) section for
+  details.
 
 - SyncMigrateMachine (POST /:login/machines/migrate?action=sync)
   Runs the "sync" phase for an "on-demand" instance migration.
@@ -222,10 +242,11 @@ The following endpoints will be available for customers:
 
 - WatchMigrateMachine (POST /:login/machines/migrate?action=watch)
   Will output events for a migration. There can be multiple watchers of a
-  migration.
+  migration. See migration [progress events](#progress-events) for details.
 
-- ScheduleMigrateMachine (POST /:login/machines/migrate?action=schedule)
-  Schedule a migration of this instance.
+- ScheduleMigrateMachine (POST /:login/machines/migrate?action=schedule&affinity=AFF)
+  Schedule a migration of this instance. Affinity rules can be added - see the
+  [provisioning](#provisining) section for details.
 
 ### Triton CLI
 
@@ -246,6 +267,7 @@ The following endpoints will be available for customers:
 
     $ triton instance migrate 4a364ec6
     This will migrate instance 4a364ec6 (myinstance).
+    The migration will take approximately 1h45m.
     Do you wish to continue y/n? y
     Migration of 4a364ec6 has started.
     You can watch the migration using:
@@ -258,8 +280,13 @@ The following endpoints will be available for customers:
     4a364ec6  myinstance  46b4ceef  running   MDF    3d
 
     $ triton instance migrate --watch $id
-    This will migrate instance $shortId. Do you wish to continue y/n? y
-    Starting migration ($migrateUuid):
+    Migration progress ($migrateUuid):
+    ✓ making a reservation (3m18s)
+    ✓ synchronizing filesystems (13% ETA 1h33m)
+    <Ctrl-C ... migration still continues>
+
+    $ triton instance migrate --watch $id
+    Migration progress ($migrateUuid):
     ✓ making a reservation (3m18s)
     ✓ synchronizing filesystems (1h52m07s)
     ✓ stopping instance (19s)
@@ -368,7 +395,77 @@ operations:
         // If a migration fails - this is the error message of why it failed.
     }
 
-# User migrations
+# Provisioning
+
+There are a lot of factors that need to be considered during the migration
+provisioning process.
+
+## Supporting services
+
+Any Triton supporting services that the instance uses (e.g. NAT zones or
+Volumes zones) will need to be setup on the target server. If provisioning
+using DAPI, this should occur naturally.
+
+## Server next reboot date
+
+Ideally, we want the migrated instance to land on a server that will not be
+rebooted soon. If DAPI happens to pick a machine that will be rebooted in
+another 2 weeks, that lessons the purpose of the current migration and will
+likely aggravate users. We want to make sure the migration provisioning
+process takes into account the next reboot attribute, see [RFD 24](../0024),
+which if using DAPI should occur naturally.
+
+## Affinity constraints
+
+Affinity hints are only applied at provisioning time. For docker containers,
+these hints are persisted as a triton label in the instance metadata. For
+other instance types, the hints are not persisted. As such, DAPI will not be
+able to honor the original affinity constraints. We should allow the
+user/operator to input an optional affinity hint when they initiate/schedule
+migrations.
+
+## Traits and reserved CNs
+
+DAPI can handle user specified traits, but there are cases where a trait has
+been specified by an operator, and as such, DAPI may not be able to handle that.
+In this case the operator will need to either remove that trait from the
+instance, or use the sdc-migrate tooling and specify the target server (the
+latter will not invoke the DAPI server selection algorithms).
+
+## Modified instances
+
+DAPI uses the package size to determine the allocation. It's possible that
+an instance will have gone through an in-place update to increase their
+quota, ram, etc and no longer have sizes that match the original package.
+We will need to pass additional migration specific instance parameters to
+DAPI to specify the wanted size in such a case.
+
+## Network NICs
+
+During the provisioning process, we do not want to allocate any NICs or assign
+IP addresses for the target instance. Instead, during the switch phase the NICs
+will need to be swapped from the source to the target instance. This NIC swap is
+accomplished by first reserving the IP, deleting the source instance NIC and
+then adding the NIC to the target instance. We used to have sporadic issues with
+duplicate IP addresses after migration when the IP of the instance being
+migrated was accidentally handed out for a different provisioning.
+
+## Rack Aware Networks
+
+In the case of a CN being in a rack aware network - the DAPI provisioning
+process will need to take into account (if not already done) that the newly
+provisioned instance must reside in a CN in the same rack.
+
+
+## Provisioning Questions
+
+- if migration re-uses the existing cn-agent provisioning process, can some
+  parts (e.g. imgadm image install and dataset creation) be skipped?
+
+- what other Triton components will need updating after a migration (i.e. are
+  there any Triton services that expect the instance to be on a particular CN)?
+
+# Allowing user migrations
 
 There will be two settings controlling whether a user is allowed to migrate
 their instances. These settings can only be set by an operator.
@@ -491,6 +588,125 @@ Fatal errors, such as:
   Not much can be done here - this will require operator intervention.
   If one or both of these CNs come back, then we move to above two items.
 
+# Aborting a migration
+
+There are many factors to consider when aborting a migration, most of which
+will depend on the migration phase. There will even be times when it is not
+possible to abort at all (in the latter phases of the migration, when the
+instance migration is done and the process is now cleaning up).
+
+It will be crucial that the source instance be returned to it's former state,
+including the re-instantiation of NICs (in the case they were deleted from the
+source instance - see the [network provisioning](#network-nics) notes) and
+returning to the source instance to it's previous running/stopped state.
+
+An abort will cause CNAPI to issue stop/abort calls to any ongoing migration
+workflow jobs and cn-agent migration tasks, then CNAPI will rollback/cleanup the
+migration state and revert the source instance to it's former state (if it was
+changed).
+
+Note that it will not be possible to resume an aborted migration, but one could
+start a new migration instead.
+
+# Progress
+
+For each migration, we need the ability to show the current state and progress
+to the end user.
+
+CNAPI will provide a migration progress endpoint that can be used to monitor
+the progress of the migration.
+
+CNAPI will connect with the cn-agent task on the source instance (using a TCP/IP
+socket) to retrieve status, filesystem transfer rates and overall progress (e.g.
+from zfs send/receive).
+
+## Progress events
+
+The CNAPI progress endpoint will respond with a stream of events that
+describe all the completed migration phases and also the current state of the
+migration. Whilst connected to the endpoint, a current state event will be
+sent back every N seconds (e.g. every 2 seconds).
+
+    event {
+
+      phase: "string"
+        // The phase for this event, one of "begin", "sync" or "switch"
+
+      state: "string"
+        // The status for the event, e.g. "success", "failed", "running"
+
+      start_timestamp: "string"
+        // The ISO timestamp when the phase was started.
+
+      end_timestamp: "string" (optional)
+        // The ISO timestamp when the phase finished. When omitted, it indicates
+        // that this phase is still running.
+
+      message: "string" (optional)
+        // Additional description message for this phase/state.
+
+      current_progress: "number" (optional)
+        // Value for how much of the phase has been completed. For the "sync"
+        // phase this will be the number of bytes that have been sent to the
+        // target.
+
+      total_progress: "number" (optional)
+        // Total value for large this phase is. For the "sync" phase this will
+        // be the total number of bytes that will need to be sent to the target.
+    }
+
+Status event (successful):
+
+    {
+      phase: "begin",
+      state: "success",
+      start_timestamp: "2018-08-18T10:55:39.785Z",
+      end_timestamp: "2018-08-18T10:58:01.402Z"
+    }
+
+Status event (sync just started running):
+
+    {
+      type: "status"
+      phase: "sync",
+      state: "running",
+      start_timestamp: "2018-08-18T10:59:09.338Z",
+      current_progress: 0,
+      total_progress: 983374382
+    }
+
+Status event (sync running):
+
+    {
+      type: "status"
+      phase: "sync",
+      state: "running",
+      start_timestamp: "2018-08-18T10:59:10.198Z",
+      current_progress: 12039472
+      total_progress: 983374382
+    }
+
+Status event (sync successful):
+
+    {
+      phase: "begin",
+      state: "success",
+      start_timestamp: "2018-08-18T10:59:10.198Z",
+      end_timestamp: "2018-08-18T11:15:44.384Z"
+      current_progress: 983374382
+      total_progress: 983374382
+    }
+
+Status event (switch failure):
+
+    {
+      phase: "switch",
+      state: "failed",
+      message: "Failed to switched NICs to migrated target - aborted"
+      start_timestamp: "2018-08-18T11:16:12.600Z"
+      end_timestamp: "2018-08-18T11:16:33.974Z"
+    }
+
 # Scheduling
 
 A migration can be scheduled to begin running at a configured time/date. In this
@@ -563,10 +779,10 @@ Setup the initial repository and testing infrastructure.
 
 ## M2: Brand specific migration
 
-Concentrate on getting KVM and Bhyve working. For datasets that are nearly full,
-the destination quota may need to be increased slightly, just enough for all
-necessary write operations. Ideally, the quota could be reduced to its original
-size after migration is complete.
+Concentrate on getting Bhyve (and KVM?) working first. For datasets that are
+nearly full, the destination quota may need to be increased slightly, just
+enough for all necessary write operations. Ideally, the quota would be reduced
+to its original size after migration is complete.
 
 - modify zfs send/receive handling to support the brands needed
 - support multiple disks and different zfs filesystem layouts
@@ -579,6 +795,9 @@ target instance.
 
 - provision (reserve) the target instance
   - choose CN
+    - allow allocation to an operator specified server (via sdc-migrate)
+    - pass through affinity rules, see the [provisioning](#provisioning) section
+    - pass through instance size, see the [provisioning](#provisioning) section
   - allocate/reserve zone
   - install image(s)
   - setup support infrastructure (e.g. Fabric NAT)
@@ -620,15 +839,19 @@ CN/Headnode:
     $ sdc-migrate disallow-instance $VM
     Success - user migration not allowed for instance $VM.
 
-    $ sdc-migrate $INSTANCE [$CN]
-    Migrating $INSTANCE in job $JOB
+    $ sdc-migrate migrate $INSTANCE [$CN]
+    Migrating $INSTANCE
     ...<progress events>
     ...<progress events>
     <Ctrl-C ... workflow job still continues>
 
-    $ sdc-migrate watch $JOB
+    $ sdc-migrate watch $INSTANCE
     ...<progress events>
-    Success - instance $VM has been migrated to server $CN.
+    Success - instance $INSTANCE has been migrated to server $CN.
+
+    $ sdc-migrate abort $INSTANCE
+    ...<progress events>
+    Success - migration was aborted, instance $INSTANCE is now $STATE.
 
 Once a CN (or instance) has been flagged as allowing migrations then the
 operator can send an announcement to end users allowing them to migrate their
@@ -691,20 +914,6 @@ Add ability to schedule a migration.
   If the target instance provisioning (reservation) also installs the source
   image to the target CN, then this should be able to work?
 
-## Provisioning
-
-- if migration re-uses the existing cn-agent provisioning process, can some
-  parts (e.g. imgadm image install and dataset creation) be skipped?
-
-- what other Triton components will need updating after a migration (i.e. are
-  there any Triton services that expect the instance to be on a particular CN)?
-
-- allow an operator (admin) to specify the target CN?
-
-- what controls can be added to allow a user to migrate their own instances? Do
-  we have (or add) server traits (e.g. CNs with an 'evacuate' trait allow users
-  to perform their own instance migration via CloudAPI/Portal)?
-
 ## Networking
 
 - do the source and destination CNs need to be in the same subnet?
@@ -716,16 +925,6 @@ Add ability to schedule a migration.
   IP address/MAC etc... does it initially provision the target instance without
   networks and then later remove these networks from the source and then re-add
   to the target instance?
-
-### Rack Aware Networks
-
-In the case of a CN being in a rack aware network - the DAPI provisioning
-process will need to take into account (if not already done) that the newly
-provisioned instance must reside in a CN in the same rack.
-
-## Progress
-
-- how/what progress events can/will be used to notify for an instance migration?
 
 ## Other
 
