@@ -102,35 +102,26 @@ NOTE: The thread names in the below examples are merely illustrative.
 
 ### ps
 
-ps(1) will contain two major changes:
-
-1. A new format specifier `lname` will be added for use with the `-o` options.
-The header displayed using it will be the same (but upper case).
-2. The `-L` option currently adds the `LWP` field to the output, while `-eL`
-adds both the `LWP` field and the `NLWP` (number of LWPs).  In both instances,
-this will now also include the `LNAME` field.
+ps(1) will gain a new format specifier `lwpname`, with header `LWPNAME`.
 
 Any LWPs without a name will just display spaces (i.e. appear empty).
 
 ```
-# ps -efL
-     UID   PID  PPID   LWP  LNAME   NLWP   C    STIME TTY        LTIME CMD
-    root 82207 54517     1             1   0   May 09 ?           0:00 sendmail -i -- nobody
-    root 54534 54517     1            13   0   Apr 25 ?           0:00 /lib/svc/bin/svc.startd
-    root 54534 54517     2  fizz      13   0   Apr 25 ?           0:01 /lib/svc/bin/svc.startd
-    root 54534 54517     3  buzz      13   0   Apr 25 ?           0:01 /lib/svc/bin/svc.startd
-    root 54534 54517     4            13   0   Apr 25 ?           0:01 /lib/svc/bin/svc.startd
-    root 54534 54517     5            13   0   Apr 25 ?           0:00 /lib/svc/bin/svc.startd
-    root 54534 54517     6            13   0   Apr 25 ?           0:05 /lib/svc/bin/svc.startd
-    root 54534 54517     7  acme      13   0   Apr 25 ?           0:01 /lib/svc/bin/svc.startd
-    root 54534 54517     8            13   0   Apr 25 ?           0:00 /lib/svc/bin/svc.startd
-    root 54534 54517     9            13   0   Apr 25 ?           0:01 /lib/svc/bin/svc.startd
-    root 54534 54517    23            13   0   Apr 25 ?           0:20 /lib/svc/bin/svc.startd
-    root 54534 54517    47            13   0   Apr 25 ?           0:00 /lib/svc/bin/svc.startd
-    root 54534 54517   211.           13   0   Apr 25 ?           0:00 /lib/svc/bin/svc.startd
-    root 54534 54517   204            13   0   Apr 25 ?           0:00 /lib/svc/bin/svc.startd
-    root 55124 54517     1             1   0   Apr 25 ?           0:01 /usr/sbin/cron
-    . . .
+# ps -o pid,lwpname,comm
+   PID LWPNAME                          COMMAND
+...
+     8                                  /lib/svc/bin/svc.startd
+     8                                  /lib/svc/bin/svc.startd
+     8 restarter_timeouts_event         /lib/svc/bin/svc.startd
+     8 restarter_event                  /lib/svc/bin/svc.startd
+     8 restarter_contracts_event        /lib/svc/bin/svc.startd
+     8 wait                             /lib/svc/bin/svc.startd
+     8 graph                            /lib/svc/bin/svc.startd
+     8 repository_event                 /lib/svc/bin/svc.startd
+     8 graph_event                      /lib/svc/bin/svc.startd
+     8                                  /lib/svc/bin/svc.startd
+     8                                  /lib/svc/bin/svc.startd
+     8                                  /lib/svc/bin/svc.startd
 ```
 
 ### prstat
@@ -359,6 +350,9 @@ convenience.
 
 Note that we don't intend to introduce a `/proc/<pid>/llwpname` file.
 
+For use by older code, we'll also introduce `thr_getname()` and `thr_setname()`,
+with the same semantics as described above.
+
 ### Core file contents
 
 We will introduce a new note type NT_LWPNAME, which contains an `prlwpname_t`
@@ -400,6 +394,9 @@ showed that only ruby contained both.  These appear to just be autoconf checks.
 This proposal does not plan to change this.
 
 ## Man Pages
+
+There will be changes to `proc(4)`, `ps(1)`, and the `thr_*()` variants as well as
+the new man pages below.
 
 ### pthread\_getname\_np
 
