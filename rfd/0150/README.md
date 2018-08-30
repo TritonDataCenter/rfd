@@ -14,6 +14,19 @@ core Triton and Manta components.
 
 
 - [Status](#status)
+- [Overview](#overview)
+- [Service requirements](#service-requirements)
+- [Triton service](#triton-service)
+- [Manta service](#manta-service)
+- [Security](#security)
+- [Milestones](#milestones)
+  - [M0: plain bash setup scripts](#m0-plain-bash-setup-scripts)
+  - [M1: core prometheus0 and grafana0 Triton zones](#m1-core-prometheus0-and-grafana0-triton-zones)
+  - [M2: Manta service design](#m2-manta-service-design)
+  - [M3: Improve auth](#m3-improve-auth)
+- [Open Questions](#open-questions)
+- [Q & A](#q--a)
+- [Trent's notes](#trents-notes)
 
 <!-- END doctoc generated TOC please keep comment here to allow auto update -->
 
