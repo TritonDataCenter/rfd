@@ -162,7 +162,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 116 Manta Bucket Exploration](./rfd/0116/README.md) |
 | predraft | [RFD 117 Network Traits](./rfd/0117/README.md) |
 | draft    | [RFD 118 MAC Checksum Offload Extensions](./rfd/0118/README.md)
-| draft | [RFD 119 Routing Between Fabric Networks](./rfd/0119/README.md)
+| draft    | [RFD 119 Routing Between Fabric Networks](./rfd/0119/README.md)
 | abandoned | [RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md) |
 | predraft | [RFD 121 bhyve brand](./rfd/0121/README.md)
 | draft    | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md)
@@ -192,7 +192,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 146 Conch: Inventory System](./rfd/0146/README.md) |
 | draft    | [RFD 147 Project Tiresias: USB Topology](./rfd/0147/README.md) |
 | draft    | [RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md) |
-| predraft | [RFD 149 PostgreSQL Schema For Manta buckets](./rfd/0149/README.md) |
+| draft    | [RFD 149 PostgreSQL Schema For Manta buckets](./rfd/0149/README.md) |
 
 ## Contents of an RFD
 
