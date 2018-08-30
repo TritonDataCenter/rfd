@@ -250,6 +250,85 @@ CREATE INDEX manta_bucket_deleted_object_deleted_at_idx
 ON manta_bucket_deleted_object (deleted_at);
 ```
 
+### UUID collision risks and impacts
+
+The proposed schema makes use of UUID values for bucket and object identifiers
+with the assumption that they will be mostly free from collisions. The account a
+bucket or object belongs to is also represented by a UUID. The system design of
+manta and the way the schema is designed allow us to tolerate certain cases
+of collisions. This section contains some discussion of the different versions
+of UUIDs that may be applicable and also covers the cases where the system can
+tolerate collisions and the cases where it cannot.
+
+There five versions of UUID with different characteristics. Perhaps one of the
+most commonly used versions is version 4 (v4) which is a *randomly* generated UUID
+value. For the most commonly used variant of v4 UUIDs this actually means
+122 of 128 bits chosen at random [1]. With truly random number generators the
+probability of collision for v4 UUIDs is extremely low, but the pseudorandom
+number generators used in practice fall short of being truly random to varying
+degrees. [RFC 4122](https://tools.ietf.org/html/rfc4122) gives the following
+warning in the **Security Considerations** section:
+
+> Distributed applications generating UUIDs at a variety of hosts must be
+> willing to rely on the random number source at all hosts.  If this is not
+> feasible, the namespace variant should be used.
+
+Version 1 UUIDs are another possible alternative to relying on pseudorandom
+number generation. Version 1 UUIDs use network card MAC addresses and a 60-bit
+timestamp for uniqueness.
+
+> In the case of standard version 1 and 2 UUIDs using unique MAC addresses from
+> network cards, collisions can occur only when an implementation varies from
+> the standards, either inadvertently or intentionally [1].
+
+In theory, version 1 UUIDs are completely free from the risk of collisions, but
+in practice mistakes do happen and there have been cases where multiple network
+cards end up with the same MAC addresses. Ideally this would never be a problem
+in a single manta deployment, but the probability is non-zero.
+
+Regardless of the selected UUID version the chance of collisions cannot be
+completely discounted, but generally the probability is extremely small.
+
+The `id` columns for both the `manta_bucket` and `manta_bucket_object` tables in
+the proposed schema do not enforce a uniqueness constraint. The reason for this
+is twofold. First, to be meaningful the uniqueness constraint would need to be
+enforced across the databases on each metadata shard in the system which cannot
+be accomplished in a practical manner. Second, in most cases it does not
+actually matter if we have duplicate `id` column values for either the
+`manta_bucket` or `manta_bucket_object` tables and the system is able to
+function better without a uniqueness constraint.
+
+It is tolerable to have UUID collisions across different metadata shards. The
+`id` column value alone is not sufficient to locate an object in the system
+because the `id` is not part of the hash function input used for (meta)data
+placement; therefore, the collision of `id` values on different shards has no
+effect on the correct functioning of the system.
+
+There could be a case where two buckets or two objects that reside on the same
+metadata shard end up with the same UUID for their respective `id` column
+values. This case is also tolerable. Again the lookup of buckets or objects is
+not done directly using the `id` column value. Bucket lookups are done using the
+combination of the owner account identifier and the bucket name and object
+lookups are done using the combination of owner account identifier, bucket
+identifier, and object name. If a shard-local collision occurred for either a
+bucket or object in this manner, the lack of uniqueness constraint serves as a
+benefit that allows the system to continue to function normally whereas the use
+of the constraint would have caused a needless and perhaps hard-to-diagnose
+error.
+
+There is one case in particular where a UUID collision could cause problems with
+the correct functioning of the system. Collisions in account identifiers would
+cause serious issues. Such a situation could result in improper access or
+mutation of the buckets and objects of the affected accounts. The generation of
+account identifiers takes places outside the manta metadata system and mitigating
+the risk of collision is outside the scope of this RFD, but this statement is
+just to highlight that it would be a problem were it to occur.
+
+Considering the low probabilities of collision and the ability of the proposed
+schema to provide correct function even in the face of most collisions it should
+be acceptable to use either version 1 or version 4 UUIDs for the values of the
+`id` columns of the `manta_bucket` and `manta_bucket_object` tables.
+
 ## Queries
 
 This section covers some queries that might be used for higher level operations
@@ -441,3 +520,7 @@ execution of these queries.
 There may be need for further adjustments that include additional columns or
 indexes primarily based on the results of further research into the behavior and
 performance of bucket content listing.
+
+## References
+
+1. [Universally unique identifier Wikipedia page](https://en.wikipedia.org/wiki/Universally_unique_identifier)
