@@ -128,34 +128,18 @@ Any LWPs without a name will just display spaces (i.e. appear empty).
 
 The behavior of `prstat -L` will change slightly.  Currently, there is a
 `PROCESS/LWPID` column that displays the process name and numeric lwpid.
-Instead, this will change to `PROCESS/LWPNAME` and a `LWPID` column will be
-added in front of it.  In the event a thread doesn’t have a name, `LWPNAME` will
-display the LWPID:
+Instead, this will change to `PROCESS/LWP`, with the last section displaying
+an LWP name if set:
 
 ```
-   PID USERNAME  SIZE   RSS STATE  PRI NICE      TIME  CPU LWPID PROCESS/LWPID
- 54873 root     2676K 1768K sleep    1    0   0:00:00 0.0%     1 pfexecd/1
- 55131 root     2216K 1368K sleep   59    0   0:00:00 0.0%     1 sac/1
- 30172 root     8204K 3740K sleep   59    0   0:00:00 0.0%     1 sendmail/1
- 55177 root     7436K 1464K sleep   59    0   0:00:52 0.0%     1 sshd/1
- 34915 root     8192K 3596K sleep   59    0   0:00:32 0.0%     1 postdrop/1
- 55142 root     1996K 1336K sleep    1    0   0:00:00 0.0%     1 ttymon/1
- 55124 root     1952K 1308K sleep   59    0   0:00:00 0.0%     1 cron/1
- 54534 root     7372K 5852K sleep    1    0   0:00:00 0.0%   204 svc.startd/method
- 54534 root     7372K 5852K sleep    1    0   0:00:00 0.0%   211 svc.startd/method
- 54534 root     7372K 5852K sleep    1    0   0:00:00 0.0%    47 svc.startd/restarter_evt
- 54534 root     7372K 5852K sleep   59    0   0:00:22 0.0%    23 svc.startd/wait
- 54534 root     7372K 5852K sleep    1    0   0:00:00 0.0%     9 svc.startd/configd
- 54534 root     7372K 5852K sleep   59    0   0:00:00 0.0%     8 svc.startd/graph
- 54534 root     7372K 5852K sleep    1    0   0:00:00 0.0%     7 svc.startd/graph_evt
- 54534 root     7372K 5852K sleep   59    0   0:00:05 0.0%     6 svc.startd/repo_evt
- 54534 root     7372K 5852K sleep   59    0   0:00:00 0.0%     5 svc.startd/single-user
- 54534 root     7372K 5852K sleep   59    0   0:00:00 0.0%     4 svc.startd/sulogin
- 54534 root     7372K 5852K sleep   59    0   0:00:00 0.0%     3 svc.startd/3
- 54534 root     7372K 5852K sleep   59    0   0:00:00 0.0%     2 svc.startd/2
- 54534 root     7372K 5852K sleep   59    0   0:00:00 0.0%     1 svc.startd/1
- 82207 root     8204K 3732K sleep   59    0   0:00:00 0.0%     1 sendmail/1
+   PID USERNAME  SIZE   RSS STATE  PRI NICE      TIME  CPU PROCESS/LWP        
+  6323 root       16G  227M cpu54    1    0   1:13:13 1.8% bhyve/34 [vcpu 11]
+  8371 root     1656K  880K cpu6     1    0   2:04:44 1.8% 123456789012345/1
+     4 root        0K    0K sleep   60    -   0:00:00 0.0% kcfpoold/15
 ```
+
+Truncation is done such that the LWPID is always visible, and if needed,
+the process name and/or the thread name is truncated.
 
 ### pstack
 
@@ -289,6 +273,9 @@ restricted to the owner of the process and/or root.
 
 We will not ape Linux's default thread names; it seems of little use to default
 to the process name.
+
+To avoid any issues with outputting untrusted thread names, we will insist,
+kernel side, that the string must be entirely ASCII ``isprint()``.
 
 ## Implementation
 
