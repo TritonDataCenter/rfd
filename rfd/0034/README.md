@@ -27,6 +27,10 @@ state: predraft
     - [Triton CLI](#triton-cli)
     - [Portal](#portal)
 - [Persistent storage](#persistent-storage)
+- [Images](#images)
+- [Snapshots](#snapshots)
+  - [Snapshot lifecycle](#snapshot-lifecycle)
+  - [Snapshot quotas](#snapshot-quotas)
 - [Provisioning](#provisioning)
   - [Supporting services](#supporting-services)
   - [Server next reboot date](#server-next-reboot-date)
@@ -45,6 +49,7 @@ state: predraft
     - [Resumable zfs send/receive](#resumable-zfs-sendreceive)
   - [Fatal errors](#fatal-errors)
 - [Aborting a migration](#aborting-a-migration)
+- [Pausing a migration](#pausing-a-migration)
 - [Progress](#progress)
   - [Progress events](#progress-events)
 - [Scheduling](#scheduling)
@@ -63,7 +68,6 @@ state: predraft
   - [M8: Migration scheduling](#m8-migration-scheduling)
 - [Open Questions and TODOs](#open-questions-and-todos)
   - [Backups](#backups)
-  - [Images](#images)
   - [Networking](#networking)
   - [Other](#other)
 - [Caveats](#caveats)
@@ -139,9 +143,10 @@ vm state to ensure no other operations (e.g. "start", "stop", "reprovision") can
 occur on the instance whilst the migration is ongoing (including another
 migration attempt).
 
-It will be possible to manually stop/abort a migration, though it may take some
-time before the migration process can be safely interrupted and before the
-source instance can return to it's prior state.
+It will be possible to manually [abort](#aborting-a-migration) or
+[pause](#pausing-a-migration) a migration, though it may take some time before
+the migration process can be safely interrupted and before the source instance
+can return to it's prior state.
 
 ## Migration phases
 
@@ -155,9 +160,8 @@ phase, or do we not care if/can the user will be billed for this?
 
 ### Begin phase
 
-This phase starts the migration process, provisions the target instance and
-performs the initial full synchronization of data (without stopping the
-instance).
+This phase starts the migration process, creates a new migration database entry
+and provisions the target instance.
 
 1. CNAPI /servers/:server_uuid/vms/:uuid/migrate endpoint will start the
    migration process for this (source) instance by acquiring a ticket/lock on
@@ -170,23 +174,24 @@ instance).
    should install the necessary source images on the target CN and/or setup
    necessary supporting zones (e.g. NAT zone). See the
    [provisioning](#provisioning) section for more details on this step.
-3. Run a cn-agent task on the source and target CN which will setup a
-   communication channel (TCP socket) on the admin network which the two CNs can
-   use to perform the migration operation. (this may be combined with step #1
-   and step #2)
-4. Send initial filesystem data to the target CN. For each filesystem dataset,
-   this will create a zfs snapshot and then zfs send that dataset to the waiting
-   zfs receive on the target CN.
 
 ### Sync phase
 
 This phase synchronizes the zfs datasets of the source instance with the zfs
 datasets in the target instance (without stopping the instance).
 
-1. Send the filesystem delta to the target CN. For each filesystem dataset,
-   this will create a zfs snapshot and then zfs send the difference from the
-   previous snapshot to the zfs receive running on the target CN.
-2. When in "automatic" mode, evaluate whether to re-sync (step 5 again) or
+1. A workflow job will be created to oversee/retry the synchronization steps
+   below.
+2. The workflow will make a CNAPI migration-sync request which will run a
+   cn-agent task on the source and target CN. These tasks will set up a
+   communication channel (TCP socket) on the admin network which the two CNs can
+   use to perform the migration operation. The workflow will then watch the
+   migration for success/failure.
+3. If this is the first sync, send a full filesystem snapshot to the target CN.
+   This will create a zfs snapshot and then zfs send that dataset to the waiting
+   zfs receive on the target CN. Else, if this is not the first sync, send an
+   incremental filesystem snapshot to the target CN.
+4. When in "automatic" mode, evaluate whether to re-sync (step 3 again) or
    perform the final switch. The migration process will repeat this sync phase
    (with expectedly smaller incremental filesystem updates each time) until
    certain [criteria](#re-sync-algorithm) are met - then it will move on to the
@@ -225,9 +230,14 @@ The following endpoints will be available for customers:
   Starts a full "automatic" migration. Affinity rules can be added - see the
   [provisioning](#provisining) section for details.
 
-- CancelMigrateMachine (POST /:login/machines/migrate?action=cancel)
-  Cancels the current migration of this instance. See
+- AbortMigrateMachine (POST /:login/machines/migrate?action=abort)
+  Aborts the current migration of this instance. See
   [aborting a migration](#aborting-a-migration).
+
+- PauseMigrateMachine (POST /:login/machines/migrate?action=pause)
+  Pauses (stops) the current migration of this instance. See
+  [pausing a migration](#pausing-a-migration). You can only pause a migration
+  that is currently in the "sync" phase.
 
 - BeginMigrateMachine (POST /:login/machines/migrate?action=begin&affinity=AFF)
   Starts an on-demand migration (i.e. just the "begin" phase) for an instance.
@@ -265,29 +275,31 @@ The following endpoints will be available for customers:
     $ triton instance migrate --list
     INSTANCE   STATUS   PROGRESS
 
-    $ triton instance migrate 4a364ec6
+    $ triton instance migrate [--automatic] 4a364ec6
     This will migrate instance 4a364ec6 (myinstance).
     The migration will take approximately 1h45m.
     Do you wish to continue y/n? y
     Migration of 4a364ec6 has started.
     You can watch the migration using:
       triton instance migrate --watch 4a364ec6
-    or you can cancel the migration using:
-      triton instance migrate --cancel 4a364ec6
+    or you can pause or abort the migration using:
+      triton instance migrate --pause|--abort 4a364ec6
 
     $ triton ls  # shows 'M' flag meaning the instance is migrating
     SHORTID   NAME        IMG       STATE     FLAGS  AGE
     4a364ec6  myinstance  46b4ceef  running   MDF    3d
 
-    $ triton instance migrate --watch $id
+    $ triton instance migrate --watch 4a364ec6
     Migration progress ($migrateUuid):
     ✓ making a reservation (3m18s)
-    ✓ synchronizing filesystems (13% ETA 1h33m)
+    ☐ synchronizing filesystems (13% ETA 1h33m)
     <Ctrl-C ... migration still continues>
 
-    $ triton instance migrate --watch $id
+    $ triton instance migrate --watch 4a364ec6
     Migration progress ($migrateUuid):
     ✓ making a reservation (3m18s)
+    ✓ synchronizing filesystems (1h52m07s)
+    ✓ synchronizing filesystems (1h52m07s)
     ✓ synchronizing filesystems (1h52m07s)
     ✓ stopping instance (19s)
     ✓ re-synchronizing filesystems (1m19s)
@@ -295,18 +307,132 @@ The following endpoints will be available for customers:
     ✓ restarting instance (22s)
     Migration was successful.
 
+Begin phase example:
+
+    $ triton instance migrate --begin 4a364ec6
+    This will begin migrating instance 4a364ec6 (myinstance).
+    The begin phase will take approximately 3m10s, after which you will
+    can then perform the sync and/or switch phase.
+    Do you wish to continue y/n? y
+    Begin migration of 4a364ec6 has started.
+    You can watch the migration using:
+      triton instance migrate --watch 4a364ec6
+    or you can pause or abort the migration using:
+      triton instance migrate --pause|--abort 4a364ec6
+
+    $ triton instance migrate --watch 4a364ec6
+    Migration progress ($migrateUuid):
+    ✓ making a reservation (3m18s)
+    ✓ Begin migration phase was successful.
+
+Sync phase example:
+
+    $ triton instance migrate --sync 4a364ec6
+    This will sync instance 4a364ec6 (myinstance).
+    The sync phase will take approximately 2h18m0s, after which you will
+    can then perform another sync or perform the final switch phase.
+    Do you wish to continue y/n? y
+    Sync migration of 4a364ec6 has started.
+    You can watch the migration using:
+      triton instance migrate --watch 4a364ec6
+    or you can pause or abort the migration using:
+      triton instance migrate --pause|--abort 4a364ec6
+
+    $ triton instance migrate --watch 4a364ec6
+    Migration progress ($migrateUuid):
+    ✓ making a reservation (3m18s)
+    ☐ synchronizing filesystems (39% ETA 1h33m)
+    ...
+    ✓ synchronizing filesystems (1h52m07s)
+    Sync migration was successful.
+
+    $ triton instance migrate --sync 4a364ec6
+    ...
+    $ triton instance migrate --watch 4a364ec6
+    Migration progress ($migrateUuid):
+    ✓ making a reservation (3m18s)
+    ✓ synchronizing filesystems (1h52m07s)
+    ✓ synchronizing filesystems (20m55s)
+    ✓ synchronizing filesystems (5m01s)
+    ☐ synchronizing filesystems (5% ETA 1m20s)
+    ...
+    ✓ synchronizing filesystems (1m13s)
+    Sync migration phase was successful.
+
+Switch phase example:
+
+    $ triton instance migrate --switch 4a364ec6
+    This will switch instance 4a364ec6 (myinstance).
+    The switch phase will take approximately 5m0s, after which the migration
+    will be complete.
+    Do you wish to continue y/n? y
+    Switch migration of 4a364ec6 has started.
+    You can watch the migration using:
+      triton instance migrate --watch 4a364ec6
+    or you can pause or abort the migration using:
+      triton instance migrate --pause|--abort 4a364ec6
+
+    $ triton instance migrate --watch 4a364ec6
+    Migration progress ($migrateUuid):
+    ✓ making a reservation (3m18s)
+    ✓ synchronizing filesystems (1h52m07s)
+    ✓ synchronizing filesystems (20m55s)
+    ✓ synchronizing filesystems (5m01s)
+    ✓ synchronizing filesystems (1m13s)
+    ☐ switching instances (0% ETA 5m0s)
+    ...
+    ✓ switching instances (4m28s)
+    Migration was successful.
+
+Abort migration example:
+
+    $ triton instance migrate --abort 4a364ec6
+    This will abort migration of instance 4a364ec6 (myinstance).
+    You will need to start a new migration if you wish to migrate this instance.
+    Do you wish to continue y/n? y
+    Aborting migration of 4a364ec6.
+    You can watch the migration using:
+      triton instance migrate --watch 4a364ec6
+
+    $ triton instance migrate --watch 4a364ec6
+    Migration progress ($migrateUuid):
+    ✓ making a reservation (3m18s)
+    ✓ synchronizing filesystems (1h52m07s)
+    ☐ aborting
+    ...
+    ✓ aborted
+    Migration was aborted.
+
+Pause migration example:
+
+    $ triton instance migrate --pause 4a364ec6
+    This will pause migration of instance 4a364ec6 (myinstance).
+    Once paused, you will be able to continue this migration using:
+      triton instance migrate --sync|--switch 4a364ec6
+    Do you wish to continue y/n? y
+    Pausing migration of 4a364ec6.
+    You can watch the migration using:
+      triton instance migrate --watch 4a364ec6
+
+    $ triton instance migrate --watch 4a364ec6
+    Migration progress ($migrateUuid):
+    ✓ making a reservation (3m18s)
+    ✓ synchronizing filesystems (1h52m07s)
+    ☐ pausing
+    ...
+    ✓ paused
+    Migration was paused.
+
 Scheduling example:
 
-    $ triton instance migrate --schedule "2 days from now" $id
+    $ triton instance migrate --schedule "2 days from now" 4a364ec6
     This will migrate instance $shortId. Do you wish to continue y/n?
     Scheduling migration.
     You can watch the migration using:
       triton instance migrate --watch 4a364ec6
-    or you can cancel the migration using:
-      triton instance migrate --cancel 4a364ec6
+    or you can pause or abort the migration using:
+      triton instance migrate --pause|--abort 4a364ec6
     Initial scheduling complete - migration will commence at $date.
-
-TODO: a way to list migrations.
 
 ### Portal
 
@@ -341,14 +467,17 @@ operations:
       target_server_uuid: "UUID"
         // The uuid of the server where the instance will be migrated to.
 
+      automatic: "bool"
+        // Whether this is a full automatic migration.
+
       state: "string"
         // The state the migration operation is currently in. It can be one of
         // the following states:
         //  "scheduled"  - the migration is scheduled, see "scheduled_timestamp"
         //  "running"    - migration is running, see "job_uuid" and "step"
-        //  "pending"    - the "begin" phase (and possibly "sync" phase) has
-        //                 ben run - now waiting for a call to "sync"
-        //                 or "switch"
+        //  "paused"     - the "begin" phase (and possibly "sync" phase) has
+        //                 been run - now waiting for a call to "sync"
+        //                 or the final call to "switch"
         //  "failed"     - migration operation could not complete, see "error"
         //  "aborted"    - user or operator aborted the migration attempt
         //  "successful" - migration was successfully completed, you can use the
@@ -375,25 +504,91 @@ operations:
         // Example:
         //   2018-08-19T22:30:05.142Z
 
+      finished_timestamp: "string"
+        // The ISO timestamp when the migration finished. This is useful to see
+        // how long a migration took to complete.
+        // Example:
+        //   2018-08-19T23:49:45.880Z
+
       job_uuid: "UUID"
         // The workflow job uuid (if it was started).
 
       phase: "string"
         // XXX This could come from the workflow job?
         // The workflow stage that the migration is currently running, one of:
-        //  ""                 - nothing running yet
         //  "begin"            - just starting the migration operation
         //  "sync"             - updating filesystems using the "sync" phase
         //  "switch"           - sending final zfs datasets and switching
         //  "finished"         - completed
 
-      num_update_phases: "number"
-        // The number of successful "update" phases this migration has
-        // performed.
+      num_sync_phases: "number"
+        // The number of successful "sync" phases this migration has performed.
+
+      progress_history: "array of completed JSON progress events"
+        // Each time a migration phase is completed (or when a major migration
+        // event has occurred) an entry will be added to this array. This will
+        // be used to initially populate the migration watch event stream.
+        // Example:
+        //   [{begin}, {sync}, {sync}, {sync}, {switch}]
 
       error: "string"
         // If a migration fails - this is the error message of why it failed.
+
+      errorDetail: "string"
+        // Extra detailed information on why the migration failed, such as a
+        // stacktrace, or the full error object/message from a failed API call.
     }
+
+# Images
+
+If the source image(s) still exist in IMGAPI, then the image(s) can be installed
+into the target server through the normal provisioning process.
+
+When not available in IMGAPI, then the instance migration process must manually
+copy/install the image(s) into the target server itself. A "warning" progress
+event should be made in such a case, as some features (like
+CreateImageFromMachine) will depend on these images being available.
+
+By having the source image(s) it will ensure that the space accounting is
+consistent on the source and target servers. This consistency will also help to
+avoid quota-related issues with snapshots and migrations.
+
+# Snapshots
+
+ZFS snapshots will be used to synchronize the instance filesystems between the
+source and target servers.
+
+Migration snapshots will be named *@migrate-snap-N*, where N is incremented by
+1 for each incremental snapshot.
+
+The initial snapshot will be a recursive snapshot created using
+*zfs snapshot -r filesystem* and will be sent to the target server using
+*zfs send -R filesystem@migrate-snap-1* (the -R argument will ensure all
+snapshot names and all descendant filesystems are included) - this should also
+tie in well with Instance Snapshots, see [RFD 148](../0148/).
+
+Incremental snapshots (used in the "sync" and "switch" phases) will use
+*zfs send -I filesystem@migrate-snap-N-1 filesystem@migrate-snap-N*, which will
+include any new snapshot names that were created between the snapshots.
+
+## Snapshot lifecycle
+
+At least one snapshot will need to be used during migration. Two snapshots will
+need to be used during the zfs send/receive, after which snapshot N-1 can be
+destroyed on the source and target servers.
+
+It should also be possible to reduce the number of source snapshots to at most
+one, by turning the source snapshot N-1 into a bookmark using
+*zfs bookmark filesystem@migrate-snap-N-1*. Unlike a snapshot, bookmarks do not
+consume any additional space and this will still allow zfs send to function
+correctly (albeit a little slower according to some web comments).
+
+## Snapshot quotas
+
+In order to do a snapshot on the source (or receive a snapshot on the target),
+the quota may need to be increased or even be removed. The zfs refquota and/or
+volsize attributes should be sufficient for restricting growth of all but
+delegated datasets.
 
 # Provisioning
 
@@ -546,12 +741,12 @@ Transient errors during a migration, like a network failure, or a triton
 component failure, will be handled and the migration process will retry to
 complete the migration step which failed. The migration workflow will have a
 hard coded number of retry operations per migration step with a backoff setting
-to allow a flexible delay between the step retry operations.
+to allow a flexible delay between the retry operations.
 
 ### Resumable zfs send/receive
 
 The zfs send/receive operations (long/sustained network usage) will make use of
-the (resumable zfs send/receive)[#resumable-zfs-sendreceive] feature, so that
+the [resumable zfs send/receive](#resumable-zfs-sendreceive) feature, so that
 the migration operation can resume in the case of an interruption, without
 needing to resend all of the zfs data.
 
@@ -580,8 +775,9 @@ Fatal errors, such as:
 
 - target CN is no longer visible/responding
 
-  The migration will be aborted and the source instance will be restored to
-  it's prior state. A record of the failure is kept in the migrations database.
+  The migration will be marked as "failed" and the source instance will be
+  restored to it's prior state. A record of the failure is kept in the
+  migration database.
 
 - when both the source and target CN are not visible/responding
 
@@ -608,6 +804,15 @@ changed).
 Note that it will not be possible to resume an aborted migration, but one could
 start a new migration instead.
 
+# Pausing a migration
+
+A migration can only be paused if it is in the "sync" phase.
+
+It is possible to resume a paused migration, by running the "sync" and/or
+"switch" migration commands manually. If a migration was previously in
+"automatic" migration mode, then when it is resumed, it will continue in
+the "automatic" mode.
+
 # Progress
 
 For each migration, we need the ability to show the current state and progress
@@ -633,7 +838,11 @@ sent back every N seconds (e.g. every 2 seconds).
         // The phase for this event, one of "begin", "sync" or "switch"
 
       state: "string"
-        // The status for the event, e.g. "success", "failed", "running"
+        // The status for the event "success", "failed", "running" or "warning".
+        // The "warning" state will be used to notify the // user/operator of
+        // something unintened. The message field will contain the warning
+        // details, e.g. "source instance image cannot be migrated to the target
+        // CN".
 
       start_timestamp: "string"
         // The ISO timestamp when the phase was started.
@@ -667,7 +876,6 @@ Status event (successful):
 Status event (sync just started running):
 
     {
-      type: "status"
       phase: "sync",
       state: "running",
       start_timestamp: "2018-08-18T10:59:09.338Z",
@@ -678,7 +886,6 @@ Status event (sync just started running):
 Status event (sync running):
 
     {
-      type: "status"
       phase: "sync",
       state: "running",
       start_timestamp: "2018-08-18T10:59:10.198Z",
@@ -895,25 +1102,6 @@ Add ability to schedule a migration.
   as migrated and leave it around for later possible restoration, but this would
   not be good in the case of a CN being decommissioned.
 
-## Images
-
-- should the source instance image (and all of it's origin images) be available
-  on the target CN? Ideally I would say yes, because some features (like
-  CreateImageFromMachine) will depend on these images being available - but is
-  this a hard requirement? I am thinking if we can get the image onto the target
-  CN then do it, but if not it's not a deal breaker - maybe a warning should be
-  issued in this case as some Triton features would no longer work.
-
-- can KVM (and Bhyve?) skip the zfs send of the zone root dataset and just
-  send the uuid-disk* datasets? Since the root dataset is created again by the
-  target instance provisioning.
-
-- can we optimize migration (and or zfs send) to make use of base images (i.e.
-  to just perform a zfs incremental send from the base/source image)? c.f.
-  [joyent/smartos-live#204](https://github.com/joyent/smartos-live/issues/204)
-  If the target instance provisioning (reservation) also installs the source
-  image to the target CN, then this should be able to work?
-
 ## Networking
 
 - do the source and destination CNs need to be in the same subnet?
@@ -924,7 +1112,8 @@ Add ability to schedule a migration.
 - how to control the creation of networks such that two instances have the same
   IP address/MAC etc... does it initially provision the target instance without
   networks and then later remove these networks from the source and then re-add
-  to the target instance?
+  to the target instance (this is what the sdc-migrate script does, but it
+  also reserves the IP addresses so that they are not lost)?
 
 ## Other
 
