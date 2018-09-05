@@ -22,6 +22,7 @@ state: predraft
     - [Begin phase](#begin-phase)
     - [Sync phase](#sync-phase)
     - [Switch phase](#switch-phase)
+  - [Diagram](#diagram)
   - [User Interfaces](#user-interfaces)
     - [CloudAPI](#cloudapi)
     - [Triton CLI](#triton-cli)
@@ -216,6 +217,10 @@ then restarts the target instance.
    target instance).
 6. Start the target instance (if it was previously running).
 7. Cleanup (remove source zone, or schedule for later removal).
+
+## Diagram
+
+![migration_diagram](design.svg)
 
 ## User Interfaces
 
