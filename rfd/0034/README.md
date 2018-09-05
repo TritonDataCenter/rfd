@@ -1120,13 +1120,6 @@ Add ability to schedule a migration.
   to the target instance (this is what the sdc-migrate script does, but it
   also reserves the IP addresses so that they are not lost)?
 
-## Other
-
-- should migration compress the zfs send data?
-
-- draw up an activity/flow diagram to show what happens (especially in case of
-  failure) in each step of the migration process.
-
 # Caveats
 
 - CPU must to be the same on both source and target CN (e.g. 64-bit Intel
@@ -1149,6 +1142,8 @@ This is mostly a dev notes section to run tests on these items:
 - ensure cannot migrate the same instance at the same time (double migration)
 - ensure other actions to the instance (start, stop, delete, etc...) cannot be
   performed while an instance is migrating
+- ensure changes made to the instance (like alias change, adding a tag) during
+  the sync phase are propagated to the target instance
 - ensure an owner cannot stop (abort) an operator controlled migration
 - for incremental, ensure the instance has not been reprovisioned in the time
   between the initial snapshot send and the incremental snapshot send.
