@@ -1,6 +1,6 @@
 ---
 authors: Jason King <jason.king@joyent.com>, John Levon <john.levon@joyent.com>
-state: draft
+state: publish
 discussion: https://github.com/joyent/rfd/issues/61
 ---
 
