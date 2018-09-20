@@ -403,7 +403,7 @@ version is overwritten we need to record the old version's details for future
 garbage collection.
 
 In the above query the action of *recording the object details
-for future garbage collection* is represented using a (Common Table Expression)[https://www.postgresql.org/docs/10/static/queries-with.html]. This allows all of the
+for future garbage collection* is represented using a [Common Table Expression](https://www.postgresql.org/docs/10/static/queries-with.html). This allows all of the
  actions to be expressed in a single statement and is to show that the actions
 in the above query are all a part of implementing the higher level operation. It
 also facilitates testing in `psql`. It is not expressed this way out of
