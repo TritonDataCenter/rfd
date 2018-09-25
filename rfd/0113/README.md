@@ -213,6 +213,27 @@ import -- e.g. where a new image is imported in to the DC's IMGAPI from an
 external public image repository like <https://images.joyent.com> and
 <https://updates.joyent.com>.
 
+#### x-DC config
+
+To be able to use x-DC image copying, each datacenter must have SAPI
+configuration, which will specify the IMGAPI endpoints that a datacenter is
+allowed to copy into.
+
+The configuration will be a JSON object, which contains a mapping of the dc
+short name or the IMGAPI **admin** url where IMGAPI is listening. Note that the
+short dc name should match what us shown via:
+[CloudAPI ListDatacenters](https://apidocs.joyent.com/cloudapi/#ListDatacenters).
+
+For example, to allow us-east-1 to copy images into both us-sw-1 and us-west-1
+you would run the following SAPI configuration command:
+
+    $ login to us-east-1 headnode
+    $ SAPI_IMGAPI_UUID=$(sdc-sapi /services?name=imgapi | json -Hga uuid)
+    $ echo '{ "metadata": { "IMGAPI_URL_FROM_DATACENTER": { "us-sw-1": "http://10.2.15.22", "us-west-1": "http://10.2.18.8" }}}' | \
+        sapiadm update "$SAPI_IMGAPI_UUID"
+
+Then restart config-agent in the imgapi zone (or wait until imgapi notices the
+config has changed, at which point imgapi will then restart itself).
 
 ## Milestones
 
