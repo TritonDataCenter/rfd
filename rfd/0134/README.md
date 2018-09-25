@@ -1,5 +1,5 @@
 ---
-authors: Lane Seppala <lane.seppala@joyent.com>
+authors: Lane Seppala <lane.seppala@joyent.com>, Karen Etheridge <ether@joyent.com>
 state: publish
 ---
 
@@ -15,15 +15,23 @@ state: publish
 
 # RFD 134 Conch: User Access Control
 
+## Versions
+
+* ? - Initial draft.
+* ? - Initial published version.
+* 2018-09-19 (current) - Updates to reflect database schema changes, and the
+  separation of "system administrator" status from roles held on the "GLOBAL"
+  workspace
+
 ## Introduction
 
 Conch implemented a simple mandatory access control system in which users were
 explicitly assigned access to datacenter rooms.  An authenticated user had read
 access to all assigned datacenter rooms, racks contained in those rooms, and
 device information for devices assigned to slots in the racks.  Write access
-was restricted to assigning device serial numbers to rack slots.  The list of
+was restricted to assigning device serial numbers to rack slots.  ~~The list of
 operations a user may perform is due to increase as new capabilities and types
-of users, such as DC operations staff, are added in the near future.
+of users, such as DC operations staff, are added in the near future.~~
 
 The process of creating users and assigning datacenter access was accomplished
 calling HTTP APIs using special, hard-coded administrator credentials.  There
@@ -87,7 +95,17 @@ the work or wants to limit visibility.
 
 A global workspace will be created by default, which has access to all
 resources in the system. Certain operations, such as modifying device role
-validation parameters, will be restricted to the global workspace.
+validation parameters, will be restricted to ~~the global workspace.~~
+users with an administrator flag set on their user record, which is treated as
+an orthogonal concept to workspace permissions.
+
+Workspace permissions are inherited: if a user holds a certain role on a
+workspace, he also has the same role on all child workspaces, grandchildren
+and so on.  While it is possible to grant a user a *greater* role on a
+descendant workspace, it is not possible to reduce a user's role on a child.
+For example: if the user has 'read/write' permission on a workspace, he may
+not have just 'read-only' permissions on a child.  This restriction is
+enforced by the API, not by the schema.
 
 The Conch User Interface will show only the resources of the currently selected
 workspace.  To view resources assigned to a different workspace, a user will
@@ -131,23 +149,23 @@ be enforced in the Conch API server or using database triggers.
 
 ### Example role levels
 
-Here we describe a short list of roles that will be initially implemented.
+Here we describe a short list of roles that will be ~~initially~~ implemented.
 Additional roles may be added as the scope of Conch changes over time.
 
-* Read-only user. User cannot take any action that would persist the result,
+* Read-only user (`ro`). User cannot take any action that would persist the result,
   with the exception of sending feedback to the Conch development team.
 
-* Integrator user. User can assign devices to slots and perform tasks
+* ~~Integrator~~ Read-write user (`rw`). User can assign devices to slots and perform tasks
   necessary for normal datacenter integration.
 
-* DC Operations user. User can perform all operations necessary for DC
-  operations tasks.
+* ~~DC Operations user. User can perform all operations necessary for DC
+  operations tasks.~~
 
-* Manager user. User can adjust room and rack-level validation parameters (see
+* ~~Manager user. User can adjust room and rack-level validation parameters (see
   [RFD 133](../0133/README.md)), invite users to the workspace, modify users'
-  roles, and create new sub-workspaces with assigned users.
+  roles, and create new sub-workspaces with assigned users.~~
 
-* Administrator user. User can perform all actions provided by the API and UI
+* Administrator user (`admin`). User can perform all actions provided by the API and UI
   in the workspace.
 
 ## Discussion

@@ -1,3 +1,5 @@
+# This file is read via 'erd', available at https://github.com/BurntSushi/erd
+
 # Entities are declared in '[' ... ']'. All attributes after the entity header
 # up until the end of the file (or the next entity declaration) correspond
 # to this entity.
@@ -15,11 +17,7 @@ password_hash
 [user_workspace_role] {bgcolor: "#fbfbdb"}
 +*user_id
 +*workspace_id
-+*role_id
-
-[role] {bgcolor: "#ececfc"}
-id
-name
++*role
 
 [workspace] {bgcolor: "#ececfc"}
 *id
@@ -53,7 +51,6 @@ name
 # 1 or more      +
 user_account 1--* user_workspace_role
 #user_account ?--* workspace {label: "created by"}
-user_workspace_role *--1 role
 workspace 1--* user_workspace_role
 workspace 1--* workspace_datacenter_room
 datacenter_room 1--* workspace_datacenter_room
