@@ -260,11 +260,11 @@ Here are a number of quicker conveniences we can implement for operators
 to handle agent updates, which are a common sore point in Triton updates.
 
 - [TOOLS-1648](https://smartos.org/bugview/TOOLS-1648): 'sdcadm post-setup cmon' should create cmon-agent instances
-  This will enable TOOLS-1631 for 'cmon-agent'. Done.
-- [TOOLS-1651](https://smartos.org/bugview/TOOLS-1651): 'sdcadm create should support agent instances'. Done.
-- [TOOLS-1770](https://smartos.org/bugview/TOOLS-1770): for multiple-server support for 'sdcadm create'. Done.
-- [TOOLS-1771](https://smartos.org/bugview/TOOLS-1771): Add "--skip-latest-symlink" option to `sdcadm experimental update-agents`. Done. 
-- [TOOLS-1772](https://smartos.org/bugview/TOOLS-1772): Add "--just-update-symlink" option to `sdcadm experimental update-agents`. Done.
+  This will enable TOOLS-1631 for 'cmon-agent'. *Done*.
+- [TOOLS-1651](https://smartos.org/bugview/TOOLS-1651): 'sdcadm create should support agent instances'. *Done*.
+- [TOOLS-1770](https://smartos.org/bugview/TOOLS-1770): for multiple-server support for 'sdcadm create'. *Done*.
+- [TOOLS-1771](https://smartos.org/bugview/TOOLS-1771): Add "--skip-latest-symlink" option to `sdcadm experimental update-agents`. *Done*. 
+- [TOOLS-1772](https://smartos.org/bugview/TOOLS-1772): Add "--just-update-symlink" option to `sdcadm experimental update-agents`. *Done*.
 
 
 ## M2: Improved agent instance tracking
@@ -280,7 +280,7 @@ necessarily having to have fully moved off the agentsshar.
   these could be using different images). [SAPI-296](https://smartos.org/bugview/SAPI-296)
 - Include `params.server_uuid` in all SAPI agent instances. [AGENT-1087](https://smartos.org/bugview/AGENT-1087)
 - [SAPI-285](https://smartos.org/bugview/SAPI-285): 'Create Service should not validate presence of provide `image_uuid`
-  into local IMGAPI'. Done.
+  into local IMGAPI'. *Done*.
 - Update SAPI to index and provide search options for instances `image_uuid` and
   `server_uuid`. [SAPI-297](https://smartos.org/bugview/SAPI-297)
 - SAPI `CreateInstance`, `UpgradeInstance` and `DeleteInstance` should work for agent
@@ -309,12 +309,16 @@ The following issues are required:
 
 - sdc-cn-agent: Create independent `refresh_agents` task [AGENT-1079](https://smartos.org/bugview/AGENT-1079). This will require
   some refactoring of current `update_agent` task, in order to do not enter code
-  duplication. Done.
+  duplication. *Done*.
 - sdc-cnapi: Create end-point to call refreshAgents task, which should return the taskId [CNAPI-727](https://smartos.org/bugview/CNAPI-727)
 - sdcadm: Create `sdcadm check server-agents` subcommand, which should be able to go
   through the available information for the given server(s) - or all of them if nothing
   else has been specified - and provide feedback about the status of agents property fo
   these servers. [TRITON-413](https://smartos.org/bugview/TRITON-413)
+  This subcommand should ensure all the existing agent services in SAPI have the required
+  `image_uuid` information associated with the `service.params` member and, otherwise, suggest
+  the user to run `sdcadm experimental update-other` which will add the missing `image_uuid` to
+  every service where it's required.
 - sdcadm: This `sdcadm check server-agents` subcommand could provide an option to fix
   any problems it may detect, waiting for interactive user input or just proceeding
   by itself if the usual `--yes` option is given. [TRITON-414](https://smartos.org/bugview/TRITON-414)
@@ -334,6 +338,7 @@ This section is optional for this RFD.
   SAPI service and instance data.
 - 'sdcadm experimental update-other' steps to ensure have the 'assets' service.
   Note this is related to [RFD 67](../../0067/README.md) and should be implemented.
+  *Done* [TOOLS-1963](https://smartos.org/bugview/TOOLS-1963).
 - Update headnode setup to create the 'assets' service and other missing ones,
   if any. Note this is related to [RFD 67](../../0067/README.md) and should be
   implemented.
@@ -360,7 +365,7 @@ ticketed:
 - cn-agent agent_install should refresh sysinfo for that server.
   TODO: *Is* it already refreshing sysinfo? Note that because we propose to
   deprecate `sysinfo['SDC Agents']`, we don't really need this change.
-  It is refreshing server sysinfo here: https://github.com/joyent/sdc-cn-agent/blob/master/lib/tasks/agent_install.js#L427-L437
+  DONE: It is already refreshing server sysinfo here: https://github.com/joyent/sdc-cn-agent/blob/master/lib/tasks/agent_install.js#L427-L437
   And, indeed, it's not using a WF job for it.
 - sysinfo-refresh shouldn't use a WF job. Is there a benefit to using WF
   for this? Perhaps queueing when refreshing for every server in the DC?
