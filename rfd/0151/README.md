@@ -516,3 +516,28 @@ candidate be asked to provide some missing information?  Should some aspect
 of the candidate's background be explored?  **The collective decision should
 not move to *Hire* as long as there remain unanswered questions preventing
 everyone from reaching the same decision.**
+
+## Assessing the assessment process
+
+It is tautologically challenging to evaluate one's process for assessing
+software engineers:  one lacks data on the candidates that one doesn't hire,
+and therefore can't know which candidates should have been extended offers of
+employment but weren't.  As such, hiring processes can induce a kind of
+ultimate [survivorship bias](https://en.wikipedia.org/wiki/Survivorship_bias)
+in that it is only those who have survived (or instituted) the process who are
+present to assess it -- which can lead to deafening echo chambers of smug
+certitude.  One potential way to assess the assessment process:  **ask
+candidates for their perspective on it.** Candidates are in a position to be
+evaluating many different hiring processes concurrently, and likely have the
+best perspective on the relative merits of different ways of assessing
+software engineers.
+
+Of course, there is peril here too:  while many organizations would likely be
+very interested in a candidate who is bold enough to offer constructive
+criticism on the process being used to assess them *while* it is being used to
+assess them, the candidates themselves might not realize that -- and may
+instead offer bland bromides for fear of offending a potential employer.
+Still, it has been our experience that a thoughtful process will encourage a
+candidate's candor -- and we have found that the processes described here have
+been strengthened by listening carefully to the feedback of candidates.
+
