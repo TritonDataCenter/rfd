@@ -329,6 +329,25 @@ The following issues are required:
   by CNAPI, `pollTask` didn't take such timeout, and the work is done by whatever
   is running the CNAPI client (sdcadm on this case).
 
+### Individual agents install/update improvements
+
+- It has been reported that sometimes installing/updating individual agents, the sdcadm process
+  hangs, w/o reporting any progress or failure information. Most of those cases have been due
+  to previous incorrect agents setup. For example, install processes hanging, packages not really
+  updated ...
+  While `sdcadm check server-agents` will be useful to detect these cases ahead any attempt of
+  running agents updates, it would be desirable to provide better feedback during the installation
+  process and, eventually, ensure we timeout such processes when all but a number of individual
+  agents setup have finished within _acceptable time_ and we still have one or more instances
+  hanging.
+- Similarly, we could definitely bump the number of agents updates we run in parallel from the
+  current default of `5` to something bigger. Starting with `20` or so could be a good idea.
+- Additionally, there's a pretty good idea worth investigating regarding trying to use the
+  NodeJS `{exclusive: false}` option for HTTP servers when we start the different agent
+  services and delegate to the agent setup process the initialization of the new, updated
+  agent before we take the currently running instance down. If there aren't any drawbacks for
+  this approach, this should mean no downtime for agents despite of the upgrade processes
+  going on into the different CNs.
 
 ## M3: Accurate VM instance tracking in SAPI (bonus points)
 
