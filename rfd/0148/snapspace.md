@@ -20,8 +20,8 @@ To meet the requirements above, *refquota*, *quota*, *refreservation*, and *rese
 
 | Dataset         | refquota | quota | refreservation | reservation |
 | --------------- |:--------:|:-----:|:--------------:|:-----------:|
-| zones/<img-uuid> | [1]     |  [2]  | [1]            | [2]         |
-| zones/<img-uuid>/disk<N> | none | none | [3]        | none        |
+| `zones/<img-uuid>` | [1]     |  [2]  | [1]            | [2]         |
+| `zones/<img-uuid>/disk<N>` | none | none | [3]        | none        |
 
 1. This matches the `quota` value described in `vmadm(1M)`. A default value of 1 GiB is used when not specified in the `vmadm` payload.  Note that 1 GiB is overkill, as this space contains small amounts of configuration data and logs.
 2. This is the sum of [1] and all [3]s for this instance.
