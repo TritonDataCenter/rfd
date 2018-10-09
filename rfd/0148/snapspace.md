@@ -23,7 +23,7 @@ To meet the requirements above, *refquota*, *quota*, *refreservation*, and *rese
 | zones/<img-uuid> | [1]     |  [2]  | [1]            | [2]         |
 | zones/<img-uuid>/disk<N> | none | none | [3]        | none        |
 
-1. A size sufficiently large to store configuration and log files.  100 MiB is probably plenty large, but a historical allocation (quota) of 10 GiB may exist.
+1. A size sufficiently large to store configuration and log files.  100 MiB is probably plenty large, but a historical allocation (quota) of 10 GiB exists.  As a practical matter, this value will be set to 1 GiB because it aligns with the VM's quota (see `quota` in `vmadm(1)`), which is expresed in GiB.
 2. This is the sum of [1] and all [3]s for this instance.  The vmadm payload value of *quota* may override this value, but only if it is larger than the calculated value.
 3. The value calculated by the system when *refreservation* is set to *auto*.
 
