@@ -14,7 +14,7 @@ discussion: https://github.com/joyent/rfd/issues/114
     Copyright (c) 2018, Joyent, Inc.
 -->
 
-# Assessing software engineering candidates
+# RFD 151 Assessing Software Engineering Candidates
 
 How does one assess candidates for software engineering positions?  This is
 an age-old question without a formulaic answer: software engineering is

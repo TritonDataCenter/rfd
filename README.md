@@ -139,7 +139,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 93 Modernize TLS Options](./rfd/0093/README.md) |
 | draft | [RFD 94 Global Zone metrics in CMON](./rfd/0094/README.md) |
 | draft | [RFD 95 Seamless Muppet Reconfiguration](./rfd/0095/README.md) |
-| draft | [RFD 96 Named thread API](./rfd/0096/README.md) |
+| publish | [RFD 96 Named thread API](./rfd/0096/README.md) |
 | draft | [RFD 97 Project Hookshot - Improved VLAN Handling](./rfd/0097/README.md) |
 | predraft | [RFD 98 Issue Prioritisation Guidelines](./rfd/0098/README.md) |
 | publish   | [RFD 99 Client Library for Collecting Application Metrics](./rfd/0099/README.md) |
@@ -195,6 +195,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 149 PostgreSQL Schema For Manta buckets](./rfd/0149/README.md) |
 | predraft | [RFD 150 Operationalizing Prometheus](./rfd/0150/README.md) |
 | publish  | [RFD 151 Assessing Software Engineering Candidates](./rfd/0151/README.md) |
+| predraft | [RFD 152 Rack Aware Networking](./rfd/0152/README.md) |
 
 ## Contents of an RFD
 
