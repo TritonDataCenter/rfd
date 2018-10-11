@@ -186,8 +186,8 @@ XXX should deletion protection also protect against truncating disks? This would
 >
 > | Error Code | Description |
 > | ---------- | ----------- |
-> | InvalidArgument | `size` was specified such that it would shrink the disk but `dangerous\_allow\_shrink` was not set to true. |
-> | InsufficientSpace | There is not sufficient `free\_space` (see `GetMachineDisks`) to grow the disk to specified size. |
+> | InvalidArgument | `size` was specified such that it would shrink the disk but `dangerous_allow_shrink` was not set to true. |
+> | InsufficientSpace | There is not sufficient `free_space` (see `GetMachineDisks`) to grow the disk to specified size. |
 
 ### `CreateMachineDisk`
 
@@ -214,7 +214,7 @@ XXX should deletion protection also protect against truncating disks? This would
 >
 > | Error Code | Description |
 > | ---------- | ----------- |
-> | InsufficientSpace | There is not sufficient `free\_space` (see `GetMachineDisks`) to grow the disk to specified size. |
+> | InsufficientSpace | There is not sufficient `free_space` (see `GetMachineDisks`) to grow the disk to specified size. |
 
 ### `DeleteMachineDisk`
 
@@ -246,7 +246,7 @@ XXX should deletion protection also protect against deleting disks? This would b
 
 The platform image will be updated in the following areas:
 
-* `disk.\*.size` will be supported even when the image is specified.
+* `disk.*.size` will be supported even when the image is specified.
 * PCI slot assignments will be sticky so that disk removals do not confuse guests that rely on consistent physical paths to disks.
 
 ### `VM.js`: overriding image size in payload
@@ -269,7 +269,7 @@ The following `vmadm` payload indicates that the `d4c79fef-da87-48e6-8178-f2357b
 }
 ```
 
-### `VM.js': Resize with `update\_disks`
+### `VM.js': Resize with `update_disks`
 
 A disk will be growable with `update_disks` in the payload passed to `vmadm update <uuid>`.  The following grows a disk to 100 GiB.
 
