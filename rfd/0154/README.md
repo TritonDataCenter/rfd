@@ -260,9 +260,9 @@ The following `vmadm` payload indicates that the `d4c79fef-da87-48e6-8178-f2357b
   ...,
   "disks": [
     {
-      "image_uuid": d4c79fef-da87-48e6-8178-f2357b43c293,
+      "image_uuid": "d4c79fef-da87-48e6-8178-f2357b43c293",
       "size": 204800,
-      "boot", true
+      "boot": true
     }
   ],
   ...,
