@@ -32,7 +32,7 @@ Triton will be enhanced to support flexible allocation of space to disks, includ
 
 As quick overview:
 
-* [`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass quantity and size information that overrides the values set in the package.
+* [`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass quantity and size information that overrides the values implied the package.
 * If an image and a size are specified, the disk that results from cloning the image will be resized (up only) to match the requested size.
 * Resizing of bhyve VMs will be allowed.
 * It will be possible to grow disks.
@@ -114,6 +114,7 @@ This will lead to the following `disks` in the `vmadm` payload:
       "boot": true
     },
     {
+      "image": "6397014d-c3dd-e466-be2d-d4a0f4d5b4e6",
       "size": 20480
     }
     {
@@ -155,7 +156,7 @@ This will lead to the following `disks` in the `vmadm` payload:
 
 As an implementation note, the disk's `guid` is the 64-bit random number that ZFS automatically assigns to the ZFS volume's `guid` property during creation. This provides a unique identifier for each disk for future modifications or deletion.
 
-XXX I could be talked out of using guid, but we need some other key.  "disk0", "disk1", etc., would be fine.
+XXX I could be talked out of using guid, but we need some other key. "disk0", "disk1", etc., would be fine.
 
 ### `ResizeMachineDisk`
 
@@ -269,9 +270,9 @@ The following `vmadm` payload indicates that the `d4c79fef-da87-48e6-8178-f2357b
 }
 ```
 
-### `VM.js': Resize with `update_disks`
+### `VM.js`: Resize with `update_disks`
 
-A disk will be growable with `update_disks` in the payload passed to `vmadm update <uuid>`.  The following grows a disk to 100 GiB.
+A disk will be growable with `update_disks` in the payload passed to `vmadm update <uuid>`. The following grows a disk to 100 GiB.
 
 ```
 # vmadm update 926b8205-4b16-6ec4-f9ad-9883a8c84ce1 <<EOF
@@ -303,7 +304,7 @@ EOF
 vmadm: ERROR: Can not shrink disk from 102400 MiB to 20480 MiB
 ```
 
-With `dangerous_allow_shrink` set to true this would be allowed.  `dangerous_allow_shrink` is not added to VM's configuration.
+With `dangerous_allow_shrink` set to true this would be allowed. `dangerous_allow_shrink` is not added to VM's configuration.
 
 ```
 # vmadm update 926b8205-4b16-6ec4-f9ad-9883a8c84ce1 <<EOF
@@ -324,7 +325,7 @@ XXX We may want to limit this to one disk update per call to `vmadm update` so t
 
 ### `VM.js`: update by ZFS volume `guid`
 
-XXX tentative.  If we just identify disks by "disk0", "disk1", etc., this isn't needed.
+XXX tentative. If we just identify disks by "disk0", "disk1", etc., this isn't needed.
 
 To better support CloudAPI's use of the `guid`, `VM.js` and `vmadm` will support selection of the disk by `guid` as well as path.
 
@@ -345,7 +346,7 @@ Successfuly updated 926b8205-4b16-6ec4-f9ad-9883a8c84ce1
 
 ### bhyve brand: sticky PCI functions for disks
 
-To ensure that removal of a disk does not cause other disks to appear at a different physical path on subsequent boots, the PCI slot and function will be sticky.  The numbering will be based on *N* of `/dev/zvol/rdsk/zones/<uuid>/disk`N`.
+To ensure that removal of a disk does not cause other disks to appear at a different physical path on subsequent boots, the PCI slot and function will be sticky. The numbering will be based on *N* of `/dev/zvol/rdsk/zones/<uuid>/disk`N`.
 
 Prior to this change, the boot and data disks were assigned to slot `4:0` and `4:1`, respectively. This comes by happenstance from the order that they appear in the zone configuration. The new allocation scheme will ensure that existing disks remain at the same PCI functions as the historical implementation while allowing disks to remain at their paths in the face of removal. For example:
 
@@ -362,6 +363,77 @@ If `disk1` is removed, `lspci` will report:
 ```
 00:04.0 SCSI storage controller: Red Hat, Inc Virtio block device
 00:04.2 SCSI storage controller: Red Hat, Inc Virtio block device
+```
+
+### Keeping track of space
+
+The amount of space that a VM may use for its disks and snapshots of those disks is the sum of `image.size` and `package.disk`. At instance creation time, that sum will be called `VM.disk`.
+
+For the sake of clarity in the following subsections, some variables are defined.
+
+| Variable    | Sum of values returned by                             |
+| ----------- | ----------------------------------------------------- |
+| `DISK_SIZE` | `zfs list -Hpr -t volume -o volsize zones/$UUID`      |
+| `DISK_RESV` | `zfs list -Hpr -t volume -o refreserv zones/$UUID`    |
+| `DISK_SNAP` | `zfs list -Hpr -t volume -o usedsnap zones/$UUID`     |
+
+The value of `DISK_SNAP` may change as writes occur to a disk. `vmadmd` should make no effort to accurately track this value. Future interfaces should be designed such that this value is queried infrequently - such as only when trying to determine the maximum amount of space that may be allocated to a new disk. No interface should be designed such that this value is retrieved for every instance as a default behavior.
+
+As described in [RFD 148's snapspace](../0148/snapspace.md), ZFS volumes require space for metadata storage. This space is overhead that should not be charged against `VM.disk`.
+
+#### How much space can be allocated to a new or grown disk?
+
+The amount of new disk space that can be allocated is
+
+```
+allocatable = VM.disk - DISK_SIZE - DISK_SNAP
+```
+
+#### Calculation of ZFS space
+
+As described in [RFD 148's snapspace](../0148/snapspace.md), the zone's top-level ZFS `quota` and `reservation` properties are set to matching values. These ensure that the VM has acccess to all of the space that is allocated to it without being able to consume more space.
+
+The ZFS `quota` and `reservation` properties on the zone's top-level dataset (`zones/<UUID>`) are set to the sum of:
+
+* the VM's `quota` property (see vmadm(1))
+* the amount of disk space allocated to the VM by `package.disk` and `image.size`
+* the amount of space required by ZFS to store the metadata for all of the VM's disks.
+
+In pseudocode:
+
+```
+zfs.reservation = zfs.quota = VM.quota + VM.disk + DISK_RESV - DISK_SIZE
+```
+
+The `zfs.quota` and `zfs.reservation` values need to be recalculated in the following circumstances:
+
+* `VM.disk` changes, such as when a VM is asscociated with a different package that has different value for `package.disk`
+* A disk is resized
+* A disk is added
+* A disk is removed
+
+As a reminder, `VM.quota` mirrors `zfs.refquota`, not `zfs.quota`.
+
+#### Relation to snapshots
+
+Creation or removal of snapshots will be unaffected by this, aside from the fact that it will be possible to allocate space to a VM that can be reserved for snapshots by not allocating it to disks.
+
+As described in RFD 148, a new snapshot requires enough space to store a copy of every allocated block that is not already referenced by another snapshot. If the `zfs.quota` is not sufficient to allow a new snapshot, there are several choices available which may offer varying degrees of relief.
+
+* Remove existing snapshots
+* Remove unused disks
+* Resize the VM to a package that has a larger `package.disk`
+
+Simply removing data in an existing disk will not help. This could change if the guest and host disk drivers supported [TRIM](https://en.wikipedia.org/wiki/Trim_(computing)) or similar and this led to ZFS volumes freeing the associated blocks.
+
+#### Relation to VM resize
+
+While this RFD is not specifically concerned with resizing of bhyve VMs, it does draw attention to why enabling this feature would be useful.
+
+While the general rule is that a VM may be resized only to a larger package, that does not necessarily have to be the case. If some amount of `VM.disk` is unused, that space could be taken away from the VM via a VM resize. A VM should be considered a candidate for resize if:
+
+```
+DISK_SIZE + DISK_SNAP <= image.size + newpackage.disk
 ```
 
 ### Platform limitations
@@ -386,4 +458,4 @@ There are multiple parts to the solution:
 
 ### Windows Guests
 
-[A procedure exists](https://social.technet.microsoft.com/wiki/contents/articles/38036.windows-server-2016-expand-virtual-machine-hard-disk-extend-the-operating-system-drive.aspx) to grow the C drive via the GUI. Surely the same can exist for powershell. That powershell script needs to be included in our images.
+[A procedure exists](https://social.technet.microsoft.com/wiki/contents/articles/38036.windows-server-2016-expand-virtual-machine-hard-disk-extend-the-operating-system-drive.aspx) to grow the `C` drive via the GUI. Surely the same can exist for powershell. That powershell script needs to be included in our images.
