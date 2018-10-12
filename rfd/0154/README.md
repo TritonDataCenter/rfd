@@ -35,12 +35,19 @@ This document includes a proposal for how to allow a VM to flexibly allocate spa
     + [Keeping track of space](#keeping-track-of-space)
       - [How much space can be allocated to a new or grown disk?](#how-much-space-can-be-allocated-to-a-new-or-grown-disk)
       - [Calculation of ZFS space](#calculation-of-zfs-space)
-      - [Relation to snapshots](#relation-to-snapshots)
-      - [Relation to VM resize](#relation-to-vm-resize)
     + [Platform limitations](#platform-limitations)
   * [Guest Support for Resize](#guest-support-for-resize)
     + [Guests that use cloud-init](#guests-that-use-cloud-init)
     + [Windows Guests](#windows-guests)
+- [Other considerations](#other-considerations)
+  * [Keep images small to minimize gratis space](#keep-images-small-to-minimize-gratis-space)
+    + [XXX how is this prevented?](#xxx-how-is-this-prevented)
+  * [Relation to snapshots](#relation-to-snapshots)
+  * [Relation to VM resize](#relation-to-vm-resize)
+- [Development Phases](#development-phases)
+  * [Phase 1: Platform](#phase-1-platform)
+  * [Phase 2: CloudAPI](#phase-2-cloudapi)
+  * [Phase 3: Portal Updates](#phase-3-portal-updates)
 
 <!-- tocstop -->
 
@@ -58,6 +65,7 @@ Triton will be enhanced to support flexible allocation of space to disks, includ
 
 As quick overview:
 
+* The amount of space that may be consumed by a VM's disks and snapshots of those disks is approximately the sum of `image.size` and `package.disk`, regardless of the quantity or size of disks.
 * [`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass quantity and size information that overrides the values implied the package.
 * If an image and a size are specified, the disk that results from cloning the image will be resized (up only) to match the requested size.
 * Resizing of bhyve VMs will be allowed.
@@ -112,7 +120,7 @@ This new functionality will be added with CloudAPI version 9.x.y
 > | image | String | The image UUID used when provisioning the root disk |
 > | disks | Array[Object] | (v9.x.y+) One disk object per disk in the VM. See `GetMachineDisks` for details. |
 
-Suppose the example input above is used with this package:
+Suppose the example input above is used with this package for the boot disk:
 
 ```json
 {
@@ -440,28 +448,6 @@ The `zfs.quota` and `zfs.reservation` values need to be recalculated in the foll
 
 As a reminder, `VM.quota` mirrors `zfs.refquota`, not `zfs.quota`.
 
-#### Relation to snapshots
-
-Creation or removal of snapshots will be unaffected by this, aside from the fact that it will be possible to allocate space to a VM that can be reserved for snapshots by not allocating it to disks.
-
-As described in RFD 148, a new snapshot requires enough space to store a copy of every allocated block that is not already referenced by another snapshot. If the `zfs.quota` is not sufficient to allow a new snapshot, there are several choices available which may offer varying degrees of relief.
-
-* Remove existing snapshots
-* Remove unused disks
-* Resize the VM to a package that has a larger `package.disk`
-
-Simply removing data in an existing disk will not help. This could change if the guest and host disk drivers supported [TRIM](https://en.wikipedia.org/wiki/Trim_(computing)) or similar and this led to ZFS volumes freeing the associated blocks.
-
-#### Relation to VM resize
-
-While this RFD is not specifically concerned with resizing of bhyve VMs, it does draw attention to why enabling this feature would be useful.
-
-While the general rule is that a VM may be resized only to a larger package, that does not necessarily have to be the case. If some amount of `VM.disk` is unused, that space could be taken away from the VM via a VM resize. A VM should be considered a candidate for resize if:
-
-```
-DISK_SIZE + DISK_SNAP <= image.size + newpackage.disk
-```
-
 ### Platform limitations
 
 Bhyve does not support hot-add or remove of devices. As such, the VM must be down when disks are added or removed.
@@ -486,5 +472,68 @@ There are multiple parts to the solution:
 
 [A procedure exists](https://social.technet.microsoft.com/wiki/contents/articles/38036.windows-server-2016-expand-virtual-machine-hard-disk-extend-the-operating-system-drive.aspx) to grow the `C` drive via the GUI. Surely the same can exist for powershell. That powershell script needs to be included in our images.
 
+# Other considerations
 
+There are various other considerations that are relevant to the feature described above. These considerations are about how this feature interacts with other Triton features and operator behavior.
+
+## Keep images small to minimize gratis space
+
+As mentioned above, the disk space consumed by a VM is based on the size of the image and the `disk` size specified in the package. Because billing is attached to a package, two instances that use different images may get a different amount of disk space for the same price.
+
+It is recommended that images are the same size or otherwise limited in their association with packages so that billing abuse does not happen.
+
+### XXX how is this prevented?
+
+1. Create an instance from a 10 GiB image using a 1 TiB package. Make the root disk 1 TiB.
+2. Create an image from that instance. This new `instance.size` is 1 TiB.
+3. Discard the instance created in step 1.
+4. Create a new instance from the image created in step 2 using a 10 GiB package.
+
+The bad guy paid for a few minutes of a 1 TiB package and now has the same amount of space while paying for a 10 GiB package.
+
+It feels like original `image.size` needs to be preserved or the package needs to gain the ability to specify the maximum `image.size`.
+
+## Relation to snapshots
+
+Creation or removal of snapshots will be unaffected by this, aside from the fact that it will be possible to allocate space to a VM that can be reserved for snapshots by not allocating it to disks.
+
+As described in RFD 148, a new snapshot requires enough space to store a copy of every allocated block that is not already referenced by another snapshot. If the `zfs.quota` is not sufficient to allow a new snapshot, there are several choices available which may offer varying degrees of relief.
+
+* Remove existing snapshots
+* Remove unused disks
+* Resize the VM to a package that has a larger `package.disk`
+
+Simply removing data in an existing disk will not help. This could change if the guest and host disk drivers supported [TRIM](https://en.wikipedia.org/wiki/Trim_(computing)) or similar and this led to ZFS volumes freeing the associated blocks.
+
+## Relation to VM resize
+
+While this RFD is not specifically concerned with resizing of bhyve VMs, it does draw attention to why enabling this feature would be useful.
+
+The general rule is that a VM may be resized only to a larger package. That does not necessarily have to be the case. If some amount of `VM.disk` is unused, that space could be taken away from the VM via a VM resize. A VM should be considered a candidate for resize if:
+
+```
+DISK_SIZE + DISK_SNAP <= image.size + newpackage.disk
+```
+
+# Development Phases
+
+The delivery of this functionality can be broken in the the following phases.
+
+## Phase 1: Platform
+
+In this phase, the changes required to `VM.js`, `vminfod`, and the bhyve brand are implemented. This ensures that CNs that are rebooted to newer PIs will be ready to use these features as soon as the Triton bits are ready. It will also allow operators to easily resize bhyve VMs.
+
+As part of this phase, at least one guest image that will automatically resize the root disk. Alternatively, a procedure may be documented to accomplish the same.
+
+## Phase 2: CloudAPI
+
+In this phase, CloudAPI will be updated to perform all of the operations described.
+
+## Phase 3: Portal Updates
+
+Both the operator poral and the user portal will require updates to be able to
+
+* Specify disk quantity and sizes during VM creation
+* Add disks
+* Remove disks
 
