@@ -1,9 +1,8 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+154%22
+discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+154%22'
 ---
-
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public
     License, v. 2.0. If a copy of the MPL was not distributed with this
@@ -17,6 +16,33 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+154%22
 # RFD 154 Flexible disk space for bhyve VMs
 
 This document includes a proposal for how to allow a VM to flexibly allocate space to any of 1 or more virtual disks, snapshots of those disks, and/or free space that may be put to use at a future time.
+
+<!-- toc -->
+
+- [Problem statement](#problem-statement)
+- [Solution](#solution)
+  * [CloudAPI](#cloudapi)
+    + [`CreateMachine`](#createmachine)
+    + [`GetMachineDisks`](#getmachinedisks)
+    + [`ResizeMachineDisk`](#resizemachinedisk)
+    + [`CreateMachineDisk`](#createmachinedisk)
+    + [`DeleteMachineDisk`](#deletemachinedisk)
+  * [Platform Image changes](#platform-image-changes)
+    + [`VM.js`: overriding image size in payload](#vmjs-overriding-image-size-in-payload)
+    + [`VM.js`: Resize with `update_disks`](#vmjs-resize-with-update_disks)
+    + [`VM.js`: update by ZFS volume `guid`](#vmjs-update-by-zfs-volume-guid)
+    + [bhyve brand: sticky PCI functions for disks](#bhyve-brand-sticky-pci-functions-for-disks)
+    + [Keeping track of space](#keeping-track-of-space)
+      - [How much space can be allocated to a new or grown disk?](#how-much-space-can-be-allocated-to-a-new-or-grown-disk)
+      - [Calculation of ZFS space](#calculation-of-zfs-space)
+      - [Relation to snapshots](#relation-to-snapshots)
+      - [Relation to VM resize](#relation-to-vm-resize)
+    + [Platform limitations](#platform-limitations)
+  * [Guest Support for Resize](#guest-support-for-resize)
+    + [Guests that use cloud-init](#guests-that-use-cloud-init)
+    + [Windows Guests](#windows-guests)
+
+<!-- tocstop -->
 
 # Problem statement
 
@@ -459,3 +485,6 @@ There are multiple parts to the solution:
 ### Windows Guests
 
 [A procedure exists](https://social.technet.microsoft.com/wiki/contents/articles/38036.windows-server-2016-expand-virtual-machine-hard-disk-extend-the-operating-system-drive.aspx) to grow the `C` drive via the GUI. Surely the same can exist for powershell. That powershell script needs to be included in our images.
+
+
+
