@@ -22,22 +22,26 @@ Currently the Triton datacenter assumes many of it's common and/or required
 networks are on the same L2 broadcast domain (e.g. `admin`, `manta`,
 `external`).  In an effort to increase bandwidth availability, shrink fault
 domains, and reduce centralization in the datacenter network we will be moving
-to a Clos topology.  Once this work is complete each rack in a triton
+to a Clos topology.  Once this work is complete each rack in a Triton
 datacenter will be on it's own L3 network.
 
 ## Approach
 With the introduction of [RFD 43 Rack Aware Network
 Pools](https://github.com/joyent/rfd/tree/master/rfd/0043), NAPI networks
 grouped into pools can have different nictags.  This then allows a NIC to be
-provisioned by providing NAPI with the network pool uuid and the nictag as
-parameters.  NAPI will select the correct network that matches (among other
-things) the NIC tag specified.  
+provisioned by providing NAPI with a network pool UUID and a nictag as
+parameters.  NAPI will select the correct network from the pool that matches
+(among other things) the NIC tag specified.  
 
 In a "Rack Aware Networking" environment each CN will have its NICs tagged with
 the nictag that associates the rack the CN is in with the appropriate NAPI
 network.  Post RFD 117 these networks and NICs will have traits which can be
 leveraged to allow for identification of network type (e.g. admin, manta, etc).
-Below is an example for the `manta` network:
+For now we will be leveraging the format of the nictag to determine which
+reserved NAPI network a given NIC belongs to.  The namespace of this format is:
+`<network name>_rack_<rack id>`.  Where `<rack id>` can be any combination
+of alphanumeric characters and "-" or "_".   Below is an example for the
+`manta` network:
 
 MANTA network pool:
 ```
@@ -106,24 +110,20 @@ L3: 192.168.100.0/24                 L3: 192.168.222.0/24
 +------------------------------+     +------------------------------+ 
 | CN1 NIC_TAG: "MANTA_RACK_100"|     | CN3 NIC_TAG: "MANTA_RACK_222"| 
 +------------------------------+     +------------------------------+ 
-                                                                      
 ```    
 
 
 ### Admin Networks                                                     
                                                                       
-The "admin" network represents a special case.  The CN uses iPXE and DHCP to
-boot. Unfortuantely DHCPDISCOVER packets are broadcasted (255.255.255.255) and
-routers will not forward broadcast packets.  Therefore, in the case where CNs
-are booted from within a rack separate from the AZ's HN, a DHCP relay is
-required.  To satisify this requirement we plan to leverage DHCP option 82 (See
+The "admin" network represents a special case.  Compute Nodes use iPXE and DHCP
+to boot.  Unfortunately DHCPDISCOVER packets are broadcasted (255.255.255.255)
+and routers will not forward broadcast packets.  Therefore, in the case where
+CNs are booted from within a rack separate from the AZ's HN, a DHCP relay is
+required.  To satisfy this requirement we plan to leverage DHCP option 82 (See
 RFC 3046).  This option provides the ability to configure a "circuit id".  
 
-This circuit id will be configured to specify a rack identifier in some form
-which can be associated with either an RFD 117 network trait or a NAPI network
-nictag(open question).  This rack identifer will be used by the booter zone to
-determine which NAPI network in the admin network pool that the DHCP server
-(sdc-booter) should provision a NIC on.  
+This circuit id will be configured to specify a rack identifier (noted above) 
+which can be associated with NAPI network nictag.  The nictag will then be passed as a parameter to NAPI along with the admin network pool UUID to provision a NIC for the booting CN.
 
 
 ```                                                                   
@@ -163,12 +163,10 @@ the common module.
 ### Triton Common Module
 
 Part of this work includes the creation of a module which will provide common
-functions for all triton and manta services.  Initially it should provide the
-following functionality.  (Note: RFD 117 will outline which networks will be
-internally reserved by the triton infrastructure, for now the assumption is
-that these will include at a minimum 'admin', 'manta', and 'external')
+functions for all Triton and Manta services.  Initially it should provide the
+following functionality:  
 
-* Given a NAPI network pool, network, or NIC object (or names or uuid's there
+* Given a NAPI network pool, network, or NIC object (or names or uuids there
 of), determine which reserved network it is associated with.
 * Given a CN's UUID or sysinfo find the IP and mac address of a given reserved
 network (e.g. admin IP), or determine if a given NIC is attached to a reserved
@@ -177,14 +175,18 @@ network, and if so which one.
 network (e.g. admin IP), or determine if a given NIC is attached to a reserved
 network, and if so which one.
 
+(Note: RFD 117 will outline which networks will be internally reserved by the
+ Triton infrastructure, for now the assumption is that these will include at a
+ minimum 'admin', 'manta', and 'external')
+
 
 This will provide us with the ability to alter the mechanism for determining
 the NICs and IPs of various networks in a central location without requiring
-subsequent modifications to all affected triton and manta services, agents, and
+subsequent modifications to all affected Triton and Manta services, agents, and
 tools.
 
-This module can later be extended to provide other unrelated triton and manta
-common functionality.
+This module can later be extended to provide other Triton and Manta common
+functionality unrelated to Rack Aware Networking.
 
 
 ## Assumptions and Configuration Considerations
