@@ -26,6 +26,7 @@ state: predraft
   - [User Interfaces](#user-interfaces)
     - [CloudAPI](#cloudapi)
     - [Triton CLI](#triton-cli)
+    - [AdminUI](#adminui)
     - [Portal](#portal)
 - [Persistent storage](#persistent-storage)
 - [Images](#images)
@@ -62,7 +63,7 @@ state: predraft
   - [M1: Initial setup](#m1-initial-setup)
   - [M2: Brand specific migration](#m2-brand-specific-migration)
   - [M3: Update DAPI (CN provisioning/reservation)](#m3-update-dapi-cn-provisioningreservation)
-  - [M4: Update CNAPI](#m4-update-cnapi)
+  - [M4: Update VMAPI](#m4-update-vmapi)
   - [M5: Create sdc-migrate tooling](#m5-create-sdc-migrate-tooling)
   - [M6: End user migration](#m6-end-user-migration)
   - [M7: Migration estimate](#m7-migration-estimate)
@@ -70,7 +71,6 @@ state: predraft
 - [Open Questions and TODOs](#open-questions-and-todos)
   - [Backups](#backups)
   - [Networking](#networking)
-  - [Other](#other)
 - [Caveats](#caveats)
 - [Tests](#tests)
 - [References](#references)
@@ -164,7 +164,7 @@ phase, or do we not care if/can the user will be billed for this?
 This phase starts the migration process, creates a new migration database entry
 and provisions the target instance.
 
-1. CNAPI /servers/:server_uuid/vms/:uuid/migrate endpoint will start the
+1. VMAPI /vms/:uuid/migrate POST endpoint will start the
    migration process for this (source) instance by acquiring a ticket/lock on
    the instance, creating the migrations bucket entry, and then changing the
    instance state to "migrating".
@@ -186,8 +186,9 @@ datasets in the target instance (without stopping the instance).
 2. The workflow will make a CNAPI migration-sync request which will run a
    cn-agent task on the source and target CN. These tasks will set up a
    communication channel (TCP socket) on the admin network which the two CNs can
-   use to perform the migration operation. The workflow will then watch the
-   migration for success/failure.
+   use to perform the migration operation. The workflow will then watch (by
+   connecting to the cn-agent TCP socket) the migration for progress and
+   success/failure.
 3. If this is the first sync, send a full filesystem snapshot to the target CN.
    This will create a zfs snapshot and then zfs send that dataset to the waiting
    zfs receive on the target CN. Else, if this is not the first sync, send an
@@ -231,37 +232,79 @@ The following endpoints will be available for customers:
 - ListMigrations (POST /:login/migrations
   Return a list of migrations (completed, running, scheduled, failed, ...).
 
+  This should call VMAPI (GET /migrations?owner_uuid=:owner), which will return
+  a JSON array of migration objects.
+
+- MigrateMachineEstimate (GET /:login/machines/:id/migrate?action=estimate)
+  Estimates how long it will take to complete a migration of this instance.
+
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=estimate),
+  which will return a migration estimate JSON object, e.g.
+
+  {
+    total_seconds: 123049372,
+    downtime_seconds: 300,
+    size_bytes: 43234995
+  }
+
 - MigrateMachine (POST /:login/machines/migrate?action=automatic&affinity=AFF)
   Starts a full "automatic" migration. Affinity rules can be added - see the
   [provisioning](#provisining) section for details.
 
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=full&affinity=AFF),
+  which on success will return a 202 code and a JSON object containing the
+  job uuid.
+
 - AbortMigrateMachine (POST /:login/machines/migrate?action=abort)
   Aborts the current migration of this instance. See
   [aborting a migration](#aborting-a-migration).
+
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=abort).
 
 - PauseMigrateMachine (POST /:login/machines/migrate?action=pause)
   Pauses (stops) the current migration of this instance. See
   [pausing a migration](#pausing-a-migration). You can only pause a migration
   that is currently in the "sync" phase.
 
-- BeginMigrateMachine (POST /:login/machines/migrate?action=begin&affinity=AFF)
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=pause).
+
+- BeginMigrateMachine (POST /:login/machines/migrate?action=start&affinity=AFF)
   Starts an on-demand migration (i.e. just the "begin" phase) for an instance.
   Affinity rules can be added - see the [provisioning](#provisining) section for
   details.
 
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=start&affinity=AFF),
+  which on success will return a 202 code and a JSON object containing the
+  job uuid.
+
 - SyncMigrateMachine (POST /:login/machines/migrate?action=sync)
   Runs the "sync" phase for an "on-demand" instance migration.
 
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=sync),
+  which on success will return a 202 code and a JSON object containing the
+  job uuid.
+
 - SwitchMigrateMachine (POST /:login/machines/migrate?action=switch)
   Runs the final "switch" phase for an "on-demand" instance migration.
+
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=switch),
+  which on success will return a 202 code and a JSON object containing the
+  job uuid.
 
 - WatchMigrateMachine (POST /:login/machines/migrate?action=watch)
   Will output events for a migration. There can be multiple watchers of a
   migration. See migration [progress events](#progress-events) for details.
 
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=watch),
+  which on success will return a 200 code and a stream of JSON newline separated
+  progress objects.
+
 - ScheduleMigrateMachine (POST /:login/machines/migrate?action=schedule&affinity=AFF)
   Schedule a migration of this instance. Affinity rules can be added - see the
   [provisioning](#provisining) section for details.
+
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=schedule&affinity=AFF),
+  which on success will return a 200 code and a JSON migration object.
 
 ### Triton CLI
 
@@ -439,6 +482,10 @@ Scheduling example:
       triton instance migrate --pause|--abort 4a364ec6
     Initial scheduling complete - migration will commence at $date.
 
+### AdminUI
+
+TODO: I'm not sure who looks after this?
+
 ### Portal
 
 TODO: I'm not sure who looks after this?
@@ -483,8 +530,10 @@ operations:
         //  "paused"     - the "begin" phase (and possibly "sync" phase) has
         //                 been run - now waiting for a call to "sync"
         //                 or the final call to "switch"
-        //  "failed"     - migration operation could not complete, see "error"
+        //  "aborting"   - attempting to abort the migration
+        //  "pausing"    - attempting to pause the migration
         //  "aborted"    - user or operator aborted the migration attempt
+        //  "failed"     - migration operation could not complete, see "error"
         //  "successful" - migration was successfully completed, you can use the
         //                 workflow job_uuid to find when the migration started
         //                 and how long it took.
@@ -518,8 +567,9 @@ operations:
       job_uuid: "UUID"
         // The workflow job uuid (if it was started).
 
+      previous_jobs: "array of job uuids"
+
       phase: "string"
-        // XXX This could come from the workflow job?
         // The workflow stage that the migration is currently running, one of:
         //  "begin"            - just starting the migration operation
         //  "sync"             - updating filesystems using the "sync" phase
@@ -528,6 +578,9 @@ operations:
 
       num_sync_phases: "number"
         // The number of successful "sync" phases this migration has performed.
+
+      last_sync_size: "number"
+        // The size (in bytes) of the last successful sync.
 
       progress_history: "array of completed JSON progress events"
         // Each time a migration phase is completed (or when a major migration
@@ -801,8 +854,8 @@ including the re-instantiation of NICs (in the case they were deleted from the
 source instance - see the [network provisioning](#network-nics) notes) and
 returning to the source instance to it's previous running/stopped state.
 
-An abort will cause CNAPI to issue stop/abort calls to any ongoing migration
-workflow jobs and cn-agent migration tasks, then CNAPI will rollback/cleanup the
+An abort will cause VMAPI to issue stop/abort calls to any ongoing migration
+workflow jobs and cn-agent migration tasks, then VMAPI will rollback/cleanup the
 migration state and revert the source instance to it's former state (if it was
 changed).
 
@@ -823,16 +876,18 @@ the "automatic" mode.
 For each migration, we need the ability to show the current state and progress
 to the end user.
 
-CNAPI will provide a migration progress endpoint that can be used to monitor
+VMAPI will provide a migration progress endpoint that can be used to monitor
 the progress of the migration.
 
-CNAPI will connect with the cn-agent task on the source instance (using a TCP/IP
+VMAPI will connect with the cn-agent task on the source instance (using a TCP/IP
 socket) to retrieve status, filesystem transfer rates and overall progress (e.g.
 from zfs send/receive).
 
+TODO: Detail the events for this communication.
+
 ## Progress events
 
-The CNAPI progress endpoint will respond with a stream of events that
+The VMAPI progress endpoint will respond with a stream of events that
 describe all the completed migration phases and also the current state of the
 migration. Whilst connected to the endpoint, a current state event will be
 sent back every N seconds (e.g. every 2 seconds).
@@ -943,7 +998,6 @@ Needs to communicates with:
 
 - CNAPI
 - VMAPI
-- Moray
 
 Note: This service could later be expanded to handle complete CN evacuations,
 but that is outside the scope of this RFD.
@@ -1014,17 +1068,18 @@ target instance.
   - install image(s)
   - setup support infrastructure (e.g. Fabric NAT)
 
-## M4: Update CNAPI
+## M4: Update VMAPI
 
-CNAPI will trigger and respond to migration calls, using workflow and cn-agent
+VMAPI will trigger and respond to migration calls, using workflow and cn-agent
 tasks to control and monitor the migration.
 
-- add CNAPI API migration endpoint
+- add VMAPI API migration endpoint
 - add workflow tasks for control of the migration states
+- add CNAPI APIs to feed into cn-agent tasks
 - create cn-agent tasks to initiate sending/receiving
 - other actions on source/target instance cannot occur during a migration
 - instance cleanup
-- update sdc-clients to add CNAPI migration API wrappers
+- update sdc-clients to add VMAPI migration API wrappers
 
 ## M5: Create sdc-migrate tooling
 
@@ -1091,7 +1146,7 @@ Add ability to schedule a migration.
 
 - create the migration scheduling zone
 - write queue handling for migrations
-- connect with CNAPI for performing migrations
+- connect with VMAPI for performing migrations
 - update tooling (sdc-migrate, node-triton and portal) to support migration
   scheduling
 
