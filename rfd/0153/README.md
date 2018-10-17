@@ -1,7 +1,7 @@
 ---
 authors: Kelly McLaughlin <kelly.mclaughlin@joyent.com>
-state: predraft
-discussion:
+state: draft
+discussion: https://github.com/joyent/rfd/issues/117
 ---
 
 <!--
@@ -147,19 +147,80 @@ storage and while it doe not have transaction support it does allow for atomic
 updates through its `WriteBatch` interface that should be suitable.
 
 Another aspect of this proposal involves determining how to rebalance the vnodes
-when pnodes are added or removed from the
-system. The [`node-fash`](https://github.com/joyent/node-fash) library has a
+when pnodes are added or removed from the system. The [`node-fash`](https://github.com/joyent/node-fash) library has a
 `remapVnode` function, but the function requires a set of vnodes to assign to a
 new pnode be given as input. It lacks a balancing function to redistribute
 vnodes when the set of pnodes changes. This function would need to be
 implemented as part of the work for this proposal. Ideally such a function would
 provide a way to give weight to certain pnodes to reflect the reality that the
-capability of all pnodes may not be the same. This should be relatively
-straightforward. In manta we need not be concerned with overlapping vnode
-ranges or other problems that can occur when trying to distribute vnodes among
-a set of pnodes because vnode ranges are not used for data replication. For
-manta vnodes are simply an way to organize data to facilitate pnode topology
-changes.
+capability of all pnodes may not be the same. In manta we need not be concerned
+with overlapping vnode ranges or other problems that can occur when trying to
+distribute vnodes among a set of pnodes because vnode ranges are not used for
+data replication. For manta vnodes are simply an way to organize data to
+facilitate pnode topology changes. The ratio of a pnodes' weight to the sum of
+all weights multiplied by the total number of vnodes is probably sufficient for
+this. Any remainder vnodes are assigned by ordering the pnodes for assignment in
+descending order of the fractional portion of the calculated vnode
+distribution. To illustrate consider the case of a ring with eight vnodes split
+evenly between two pnodes with an equal weighting of `1`.
+
+```
+Pnode 1: Vnodes [1, 3, 5, 7]
+Pnode 2: Vnodes [2, 4, 6, 8]
+```
+
+If we add a third pnode with a weight of `1.5` then the vnode distribution becomes:
+
+```
+Pnode 1: 2.29 vnodes
+Pnode 2: 2.29 vnodes
+Pnode 3: 3.43 vnodes
+```
+
+Let's also assume we want to minimize data transfer and have each existing pnode
+give up vnodes in a round-robin fashion. After redistributing vnodes based on
+the integer portion of the distribution amount the vnode allocation might look
+like this:
+
+```
+Pnode 1: Vnodes [1, 3]
+Pnode 2: Vnodes [2, 4, 6]
+Pnode 3: Vnodes [5, 7, 8]
+```
+
+The integer portions of our vnode distribution numbers only accounts for seven
+of the eight total vnodes. To allocate the final vnode (or any vnodes remaining
+after each pnode is assigned its full complement of vnodes based on the integer
+portion of its distribution amount) we sort the pnodes by the fractional portion
+of the vnode distribution numbers and assign any remaining vnodes based on this
+ordering. Here is that ordering:
+
+```
+Pnode 3: 0.43
+Pnode 1: 0.29
+Pnode 2: 0.29
+```
+
+The reasoning behind this is that the pnode whose fractional portion is closest
+to one is most capable of handling more vnodes based on the provided
+weights. Pnodes sharing the same fractional vnode distribution would be further
+ordered based on the integer portion of the vnode distribution. Again with the
+idea that more heavily weighted pnodes are more ready to accommodate extra
+vnodes.
+
+So the final vnode allocation would look as follows:
+
+```
+Pnode 1: Vnodes [1, 3]
+Pnode 2: Vnodes [2, 4]
+Pnode 3: Vnodes [5, 6, 7, 8]
+```
+
+Again, the actual vnodes numbers assigned to a particular pnode are not
+important and so the fact that the new pnode has the entire vnode range from
+`[5-8]` has no negative impact on the balance of the system. This actually works
+out to be an advantage because an algorithm to ensure the vnode ranges do not
+overlap is much more complicated.
 
 In summary, the proposed changes to data placement and routing that are part of
 this proposal are as follows:
@@ -509,7 +570,97 @@ time to implement it before it becomes a necessity.
 
 ## Process Automation
 
-This section will address the final stated goal of minimizing the chances for
-human error and will cover automating the process of adding and removing
-shards. This section is still being written, but will be expanded in the near
-future.
+This section addresses the final stated goal of minimizing the chances for human
+error by automating the process of adding and removing shards as much as
+possible. The steps outlined in the **Operations** section above for adding new
+pnodes to or removing existing pnodes from the system could be executed manually
+by an operator, but could also largely be automated. The primary concern is
+ensuring the automation does adequate validation, executes safely, and can
+handle failures and provide a means for rollback or recovery when things go
+wrong.
+
+The first step any automation must undertake before making any changes is to
+ensure that no other metadata topology changes are already in-progress. Given
+the distributed nature of the system this requires some sort of global lock or
+point of coordination. The proposed ring server could serve this purpose. An API
+operation representing intent to modify the metadata topology could be created
+and such a request might either be accepted or rejected if another modification
+was underway. The request submission should include the timestamp of the
+request, the name or email address of the requester, as well as information
+about the reasons for the request. This would be separate from the operation to
+move the ring to a transitioning state. An API operation to allow the release of
+the intent to modify would also be needed.
+
+The next step is to ensure that the new shards are valid and prepared to receive
+vnode data as well as handle requests. The following sanity check questions
+should be answered:
+
+* Are all new shards resolvable via DNS?
+* Is postgres running on all shards and is the port accessible?
+* Are new shards reachable from electric-moray hosts?
+* Are the new shards able to communicate to the existing shards where the
+  transferring vnode data resides?
+
+If all these questions are answered in the affirmative then the automation can
+proceed. The next step is to calculate the new distribution of vnodes that
+includes the new shards. Once this is done, the set of vnode data partitions can
+be created in the database on each new shard. Once this step is completed
+successfully then the new shards should be ready to receive vnode data
+transfers.
+
+At this point the most prudent step is to have the automation provide a summary
+of the changes to be executed to the operator and wait for confirmation. The
+operator should be provided with information about the new topology in order to
+verify that the plan includes all expected shards and that the plan for data
+transfer matches expectations. The operator will have the option to proceed or
+to cancel the process. In the case of cancellation, a further option should be
+provided to remove the created data partitions that were created for the
+transferring vnodes before exiting.
+
+The next step is to modify the ring by moving it to a *transitioning* state and
+providing the new vnode distribution information. This marks a *point of no
+return* for the automation because once writes are allowed to go to the new
+shards operator intervention is needed to cancel the process and reconcile the
+data and avoid data loss. We might avoid this by mirroring writes to both the
+old and new shards for a particular vnode during the transition process, but
+this could negatively affect performance and has its own failure case
+complexities that would need to be dealt with. So the intention is that after
+this point a rollback of the addition or removal process will require operator
+intervention.
+
+Once the ring is in the *transitioning* state, the automation has assured
+that all of the electric-moray instances are using the new version, and the
+requests queues have been flushed of any writes for transferring vnodes the
+vnode data transfers can begin. It may be beneficial to have the new shards pull
+their vnode data from the existing shards rather than have the existing shards
+push all the data. Throttling the data transfer should be more manageable using
+a pull model. A concurrency level for transfers can be set and enforced at each
+new shard joining the system.
+
+Once the automation is notified that all transfers are complete the ring can be
+marked as *stable* and the final cleanup of vnode data from their former shards
+can commence. The completion of the cleanup phase marks the end of the process.
+
+Failure handling needs to be carefully considered for the automation of
+the process. Manipulating the metadata topology is a stateful process and
+involves many different components of the system. The process should probably
+keep a log of the progress in persistent storage with enough recorded information
+that if the automation crashes and must be restarted it can examine the log and
+resume the process. Each component involved in the process also must be able to
+provide its status so that the primary automation process can inspect the status
+of the different components, report any problems, and retry in cases of failure.
+
+Automation of the process could be managed either by a continuously running
+program that might sit idle and wait for requests to change the metadata
+topology or the program could be run only when needed and then exit once the
+process completed or an unrecoverable error occurred. The `manta-adm` command
+could provide a convenient interface. A new `metadata` subcommand might provide
+`add-shards` and `remove-shards` options.
+
+Invocations of the command might look as follows:
+
+```
+manta-adm metadata add-shards '[{"name": "555.moray.com", "weight": 1.2}, {"name": "556.moray.com"}]'
+
+manta-adm metadata remove-shards '[{"name": "3.moray.com}, {"name": "4.moray.com"}]'
+```
