@@ -90,8 +90,7 @@ This new functionality will be added with CloudAPI version 9.x.y
 >
 > | Field | Type | Description |
 > | ----- | ---- | ----------- |
-> | image | String | The image UUID (the "id" field in ListImages). Must not be used with `disks`.
-> | disks | Array | A list of objects representing disks to provision. New in CloudAPI 9.x.y. Must not be used with `image`. Each disk object is as described in the input for `CreateMachineDisk`. |
+> | disks | Array | A list of objects representing disks to provision. New in CloudAPI 9.x.y. Each disk may specify the attributes described in the inputs to `CreateMachineDisk`. If the first disk (the boot disk) does not specify `size`, the `image` must be defined and the size of the image will be used. |
 >
 > **disks**
 >
@@ -100,15 +99,15 @@ This new functionality will be added with CloudAPI version 9.x.y
 > ```json
 > {
 >   "package": "c4fa76e0-6178-ec20-b64a-e5567f3d62d5",
+>   "image": "aa788e1f-e143-c46e-9417-b4212486c4ae"
 >   "disks": [
 >     {
->       "image": "aa788e1f-e143-c46e-9417-b4212486c4ae"
 >     },
 >     {
->       "image": "6397014d-c3dd-e466-be2d-d4a0f4d5b4e6",
 >       "size": 20480
 >     },
 >     {
+>       "size": "remaining"
 >     }
 >   ]
 > }
@@ -146,14 +145,16 @@ This will lead to the following `disks` in the `vmadm` payload:
   "disks": [
     {
       "image_uuid": "aa788e1f-e143-c46e-9417-b4212486c4ae",
-      "boot": true
+      "boot": true,
+      ...
     },
     {
-      "image": "6397014d-c3dd-e466-be2d-d4a0f4d5b4e6",
-      "size": 20480
+      "size": 20480,
+      ...
     }
     {
-      "size": 81920
+      "size": 81920,
+      ...
     }
   ],
   ...,
@@ -233,8 +234,7 @@ XXX should deletion protection also protect against truncating disks? This would
 >
 > | Field | Type | Description |
 > | ----- | ---- | ----------- |
-> | image | UUID | The image UUID to use for this disk (the "id" field in ListImages). An empty disk is created if not specified. |
-> | size  | Number | The size in mebibytes of the disk. If size is not specified and an image is specified, the size will match the image size. If neither size nor image are specified, the size is the remaining space available in the package. Only one disk object that leave image and size unspecified may appear in the array. |
+> | size  | Number or String | The size in mebibytes of the disk or the string `remaining`. If `size` is `remaining` the remainder of the VM's disk space is allocated to this disk. |
 >
 > **Returns**
 >
