@@ -30,7 +30,6 @@ This document includes a proposal for how to allow a VM to flexibly allocate spa
   * [Platform Image changes](#platform-image-changes)
     + [`VM.js`: overriding image size in payload](#vmjs-overriding-image-size-in-payload)
     + [`VM.js`: Resize with `update_disks`](#vmjs-resize-with-update_disks)
-    + [`VM.js`: update by ZFS volume `guid`](#vmjs-update-by-zfs-volume-guid)
     + [bhyve brand: sticky PCI functions for disks](#bhyve-brand-sticky-pci-functions-for-disks)
     + [Keeping track of space](#keeping-track-of-space)
       - [How much space can be allocated to a new or grown disk?](#how-much-space-can-be-allocated-to-a-new-or-grown-disk)
@@ -58,6 +57,8 @@ Customers are demanding flexibility in how disk space is allocated to VMs. In pa
 * The image size is not sufficiently large to handle the amount of data that must be placed into the boot disk. This leads to ad-hoc resizes later using SmartOS and guest OS tools or the creation of custom images that differ from stock images only in their size.
 * Some customers see no value in splitting space between the root disk and the data disk. Rather, this causes extra work because it forces application configurations to be customized to use non-standard paths and/or causes confusion for users. These customers tend to request that all space is allocated to the boot disk.
 * Customers that snapshot VMs are likely to need "snapshot space" to allow snapshots of disks that have had a significant amount of data written to them. See RFD 148.
+
+Additionally, customers that may be transitioning from LX to bhyve may have an easier transition without having space fragmented across the root and data file systems.
 
 # Solution
 
@@ -182,21 +183,17 @@ This will lead to the following `disks` in the `vmadm` payload:
 >
 > | Field | Type | Description |
 > | ----- | ---- | ----------- |
-> | guid  | Number | 64-bit number that uniquely identifies this disk |
+> | slot  | String | An indentifier that describes where this disk is attached to the VM. (`disk0`, `disk1`, ..., `disk7`)
 > | boot  | Boolean | Is this disk the boot disk? |
 > | image | UUID | The image from which this disk was created |
 > | size  | Number | The size of the disk in mebibytes |
 > | snapshot\_size | Number | The amount of space in mebibytes used by all snapshots of this disk |
 
-As an implementation note, the disk's `guid` is the 64-bit random number that ZFS automatically assigns to the ZFS volume's `guid` property during creation. This provides a unique identifier for each disk for future modifications or deletion.
-
-XXX I could be talked out of using guid, but we need some other key. "disk0", "disk1", etc., would be fine.
-
 ### `ResizeMachineDisk`
 
 `ResizeMachineDisk` will be added, with the following CloudAPI documentation.
 
-> **ResizeMachineDisk (POST /:login/machines/:id/disks/:guid?action=resize)**
+> **ResizeMachineDisk (POST /:login/machines/:id/disks/:slot?action=resize)**
 >
 > Resizes a VM's disk. Only supported with bhyve VMs. New in CloudAPI 9.x.y.
 >
@@ -257,7 +254,7 @@ XXX should deletion protection also protect against truncating disks? This would
 
 XXX should deletion protection also protect against deleting disks? This would be useful for providing oversight if RBAC allowed `DeleteMachineDisk` but did not allow `DisableMachineDeletionProtection`.
 
-> **DeleteMachineDisk (POST /:login/machines/:id/disks/:guid)**
+> **DeleteMachineDisk (POST /:login/machines/:id/disks/:slot)**
 >
 > Deletes a VM's disk. Only supported to remove data disks (disks other than the boot disk) from bhyve VMs. New in CloudAPI 9.x.y.
 >
@@ -275,7 +272,7 @@ XXX should deletion protection also protect against deleting disks? This would b
 >
 > | Error Code | Description |
 > | ---------- | ----------- |
-> | InvalidArgument | `:guid` belongs to the boot disk or no matching disk found. |
+> | InvalidArgument | `:slot` belongs to the boot disk or no matching disk found. |
 
 ## Platform Image changes
 
@@ -356,27 +353,6 @@ Successfuly updated 926b8205-4b16-6ec4-f9ad-9883a8c84ce1
 ```
 
 XXX We may want to limit this to one disk update per call to `vmadm update` so that we can't have partial failures. Alternatively, we could explore using [ZFS channel programs](https://www.delphix.com/blog/delphix-engineering/zfs-channel-programs) to allow multiple updates that are applied atomically.
-
-### `VM.js`: update by ZFS volume `guid`
-
-XXX tentative. If we just identify disks by "disk0", "disk1", etc., this isn't needed.
-
-To better support CloudAPI's use of the `guid`, `VM.js` and `vmadm` will support selection of the disk by `guid` as well as path.
-
-
-```
-# vmadm update 926b8205-4b16-6ec4-f9ad-9883a8c84ce1 <<EOF
-{
-  "update_disks": [
-    {
-      "guid": 16013600483642439619,
-      "size": 102400
-    }
-  ]
-}
-EOF
-Successfuly updated 926b8205-4b16-6ec4-f9ad-9883a8c84ce1
-```
 
 ### bhyve brand: sticky PCI functions for disks
 
@@ -536,4 +512,5 @@ Both the operator poral and the user portal will require updates to be able to
 * Specify disk quantity and sizes during VM creation
 * Add disks
 * Remove disks
+
 
