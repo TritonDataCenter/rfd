@@ -356,7 +356,7 @@ XXX We may want to limit this to one disk update per call to `vmadm update` so t
 
 ### bhyve brand: sticky PCI functions for disks
 
-To ensure that removal of a disk does not cause other disks to appear at a different physical path on subsequent boots, the PCI slot and function will be sticky. The numbering will be based on *N* of `/dev/zvol/rdsk/zones/<uuid>/disk`N`.
+To ensure that removal of a disk does not cause other disks to appear at a different physical path on subsequent boots, the PCI slot and function will be sticky. The numbering will be based on *N* of `/dev/zvol/rdsk/zones/<uuid>/disk`*N*.
 
 Prior to this change, the boot and data disks were assigned to slot `4:0` and `4:1`, respectively. This comes by happenstance from the order that they appear in the zone configuration. The new allocation scheme will ensure that existing disks remain at the same PCI functions as the historical implementation while allowing disks to remain at their paths in the face of removal. For example:
 
@@ -374,6 +374,12 @@ If `disk1` is removed, `lspci` will report:
 00:04.0 SCSI storage controller: Red Hat, Inc Virtio block device
 00:04.2 SCSI storage controller: Red Hat, Inc Virtio block device
 ```
+
+### bhyve brand: disk slot allocation
+
+When a disk is added, it is assigned to the first empty slot.
+
+Consider the previous example: an instance ended up with two disks: `disk0` and `disk2`. If a disk is subsequently added, it will be added as `disk1`, not `disk3`.
 
 ### Keeping track of space
 
