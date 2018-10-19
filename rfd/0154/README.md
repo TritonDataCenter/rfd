@@ -27,10 +27,14 @@ This document includes a proposal for how to allow a VM to flexibly allocate spa
     + [`ResizeMachineDisk`](#resizemachinedisk)
     + [`CreateMachineDisk`](#createmachinedisk)
     + [`DeleteMachineDisk`](#deletemachinedisk)
+  * [Package Changes](#package-changes)
+    + [Package `flexible_disk` attribute](#package-flexible_disk-attribute)
+    + [XXX maybe: Default disks in package](#xxx-maybe-default-disks-in-package)
   * [Platform Image changes](#platform-image-changes)
     + [`VM.js`: overriding image size in payload](#vmjs-overriding-image-size-in-payload)
     + [`VM.js`: Resize with `update_disks`](#vmjs-resize-with-update_disks)
     + [bhyve brand: sticky PCI functions for disks](#bhyve-brand-sticky-pci-functions-for-disks)
+    + [bhyve brand: disk slot allocation](#bhyve-brand-disk-slot-allocation)
     + [Keeping track of space](#keeping-track-of-space)
       - [How much space can be allocated to a new or grown disk?](#how-much-space-can-be-allocated-to-a-new-or-grown-disk)
       - [Calculation of ZFS space](#calculation-of-zfs-space)
@@ -40,7 +44,6 @@ This document includes a proposal for how to allow a VM to flexibly allocate spa
     + [Windows Guests](#windows-guests)
 - [Other considerations](#other-considerations)
   * [Keep images small to minimize gratis space](#keep-images-small-to-minimize-gratis-space)
-    + [XXX how is this prevented?](#xxx-how-is-this-prevented)
   * [Relation to snapshots](#relation-to-snapshots)
   * [Relation to VM resize](#relation-to-vm-resize)
 - [Development Phases](#development-phases)
@@ -62,17 +65,13 @@ Additionally, customers that may be transitioning from LX to bhyve may have an e
 
 # Solution
 
-Triton will be enhanced to support flexible allocation of space to disks, including the ability to leave space reserved for a VM unallocated so that it will be available for future growth of disks and/or storing snapshots.
+**Flexible disk packages** are introduced. An instance that is associated with a flexible disk package is known as a **flexible disk instance**. A flexible disk instance may have a variable number of disks, the disks may be resized during or after provisioning, and non-boot disks may be added or removed. Disk space that is reserved for an instance but not used by a disk may be used by snapshots of the instance's disks.
 
-As quick overview:
+If a package is not a flexible disk package, the changes described in this RFD do not apply to a VM using that package.
 
-* The amount of space that may be consumed by a VM's disks and snapshots of those disks is approximately the sum of `image.size` and `package.disk`, regardless of the quantity or size of disks.
-* [`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass quantity and size information that overrides the values implied the package.
-* If an image and a size are specified, the disk that results from cloning the image will be resized (up only) to match the requested size.
-* Resizing of bhyve VMs will be allowed.
-* It will be possible to grow disks.
-* It will be possible to delete disks other than the root disk.
-* Guest images may need improved tooling to grow file systems.
+An instance that is not a flexible disk instance may become a flexible disk instance by being resized into a flexible disk package.
+
+To support flexible disks, changes are required in packages, CloudAPI, AdminUI, the User Portal, and the platform. Full realization of the benefits will require actions within guests. These in-guest changes may be accomplished through in-image automation and/or instance-specific procedures.
 
 These changes are explained in detail below.
 
@@ -84,7 +83,7 @@ This new functionality will be added with CloudAPI version 9.x.y
 
 ### `CreateMachine`
 
-[`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass quantity and size information that overrides the values set or implied in the package. The `CreateMachine` documentation will be updated with:
+[`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass quantity and size information. The `CreateMachine` documentation will be updated with:
 
 > **Inputs**
 >
@@ -94,7 +93,7 @@ This new functionality will be added with CloudAPI version 9.x.y
 >
 > **disks**
 >
-> New in API version 9.x.y. The `disks` input parameter allows the user to specify a list of disks to provision for the new machine. The first disk is the boot disk. A maximum of 8 disks per VM are supported.
+> New in API version 9.x.y. The use of `disks` is only supported if the package has [flexible disk support enabled](XXX link). The `disks` input parameter allows the user to specify a list of disks to provision for the new machine. The first disk is the boot disk. A maximum of 8 disks per VM are supported.
 >
 > ```json
 > {
@@ -179,6 +178,7 @@ This will lead to the following `disks` in the `vmadm` payload:
 > | disks | Array | An array of disk objects. Each disk object is described in a table below. |
 > | total\_space | Number | Maximum size in mebibytes available to the VM for disks and snapshots of those disks. This value will match the package's `disk` value. |
 > | free\_space | Number | Size in mebibytes of space that is not allocated to disks nor in use by snapshots of those disks. If snapshots are present, writes to disks may reduce this value. |
+> | flexible | Boolean | Does this machine use the [flexible disk space](XXX link) feature? |
 >
 > Each disk object has the following fields:
 >
@@ -196,7 +196,7 @@ This will lead to the following `disks` in the `vmadm` payload:
 
 > **ResizeMachineDisk (POST /:login/machines/:id/disks/:slot?action=resize)**
 >
-> Resizes a VM's disk. Only supported with bhyve VMs. New in CloudAPI 9.x.y.
+> Resizes a VM's disk. Only supported with bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.x.y.
 >
 > While the ability to shrink disks is offered, its purpose is to recover from accidental growth of the wrong disk. Shrinking a disk preserves the first part of the disk, permanently discarding the end of the disk. VM snapshots offer no protection against accidental shrinkage. If a file system within the VM has been grown to use the new space after accidental growth, shrinking the disk will result in file system corruption and data loss.
 >
@@ -228,7 +228,7 @@ XXX should deletion protection also protect against truncating disks? This would
 >
 > **CreateMachineDisk (POST /:login/machines/:id/disks)**
 >
-> Creates a VM's disk. Only supported with bhyve VMs. New in CloudAPI 9.x.y.
+> Creates a VM's disk. Only supported with bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.x.y.
 >
 > **Inputs**
 >
@@ -256,7 +256,7 @@ XXX should deletion protection also protect against deleting disks? This would b
 
 > **DeleteMachineDisk (POST /:login/machines/:id/disks/:slot)**
 >
-> Deletes a VM's disk. Only supported to remove data disks (disks other than the boot disk) from bhyve VMs. New in CloudAPI 9.x.y.
+> Deletes a VM's disk. Only supported to remove data disks (disks other than the boot disk) from bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.x.y.
 >
 > **Inputs**
 >
@@ -274,11 +274,75 @@ XXX should deletion protection also protect against deleting disks? This would b
 > | ---------- | ----------- |
 > | InvalidArgument | `:slot` belongs to the boot disk or no matching disk found. |
 
+## Package Changes
+
+### Package `flexible_disk` attribute
+
+Packages will gain an optional `flexible_disk` attribute. If set to `true` the package's `disk` attribute (aka `quota`) reflects the amount of space available for all disks. Consider the following packages:
+
+**Inflexible package**
+```
+{
+  ...,
+  "disk": 102400,
+  ...,
+}
+```
+
+**Flexible package**
+```
+{
+  ...,
+  "disk": 102400,
+  "flexible_disk": true,
+  ...,
+}
+```
+
+The following table outlines the results when used with various images.
+
+| Image size | Inflexible boot disk size | Inflexible data disk size | Flexible boot disk size | Inflexible data disk size |
+| --------| ------- | ------- | ------- | ------- |
+| 10 GiB  | 10 GiB  | 100 GiB | 10 GiB  | 90 GiB  |
+| 90 GiB  | 90 GiB  | 100 GiB | 90 GiB  | 10 GiB  |
+| 1 TiB   | 1 TiB   | 100 GiB | Error   | Error   |
+
+### XXX maybe: Default disks in package
+
+XXX This feels important for the LX to bhyve migration story. A person that was previously using LX got one file system - space was not fragmented across `/` and `/data`. This would make it easy to create packages that mimicked the container behavior.
+
+A flexible disk package may specify the default size for disks. These sizes can be overridden by `image.disks`.
+
+In this example, any image smaller than 102400 MiB is resized to occupy all of the instance's disk space (102400 MiB).
+
+```
+{
+  ...,
+  "disk": 102400,
+  "flexible_disk": true,
+  "disks": [ { "size": "remaining" } ],
+  ...,
+}
+```
+
+In this example, all space not allocated to the image remains free for future disk allocations and snapshots.
+
+```
+{
+  ...,
+  "disk": 102400,
+  "flexible_disk": true,
+  "disks": [ { } ],
+  ...,
+}
+```
+
 ## Platform Image changes
 
 The platform image will be updated in the following areas:
 
 * `disk.*.size` will be supported even when the image is specified.
+* `update_disks` will be able to resize disks.
 * PCI slot assignments will be sticky so that disk removals do not confuse guests that rely on consistent physical paths to disks.
 
 ### `VM.js`: overriding image size in payload
@@ -352,7 +416,7 @@ EOF
 Successfuly updated 926b8205-4b16-6ec4-f9ad-9883a8c84ce1
 ```
 
-XXX We may want to limit this to one disk update per call to `vmadm update` so that we can't have partial failures. Alternatively, we could explore using [ZFS channel programs](https://www.delphix.com/blog/delphix-engineering/zfs-channel-programs) to allow multiple updates that are applied atomically.
+XXX We may want to limit this to one disk update per call to `vmadm update` so that we can't have partial failures. Alternatively, we could explore using [ZFS channel programs](https://www.delphix.com/blog/delphix-engineering/zfs-channel-programs) to allow multiple updates that are applied atomically. Use of ZFS channel programs is not straight-forward as they do not yet support changing property values, such as `volsize`.
 
 ### bhyve brand: sticky PCI functions for disks
 
@@ -383,7 +447,7 @@ Consider the previous example: an instance ended up with two disks: `disk0` and 
 
 ### Keeping track of space
 
-The amount of space that a VM may use for its disks and snapshots of those disks is the sum of `image.size` and `package.disk`. At instance creation time, that sum will be called `VM.disk`.
+The amount of space that a flexible disk instance may use is tracked in the new `VM.flexible_disk_size` attribute and corresponding `flexible-disk-size` zone configuration attribute.
 
 For the sake of clarity in the following subsections, some variables are defined.
 
@@ -395,14 +459,14 @@ For the sake of clarity in the following subsections, some variables are defined
 
 The value of `DISK_SNAP` may change as writes occur to a disk. `vmadmd` should make no effort to accurately track this value. Future interfaces should be designed such that this value is queried infrequently - such as only when trying to determine the maximum amount of space that may be allocated to a new disk. No interface should be designed such that this value is retrieved for every instance as a default behavior.
 
-As described in [RFD 148's snapspace](../0148/snapspace.md), ZFS volumes require space for metadata storage. This space is overhead that should not be charged against `VM.disk`.
+As described in [RFD 148's snapspace](../0148/snapspace.md), ZFS volumes require space for metadata storage. This space is overhead that should not be charged against `VM.flexible_disk_size`.
 
 #### How much space can be allocated to a new or grown disk?
 
 The amount of new disk space that can be allocated is
 
 ```
-allocatable = VM.disk - DISK_SIZE - DISK_SNAP
+allocatable = VM.flexible_disk_size - DISK_SIZE - DISK_SNAP
 ```
 
 #### Calculation of ZFS space
@@ -412,18 +476,18 @@ As described in [RFD 148's snapspace](../0148/snapspace.md), the zone's top-leve
 The ZFS `quota` and `reservation` properties on the zone's top-level dataset (`zones/<UUID>`) are set to the sum of:
 
 * the VM's `quota` property (see vmadm(1))
-* the amount of disk space allocated to the VM by `package.disk` and `image.size`
+* the amount of disk space allocated to the VM by `VM.flexible_disk`.
 * the amount of space required by ZFS to store the metadata for all of the VM's disks.
 
 In pseudocode:
 
 ```
-zfs.reservation = zfs.quota = VM.quota + VM.disk + DISK_RESV - DISK_SIZE
+zfs.reservation = zfs.quota = VM.quota + VM.flexible_disk_size + DISK_RESV - DISK_SIZE
 ```
 
 The `zfs.quota` and `zfs.reservation` values need to be recalculated in the following circumstances:
 
-* `VM.disk` changes, such as when a VM is asscociated with a different package that has different value for `package.disk`
+* `VM.flexible_disk_size` changes, such as when a VM is asscociated with a different package that has different value for `package.disk`
 * A disk is resized
 * A disk is added
 * A disk is removed
@@ -464,17 +528,6 @@ As mentioned above, the disk space consumed by a VM is based on the size of the 
 
 It is recommended that images are the same size or otherwise limited in their association with packages so that billing abuse does not happen.
 
-### XXX how is this prevented?
-
-1. Create an instance from a 10 GiB image using a 1 TiB package. Make the root disk 1 TiB.
-2. Create an image from that instance. This new `instance.size` is 1 TiB.
-3. Discard the instance created in step 1.
-4. Create a new instance from the image created in step 2 using a 10 GiB package.
-
-The bad guy paid for a few minutes of a 1 TiB package and now has the same amount of space while paying for a 10 GiB package.
-
-It feels like original `image.size` needs to be preserved or the package needs to gain the ability to specify the maximum `image.size`.
-
 ## Relation to snapshots
 
 Creation or removal of snapshots will be unaffected by this, aside from the fact that it will be possible to allocate space to a VM that can be reserved for snapshots by not allocating it to disks.
@@ -489,17 +542,15 @@ Simply removing data in an existing disk will not help. This could change if the
 
 ## Relation to VM resize
 
-While this RFD is not specifically concerned with resizing of bhyve VMs, it does draw attention to why enabling this feature would be useful.
-
-The general rule is that a VM may be resized only to a larger package. That does not necessarily have to be the case. If some amount of `VM.disk` is unused, that space could be taken away from the VM via a VM resize. A VM should be considered a candidate for resize if:
+The general rule is that a VM may be resized only to a larger package. That does not necessarily have to be the case. If some amount of `VM.flexible_disk_size` is unused, that space could be taken away from the VM via a VM resize. A VM should be considered a candidate for resize if:
 
 ```
-DISK_SIZE + DISK_SNAP <= image.size + newpackage.disk
+DISK_SIZE + DISK_SNAP <= newpackage.disk
 ```
 
 # Development Phases
 
-The delivery of this functionality can be broken in the the following phases.
+The delivery of this functionality can be broken in the following phases.
 
 ## Phase 1: Platform
 
@@ -518,5 +569,6 @@ Both the operator poral and the user portal will require updates to be able to
 * Specify disk quantity and sizes during VM creation
 * Add disks
 * Remove disks
+
 
 
