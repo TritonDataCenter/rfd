@@ -1,6 +1,6 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
-state: predraft
+state: draft
 discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+154%22'
 ---
 <!--
@@ -105,7 +105,7 @@ This new functionality will be added with CloudAPI version 9.x.y
 > ```json
 > {
 >   "package": "c4fa76e0-6178-ec20-b64a-e5567f3d62d5",
->   "image": "aa788e1f-e143-c46e-9417-b4212486c4ae"
+>   "image": "aa788e1f-e143-c46e-9417-b4212486c4ae",
 >   "disks": [
 >     {
 >     },
