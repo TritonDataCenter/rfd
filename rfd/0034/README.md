@@ -663,7 +663,7 @@ using DAPI, this should occur naturally.
 
 Ideally, we want the migrated instance to land on a server that will not be
 rebooted soon. If DAPI happens to pick a machine that will be rebooted in
-another 2 weeks, that lessons the purpose of the current migration and will
+another 2 weeks, that lessens the purpose of the current migration and will
 likely aggravate users. We want to make sure the migration provisioning
 process takes into account the next reboot attribute, see [RFD 24](../0024),
 which if using DAPI should occur naturally.
@@ -672,10 +672,10 @@ which if using DAPI should occur naturally.
 
 Affinity hints are only applied at provisioning time. For docker containers,
 these hints are persisted as a triton label in the instance metadata. For
-other instance types, the hints are not persisted. As such, DAPI will not be
-able to honor the original affinity constraints. We should allow the
-user/operator to input an optional affinity hint when they initiate/schedule
-migrations.
+other instance types, the hints are not persisted yet (TRITON-779 will address
+this - to store the affinity values). As such, DAPI will not be able to honor
+the original affinity constraints. We should allow the user/operator to input an
+optional affinity hint when they initiate/schedule migrations.
 
 ## Traits and reserved CNs
 
@@ -723,7 +723,9 @@ provisioned instance must reside in a CN in the same rack.
 There will be two settings controlling whether a user is allowed to migrate
 their instances. These settings can only be set by an operator.
 
-- **CN.traits.user_migration_allowed** (boolean) trait
+- **CN.traits.user_migration_allowed** (boolean) trait on the CN can be set to
+  'true' to allow *user migration* of their instances on this CN, or
+  'false' to disallow migration. A missing value will imply a 'false' value.
 
   - should we also allow the **eol** trait?
 
@@ -733,9 +735,10 @@ their instances. These settings can only be set by an operator.
       $ sdc-migrate allow-cn $CN
 
 - **vm.internal_metadata.user_migration_allowed** (boolean) property on the
-  instance can be set to 'true' to allow *user migration* of this instance, a
-  missing value (the default) or 'false' will mean the user cannot start a
-  migration on this instance. This value overrides the CN trait.
+  instance can be set to 'true' to allow *user migration* of this instance, or
+  'false' to disallow migration of this instance. This value overrides the CN
+  trait.user_migration_allowed value. For a missing value (the default), the
+  value will be inherited from the CN.traits.user_migration_allowed setting.
 
       $ sdc-vmapi "/vms/$VM?action=update" -X POST -d '{ "internal_metadata": { "user_migration_enabled": true }}'
       $ sdc-migrate allow-instance $VM
@@ -760,7 +763,7 @@ switch:
 # Limits
 
 There are limits placed on migrations, to ensure that they do not affect (or
-limitedly affect) other tenants on the source/target CN.
+limitedly affect) other tenants on the source.
 
 The migration limit configuration will be stored in SAPI (initially set during
 the migration service installation, or falling back to defaults) as:
@@ -768,7 +771,7 @@ the migration service installation, or falling back to defaults) as:
     $ sdc-sapi /services?name=migration
     {
       "zfs_send_mbps_limit": 500,  // megabits per second
-      "max_migrations_per_cn": 5
+      "max_running_migrations_per_cn": 5
     }
 
 The zfs send limits can be enforced by the application (e.g. Node.js), by
