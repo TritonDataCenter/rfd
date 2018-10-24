@@ -19,21 +19,31 @@ This RFD proposes a process for documenting Notices to Operators<sup>1</sup>
 ("NTOs").  NTOs are intended to document anything that an operator of Triton or
 Manta would want to know about a particular deployment, including:
 
-- non-standard operating conditions, including:
-  - instances where the "config-agent" service has been disabled in order to
-    modify the default configuration
-  - instances where the "registrar" service has been disabled to remove it from
-    service
-  - Manatee shards that have been frozen for some reason or another to prevent
-    automatic failover (e.g., due to a bug)
-  - Manta storage nodes where "minnow" has been disabled to remove the node from
-    service for writes
-  - kernel tunables that have been applied to some servers
-- hot-patches (which are important to know about when upgrading or scaling out
-  components)
+- instances where the "config-agent" service has been disabled in order to
+  modify the default configuration
+- instances where the "registrar" service has been disabled to remove it from
+  service
+- Manatee shards that have been frozen for some reason or another to prevent
+  automatic failover (e.g., due to a bug)
+- Manta storage nodes where "minnow" has been disabled to remove the node from
+  service for writes
+- kernel tunables that have been applied to some servers
+- hot-patches, which are important to know about when upgrading or scaling out
+  components
 - deployment flag days that have not yet been dealt with (e.g., situations where
   a particular version of service A must be deployed before a particular version
   of service B may be deployed)
+
+More specifically, an NTO should describe a condition:
+
+- that is different from a stock deployment.  (Documentation for stock
+  conditions should generally belong in regular Manta documentation.)
+- that is temporary.  (A condition may last for weeks, months or years, but if
+  it's going to last indefinitely, then it probably ought to be part of the
+  product documentation.  It's also not likely worth creating an NTO for a
+  condition that's expected to last less than a week.)
+- that is likely to affect an operator in some way, especially an operator who
+  might be performing maintenance or responding to an incident.
 
 The intent is that NTOs would be reviewed:
 
@@ -43,21 +53,10 @@ The intent is that NTOs would be reviewed:
   since the CM was reviewed
 - during incident response, before taking corrective action (ideally; in
   practice, this will be a judgment call by the incident responders)
+- on some basis (e.g., weekly) to ensure that outdated NTOs are closed.
 
 It's recommended that we call operators' attention to active NTOs by linking to
 a list of them in the message-of-the-day on all headnodes.
-
-It's also recommended that a person be designated to review open NTOs on a
-regular basis (e.g., weekly) to make sure outdated NTOs are closed.
-
-
-## Criteria for NTOs
-
-XXX
-
-- time-limited (at least 1 week?)
-- differing from stock deployment
-- likely to affect an operator responding to incidents or performing maintenance
 
 ## Examples
 
@@ -220,37 +219,19 @@ filtering or reporting on NTOs.)
 We generally want to avoid putting too much structure on NTOs, but we suggest a
 number of fields to start with:
 
-**Identifier.** Each NTO will be tracked with a unique identifier, like NTO-001
-to allow people and tooling to refer to current and past NTOs unambiguously.
+| | |
+| --- | --- |
+| Unique identifier | `NTO-001` or the like, intended to allow people and tooling to refer to current and past NTOs unambiguously. |
+| Synopsis | A short description of the notice (ideally 72 characters or fewer).  |
+| State | One of `Draft`, `Active`, or `Closed`. |
+| Priority | `Critical` or `Notice`.  (`Critical` NTOs respresent major risks to the system's availability or durability.  This is intended to be used rarely, but might include a storage system that has suffered the maximum allowable number of drive failures before data is lost.) |
+| Region / deployment | Identifies which Triton or Manta regions this NTO applies to.  For example, an NTO about frozen shards might only apply to one region.  An NTO about a flag day might initially apply to all regions, but each region would be removed as it crosses the flag day. |
+| Description | A free-form description of what the operator needs to know.  See below. |
+| Conditions for closing the NTO | Describes the conditions for transitioning the NTO to "Closed" so that people (other than the author) can determine when it's no longer needed.  (Many NTOs may initially apply to all regions, and this section may just describe when it can be removed from that region.  When it applies to no region, the NTO can be closed.) |
+| Related tickets |  If there is a ticket describing the underlying problem, that should be called out in the NTO.  This is important for making sure that we close NTOs that no longer apply because the underlying tickets have been resolved (and the fixes deployed).
+| Contact persons | If there are questions about the NTO, these people should be contacted.  This is _not intended for use during incident response_ but rather for questions that might come up during CM review. |
 
-**Synopsis.** This should be a short description of the notice (ideally 72
-characters or fewer).
-
-**State.** One of three states:
-
-- **Draft.**  The NTO is still being written and reviewed.  (It may contain
-  inaccurate information or may not yet apply at all.)
-- **Active.**  The information is believed accurate and applicable to the named
-  regions.
-- **Closed.**  The NTO no longer applies.  It's recorded for historical reasons
-  only.
-
-**Priority.** For skimming NTOs:
-
-- **Critical.**  Critical NTOs describe conditions that represent major risks to
-  a system's availability or durability that any operator must know before
-  taking essentially any action on the system.  These should be used very
-  rarely.  Examples might include: a storage node that has suffered
-  multiple-disk failure.
-- **Notice.** Most NTOs will be at this level.
-
-**Region / deployment.** The NTO should list the Triton or Manta regions that it
-applies to.  For example, an NTO about frozen shards might only apply to one
-region.  An NTO about a flag day might initially apply to all regions, but each
-region would be removed as it crosses the flag day.
-
-**Description.** This is a free-form description of whatever an operator needs
-to know.  This should be written clearly, with as much context as an operator
+The description should be written clearly, with as much context as an operator
 might need (who may not be familiar with deep implementation details of the
 system).  When possible, make reference to existing tickets or documentation.
 From the description, an experienced operator who's not familiar with this
@@ -260,36 +241,24 @@ problem should generally be able to determine with confidence:
   offline for an extended period).
 - any risk of impact to the system's availability (e.g., reduced redundancy of
   some metadata shards).
-- whether this NTO affects an operation that they're doing
-
-**Conditions for closing the NTO.**  Permanent information that operators should
-know about belongs in the system's documentation.  NTOs are intended for
-time-limited notices.  The NTO should describe the conditions for transitioning
-it to "Closed" so that people (other than the author) can determine when it's no
-longer needed.  (Many NTOs may initially apply to all regions, and this section
-may just describe when it can be removed from that region.  When it applies to
-no region, the NTO can be closed.)
-
-**Related tickets.**  If there is a ticket describing the underlying problem,
-that should be called out in the NTO.  This is critical for making sure that we
-close NTOs that no longer apply because the underlying tickets have been
-resolved (and the fixes deployed).
-
-**Contact persons.**  If there are questions about the NTO, these people should
-be contacted.  This is _not intended for use during incident response_ but
-rather for questions that might come up during CM review.
+- whether this NTO affects an operation that they're doing.
 
 ## Workflow
 
-XXX
-- creating NTO
-  (create wiki page, link in main page, send out email -- create mail alias?)
-- reviewing NTO during CM review
-- reviewing NTO during CM execution
-- reviewing NTOs on some periodic basis
-- closing an NTO
+**Creating an NTO.**  You create an NTO by just creating a new wiki page for your NTO under the top-level NTO page.  You probably want to start by copying the contents of an existing NTO and replacing the contents in the table.  When ready, **make sure mark your NTO having state `Active` and link your NTO from the top-level NTO page**.
 
-## Future automation
+**Reviewing NTOs as part of the CM process.**  It's recommended that we review open NTOs when reiewing CMs and before executing each CM.  The expectation is that NTOs will change relatively rarely, so this won't take that long most of the time.
+
+**Regular review of NTOs.**  We should probably designate a role to periodically review open NTOs to make sure we close those that are no longer active.  As part of this review, we should visit each NTO, review the conditions for closing, check whether the underlying tickets have been resoled and deployed, and decide whether each NTO should remain open.  If there are questions, we should contact the "Contact persons".
+
+**Closing an NTO.**  An NTO is closed by simply updating its state to `Closed` and moving it from the `Active` table to the `Closed table.`  (Do not remove it from the page, as these can be useful for historical reference!)
+
+## Open questions and future work
+
+Open questions:
+
+- Where exactly on the wiki will this go?
+- Should we create a mail alias for NTOs and have each new one be mailed out?
 
 If this process works well, we may decide to automate more of it (e.g., create
 an actual database, possibly with an API; integrate with JIRA; provide
