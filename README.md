@@ -196,8 +196,9 @@ formal writing that it has come to represent.)
 | predraft | [RFD 150 Operationalizing Prometheus](./rfd/0150/README.md) |
 | publish  | [RFD 151 Assessing Software Engineering Candidates](./rfd/0151/README.md) |
 | predraft | [RFD 152 Rack Aware Networking](./rfd/0152/README.md) |
-| predraft | [RFD 153 Incremental metadata expansion for Manta buckets](./rfd/0153/README.md) |
+| draft    | [RFD 153 Incremental metadata expansion for Manta buckets](./rfd/0153/README.md) |
 | draft    | [RFD 154 Flexible disk space for bhyve VMs](./rfd/0154/README.md) |
+| predraft | [RFD 155 Manta Buckets API](./rfd/0155/README.md) |
 
 ## Contents of an RFD
 
