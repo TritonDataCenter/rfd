@@ -110,10 +110,13 @@ version of Loader.
 
 The resulting GPT partitioning layout will look like this:
 
+
+<pre>
 Slice  Type                                                            Size 
 0      C12A7328-F81F-11D2-BA4B-00A0C93EC93B (ESP)                      33 MB*
 1      6A82CB45-1DD2-11B2-99A6-080020736631 (solaris/illumos boot)      1 MB
 2      6A85CF4D-1DD2-11B2-99A6-080020736631 (solaris/illumos root)   rest of disk 
+</pre>
 
 * The size of the ESP is still being investigated.  The proposed size of 33 MB was
 chosen simply becase that is the smallest PCFS filesystem that mkfs will create
@@ -127,6 +130,7 @@ of headroom is required there.
 The joyent/smartos-live repo contains the following two scripts:
 
 tools/build_iso
+
 tools/images/make_image
 
 The first script is used to build SmartOS boot media (either an ISO or a USB
@@ -152,7 +156,9 @@ construct Triton and COAL boot images.  These will be modified to handle the
 new partitioning layout.
 
 bin/build-coal-image
+
 bin/build-tar-image
+
 bin/build-usb-image
 
 #### Triton Runtime Changes
@@ -161,11 +167,13 @@ The following scripts in joyent/smartos-live will be modified to handle the new
 partitioning scheme:
 
 overlay/generic/lib/sdc/config.sh
+
 overlay/generic/lib/svc/method/fs-joyent
 
 Similar changes will be made to the following scripts in joyent/sdc-headnode:
 
 scripts/mount-usb.sh
+
 tools/lib/usbkey.js
 
 The joyent/sdc-headnode and repo contains a number of scripts and commands which
@@ -187,7 +195,9 @@ specific to Loader.  At this point, the following docs have been identified as
 needing updates:
 
 https://github.com/joyent/triton/blob/master/docs/developer-guide/coal-setup.md
+
 https://docs.joyent.com/private-cloud/install/headnode-installation
+
 https://docs.joyent.com/private-cloud/install/compute-node-setup
 
 ### Update iPXE
