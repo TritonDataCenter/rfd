@@ -1,6 +1,6 @@
 ---
 authors: Rob Johnston <rob.johnston@joyent.com>
-state: predraft
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=RFD+156
 ---
 
@@ -56,7 +56,7 @@ that defines a firmware mechanism for booting a software image over the
 network.  Triton compute nodes boot off from the network using an open-source
 implementation of the PXE standard called iPXE[2].
 
-In addition to using an out-dated boot loader, the version of iPXE used with 
+In addition to using an outdated boot loader, the version of iPXE used with 
 Triton is based on a fork of iPXE that was last synced with upstream in early
 2016.  Thus it does not support network booting on some of the newer network
 interfaces, including the Intel Fortville nics, which are the standard onboard
@@ -138,9 +138,18 @@ will provide the functionality of both of the above tools.  build_image will
 create the boot images to use GPT partitioning and will install Loader to
 support both legacy BIOS and UEFI boot modes, as described above.
 
-Similarly, the joyent/sdc-headnode repo contains the following scripts which
-are used to construct Triton and COAL boot images.  These will be modified
-similarly.
+fdisk(1m) does not support creating/modifying GPT labels. Other CLIs that
+can work with GPT labels (like zpool) require something that looks like a disk
+device path to be passed to it, in order to work.  However, the only practical
+way to expose an image file as disk device is to use labelled LOFI devices,
+which are not supported in non-global zones.  Therefore, in order to continue
+to allow building smartos-live in a zone, without requiring platform changes,
+a new build tool, format_image, will be created which will handle creating the
+GPT label when constructing USB images.
+
+The joyent/sdc-headnode repo contains the following scripts which are used to
+construct Triton and COAL boot images.  These will be modified to handle the
+new partitioning layout.
 
 bin/build-coal-image
 bin/build-tar-image
@@ -223,7 +232,7 @@ produce a single USB key image that can support booting in both legacy BIOS and
 UEFI modes.
 
 If possible, the build tool changes should not require an updated platform 
-image.
+image on compute nodes that host build zones.
 
 Triton headnodes must be able to manage a hetergeneous set of compute nodes
 where some of them still use MBR/GRUB-based USB keys while others may use the
@@ -235,6 +244,50 @@ format.
 
 
 ## Planned Testing
+
+Verify ability to create SmartOS ISO images
+
+Verify ability to create SmartOS USB images
+
+Verify SmartOS boots with new USB image in legacy BIOS boot mode
+
+Verify SmartOS boots with new USB image in UEFI boot mode
+
+Verify appearance of Loader over serial line
+
+Verify appearance of Loader over VGA
+
+Verify functionality of Loader menus on SmartOS Image
+
+Verify ability to create proforma disk images
+
+Verify ability create COAL image.
+
+Verify COAL image boots and initial configuration succeeds
+
+Verify ability create Triton USB image.
+
+Verify Triton image boots and initial configuration succeeds
+
+Verify functionality of Loader menus on Triton Image
+
+Verify functionality of sdc-setconsole
+
+Verify functionality of all sdc-usbkey subcommands
+
+Verify functionality of all "sdcadm platform" subcommands
+
+Verify Functionality of USB key Conversion tool
+
+Verify no regressions in Triton's ability to manage systems using an
+MBR/GRUB-based USB key
+
+Verify ipxe functionality on each network interface used in a Joyent BOM
+
+Verify ability to PXE boot in legacy BIOS boot mode
+
+Verify ability to PXE boot in UEFI boot mode
+
 
 ## References
 
