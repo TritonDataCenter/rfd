@@ -263,6 +263,10 @@ Verify SmartOS boots with new USB image in legacy BIOS boot mode
 
 Verify SmartOS boots with new USB image in UEFI boot mode
 
+Verify SmartOS boots with new ISO image in legacy BIOS boot mode in vmware
+
+Verify SmartOS boots with new ISO image in UEFI boot mode in vmware
+
 Verify appearance of Loader over serial line
 
 Verify appearance of Loader over VGA
@@ -307,6 +311,8 @@ Verify ipxe functionality on each network interface used in a Joyent BOM
 Verify ability to PXE boot in legacy BIOS boot mode
 
 Verify ability to PXE boot in UEFI boot mode
+
+Verify additional boot modules / DTrace anon tracing
 
 
 ## References
