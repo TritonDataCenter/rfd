@@ -271,11 +271,19 @@ Verify functionality of Loader menus on SmartOS Image
 
 Verify ability to create proforma disk images
 
-Verify ability create COAL image.
+Verify ability to create COAL image under Mac OS X
+
+Verify ability to create COAL image under Linux
+
+Verify ability to create COAL image under SmartOS zone
 
 Verify COAL image boots and initial configuration succeeds
 
-Verify ability create Triton USB image.
+Verify ability to create Triton USB image under Mac OS X
+
+Verify ability to create Triton USB image under Linux
+
+Verify ability to create Triton USB image under SmartOS zone
 
 Verify Triton image boots and initial configuration succeeds
 
@@ -285,7 +293,9 @@ Verify functionality of sdc-setconsole
 
 Verify functionality of all sdc-usbkey subcommands
 
-Verify functionality of all "sdcadm platform" subcommands
+Manually verify functionality of all "sdcadm platform" subcommands
+
+Run sdcadm unit tests
 
 Verify Functionality of USB key Conversion tool
 
