@@ -1,6 +1,6 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>, Richard Kiene <richard.kiene@joyent.com>, Isaac Davis <isaac.davis@joyent.com>
-state: predraft
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=RFD+150
 ---
 
@@ -34,7 +34,8 @@ core Triton and Manta components.
 ## Status
 
 Still a draft write-up that has yet to be discussed widely.
-M0 (milestone 0) exists now for experimentation.
+M0 (milestone 0) exists now and prometheus0 and grafana0 zones have been
+deployed to some DCs.
 M1 is in progress.
 
 See [RFD-150 labelled issues](https://jira.joyent.us/issues/?jql=labels%20%3D%20RFD-150), if any.
@@ -90,35 +91,32 @@ The networking plan:
 - grafana0 will speak to prometheus0 on the admin network. For M1, it will only
   be on the admin. It will be setup for TLS with a self-signed cert. That
   cert will be on a delegate dataset so reprovisioning doesn't wipe it.
-  For later miletones we could put it behind a reverse proxy for UFDS auth
-  for UFDS accounts in the operators group (a la AdminUI).
+  Grafana will be behind a reverse proxy for UFDS auth for UFDS accounts in the
+  operators group (a la AdminUI).
 
 The Prometheus service will scrape the local CMON as the admin account,
-from which it discovers all the core Triton zones (TODO: exclude nat zones)
-and gets service metrics (via the existing "triton-core-services" cmon-agent
-collector). This will require a Prometheus key on the admin account. We will
-not use the "sdc key" on the admin account. Prometheus will store metrics
-for one month by default -- this will be a (SAPI) tunable -- on a delegate
-dataset to preserve across reprovisions. Long term storage of prometheus
-metrics is the subject of separate work by Richard (TODO: link). That work will
-be integrated into the prometheus image.
+from which it discovers all the core Triton zones (exluding "nat" zones)
+and gets service metrics (via the existing ["triton_core" cmon-agent
+collector](https://github.com/joyent/triton-cmon-agent/blob/master/lib/instrumenter/collectors-vm/triton_core.js)).
+This will require a Prometheus key on the admin account. We will not use the
+"sdc key" on the admin account. Prometheus will store metrics for one month by
+default -- this will be a (SAPI) tunable -- on a delegate dataset to preserve
+across reprovisions. Long term storage of prometheus metrics is the subject of
+[separate work by Richard](https://jira.joyent.us/browse/MANTA-3881). That work
+will be integrated into the prometheus image.
 
 The Grafana service will have the prometheus service as its source. It is
-preset with core dashboards from <https://github.com/joyent/triton-dashboards>.
-For M1, all Grafana configuration is stock. I.e., grafana is stateless.
-For later milestones the Grafana zone will allow custom dashboards that are
-preserved (within reason) between reprovisions.
+preset with core dashboards from
+<https://github.com/joyent/triton-grafana/tree/master/dashboards>. For M1, all
+Grafana configuration is stock. I.e., grafana is stateless. For later milestones
+the Grafana zone may allow custom dashboards that are preserved (within reason)
+between reprovisions.
 
 
 ## Manta service
 
 TODO: Discuss with Manta team after getting some experience with the Triton
-services.
-
-
-## Security
-
-TODO: discuss security concerns and answers
+services. See also "M2" notes below.
 
 
 ## Milestones
@@ -126,11 +124,11 @@ TODO: discuss security concerns and answers
 ### M0: plain bash setup scripts
 
 Currently <https://github.com/joyent/triton-prometheus/> provides
-"setup-prometheus.sh" and "setup-grafana.sh" scripts that will setup
+"setup-prometheus-prod.sh" and "setup-grafana-prod.sh" scripts that will setup
 "prometheus0" and "grafana0" core(ish) Triton zones (based on LX) configured
 to scrape metrics for all core Triton VMs, including service-specific metrics
 from many of the APIs, and with preset dashboards for some Triton services,
-per <https://github.com/joyent/triton-dashboards>.
+per <https://github.com/joyent/triton-grafana>.
 
 If desired for expediency, these could be used to setup quick and disposable
 instances in production to explore Triton service metrics.
@@ -143,8 +141,13 @@ instances in production to explore Triton service metrics.
   <https://github.com/fsnotify/fsnotify/pull/263>
 - [create a triton-prometheus image](https://jira.joyent.us/browse/MANTA-3552)
   Trent and Isaac are working on this.
-- create a triton-grafana image
-- sdcadm setup and upgrade support
+- [create a triton-grafana image](https://jira.joyent.us/browse/MANTA-3992)
+- sdcadm setup and upgrade support, being done as part of the above tickets
+- UFDS-based reverse proxy auth for the grafana zone.
+
+TODO:
+- exclude nat zones, is that done already?
+- sapi tunable for how long to store metrics
 
 
 ### M2: Manta service design
@@ -155,8 +158,8 @@ a subset of poseidon instances from the CMON discovery endpoints. The plan
 is to add filtering support to CMON's discovery endpoint and in
 Prometheus'
 [`triton_sd_config`](https://prometheus.io/docs/prometheus/latest/configuration/configuration/#%3Ctriton_sd_config%3E)
-such that a given prometheus instance could handle a subset of services. (TODO:
-link to this ticket).
+such that a given prometheus instance could handle a subset of services
+(TRITON-755).
 
 - discovery filtering support
 - determine if shared or separate Triton/Manta images
@@ -167,7 +170,7 @@ link to this ticket).
 
 ### M3: Improve auth
 
-Consider UFDS-based reverse proxy auth for the prometheus and grafana zones.
+Consider UFDS-based reverse proxy auth for the prometheus zone.
 
 
 ## Open Questions
@@ -176,6 +179,8 @@ Consider UFDS-based reverse proxy auth for the prometheus and grafana zones.
 - Expand on the prometheus and grafana auth story described in the "Triton
   service" section for beyond M1.
 - How to setup prometheus' and grafana's to monitor themselves (across DCs)?
+- Add details for GZ metrics for the 'admin' account. (TODO: link to ticket
+  for this).
 
 
 ## Q & A
@@ -214,8 +219,9 @@ Consider UFDS-based reverse proxy auth for the prometheus and grafana zones.
 
 - Q: Will there be a realistic need to N scale Prometheus?
 
-  A: I feel pretty confident that we can scale by sharding the set of work
-  across multiple independent prometheus installs for quite some time.
+  A: "I feel pretty confident that we can scale by sharding the set of work
+  across multiple independent prometheus installs for quite some time." --
+  RichardK
 
 - Q: What will a low risk deployment look like?
 
@@ -236,11 +242,3 @@ Consider UFDS-based reverse proxy auth for the prometheus and grafana zones.
 
   A: Sounds like a good idea, but likely Triton/Manta prometheus images
   would still build their own prometheus.
-
-
-## Trent's notes
-
-- prom zone firewalling by default (a la IMGAPI of old)
-- grafana https and cert:
-    http://docs.grafana.org/installation/configuration/#protocol
-    cert_file, cert_key below that
