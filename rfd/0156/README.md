@@ -99,31 +99,27 @@ mount this partition and search for and execute the executable found at a
 well-known location defined by the UEFI specification.  The boot loader is
 normally placed in this location.
 
-The UEFI specification reserved the first sector of the drive so that MBR-style
-boot code can be installed into it.  This sector is known as the protected MBR
-(PMBR) and allows for the same disk to support booting in both legacy BIOS and
-UEFI modes.  To continue to support legacy BIOS boot mode, a first stage loader
-will be installed into the PMBR.  This code will jump to and execute a second
-stage loader (gptzfsboot) that will be intalled into a small boot slice.
-gptzfsboot will then mount the root partition and execute the legacy BIOS
-version of Loader.
+To continue to support legacy BIOS boot mode, a first stage loader will be
+installed into the MBR.  This code will mount the root partition and
+execute the legacy BIOS version of Loader.
 
 The resulting GPT partitioning layout will look like this:
 
 
 <pre>
 Slice  Type                                                            Size 
-0      C12A7328-F81F-11D2-BA4B-00A0C93EC93B (ESP)                      33 MB*
+0      C12A7328-F81F-11D2-BA4B-00A0C93EC93B (ESP)                     256 MB*
 1      6A82CB45-1DD2-11B2-99A6-080020736631 (solaris/illumos boot)      1 MB
 2      6A85CF4D-1DD2-11B2-99A6-080020736631 (solaris/illumos root)   rest of disk 
 </pre>
 
-* The size of the ESP is still being investigated.  The proposed size of 33 MB was
-chosen simply becase that is the smallest PCFS filesystem that mkfs will create
-and currently the only thing in the ESP is the boot loader executable, which is
-under 2MB.  That said, future platforms may require software to placed into
-the ESP in order to update the system board firmware.  So we know some amount
-of headroom is required there.
+* Currently the only file being placed in the ESP is the boot loader executable,
+which is under 2MB.  However, future platforms may require software to be placed
+into the ESP in order to update the system board firmware.  Additionally there
+is a proposal[5] that may place encyption material on the USB key.  So, in
+order to leave sufficient headroom for possible future uses of the ESP and to
+avoid having to increase the size of the ESP later, we are opting for a much
+larger size for the ESP than is currently required.
 
 #### Build Tool Changes
 
@@ -137,7 +133,7 @@ The first script is used to build SmartOS boot media (either an ISO or a USB
 key image).  The second tool creates empty disk images that are used by tools
 in the joyent/sdc-headnode repo to construct Triton and COAL boot images.
 
-These two scripts will be replaced by a new tool (tools/build_image) which
+These two scripts will be replaced by a new tool (tools/build_boot_image) which
 will provide the functionality of both of the above tools.  build_image will
 create the boot images to use GPT partitioning and will install Loader to
 support both legacy BIOS and UEFI boot modes, as described above.
@@ -224,7 +220,7 @@ to automate the process of converting a USB key to the new format in situ.
 ## Dependencies
 
 The changes described in the RFD are dependent on various in-flight illumos
-changes being worked on by Toomas Soome from the illumos community[5].
+changes being worked on by Toomas Soome from the illumos community[6].
 Primarily, these changes include:
 
 - Loader fixes related to UEFI boot that have been pulled from upstream
@@ -314,6 +310,11 @@ Verify ability to PXE boot in UEFI boot mode
 
 Verify additional boot modules / DTrace anon tracing
 
+Verify ability to boot a SmartOS KVM via iPXE
+
+Verify ability to boot both a physical node and a KVM instance via iPXE
+in a RAN environment
+
 
 ## References
 
@@ -325,4 +326,6 @@ Verify additional boot modules / DTrace anon tracing
 
 [4] https://en.wikipedia.org/wiki/GUID_Partition_Table
 
-[5] https://github.com/tsoome/illumos-gate/tree/loader
+[5] https://github.com/joyent/rfd/tree/master/rfd/0077
+
+[6] https://github.com/tsoome/illumos-gate/tree/loader
