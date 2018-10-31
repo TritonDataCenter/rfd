@@ -119,6 +119,14 @@ TODO: Discuss with Manta team after getting some experience with the Triton
 services. See also "M2" notes below.
 
 
+## Forks
+
+We have current outstanding changes to some repos for illumos/SmartOS support:
+
+- https://github.com/prometheus/prometheus/compare/release-2.5...joyent:joyent/2.5
+- https://github.com/fsnotify/fsnotify/compare/v1.4.7...joyent:joyent/1.4.7
+  See https://github.com/fsnotify/fsnotify/pull/263
+
 ## Milestones
 
 ### M0: plain bash setup scripts
@@ -144,10 +152,6 @@ instances in production to explore Triton service metrics.
 - [create a triton-grafana image](https://jira.joyent.us/browse/MANTA-3992)
 - sdcadm setup and upgrade support, being done as part of the above tickets
 - UFDS-based reverse proxy auth for the grafana zone.
-
-TODO:
-- exclude nat zones, is that done already?
-- sapi tunable for how long to store metrics
 
 
 ### M2: Manta service design
