@@ -26,16 +26,15 @@ to a Clos topology.  Once this work is complete each rack in a Triton
 datacenter will be on it's own L3 network.
 
 ## Approach
-With the introduction of [RFD 43 Rack Aware Network
-Pools](https://github.com/joyent/rfd/tree/master/rfd/0043), NAPI networks
-grouped into pools can have different nictags.  This then allows a NIC to be
-provisioned by providing NAPI with a network pool UUID and a nictag as
+With the introduction of [RFD 43 Rack Aware Network Pools][RFD 43], NAPI
+networks grouped into pools can have different nictags.  This then allows a NIC
+to be provisioned by providing NAPI with a network pool UUID and a nictag as
 parameters.  NAPI will select the correct network from the pool that matches
 (among other things) the NIC tag specified.  
 
 In a "Rack Aware Networking" environment each CN will have its NICs tagged with
 the nictag that associates the rack the CN is in with the appropriate NAPI
-network.  Post RFD 117 these networks and NICs will have traits which can be
+network.  Post [RFD 117] these networks and NICs will have traits which can be
 leveraged to allow for identification of network type (e.g. admin, manta, etc).
 For now we will be leveraging the format of the nictag to determine which
 reserved NAPI network a given NIC belongs to.  The namespace of this format is:
@@ -175,7 +174,7 @@ network, and if so which one.
 network (e.g. admin IP), or determine if a given NIC is attached to a reserved
 network, and if so which one.
 
-(Note: RFD 117 will outline which networks will be internally reserved by the
+(Note: [RFD 117] will outline which networks will be internally reserved by the
  Triton infrastructure, for now the assumption is that these will include at a
  minimum 'admin', 'manta', and 'external')
 
@@ -205,6 +204,10 @@ same type.
 
 ## References
 
-* [RFC 3046](https://tools.ietf.org/html/rfc3046)
-* [RFD 43](https://github.com/joyent/rfd/blob/master/rfd/0043/README.md)
-* [RFD 117](https://github.com/joyent/rfd/blob/master/rfd/0117/README.md)
+* [RFC 3046]
+* [RFD 43]
+* [RFD 117]
+
+[RFD 117]: https://github.com/joyent/rfd/blob/master/rfd/0117/README.md
+[RFC 3046]: https://tools.ietf.org/html/rfc3046
+[RFD 43]: https://github.com/joyent/rfd/blob/master/rfd/0043/README.md
