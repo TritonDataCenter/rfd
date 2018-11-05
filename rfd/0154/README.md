@@ -29,13 +29,15 @@ This document includes a proposal for how to allow a VM to flexibly allocate spa
     + [`DeleteMachineDisk`](#deletemachinedisk)
   * [Package Changes](#package-changes)
     + [Package `flexible_disk` attribute](#package-flexible_disk-attribute)
-    + [XXX maybe: Default disks in package](#xxx-maybe-default-disks-in-package)
+    + [Default disks in package](#default-disks-in-package)
   * [Triton CLI changes](#triton-cli-changes)
     + [`triton instance create` options](#triton-instance-create-options)
     + [`triton instance disks`](#triton-instance-disks)
-    + [`triton instance create-disk`](#triton-instance-create-disk)
-    + [`triton instance delete-disk`](#triton-instance-delete-disk)
-    + [`triton instance resize-disk`](#triton-instance-resize-disk)
+    + [`triton instance disk create`](#triton-instance-disk-create)
+    + [`triton instance disk delete`](#triton-instance-disk-delete)
+    + [`triton instance disk resize`](#triton-instance-disk-resize)
+  * [node-sdc client changes](#node-sdc-client-changes)
+  * [VMAPI changes](#vmapi-changes)
   * [Platform Image changes](#platform-image-changes)
     + [`VM.js`: overriding image size in payload](#vmjs-overriding-image-size-in-payload)
     + [`VM.js`: Resize with `update_disks`](#vmjs-resize-with-update_disks)
@@ -89,7 +91,7 @@ This new functionality will be added with CloudAPI version 9.x.y
 
 ### `CreateMachine`
 
-[`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass quantity and size information. The `CreateMachine` documentation will be updated with:
+[`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass disk quantity and size information. If `disks` input is not present and the package does not specify `disks`, traditional behavior is preserved. The `CreateMachine` documentation will be updated with:
 
 > **Inputs**
 >
@@ -117,6 +119,8 @@ This new functionality will be added with CloudAPI version 9.x.y
 >   ]
 > }
 > ```
+>
+> If the `disks` object is not specified, but `packages.disks` is specified, the storage configuration from the package is used. If neither `disks` nor `packages.disks` are specified, two disks are created. The size of the first disk size will match the image size. The second disk will consume the remainder of the space allowed by the package.
 >
 > **Returns**
 >
@@ -307,17 +311,15 @@ Packages will gain an optional `flexible_disk` attribute. If set to `true` the p
 
 The following table outlines the results when used with various images.
 
-| Image size | Inflexible boot disk size | Inflexible data disk size | Flexible boot disk size | Inflexible data disk size |
+| Image size | Inflexible boot disk size | Inflexible data disk size | Flexible boot disk size | Flexible data disk size |
 | --------| ------- | ------- | ------- | ------- |
 | 10 GiB  | 10 GiB  | 100 GiB | 10 GiB  | 90 GiB  |
 | 90 GiB  | 90 GiB  | 100 GiB | 90 GiB  | 10 GiB  |
 | 1 TiB   | 1 TiB   | 100 GiB | Error   | Error   |
 
-### XXX maybe: Default disks in package
+### Default disks in package
 
-**XXX This feels important for the LX to bhyve migration story. A person that was previously using LX got one file system - space was not fragmented across `/` and `/data`. This would make it easy to create packages that mimicked the container behavior.**
-
-A flexible disk package may specify the default size for disks. These sizes can be overridden by `image.disks`.
+A flexible disk package may specify the default size for disks. These sizes can be overridden by `disks` in a `CreateMachine` call.
 
 In this example, any image smaller than 102400 MiB is resized to occupy all of the instance's disk space (102400 MiB).
 
@@ -393,15 +395,15 @@ disk1 92160
 
 The JSON output is as shown in `GetMachineDisks`.
 
-### `triton instance create-disk`
+### `triton instance disk create`
 
-A new disk may be added to a flexible disk instance `add-disk`, described in `triton instance add-disk --help` as:
+A new disk may be added to a flexible disk instance `disk add`, described in `triton instance disk add --help` as:
 
 ```
 Add a disk to a flexible disk instance.
 
 Usage:
-    triton instance add-disk [OPTIONS] INST SIZE
+    triton instance disk add [OPTIONS] INST SIZE
 
 Options:
     -h, --help           Show this help.
@@ -413,15 +415,15 @@ Arguments:
     SIZE        Size in mebibytes
 ```
 
-### `triton instance delete-disk`
+### `triton instance disk delete`
 
-A disk may be removed from a flexible disk instance with `delete-disk`, described in `triton instance delete-disk --help` as:
+A disk may be removed from a flexible disk instance with `disk delete`, described in `triton instance disk delete --help` as:
 
 ```
 Delete a disk from a flexible disk instance.
 
 Usage:
-    triton instance delete-disk [OPTIONS] INST
+    triton instance disk delete [OPTIONS] INST
 
 Options:
     -h, --help           Show this help.
@@ -431,17 +433,17 @@ Options:
 Where "INST" is an instance name, id, or short id.
 ```
 
-### `triton instance resize-disk`
+### `triton instance disk resize`
 
-An existing disk in a flexible disk instance may be resized with `resize-disk`, described in `triton instance resize-disk --help` as:
+An existing disk in a flexible disk instance may be resized with `disk resize`, described in `triton instance disk resize --help` as:
 
 ```
 Resize a disk in a flexible disk instance.
 
 Usage:
-    triton instance resize-disk [OPTIONS] INST DISK SIZE
+    triton instance disk resize [OPTIONS] INST DISK SIZE
 
-Resize-disk options:
+Resize options:
     --dangerous-allow-shrink
                          Allows the disk size to be reduced. This will truncate
                          (chop off the end of) the disk. Any data previously
@@ -460,6 +462,14 @@ Arguments:
     SIZE        Size in mebibytes. If --dangerous-allow-shrink is not also used,
                 SIZE must be greater than the current size of the disk.
 ```
+
+## node-sdc client changes
+
+**XXX work needed**
+
+## VMAPI changes
+
+**XXX work needed**
 
 ## Platform Image changes
 
@@ -698,8 +708,3 @@ Both the AdminUI (operator portal) and the User Portal will require updates to b
 * Add disks
 * Remove disks
 * Resize disks
-
-
-
-
-
