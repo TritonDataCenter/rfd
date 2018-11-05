@@ -39,8 +39,7 @@ This document includes a proposal for how to allow a VM to flexibly allocate spa
   * [Platform Image changes](#platform-image-changes)
     + [`VM.js`: overriding image size in payload](#vmjs-overriding-image-size-in-payload)
     + [`VM.js`: Resize with `update_disks`](#vmjs-resize-with-update_disks)
-    + [bhyve brand: sticky PCI functions for disks](#bhyve-brand-sticky-pci-functions-for-disks)
-    + [bhyve brand: disk slot allocation](#bhyve-brand-disk-slot-allocation)
+    + [`VM.js` PCI slot assignment for disks](#vmjs-pci-slot-assignment-for-disks)
     + [Keeping track of space](#keeping-track-of-space)
       - [How much space can be allocated to a new or grown disk?](#how-much-space-can-be-allocated-to-a-new-or-grown-disk)
       - [Calculation of ZFS space](#calculation-of-zfs-space)
@@ -543,11 +542,15 @@ Successfuly updated 926b8205-4b16-6ec4-f9ad-9883a8c84ce1
 
 **XXX We may want to limit this to one disk update per call to `vmadm update` so that we can't have partial failures. Alternatively, we could explore using [ZFS channel programs](https://www.delphix.com/blog/delphix-engineering/zfs-channel-programs) to allow multiple updates that are applied atomically. Use of ZFS channel programs is not straight-forward as they do not yet support changing property values, such as `volsize`.**
 
-### bhyve brand: sticky PCI functions for disks
+### `VM.js` PCI slot assignment for disks
 
-To ensure that removal of a disk does not cause other disks to appear at a different physical path on subsequent boots, the PCI slot and function will be sticky. The numbering will be based on *N* of `/dev/zvol/rdsk/zones/<uuid>/disk`*N*.
+The PCI slot for each disk can be specified with `disks.*.pci_slot`, which will correspond to an optional `pci_slot` property in each NIC.
 
 Prior to this change, the boot and data disks were assigned to slot `4:0` and `4:1`, respectively. This comes by happenstance from the order that they appear in the zone configuration. The new allocation scheme will ensure that existing disks remain at the same PCI functions as the historical implementation while allowing disks to remain at their paths in the face of removal. For example:
+
+At provisioning, disk add, or boot time, if a disk does not have a `pci_slot` property, one will be assigned at 0:4:N for disks or 0:3:N for cdroms. The assignment of N will follow the algorithm previously used to allocate pci slots dynamically at boot time.
+
+The goal of this change is to ensure that any guest code that depends on "physical" location is tolerant of device removal. Consider the following example:
 
 After provisioning a VM with three disks, `lspci` may report the following, which correspond to `disk0`, `disk1`, and `disk2`.
 
@@ -564,11 +567,7 @@ If `disk1` is removed, `lspci` will report:
 00:04.2 SCSI storage controller: Red Hat, Inc Virtio block device
 ```
 
-### bhyve brand: disk slot allocation
-
-When a disk is added, it is assigned to the first empty slot.
-
-Consider the previous example: an instance ended up with two disks: `disk0` and `disk2`. If a disk is subsequently added, it will be added as `disk1`, not `disk3`.
+If a disk is subsequently added and `pci_slot` is not specified, it is assigned to the first empty slot. In the example above, a new disk would default to PCI slot 0:4:1.
 
 ### Keeping track of space
 
@@ -699,6 +698,7 @@ Both the AdminUI (operator portal) and the User Portal will require updates to b
 * Add disks
 * Remove disks
 * Resize disks
+
 
 
 
