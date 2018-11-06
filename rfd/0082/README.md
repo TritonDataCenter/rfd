@@ -340,6 +340,11 @@ The following issues are required:
   process and, eventually, ensure we timeout such processes when all but a number of individual
   agents setup have finished within _acceptable time_ and we still have one or more instances
   hanging.
+  **Average agent install/update time and users warning:** Given the default timeouts for agent
+  install/update are huge (1 hour for the cn-agent task, for example), it would be desirable to
+  collect the time that it takes for each server and, when waiting too long for a given server
+  setup, we could warn the user that the install is taking way longer than the average time for
+  other servers, which will possibly mean a failure for that particular instance.
 - Similarly, we could definitely bump the number of agents updates we run in parallel from the
   current default of `5` to something bigger. Starting with `20` or so could be a good idea.
 - Additionally, there's a pretty good idea worth investigating regarding trying to use the
@@ -348,7 +353,12 @@ The following issues are required:
   agent before we take the currently running instance down. If there aren't any drawbacks for
   this approach, this should mean no downtime for agents despite of the upgrade processes
   going on into the different CNs.
-
+- **Parallel setup of some agents:** While it’s not possible to setup `cn-agent`, `config-agent` and
+  `agents_core` in parallel, given these are used during the install/update of every agent instance,
+  it would be possible to run parallel updates for the other agents, which should help speeding up
+  the whole process, specially when there are several agents to be updated.
+  (Note the same could be applied for stateless Triton VM services, but that's out of this RFD scope).
+  
 ## M3: Accurate VM instance tracking in SAPI (bonus points)
 
 This section is optional for this RFD.
