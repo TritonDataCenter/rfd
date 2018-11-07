@@ -70,7 +70,7 @@ v0.10.48   manta-muskie
 v0.10.30   manta-propeller
 v4.8.7     manta-reshard
 v0.10.25   manta-wrasse
-v0.10.48   moray
+v6.14.3    moray
 v4.6.1     muppet
 v4.8.7     pgstatsmon
 v0.10.48   registrar
@@ -81,15 +81,15 @@ v4.9.0     sdc-booter
 v4.9.0     sdc-cloudapi
 v6.14.0    sdc-cn-agent
 v6.14.0    sdc-cnapi
-v0.10.48   sdc-config-agent
+v6.14.3    sdc-config-agent
 v4.9.0     sdc-docker
 v0.10.48   sdc-firewaller-agent
 v0.10.48   sdc-fwapi
 v4.9.0     sdc-imgapi
 v0.10.26   sdc-manatee
 v0.10.48   sdc-manta
-v0.12.17   sdc-mockcloud
-v0.10.48   sdc-napi
+v6.14.3    sdc-mockcloud
+v6.14.3    sdc-napi
 v0.10.48   sdc-napi-ufds-watcher
 v4.6.1     sdc-net-agent
 v0.10.48   sdc-nfsserver
@@ -100,7 +100,7 @@ v0.10.48   sdc-sdc
 v0.10.48   sdc-system-tests
 v0.10.48   sdc-ufds
 v6.14.0    sdc-vm-agent
-v6.14.0    sdc-vmapi
+v4.9.0     sdc-vmapi
 v4.9.0     sdc-volapi
 v4.9.0     sdc-workflow
 v6.14.0    sdcadm
