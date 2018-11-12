@@ -36,8 +36,11 @@ This document includes a proposal for how to allow a VM to flexibly allocate spa
     + [`triton instance disk create`](#triton-instance-disk-create)
     + [`triton instance disk delete`](#triton-instance-disk-delete)
     + [`triton instance disk resize`](#triton-instance-disk-resize)
-  * [node-sdc client changes](#node-sdc-client-changes)
   * [VMAPI changes](#vmapi-changes)
+    + [`GetVm disks`](#getvm-disks)
+    + [`CreateVmDisk`](#createvmdisk)
+    + [`ResizeVmDisk`](#resizevmdisk)
+    + [`DeleteVmDisk`](#deletevmdisk)
   * [Platform Image changes](#platform-image-changes)
     + [`VM.js`: overriding image size in payload](#vmjs-overriding-image-size-in-payload)
     + [`VM.js`: Resize with `update_disks`](#vmjs-resize-with-update_disks)
@@ -463,13 +466,54 @@ Arguments:
                 SIZE must be greater than the current size of the disk.
 ```
 
-## node-sdc client changes
-
-**XXX work needed**
-
 ## VMAPI changes
 
-**XXX work needed**
+Alonside the changes described here for VMAPI's end-points, there will be required changes
+for VMAPI (3 new workflows for disks creation, resize and deletion), modifications of the
+create VM workflow if needed, and updates of VMAPI's parameter validations.
+
+#### CNAPI and CN-Agent changes
+
+Additionally, if we can proceed with the new disk related modifications using CNAPI's `VmUpdate`
+end-point and the associated CN-AGENT's `machine-update` task, we'll just need to modify these
+accordingly. Otherwise, it's possible that the creation of a new CNAPI's end-point and CN-AGENT
+task were required, similar to `VmNicsUpdate` and `machine_update_nics` respectively.
+
+#### node-sdc client changes
+
+The VMAPI's client will have new methods to allow creation, resize and removal of
+machine disks. See VMAPI's end-points below for more information regarding the available
+arguments.
+
+### CreateVM disks
+
+VMAPI's `CreateVM` end-point will accept the new parameter `disks` allowing exactly the same
+input than CloudAPI's [`CreateMachine`](#createmachine) described above. This parameter will
+be supported only when package used to create the VM has [flexible disk support enabled](XXX link)
+
+### GetVm disks
+
+VMAPI's will not have a [`GetMachineDisks`](#getmachinedisks) end-point like CloudAPI's. Instead,
+`GetVm` will always include the `disks` member when present; it's to say, if machine has been
+created using `disks` parameter or with a package with [flexible disk support enabled](XXX link)
+which will cause the member to appear and be set to the defaults.
+
+It'll be CloudAPI's task to display or not `disks` member depending on the request it's responding to.
+
+### CreateVmDisk (POST /vms/:uuid?action=create_disk)
+
+VMAPI's end-point with exactly the same input than CloudAPI's [`CreateMachineDisk`](#createmachinedisk).
+
+### ResizeVmDisk (POST /vms/:uuid?action=resize_disk)
+
+VMAPI's end-point with exactly the same input than CloudAPI's [`ResizeMachineDisk`](#resizemachinedisk).
+Target disk will be referenced by `:slot` parameter (exactly the same way than CloudAPI).
+
+### DeleteVmDisk (POST /vms/:uuid?action=delete_disk)
+
+VMAPI's end-point with exactly the same input than CloudAPI's [`DeleteMachineDisk`](#deletemachinedisk).
+Target disk will be referenced by `:slot` parameter (exactly the same way than CloudAPI).
+
 
 ## Platform Image changes
 
