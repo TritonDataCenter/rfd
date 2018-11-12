@@ -228,7 +228,7 @@ important in a software engineering context because we so frequently make
 tradeoffs in which our values dictate our disposition.  (For example, the
 relative importance of speed of development versus rigor; both are clearly
 important and positive attributes, but there is often a tradeoff to be had
-between them).  Different engineering organizations may have different
+between them.)  Different engineering organizations may have different
 values over different times or for different projects, but it's also true
 that individuals tend to develop their own values over their career -- and
 it's essential that the values of a candidate do not clash with the values
@@ -304,7 +304,7 @@ A hidden criminal background in software engineering candidates is unusual;
 much more common is a slight "fudging" of credentials or other elements of
 one's past: degrees that were not in fact earned; grades or scores that have
 been exaggerated; awards that were not in fact bestowed; gaps in employment
-history that are quietly covering up by changing the time that one was at a
+history that are quietly covered up by changing the time that one was at a
 previous employer.  These transgressions may seem slight, but they can point
 to something quite serious:  a candidate's willingness or desire to mislead
 others to advance themselves.  To protect against this, a basic credential
@@ -313,17 +313,17 @@ employment.
 
 #### References
 
-References can be very tricky, especially for someone coming from a difficult
-situation (e.g., fleeing poor management).  Ideally, a candidate is well
-known by someone inside the company who is trusted -- but even this poses
-challenges:  sometimes we don't truly know people until they are in difficult
-situations, and someone "known" may not, in fact, be known at all.  
+References can be very tricky, especially for someone coming from a
+difficult situation (e.g., fleeing poor management).  Ideally, a candidate
+is well known by someone inside the company who is trusted -- but even this
+poses challenges:  sometimes we don't truly know people until they are in
+difficult situations, and someone "known" may not, in fact, be known at all.
 Worse, references are most likely to break down when they are most needed:
 dishonest, manipulative people are, after all, dishonest and manipulative;
 they can easily fool people -- and even references -- into thinking that
-they are something that they are not.  So while references can provide
-value (and shouldn't be eliminated as a tool), they should also be used
-carefully and kept in perspective.
+they are something that they are not.  So while references can provide value
+(and shouldn't be eliminated as a tool), they should also be used carefully
+and kept in perspective.
 
 #### Interviews
 
@@ -383,8 +383,14 @@ The candidate should submit the following:
   7. Who is someone you have mentored, and what did you learn from them?
   8. What qualities do you most admire in other software engineers?
 
-Candidate-submitted material should be collected and distributed to
-everyone on the interview list.  
+Lest this seem arduous, note that much of this material is likely to be
+preexisting (e.g., samples of prior work).  As for the balance, it has been
+our experience that candidates themselves find answering these
+self-reflective questions to be helpful to their own job search process,
+entirely independently of any specific opportunity.
+
+Once gathered from the candidate, submitted material should be distributed
+to everyone on the interview list prior to the interview.
 
 ### Before the interview
 
@@ -404,8 +410,9 @@ are talking about something that they know well and can prepare for
 arbitrarily.  The candidate should be allowed to present on anything
 technical that they've worked on, and it should be made clear that:
 
-1. Confidentiality will be respected (that is, they can present on
-   proprietary work)
+1. Confidentiality will be respected (that is, to the degree that they are
+   permitted by extant covenants, the candidate can present on work that
+   isn't public with the assurance that privacy will be honored)
 
 2. The presentation needn't be novel -- it is fine for the candidate to
    give a talk that they have given before
@@ -521,23 +528,24 @@ everyone from reaching the same decision.**
 
 It is tautologically challenging to evaluate one's process for assessing
 software engineers:  one lacks data on the candidates that one doesn't hire,
-and therefore can't know which candidates should have been extended offers of
-employment but weren't.  As such, hiring processes can induce a kind of
-ultimate [survivorship bias](https://en.wikipedia.org/wiki/Survivorship_bias)
-in that it is only those who have survived (or instituted) the process who are
-present to assess it -- which can lead to deafening echo chambers of smug
-certitude.  One potential way to assess the assessment process:  **ask
-candidates for their perspective on it.** Candidates are in a position to be
-evaluating many different hiring processes concurrently, and likely have the
-best perspective on the relative merits of different ways of assessing
-software engineers.
+and therefore can't know which candidates should have been extended offers
+of employment but weren't.  As such, hiring processes can induce a kind of
+ultimate [survivorship
+bias](https://en.wikipedia.org/wiki/Survivorship_bias) in that it is only
+those who have survived (or instituted) the process who are present to
+assess it -- which can lead to deafening echo chambers of smug certitude.
+One potential way to assess the assessment process:  **ask candidates for
+their perspective on it.** Candidates are in a position to be evaluating
+many different hiring processes concurrently, and likely have the best
+perspective on the relative merits of different ways of assessing software
+engineers.
 
-Of course, there is peril here too:  while many organizations would likely be
-very interested in a candidate who is bold enough to offer constructive
-criticism on the process being used to assess them *while* it is being used to
-assess them, the candidates themselves might not realize that -- and may
+Of course, there is peril here too:  while many organizations would likely
+be very interested in a candidate who is bold enough to offer constructive
+criticism on the process being used to assess them *while* it is being used
+to assess them, the candidates themselves might not realize that -- and may
 instead offer bland bromides for fear of offending a potential employer.
 Still, it has been our experience that a thoughtful process will encourage a
-candidate's candor -- and we have found that the processes described here have
-been strengthened by listening carefully to the feedback of candidates.
+candidate's candor -- and we have found that the processes described here
+have been strengthened by listening carefully to the feedback of candidates.
 
