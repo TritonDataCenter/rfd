@@ -229,7 +229,7 @@ then restarts the target instance.
 
 The following endpoints will be available for customers:
 
-- ListMigrations (POST /:login/migrations
+- ListMigrations (GET /:login/migrations
   Return a list of migrations (completed, running, scheduled, failed, ...).
 
   This should call VMAPI (GET /migrations?owner_uuid=:owner), which will return
