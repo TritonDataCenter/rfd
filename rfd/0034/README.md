@@ -526,7 +526,7 @@ operations:
         // The state the migration operation is currently in. It can be one of
         // the following states:
         //  "scheduled"  - the migration is scheduled, see "scheduled_timestamp"
-        //  "running"    - migration is running, see "job_uuid" and "step"
+        //  "running"    - migration running, see also "progress_history"
         //  "paused"     - the "begin" phase (and possibly "sync" phase) has
         //                 been run - now waiting for a call to "sync"
         //                 or the final call to "switch"
@@ -564,11 +564,6 @@ operations:
         // Example:
         //   2018-08-19T23:49:45.880Z
 
-      job_uuid: "UUID"
-        // The workflow job uuid (if it was started).
-
-      previous_jobs: "array of job uuids"
-
       phase: "string"
         // The workflow stage that the migration is currently running, one of:
         //  "begin"            - just starting the migration operation
@@ -583,9 +578,10 @@ operations:
         // The size (in bytes) of the last successful sync.
 
       progress_history: "array of completed JSON progress events"
-        // Each time a migration phase is completed (or when a major migration
+        // Each time a migration phase is started (or when a major migration
         // event has occurred) an entry will be added to this array. This will
-        // be used to initially populate the migration watch event stream.
+        // be used to initially populate the migration watch event stream. See
+        // the "Progress Events" section for details.
         // Example:
         //   [{begin}, {sync}, {sync}, {sync}, {switch}]
 
@@ -907,12 +903,15 @@ sent back every N seconds (e.g. every 2 seconds).
         // details, e.g. "source instance image cannot be migrated to the target
         // CN".
 
-      start_timestamp: "string"
+      started_timestamp: "string"
         // The ISO timestamp when the phase was started.
 
-      end_timestamp: "string" (optional)
+      finished_timestamp: "string" (optional)
         // The ISO timestamp when the phase finished. When omitted, it indicates
         // that this phase is still running.
+
+      job_uuid: "string" (optional)
+        // The job uuid associated with this event.
 
       message: "string" (optional)
         // Additional description message for this phase/state.
@@ -932,8 +931,8 @@ Status event (successful):
     {
       phase: "begin",
       state: "success",
-      start_timestamp: "2018-08-18T10:55:39.785Z",
-      end_timestamp: "2018-08-18T10:58:01.402Z"
+      started_timestamp: "2018-08-18T10:55:39.785Z",
+      finished_timestamp: "2018-08-18T10:58:01.402Z"
     }
 
 Status event (sync just started running):
@@ -941,7 +940,7 @@ Status event (sync just started running):
     {
       phase: "sync",
       state: "running",
-      start_timestamp: "2018-08-18T10:59:09.338Z",
+      started_timestamp: "2018-08-18T10:59:09.338Z",
       current_progress: 0,
       total_progress: 983374382
     }
@@ -951,7 +950,7 @@ Status event (sync running):
     {
       phase: "sync",
       state: "running",
-      start_timestamp: "2018-08-18T10:59:10.198Z",
+      started_timestamp: "2018-08-18T10:59:10.198Z",
       current_progress: 12039472
       total_progress: 983374382
     }
@@ -961,8 +960,8 @@ Status event (sync successful):
     {
       phase: "begin",
       state: "success",
-      start_timestamp: "2018-08-18T10:59:10.198Z",
-      end_timestamp: "2018-08-18T11:15:44.384Z"
+      started_timestamp: "2018-08-18T10:59:10.198Z",
+      finished_timestamp: "2018-08-18T11:15:44.384Z"
       current_progress: 983374382
       total_progress: 983374382
     }
@@ -973,8 +972,8 @@ Status event (switch failure):
       phase: "switch",
       state: "failed",
       message: "Failed to switched NICs to migrated target - aborted"
-      start_timestamp: "2018-08-18T11:16:12.600Z"
-      end_timestamp: "2018-08-18T11:16:33.974Z"
+      started_timestamp: "2018-08-18T11:16:12.600Z"
+      finished_timestamp: "2018-08-18T11:16:33.974Z"
     }
 
 # Scheduling
