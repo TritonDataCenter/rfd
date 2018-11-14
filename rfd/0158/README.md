@@ -31,11 +31,11 @@ available on one Compute Node, and is not easily migrated or respun if a CN
 fails.  A NAT zone provides Source NAT (SNAT) for egress traffic.
 
 Many JPC and Triton customers have asked for Destination NAT (DNAT) to allow
-a reserved public IP address to have its traffic forwarded to a private address
-that may change from time to time. This feature resembles Amazon's Elastic IP.
-This document introduces a similar feature, Assignable IP (AIP), with a narrow
-definition: a public IP address that can be mapped one-to-one to exactly one
-Fabric Network IP (as defined by vnetid + Fabric IP address).
+a reserved public IP address to have its traffic forwarded to a private
+address that may change from time to time. This feature resembles Amazon's
+Elastic IP.  This RFD introduces a similar feature, Assignable IP (AIP), with
+a narrow definition: a public IP address that can be mapped one-to-one to
+exactly one Fabric Network IP (as defined by vnetid + Fabric IP address).
 
 ## Proposed Solution
 
@@ -49,16 +49,9 @@ runtime state, most notably differing (S)NAT flows.  These instances can be
 utilized via any number of policies.  On the interior side, the use of the
 SmartOS VXLAN Protocol (SVP) to remap the default router to an appropriate
 NAT entity can spread interior-to-exterior traffic across different NAT
-entities. On the exterior side, by use of traditional IP routing protocols
-and, where appropriate, equal-cost multipathing, will provide similar
-mappings from the external arrival side.
-
-> XXX-mg: The last three sentences above do not make a lot of sense to me.
-> Perhaps my hangup is the word "polices", which I may be misunderstanding.
-
-> XXX KEBE SAYS -> Multiple `vxlnat(7D)` zones are mechanism. How the load is
-> spread is subject to policy.  ALSO NOTE: We haven't introduced vxlnat(7D)
-> at this point.
+entities on a per-default-router-IP basis.  On the exterior side, by use of
+traditional IP routing protocols and, where appropriate, equal-cost
+multipathing, will provide similar mappings from the external arrival side.
 
 On the interior, Fabric Networks will need to know how to reach a NAT entity.
 Today NAT Zones consume a Fabric IP address. In the future, each those Fabric
@@ -68,6 +61,9 @@ Protocol (SVP) entries for NAT IPs will point to a smaller set of underlay
 IPs, depending on policy for spreading out the NAT load AND on the number of
 deployed NAT entities.
 
+> XXX KEBE SAYS PUT PICTURE IN HERE of three VMs, two networks, two
+> vxlnat(7D) zones.
+
 On the exterior, the routing protocols run for the Internet-connected
 networks in the Triton deployment will have to be informed about which public
 IPs (both AIPs and public IPs consumed by NAT entities) get routed to which
@@ -76,6 +72,9 @@ get added or removed (by administrator action OR by failure).  NAT entities
 will be ABLE to receive all public IP traffic and send on behalf of all
 internal Fabric Networks. Any given one, though, may not have all public IP
 traffic routed to it because of external network routing policies.
+
+> XXX KEBE SAYS PUT PICTURE IN HERE OF two vxlnat(7D) zones, attached to a
+> public network.  (Find a BGP example and exploit it here?)
 
 This RFD will cover:
 
@@ -120,12 +119,13 @@ NOTE:  Today triton does not allow overlapping prefixes in a customer
 (vnet).  If that changes, the addition of VLAN will be needed in the above
 mappings, alongside vnet.
 
-The above configuration is read from a file by `vxlnatd(1M)`, and SMF-managed
+The above configuration is read from a file by `vxlnatd(1M)`, an SMF-managed
 service that opens the `vxlnat(7D)` device, and feeds it configuration from a
-file.  `vxlnatd(1M)` will also perform configuration updates and query for
-configuration and/or statistics.  The current prototype of `vxlnat(7D)` is
-such that while it can be run in a non-global zone, only one `vxlnat(7D)` can
-run on a machine at a time.
+file.  `vxlnatd(1M)` will also perform configuration updates, query for
+configuration and/or statistics, and query SVP on behalf of 1-1 mappings for
+inbound traffic.  The current prototype of `vxlnat(7D)` is such that while it
+can be run in a non-global zone, only one `vxlnat(7D)` can run on a machine
+at a time.
 
 On the public-network side, `vxlnat(7D)` uses existing TCP/IP stack constructs
 to aid in processing NAT flows or rules.  For 1-1 mapped external IPs, the
@@ -184,7 +184,7 @@ relevant to the underlay network.
 
 Currently this means no routes on the underlay interface, but if Rack-Aware
 Networking [RFD 152] comes to the underlay network, routes for other racks
-MUST be present, and outside the external network IP address space.
+MUST be present, and not collide with any external network IP address space.
 
 #### IP Forwarding
 
@@ -229,13 +229,18 @@ NAPI(?).
 
 ### Triton requirements
 
-> XXX KEBE SAYS TALK TO TRITON FOLKS ABOUT THIS.  DO WE NEED A NEW
-> `vxlnat(7D)` SAPI OBJECT (like the NAT zone today?!?)?  DO WE NEED ONE FOR
-> EVERY DEPLOYABLE?  HOW DOES THAT WORK?  ALSO, WHAT ABOUT PORTOLAN UPDATES
-> FOR WHEN WE MOVE CERTAIN FABRIC NEXT-HOPS TO NEW `vxlnat(7D)` ZONES?  HOW
-> DO WE PUSH UPDATES OUT TO ALL THE `vxlnat(7D)` INSTANCES?
+> XXX KEBE SAYS TALK TO TRITON FOLKS ABOUT THIS.
 
-> XXX TEXT FOR AIP PRIMITIVES: CREATE, MODIFY, DESTROY.  (Or is that for NAPI?)
+> SOLID QUESTIONS WILL HAVE NUMBERS:
+
+> 1.) DO WE NEED A NEW `vxlnat(7D)` SAPI OBJECT (like the NAT zone today?!?)?
+
+> 2.) DO WE NEED ONE SAPI OBJECT FOR EVERY `vxlnat(7D)` ZONES?
+> (IF SO, HOW DOES THAT WORK?)
+
+> 3.) WHAT ABOUT PORTOLAN UPDATES FOR WHEN WE MOVE CERTAIN FABRIC NEXT-HOPS
+> TO NEW `vxlnat(7D)` ZONES?  HOW DO WE PUSH UPDATES OUT TO ALL THE
+> `vxlnat(7D)` INSTANCES?
 
 > XXX NAT RULE GENERATION UPON NEW FABRIC CREATION (replacement for NAT-zone
 > creation/update).
@@ -251,9 +256,16 @@ NAPI(?).
 > `vxlnat(7D)` ZONE, AND BE ABLE TO CHANGE THAT (OR LET PORTOLAN BE SMARTER
 > AND DOLE THE APPROPRIATE `vxlnat(7D)` ON THE FLY).
 
+> XXX TEXT FOR AIP PRIMITIVES: CREATE, MODIFY, DESTROY.
+> AIP is an external network address and <something>.
+
+> 4.) IS IT BETTER TO MAP AN AIP TO AN INTERNAL ADDRESS?  OR AN INTERNAL
+> INSTANCE UUID?  (NOTE: EITHER ONE WILL HAVE TO CHANGEABLE.)
+
 #### SAPI
 
-> XXX KEBE THINKS INSTANTIATING `vxlnat(7D)` ZONES GOES HERE.
+> XXX KEBE THINKS INSTANTIATING `vxlnat(7D)` ZONES GOES HERE.  I HAVE
+> PROTOTYPE EXPERIENCE FROM A YEAR AGO WITH (unsuccessful) ROUTER OBJECTS.
 
 #### VMAPI
 
