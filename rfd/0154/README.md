@@ -23,7 +23,7 @@ This document includes a proposal for how to allow a VM to flexibly allocate spa
 - [Solution](#solution)
   * [CloudAPI](#cloudapi)
     + [`CreateMachine`](#createmachine)
-    + [`GetMachineDisks`](#getmachinedisks)
+    + [`GetMachine` Disks](#getmachine-disks)
     + [`ResizeMachineDisk`](#resizemachinedisk)
     + [`CreateMachineDisk`](#createmachinedisk)
     + [`DeleteMachineDisk`](#deletemachinedisk)
@@ -130,7 +130,7 @@ This new functionality will be added with CloudAPI version 9.x.y
 > | Field | Type | Description |
 > | ----- | ---- | ----------- |
 > | image | String | The image UUID used when provisioning the root disk |
-> | disks | Array[Object] | (v9.x.y+) One disk object per disk in the VM. See `GetMachineDisks` for details. |
+> | disks | Array[Object] | (v9.x.y+) One disk object per disk in the VM. See `GetMachine` for details. |
 
 Suppose the example input above is used with this package for the boot disk:
 
@@ -172,17 +172,14 @@ This will lead to the following `disks` in the `vmadm` payload:
   ...,
 ```
 
-### `GetMachineDisks`
+### `GetMachine` Disks
 
-`GetMachineDisks` will be added, with the following CloudAPI documentation.
+Information regarding disks will be added to Machine objects when present. The following information
+needs to be added to CloudAPI's `GetMachine` and `ListMachines` regarding Machine objects.
 
-> **GetMachineDisks (POST /:login/machines/:id/disks)**
+> **GetMachine (GET /:login/machines/:id)**
 >
-> Gets the details of a virtual machine's disks and unallocated disk space. Only supported with bhyve VMs. New in CloudAPI 9.x.y.
->
-> **Inputs**
->
-> None.
+> The details of a virtual machine's disks and unallocated disk space, only supported with bhyve VMs has been added in CloudAPI 9.x.y.
 >
 > **Returns**
 >
@@ -207,7 +204,7 @@ This will lead to the following `disks` in the `vmadm` payload:
 
 `ResizeMachineDisk` will be added, with the following CloudAPI documentation.
 
-> **ResizeMachineDisk (POST /:login/machines/:id/disks/:slot?action=resize)**
+> **ResizeMachineDisk (POST /:login/machines/:id/disks/:slot)**
 >
 > Resizes a VM's disk. Only supported with bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.x.y.
 >
@@ -232,6 +229,7 @@ This will lead to the following `disks` in the `vmadm` payload:
 >
 > | Error Code | Description |
 > | ---------- | ----------- |
+> | ResourceNotFound | If `:login`, `:id` or `:slot` does not exist. |
 > | InvalidArgument | `size` was specified such that it would shrink the disk but `dangerous_allow_shrink` was not set to true. |
 > | InsufficientSpace | There is not sufficient `free_space` (see `GetMachineDisks`) to grow the disk to specified size. |
 
@@ -267,7 +265,7 @@ This will lead to the following `disks` in the `vmadm` payload:
 
 **XXX should deletion protection also protect against deleting disks? This would be useful for providing oversight if RBAC allowed `DeleteMachineDisk` but did not allow `DisableMachineDeletionProtection`.**
 
-> **DeleteMachineDisk (POST /:login/machines/:id/disks/:slot)**
+> **DeleteMachineDisk (DELETE /:login/machines/:id/disks/:slot)**
 >
 > Deletes a VM's disk. Only supported to remove data disks (disks other than the boot disk) from bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.x.y.
 >
@@ -285,7 +283,8 @@ This will lead to the following `disks` in the `vmadm` payload:
 >
 > | Error Code | Description |
 > | ---------- | ----------- |
-> | InvalidArgument | `:slot` belongs to the boot disk or no matching disk found. |
+> | InvalidArgument | `:slot` belongs to the boot disk. |
+> | ResourceNotFound | If `:login`, `:id` or `:slot` does not exist. |
 
 ## Package Changes
 
@@ -493,12 +492,9 @@ be supported only when package used to create the VM has [flexible disk support 
 
 ### GetVm disks
 
-VMAPI's will not have a [`GetMachineDisks`](#getmachinedisks) end-point like CloudAPI's. Instead,
-`GetVm` will always include the `disks` member when present; it's to say, if machine has been
+VMAPI's `GetVm` will always include the `disks` member when present; it's to say, if machine has been
 created using `disks` parameter or with a package with [flexible disk support enabled](XXX link)
 which will cause the member to appear and be set to the defaults.
-
-It'll be CloudAPI's task to display or not `disks` member depending on the request it's responding to.
 
 ### CreateVmDisk (POST /vms/:uuid?action=create_disk)
 
