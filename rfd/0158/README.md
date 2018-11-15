@@ -30,12 +30,13 @@ public IP, and one `overlay(7D)` NIC.  Furthermore, the NAT zone is only
 available on one Compute Node, and is not easily migrated or respun if a CN
 fails.  A NAT zone provides Source NAT (SNAT) for egress traffic.
 
-Many JPC and Triton customers have asked for Destination NAT (DNAT) to allow
-a reserved public IP address to have its traffic forwarded to a private
-address that may change from time to time. This feature resembles Amazon's
-Elastic IP.  This RFD introduces a similar feature, Assignable IP (AIP), with
-a narrow definition: a public IP address that can be mapped one-to-one to
-exactly one Fabric Network IP (as defined by vnetid + Fabric IP address).
+Additionally, many JPC and Triton customers have asked for Destination NAT
+(DNAT) to allow a reserved public IP address to have its traffic forwarded to
+a private address that may change from time to time. This feature resembles
+Amazon's Elastic IP.  This RFD introduces a similar feature, Assignable IP
+(AIP), with a narrow definition: a public IP address that can be mapped
+one-to-one to exactly one Fabric Network IP (as defined by vnetid + Fabric IP
+address).
 
 ## Proposed Solution
 
@@ -61,8 +62,7 @@ Protocol (SVP) entries for NAT IPs will point to a smaller set of underlay
 IPs, depending on policy for spreading out the NAT load AND on the number of
 deployed NAT entities.
 
-> XXX KEBE SAYS PUT PICTURE IN HERE of three VMs, two networks, two
-> vxlnat(7D) zones.
+![Using SVP's UL3 mappings for multiple `vxlnat(7D)` zones](UL3-mappings.svg)
 
 On the exterior, the routing protocols run for the Internet-connected
 networks in the Triton deployment will have to be informed about which public
@@ -70,11 +70,12 @@ IPs (both AIPs and public IPs consumed by NAT entities) get routed to which
 NAT entities.  The routing information/topology will change as NAT entities
 get added or removed (by administrator action OR by failure).  NAT entities
 will be ABLE to receive all public IP traffic and send on behalf of all
-internal Fabric Networks. Any given one, though, may not have all public IP
-traffic routed to it because of external network routing policies.
+internal Fabric Networks. Any given one, though, will not have all public IP
+traffic routed to it because of external network routing policies, and
+because for DNAT flows, DNAT state can exist only one one `vxlnat(7D)` zone
+at a time.
 
-> XXX KEBE SAYS PUT PICTURE IN HERE OF two vxlnat(7D) zones, attached to a
-> public network.  (Find a BGP example and exploit it here?)
+![External network connectivity](external-network.svg)
 
 This RFD will cover:
 
@@ -98,10 +99,12 @@ public IP addresses.  `vxlnat(7D)` does not implement VXLAN with an
 interface that is attached to a VXLAN underlay network. `vxlnat(7D)` uses the
 VNET id as an additional field in its NAT rules.  All state in `vxlnat(7D)`
 is instantiated and indexed by the 24-bit VXLAN vnet ID.  All VXLAN packets
-first find the vnet state, and then proceed.  Each `vxlnat(7D)` instance has
-its own distinct underlay-network IP address.
+first find the vnet state, and then proceed.  The per-vnet state contains 1-1
+mapping entries, NAT rules for an internal prefix, and NAT flows derived from
+the NAT rules.  Each `vxlnat(7D)` instance has its own distinct
+underlay-network IP address.
 
-> XXX KEBE SAYS PUT A PICTURE HERE.
+![A `vxlnat(7D)` zone](vxlnat-internals.svg)
 
 An overview of `vxlnat(7D)` configuration will help better explain the
 public-network side of things.  `vxlnat(7D)` is configured in the following
@@ -113,7 +116,8 @@ manner:
   else.)
 - Traditional NAT rules mapping {vnet,IP-prefix} ==> external-IP.
   (NOTE: external-IPs used here can be reused for other
-  {vnet,IP-prefix} mappings.)
+  {vnet,IP-prefix} mappings. Any mappings sharing an external-IP must
+  co-reside on a single `vxlnat(7D)` zone.)
 
 NOTE:  Today triton does not allow overlapping prefixes in a customer
 (vnet).  If that changes, the addition of VLAN will be needed in the above
@@ -165,9 +169,10 @@ In addition to the set of external IP addresses, the `vxlnat(7D)` zone must
 also have a dedicated external IP so that routing protocols and/or policies
 know which actual destination to forward packets for a set of external IP
 addresses.  A `vxlnat(7D)` zone's dedicated IP CAN be on other `vxlnat(7D)`
-zone's etherstub vnics, for easier failover.
+zone's etherstub vnics, for easier failover.  The external network diagram
+from earlier illustrates a sample deployment of external IP addresses.
 
-> XXX KEBE SAYS PUT A PICTURE HERE, MAYBE MORE.
+![External network connectivity](external-network.svg)
 
 The etherstub is required because, as of today, there is no way to assign an
 address to a NIC without Duplicate Address Detection being invoked.  A
