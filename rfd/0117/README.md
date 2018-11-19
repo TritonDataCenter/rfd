@@ -1,6 +1,7 @@
 ---
 authors: Cody Mello <cody.mello@joyent.com>
 state: predraft
+discussion: https://github.com/joyent/rfd/issues/122
 ---
 
 # RFD 117 Network Traits
