@@ -121,6 +121,60 @@ order to leave sufficient headroom for possible future uses of the ESP and to
 avoid having to increase the size of the ESP later, we are opting for a much
 larger size for the ESP than is currently required.
 
+#### Boot Loader User Interface
+
+Loader offers a richer and more extensible user-interface than Legacy GRUB. 
+What follows are a set of before and after screenshots highlighting the key
+differences.
+
+Below are a pair of screenshots showing the Legacy GRUB boot loader menu
+that is currently displayed when booting standalone SmartOS and Triton,
+respectively.  The Legacy GRUB interface is effectively a single-level menu
+that can be configured to present of static set of boot target/boot option 
+combinations:
+
+If a user wants to apply a boot setting that is not already represented by one
+of the static menu entries then the user must enter an edit mode
+that allows for manually editting the grub menu configuration.  This is less
+than ideal as it requires the user to understand both the format of the Legacy
+GRUB configuration parameters and the format of kernel command line.
+
+![alt text]
+(https://github.com/joyent/rfd/raw/master/rfd/0156/smartos-grub-main-menu.jpg
+"SmartOS/GRUB Main Menu-no-roll")
+
+![alt text]
+(https://github.com/joyent/rfd/raw/master/rfd/0156/triton-grub-main-menu.jpg
+"Triton/GRUB Main Menu-no-roll")
+
+Below are a pair of screenshots showing the Loader menu that will be
+displayed when booting standalone SmartOS and Triton, respectively.  On the
+surface, it seems quite similar to Legacy GRUB, in that the menu presents
+entries for a similar set of boot targets.
+
+![alt text]
+(https://github.com/joyent/rfd/raw/master/rfd/0156/smartos-loader-main-menu.jpg
+"SmartOS/Loader Main Menu")
+
+![alt text]
+(https://github.com/joyent/rfd/raw/master/rfd/0156/triton-loader-main-menu.jpg
+"Triton/Loader Main Menu")
+
+However, Loader also has support for heirarchal menus.  For example, selecting
+the "Configure Boot Options" entry on the top-level menu brings the user to the
+menu shown in the screenshot below, which allows finer-grained control of the
+options passed to the kernel.  The menus are fully customizable, allowing us to
+add new menus and expose additional configuration parameters as our operating
+system evolves.
+
+Loader also supports bitmapped consoles and ANSI color graphics for text
+consoles - allowing for company and/or product-specific logos/branding to be
+displayed.
+
+![alt text]
+(https://github.com/joyent/rfd/raw/master/rfd/0156/loader-boot-opts.jpg
+"Loader Boot Options Menu")
+
 #### Build Tool Changes
 
 The joyent/smartos-live repo contains the following two scripts:
@@ -134,7 +188,7 @@ key image).  The second tool creates empty disk images that are used by tools
 in the joyent/sdc-headnode repo to construct Triton and COAL boot images.
 
 These two scripts will be replaced by a new tool (tools/build_boot_image) which
-will provide the functionality of both of the above tools.  build_image will
+will provide the functionality of both of the above tools.  build_boot_image will
 create the boot images to use GPT partitioning and will install Loader to
 support both legacy BIOS and UEFI boot modes, as described above.
 
@@ -144,8 +198,8 @@ device path to be passed to it, in order to work.  However, the only practical
 way to expose an image file as disk device is to use labelled LOFI devices,
 which are not supported in non-global zones.  Therefore, in order to continue
 to allow building smartos-live in a zone, without requiring platform changes,
-a new build tool, format_image, will be created which will handle creating the
-GPT label when constructing USB images.
+a new build tool, <b>format_image</b>, will be created which will handle
+creating the GPT label when constructing USB images.
 
 The joyent/sdc-headnode repo contains the following scripts which are used to
 construct Triton and COAL boot images.  These will be modified to handle the
@@ -159,28 +213,21 @@ bin/build-usb-image
 
 #### Triton Runtime Changes
 
-The following scripts in joyent/smartos-live will be modified to handle the new
-partitioning scheme:
+Both the smartos-live and sdc-headnode repos contain a number of scripts
+and utilities which mount/unmount the USB key and make hardcoded
+assumptions about the partitioning layout.  These will be modifed such that
+they can handle both the MBR/GRUB bases keys and the new GPT/Loader based
+keys.
 
-overlay/generic/lib/sdc/config.sh
+Furthermore, all legacy consumers of scripts/mount-usb.sh in sdc-headnode will
+be converted to instead use sdc-usbkey, further reducing code duplication.
 
-overlay/generic/lib/svc/method/fs-joyent
-
-Similar changes will be made to the following scripts in joyent/sdc-headnode:
-
-scripts/mount-usb.sh
-
-tools/lib/usbkey.js
-
-The joyent/sdc-headnode and repo contains a number of scripts and commands which
+The joyent/sdc-headnode repo contains a number of scripts and commands which
 directly modify the boot loader configuration for the purposes of configuring
 things like the console settings and which platform image to boot.  These tools
 will need to be modified such that they can determine which boot loader the
 USB key has installed (GRUB or Loader) and then use the appropriate
 bootloader-specific logic to inact the desired configuration change.
-
-The "sdcadm platform" command will also be modified such that it can modify
-the Loader configuration.
 
 #### Documentation Changes
 
