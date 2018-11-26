@@ -72,7 +72,7 @@ get added or removed (by administrator action OR by failure).  NAT entities
 will be ABLE to receive all public IP traffic and send on behalf of all
 internal Fabric Networks. Any given one, though, will not have all public IP
 traffic routed to it because of external network routing policies, and
-because for DNAT flows, DNAT state can exist only one one `vxlnat(7D)` zone
+because for DNAT flows, DNAT state can exist only in one `vxlnat(7D)` zone
 at a time.
 
 ![External network connectivity](external-network.svg)
@@ -272,12 +272,15 @@ NAPI(?).
 > INSTANCE UUID?  (NOTE: EITHER ONE WILL HAVE TO MODIFIABLE.  THIS IS THE
 > <something> MENTIONED ABOVE.)
 
+> 6.) IS THE ETHERSTUB USED BY `vxlnat(7D)` ZONES WORTHY OF A NEW NIC TAG
+> TYPE?  CAN NIC TAGS BE PUT ON ETHERSTUBS?
+
 #### SAPI
 
 > XXX KEBE THINKS INSTANTIATING `vxlnat(7D)` ZONES GOES HERE.  I HAVE
 > PROTOTYPE EXPERIENCE FROM A YEAR AGO WITH (unsuccessful) ROUTER OBJECTS.
 
-> 6.) HOW DO WE BRINGUP `vxlnat(7D)` ZONES?  DO WE JUST SPECIFY A NUMBER?  DO
+> 7.) HOW DO WE BRINGUP `vxlnat(7D)` ZONES?  DO WE JUST SPECIFY A NUMBER?  DO
 > WE DEDICATE A CN (OR MORE THAN ONE CN) TO `vxlnat(7D)`? DOES `vxlnat(7D)`
 > BELONG IN NAPI?
 
@@ -290,7 +293,7 @@ fabric's next-hop router, and have it point to a `vxlnat(7D)` zone, OR indicate
 to NAPI that this is a next-hop router and SVP/Portolan will assign it
 depending on what implementation choices get made.
 
-> 7.) WHAT ABOUT CO-EXISTING `vxlnat(7D)` AND PER-FABRIC NAT ZONES?  IS THIS
+> 8.) WHAT ABOUT CO-EXISTING `vxlnat(7D)` AND PER-FABRIC NAT ZONES?  IS THIS
 > MAYBE SOMETHING DISCOVERABLE VIA NAPI?
 
 > XXX KEBE ASKS, MORE TO COME?
