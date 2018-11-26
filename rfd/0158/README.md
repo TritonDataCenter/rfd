@@ -119,9 +119,9 @@ manner:
   {vnet,IP-prefix} mappings. Any mappings sharing an external-IP must
   co-reside on a single `vxlnat(7D)` zone.)
 
-NOTE:  Today triton does not allow overlapping prefixes in a customer
-(vnet).  If that changes, the addition of VLAN will be needed in the above
-mappings, alongside vnet.
+NOTE: Today Triton does not allow overlapping prefixes in a customer (vnet).
+If that changes, the addition of VLAN will be needed in the above mappings,
+alongside vnet.
 
 The above configuration is read from a file by `vxlnatd(1M)`, an SMF-managed
 service that opens the `vxlnat(7D)` device, and feeds it configuration from a
@@ -195,8 +195,8 @@ MUST be present, and not collide with any external network IP address space.
 
 A `vxlnat(7D)` zone must enable IP forwarding between the external network
 NIC and the etherstub vnics.  The `vxlnat(7D)` zone MUST NOT enable IP
-forwarding on the underlay network.  `vxlnat(7D)` itself will perform VXLAN
-decapsulation and subsequent IP forwarding, and the disabling of IP
+forwarding on the underlay network NIC.  `vxlnat(7D)` itself will perform
+VXLAN decapsulation and subsequent IP forwarding, and the disabling of IP
 forwarding on the underlay network will reduce the possibility of direct
 packet leaks to or from the underlay network.
 
@@ -217,12 +217,12 @@ which is then assigned to a user.  The user can-and-should be charged for use
 
 of this AIP while they have it.  The user can assign (the 'A' in AIP) it to a
 specific fabric-attached instance, as well as modify its assignment with the
-expectation of in no-less-than-<TIME> until the new instance receives the
-traffic.  The instance in question should have its default route point to a
-same-fabric IP whose underlay address resolves to a `vxlnat(7D)` zone.  If
-`vxlnat(7D)` is functioning as a NAT already for the fabric network of the
-instance, this will not require additional update to the instance or its
-fabric network.
+expectation of in no-less-than a certain time (e.g. 120 seconds) until the
+new instance receives the traffic.  The instance in question should have its
+default route point to a same-fabric IP whose underlay address resolves to a
+`vxlnat(7D)` zone.  If `vxlnat(7D)` is functioning as a NAT already for the
+fabric network of the instance, this will not require additional update to
+the instance or its fabric network.
 
 If a `vxlnat(7D)` zone fails, merely adjusting the underlay address for VXLAN
 traffic will shuffle an AIP to be handled by another one.  For AIPs, this
@@ -240,15 +240,16 @@ NAPI(?).
 
 > 1.) DO WE NEED A NEW `vxlnat(7D)` SAPI OBJECT (like the NAT zone today?!?)?
 
-> 2.) DO WE NEED ONE SAPI OBJECT FOR EVERY `vxlnat(7D)` ZONES?
-> (IF SO, HOW DOES THAT WORK?)
+> 2.) DO WE NEED ONE SAPI OBJECT FOR EVERY `vxlnat(7D)` ZONE?
+> (IF SO, HOW DOES THAT WORK? Today's NAT zones get created
+> per-first-fabric-attached-instance.)
 
 > 3.) WHAT ABOUT PORTOLAN UPDATES FOR WHEN WE MOVE CERTAIN FABRIC NEXT-HOPS
 > TO NEW `vxlnat(7D)` ZONES?  HOW DO WE PUSH UPDATES OUT TO ALL THE
 > `vxlnat(7D)` INSTANCES?
 
-> XXX NAT RULE GENERATION UPON NEW FABRIC CREATION (replacement for NAT-zone
-> creation/update).
+> XXX NAT RULE GENERATION WILL OCCURE UPON NEW FABRIC CREATION (this replaces
+> existing NAT-zone creation/update logic).
 
 > XXX DOCUMENT IN GREAT DETAIL THE FAILURE MODES.  ALSO THINK OF WAYS TO
 > RECOVER FROM FAILURE:  E.g. single + hot-standbys, or Using Portolan to
@@ -257,20 +258,27 @@ NAPI(?).
 
 #### NAPI
 
-> XXX KEBE THINKS NAPI NEEDS TO MAP "default router" ON A FABRIC TO A
+> XXX KEBE SAYS NAPI NEEDS TO MAP "default router" ON A FABRIC TO A
 > `vxlnat(7D)` ZONE, AND BE ABLE TO CHANGE THAT (OR LET PORTOLAN BE SMARTER
-> AND DOLE THE APPROPRIATE `vxlnat(7D)` ON THE FLY).
+> AND DOLE THE APPROPRIATE `vxlnat(7D)` UNDERLAY ADDRESS ON THE FLY).
+
+> 4.) WHICH IS A BETTER APPROACH?  HAVE NAPI MAP "default router" TO A
+> vxlnat(7D) ZONE?  OR PUT THE INTELLIGENCE IN PORTOLAN/SVP?
 
 > XXX TEXT FOR AIP PRIMITIVES: CREATE, MODIFY, DESTROY.
 > AIP is an external network address and <something>.
 
-> 4.) IS IT BETTER TO MAP AN AIP TO AN INTERNAL ADDRESS?  OR AN INTERNAL
-> INSTANCE UUID?  (NOTE: EITHER ONE WILL HAVE TO CHANGEABLE.)
+> 5.) IS IT BETTER TO MAP AN AIP TO AN INTERNAL ADDRESS?  OR AN INTERNAL
+> INSTANCE UUID?  (NOTE: EITHER ONE WILL HAVE TO MODIFIABLE.  THIS IS THE
+> <something> MENTIONED ABOVE.)
 
 #### SAPI
 
 > XXX KEBE THINKS INSTANTIATING `vxlnat(7D)` ZONES GOES HERE.  I HAVE
 > PROTOTYPE EXPERIENCE FROM A YEAR AGO WITH (unsuccessful) ROUTER OBJECTS.
+
+> 6.) HOW DO WE BRINGUP `vxlnat(7D)` ZONES?  DO WE JUST SPECIFY A NUMBER?  DO
+> WE DEDICATE A CN (OR MORE THAN ONE CN) TO `vxlnat(7D)`?
 
 #### VMAPI
 
