@@ -278,7 +278,8 @@ NAPI(?).
 > PROTOTYPE EXPERIENCE FROM A YEAR AGO WITH (unsuccessful) ROUTER OBJECTS.
 
 > 6.) HOW DO WE BRINGUP `vxlnat(7D)` ZONES?  DO WE JUST SPECIFY A NUMBER?  DO
-> WE DEDICATE A CN (OR MORE THAN ONE CN) TO `vxlnat(7D)`?
+> WE DEDICATE A CN (OR MORE THAN ONE CN) TO `vxlnat(7D)`? DOES `vxlnat(7D)`
+> BELONG IN NAPI?
 
 #### VMAPI
 
@@ -289,7 +290,14 @@ fabric's next-hop router, and have it point to a `vxlnat(7D)` zone, OR indicate
 to NAPI that this is a next-hop router and SVP/Portolan will assign it
 depending on what implementation choices get made.
 
+> 7.) WHAT ABOUT CO-EXISTING `vxlnat(7D)` AND PER-FABRIC NAT ZONES?  IS THIS
+> MAYBE SOMETHING DISCOVERABLE VIA NAPI?
+
 > XXX KEBE ASKS, MORE TO COME?
+
+#### CHANGEFEED
+
+> XXX KEBE ASKS IS THIS HOW WE PUSH OUT `vxlnat(7D)` ZONE RULE UPDATES?
 
 ### External network routing requirements
 
@@ -315,7 +323,31 @@ earlier revisions of OpenFlow), NAT flows do not have to be propagated to all
 
 > XXX KEBE SAYS MORE TO COME!
 
-## Deploying vxlnat.
+## Deploying `vxlnat(7D)`.
+
+The presence of `vxlnat(7D)` zones can be a transparent event to Triton
+instances.  After all, the fabric network experience from an ordinary
+instance does not change.  A default router still exists if the fabric can
+reach the Internet.  Whether the default router UL3 changes to a `vxlnat(7D)`
+zone or remains with a per-fabric NAT zone matters not to an instance.
+
+The units of concern are the head node and the compute nodes.  A compute node
+cannot host a `vxlnat(7D)` zone until its platform image contains
+`vxlnat(7D)` support.  An updated compute node can host both old-fashioned
+per-fabric NAT zones AND a `vxlnat(7D)` zone concurrently, because the
+per-fabric NATs use `overlay(7D)`, and the `vxlnat(7D)` zone uses its own UL3
+address on its direct attachment to the underlay network.
+
+The head node's services will need to determine when to start employing
+`vxlnat(7D)`.  That can only happen when the following conditions occur:
+
+* NAPI supports <TBD>
+
+* Portolan support <TBD>
+
+* SAPI supports <TBD>
+
+* VMAPI supports fabric network bringup by modifying the `vxlnat(7D)` rules.
 
 > XXX KEBE SAYS HOW DO WE DEPLOY `vxlnat(7D)` IN A WORLD OF FABRIC NETS WITH
 > NAT ZONES?!  GOOD QUESTION.  WE MIGHT BE ABLE TO DO IT INCREMENTALLY IF WE
