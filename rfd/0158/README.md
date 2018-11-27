@@ -149,7 +149,7 @@ own netstack, and that said netstack is properly configured too.
 ### The `vxlnat(7D)` Zone.
 
 In illumos, a zone can either have its own TCP/IP netstack, or share it with
-the global zone.  `vxlnat(7D)` required its own netstack, so it cannot be used
+the global zone.  `vxlnat(7D)` requires its own netstack, so it cannot be used
 in a shared-stack zone. Fortunately, SmartOS disallows shared-stack zones, so
 `vxlnat(7D)` can instantiate on any arbitrary zone, even the global zone.
 
@@ -307,6 +307,21 @@ depending on what implementation choices get made.
 > XXX KEBE SAYS TALK TO NETOPS ABOUT THIS.  HOW DO PUBLIC-IP PREFIXES GET
 > HANDLED TODAY?  YOU HAVE SOME OLD DRAWINGS, SEE IF THEY CHANGED. DO WE NEED
 > `vxlnat(7D)` RUNNING ROUTING PROTOCOLS?  WE JUST MIGHT!
+
+> IT'S POSSIBLE THAT TRITON ITSELF WILL LIKELY KNOW A LOT MORE ABOUT
+> `vxlnat(7D)` INSTANCES THAN THE EXTERNAL NETWORK VIA ROUTING PROTOCOLS.
+
+> THE FUNDAMENTAL PROBLEM TO BE SOLVED IS SIMPLE TO STATE: WHEN AN INSTANCE
+> GOES DOWN, THE EXTERNAL IP ADDRESSES (BOTH AIP AND SNAT PUBLIC IPS)
+> SERVICED BY THE INSTANCE MUST BE TRANSFERRED TO OTHER RUNNING INSTANCES,
+> WITH ROUTING UPDATED APPROPRIATELY.
+
+> ONCE THIS TRANSFER IS COMPLETE, THE AIP ADDRESSES SHOULD CONTINUE TO MOVE
+> BITS W/O ANY LOSS BEYOND THE TIME THE AIP COULD NOT REACH A WORKING
+> INSTANCE.  FOR SNAT/MAPPINGS, THE EXISTING STATE IS GONE, AND INTERIOR
+> NAT-USING FABRIC INSTANCES WILL HAVE TO RESTART THEIR TCP/UDP SESSIONS.
+> BECAUSE `vxlnat(7D)` CONFIGURATION IS REPLICATED IDENTICALLY ACROSS ALL
+> INSTANCES, ONLY REACHABILITY STATE NEEDS TO UPDATE.
 
 ### Design Decisions and Tradeoffs
 
