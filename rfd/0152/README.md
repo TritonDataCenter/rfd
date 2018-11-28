@@ -1,6 +1,6 @@
 ---
 authors: Rui Loura <rui@joyent.com>
-state: predraft
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+0152%22
 ---
 
@@ -18,12 +18,12 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+0152%22
 # RFD 152 Rack Aware Networking
 
 ## Overview
-Currently the Triton datacenter assumes many of it's common and/or required
+Currently the Triton datacenter assumes many of its common and/or required
 networks are on the same L2 broadcast domain (e.g. `admin`, `manta`,
 `external`).  In an effort to increase bandwidth availability, shrink fault
 domains, and reduce centralization in the datacenter network we will be moving
-to a Clos topology.  Once this work is complete each rack in a Triton
-datacenter will be on it's own L3 network.
+to a Clos topology.  Once this work is complete each rack of servers in a Triton
+datacenter will be on its own L3 network.
 
 ## Approach
 With the introduction of [RFD 43 Rack Aware Network Pools][RFD 43], NAPI
@@ -122,7 +122,9 @@ required.  To satisfy this requirement we plan to leverage DHCP option 82 (See
 RFC 3046).  This option provides the ability to configure a "circuit id".  
 
 This circuit id will be configured to specify a rack identifier (noted above) 
-which can be associated with NAPI network nictag.  The nictag will then be passed as a parameter to NAPI along with the admin network pool UUID to provision a NIC for the booting CN.
+which can be associated with NAPI network nictag.  The nictag will then be
+passed as a parameter to NAPI along with the "admin" network pool UUID to
+provision a NIC for the booting CN.
 
 
 ```                                                                   
@@ -153,14 +155,12 @@ which can be associated with NAPI network nictag.  The nictag will then be passe
 network pool information to avoid overloading NAPI when multiple CNs are booted
 at once.
 * Common module creation to provide NIC and IP lookup functions for a given
-network and set of information.  This will need to be done for VM metadata as
-well as CN sysinfo.
+network and set of information (e.g. VM metdata, and CN sysinfo).
 * Update all services, agents, and tools to leverage the lookup functions in
 the common module.
 * Updating config-agent to properly populate `autoMetadata.<NETWORK>_IP` 
 
 ### Triton Common Module
-
 Part of this work includes the creation of a module which will provide common
 functions for all Triton and Manta services.  Initially it should provide the
 following functionality:  
@@ -184,14 +184,11 @@ the NICs and IPs of various networks in a central location without requiring
 subsequent modifications to all affected Triton and Manta services, agents, and
 tools.
 
-This module can later be extended to provide other Triton and Manta common
-functionality unrelated to Rack Aware Networking.
-
 
 ## Assumptions and Configuration Considerations
 
-* The nodes in a rack aware AZ will connected via routers that are capable of
-relaying DHCP messages and adding DHCP option 82 to DHCPDISCOVER messages. 
+* The nodes in a rack aware AZ will be connected via routers that are capable of
+relaying DHCP messages and adding DHCP option 82. 
 
 * Networks of the same type (e.g. admin) will be configured with routes to
 other networks of the same type.
