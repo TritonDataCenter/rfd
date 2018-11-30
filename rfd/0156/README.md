@@ -139,18 +139,18 @@ that allows for manually editting the grub menu configuration.  This is less
 than ideal as it requires the user to understand both the format of the Legacy
 GRUB configuration parameters and the format of kernel command line.
 
-![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/smartos-grub-main-menu.jpg "SmartOS/GRUB Main Menu-no-roll")
+![SmartOS/GRUB Main Menu](smartos-grub-main-menu.jpg)
 
-![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/triton-grub-main-menu.jpg "Triton/GRUB Main Menu-no-roll")
+![Triton/GRUB Main Menu](triton-grub-main-menu.jpg)
 
 Below are a pair of screenshots showing the Loader menu that will be
 displayed when booting standalone SmartOS and Triton, respectively.  On the
 surface, it seems quite similar to Legacy GRUB, in that the menu presents
 entries for a similar set of boot targets.
 
-![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/smartos-loader-main-menu.jpg "SmartOS/Loader Main Menu")
+![SmartOS/Loader Main Menu](smartos-loader-main-menu.jpg)
 
-![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/triton-loader-main-menu.jpg "Triton/Loader Main Menu")
+![Triton/Loader Main Menu](triton-loader-main-menu.jpg)
 
 However, Loader also has support for heirarchal menus.  For example, selecting
 the "Configure Boot Options" entry on the top-level menu brings the user to the
@@ -163,7 +163,7 @@ Loader also supports bitmapped consoles and ANSI color graphics for text
 consoles - allowing for company and/or product-specific logos/branding to be
 displayed.
 
-![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/loader-boot-opts.jpg "Loader Boot Options Menu")
+![Loader Boot Options Menu](loader-boot-opts.jpg)
 
 #### Removal of Legacy Firmware Upgrade Mode
 
