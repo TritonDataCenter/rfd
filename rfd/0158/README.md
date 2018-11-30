@@ -234,73 +234,60 @@ NAPI(?).
 
 ### Triton requirements
 
-> XXX KEBE SAYS TALK TO TRITON FOLKS ABOUT THIS.
+> QUESTIONS FROM PRIOR VERSIONS ARE NOW OFFLINE, BUT ANSWERED.
 
-> SOLID QUESTIONS WILL HAVE NUMBERS:
+Once NAT Reform arrives in a Triton deployment, Fabric Networks can either
+continue to use legacy-per-fabric-NAT-zone, or begin to employ `vxlnat(7D)`
+as their default router.  Modulo public IP inspections by outside-Triton
+peers, instances will not be able to tell if they are legacy-per-fabric or
+`vxlnat(7D)` NATted.
 
-> 1.) DO WE NEED A NEW `vxlnat(7D)` SAPI OBJECT (like the NAT zone today?!?)?
-
-> 2.) DO WE NEED ONE SAPI OBJECT FOR EVERY `vxlnat(7D)` ZONE?
-> (IF SO, HOW DOES THAT WORK? Today's NAT zones get created
-> per-first-fabric-attached-instance.)
-
-> 3.) WHAT ABOUT PORTOLAN UPDATES FOR WHEN WE MOVE CERTAIN FABRIC NEXT-HOPS
-> TO NEW `vxlnat(7D)` ZONES?  HOW DO WE PUSH UPDATES OUT TO ALL THE
-> `vxlnat(7D)` INSTANCES?
-
-> XXX NAT RULE GENERATION WILL OCCURE UPON NEW FABRIC CREATION (this replaces
-> existing NAT-zone creation/update logic).
+> XXX DOCUMENT IN GREAT DETAIL the `vxlnat(7D)` pool, a reminder from above
+> about how all zones get the same configuration, and most importantly
+> document (for now, this will change) how a new default router selects a
+> servicing vxlnat(7D) zone.
 
 > XXX DOCUMENT IN GREAT DETAIL THE FAILURE MODES.  ALSO THINK OF WAYS TO
 > RECOVER FROM FAILURE:  E.g. single + hot-standbys, or Using Portolan to
 > rewire interior connectivity, or Using NAPI WITH RFD 32 to reassign DOWN
 > UL3 IPs to still-running `vxlnat(7D)` instances.
 
+#### PORTOLAN
+
+> Portolan is the source-of-truth about UL3 addresses, including those for
+> the default router.  Starting with NAT Reform, it will also have to be the
+> monitoring checker for `vxlnat(7D)` zones, unless another suitable entity
+> exists. We need to fill in what all Portolan needs to do in a NAT Reform
+> world.  Initially I didn't think much, but the recent VPC+Triton call
+> suggests SOMETHING has to check `vxlnat(7D)` zone health.
+
 #### NAPI
 
-> XXX KEBE SAYS NAPI NEEDS TO MAP "default router" ON A FABRIC TO A
-> `vxlnat(7D)` ZONE, AND BE ABLE TO CHANGE THAT (OR LET PORTOLAN BE SMARTER
-> AND DOLE THE APPROPRIATE `vxlnat(7D)` UNDERLAY ADDRESS ON THE FLY).
+> We need to store SOMEWHERE (either /fabrics/:user/vlans/:vlan or /networks)
+> if a fabric network is vxlnat(7D)-consuming OR not, the latter meaning
+> traditional NAT.  Not sure if we need a new field, or if we overload the
+> old field.
 
-> 4.) WHICH IS A BETTER APPROACH?  HAVE NAPI MAP "default router" TO A
-> vxlnat(7D) ZONE?  OR PUT THE INTELLIGENCE IN PORTOLAN/SVP?
+> Update docs too, e.g. https://docs.joyent.com/public-cloud/network/sdn
 
-> XXX TEXT FOR AIP PRIMITIVES: CREATE, MODIFY, DESTROY.
-> AIP is an external network address and <something>.
+##### CHANGEFEED
 
-> 5.) IS IT BETTER TO MAP AN AIP TO AN INTERNAL ADDRESS?  OR AN INTERNAL
-> INSTANCE UUID?  (NOTE: EITHER ONE WILL HAVE TO MODIFIABLE.  THIS IS THE
-> <something> MENTIONED ABOVE.)
-
-> 6.) IS THE ETHERSTUB USED BY `vxlnat(7D)` ZONES WORTHY OF A NEW NIC TAG
-> TYPE?  CAN NIC TAGS BE PUT ON ETHERSTUBS?
+> XXX KEBE ASKS IS THIS HOW WE PUSH OUT `vxlnat(7D)` ZONE RULE UPDATES?
 
 #### SAPI
 
-> XXX KEBE THINKS INSTANTIATING `vxlnat(7D)` ZONES GOES HERE.  I HAVE
-> PROTOTYPE EXPERIENCE FROM A YEAR AGO WITH (unsuccessful) ROUTER OBJECTS.
-
-> 7.) HOW DO WE BRINGUP `vxlnat(7D)` ZONES?  DO WE JUST SPECIFY A NUMBER?  DO
-> WE DEDICATE A CN (OR MORE THAN ONE CN) TO `vxlnat(7D)`? DOES `vxlnat(7D)`
-> BELONG IN NAPI?
+> Fill in text about the `vxlnat(7D)` service.  Mention how sdcadm(1M) will
+> need to configure it.  Use electric-moray from Manta as an example (since
+> it too is replicable same-configuration zones).
 
 #### VMAPI
 
 Today, the VMAPI workflow `fabric-common` contains NAT zone provisioning.
 The currently-existing function `provisionNatZone()` creates a new NAT zone.
-In a world with `vxlnat(7D)`, this workflow should instead merely allocate a
-fabric's next-hop router, and have it point to a `vxlnat(7D)` zone, OR indicate
-to NAPI that this is a next-hop router and SVP/Portolan will assign it
-depending on what implementation choices get made.
-
-> 8.) WHAT ABOUT CO-EXISTING `vxlnat(7D)` AND PER-FABRIC NAT ZONES?  IS THIS
-> MAYBE SOMETHING DISCOVERABLE VIA NAPI?
-
-> XXX KEBE ASKS, MORE TO COME?
-
-#### CHANGEFEED
-
-> XXX KEBE ASKS IS THIS HOW WE PUSH OUT `vxlnat(7D)` ZONE RULE UPDATES?
+In a world with `vxlnat(7D)`, this workflow must first check if a fabric
+network is a `vxlnat(7D)`-connected one and if so, allocate a fabric's
+next-hop router, and have sdcadm(1M) assign it to the `vxlnat(7D)`
+configuration.
 
 ### External network routing requirements
 
@@ -329,6 +316,22 @@ depending on what implementation choices get made.
 
 > XXX KEBE SAYS THIS IS WHERE "Why didn't you X?" QUESTIONS AND ANSWERS GO.
 
+Today, NAT zones consume their own public IP (one per customer, per customer
+fabric network).  Moving to a `vxlnat(7D)` approach should cut back public IP
+usage in a Triton cloud.  If a cloud has 100 customers, each with 2 distinct
+fabric networks requiring NAT, that consumes 200 public IP addresses (nearly
+a /24), as well as 200 `overlay(7D)` instances.  With `vxlnat(7D)`, the
+amount of public IPs for public NATs can decrease, and those extra IPs can be
+instead used for AIP.
+
+Because of `vxlnat(7D)`'s approach to the VXLAN side (one all-listening
+kernel socket and per-vnet state), using an existing NAT engine (like
+ipfilter) would have barriers including per-vnat state.  This lead to
+`vxlnat(7D)` needing to implement its own NAT constructs, albeit in a limited
+space (only traditional SNAT or 1-1/static).  1-1/static NAT mappings are
+straightforward (as long as the VM consuming it has a default route set), and
+NAT flows have RFCs and other NAT engines to guide their implementation.
+
 This proposal builds on the assumption that one-or-more `vxlnat(7D)` instance
 will be scattered across a Triton Data Center, each having configuration data
 for the entire DC.  In theory a single `vxlnat(7D)` instance could handle all
@@ -341,7 +344,9 @@ this whole approach will have to be revisited.  Unlike OpenFlow (or at least
 earlier revisions of OpenFlow), NAT flows do not have to be propagated to all
 `vxlnat(7D)` entities.
 
-> XXX KEBE SAYS MORE TO COME!
+
+> XXX KEBE SAYS MORE TO COME!  This especially includes the enumeration of
+> other possible technical solutions.
 
 ## Deploying `vxlnat(7D)`.
 
