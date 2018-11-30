@@ -139,26 +139,18 @@ that allows for manually editting the grub menu configuration.  This is less
 than ideal as it requires the user to understand both the format of the Legacy
 GRUB configuration parameters and the format of kernel command line.
 
-![alt text]
-(https://github.com/joyent/rfd/raw/master/rfd/0156/smartos-grub-main-menu.jpg
-"SmartOS/GRUB Main Menu-no-roll")
+![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/smartos-grub-main-menu.jpg "SmartOS/GRUB Main Menu-no-roll")
 
-![alt text]
-(https://github.com/joyent/rfd/raw/master/rfd/0156/triton-grub-main-menu.jpg
-"Triton/GRUB Main Menu-no-roll")
+![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/triton-grub-main-menu.jpg "Triton/GRUB Main Menu-no-roll")
 
 Below are a pair of screenshots showing the Loader menu that will be
 displayed when booting standalone SmartOS and Triton, respectively.  On the
 surface, it seems quite similar to Legacy GRUB, in that the menu presents
 entries for a similar set of boot targets.
 
-![alt text]
-(https://github.com/joyent/rfd/raw/master/rfd/0156/smartos-loader-main-menu.jpg
-"SmartOS/Loader Main Menu")
+![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/smartos-loader-main-menu.jpg "SmartOS/Loader Main Menu")
 
-![alt text]
-(https://github.com/joyent/rfd/raw/master/rfd/0156/triton-loader-main-menu.jpg
-"Triton/Loader Main Menu")
+![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/triton-loader-main-menu.jpg "Triton/Loader Main Menu")
 
 However, Loader also has support for heirarchal menus.  For example, selecting
 the "Configure Boot Options" entry on the top-level menu brings the user to the
@@ -171,9 +163,26 @@ Loader also supports bitmapped consoles and ANSI color graphics for text
 consoles - allowing for company and/or product-specific logos/branding to be
 displayed.
 
-![alt text]
-(https://github.com/joyent/rfd/raw/master/rfd/0156/loader-boot-opts.jpg
-"Loader Boot Options Menu")
+![alt text] (https://github.com/joyent/rfd/raw/master/rfd/0156/loader-boot-opts.jpg "Loader Boot Options Menu")
+
+#### Removal of Legacy Firmware Upgrade Mode
+
+The current GRUB-based USB image for Triton includes a boot menu
+entry entitled "Legacy Firmware Upgrade Mode".  This entry would boot FreeDOS
+and was used to run certain firmware maintenance tools that required a
+DOS-like environment.  This was primarily used on older Richmond-A BOMs.
+
+The FreeDOS kernel does not support mounting drives with GPT labels.  Furthermore,
+the FreeDOS kernel will not run when the platform is booted in UEFI mode.
+
+Current Joyent BOMs are PXE-booted to Linux to perform firmware maintenance
+operations that cannot be done using native tools withing SmartOS.  And future
+Joyent BOMs will certainly not be reliant on DOS-based firmare management
+tools.
+
+For that reason, the "Legacy Upgrade Firmware Mode" boot option will not be
+supported on the new GPT/Loader based USB images and Freedos and memdisk
+will be removed from the joyent/sdcboot source repository.
 
 #### Build Tool Changes
 
