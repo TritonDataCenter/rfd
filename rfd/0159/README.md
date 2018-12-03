@@ -17,7 +17,7 @@ This RFD describes the relevant components and settings. It then describes
 possible future changes to some of these settings which could increase the
 usable capacity of a storage node.
 
-== Measuring
+## Measuring
 
 There are many different ways to measure the available and used storage on a
 node, and some of them report different values.
@@ -56,7 +56,7 @@ Circonus is the monitoring tool we use for operations. It reports the parseable
 dataset. Thus, it is reporting these values for the entire machine, without
 regard for any quota set on any lower dataset in the zpool.
 
-== Quota
+## Quota
 
 If we set a quota on the storage zone dataset, this obviously reduces the
 available space for object storage, due to the values reported by minnow.
@@ -82,19 +82,23 @@ so the quota would be 266 * .996 = 265. That is, as the storage capacity
 grows, we must use a different scaling factor to reserve approximately 1 TiB via
 setting the storage zone's quota.
 
-== Muskie Limit
+## Muskie Limit
 
 Within muskie, there is a limit as to how much space will be used in each
 storage zone. This limit is currently set to 95%, but there is a lot of
 relevant history behind this which we'll briefly summarize.
 
-In the past, we had the limit set to 93%. The investigation on MANTA-3571
+In the past, we had the limit set to 93%. The investigation on
+[MANTA-3571](https://jira.joyent.us/browse/MANTA-3571)
 identified that ZFS performed well up to the 96% - 96.67% full level. Based
 upon that investigation, we raised the limit to 95%. However, after doing
-that, we hit OS-7151 where we see metaslabs being loaded and unloaded at
+that, we hit
+[OS-7151](https://jira.joyent.us/browse/OS-7151)
+where we see metaslabs being loaded and unloaded at
 high frequency. This in turn leads to long spa sync and zil commit times,
 which in turn leads to bad latency hiccups for object writes. In addition,
-we observed other zil commit latency issues (OS-7314), but those have since
+we observed other zil commit latency issues
+([OS-7314](https://jira.joyent.us/browse/OS-314)), but those have since
 been fixed in the upstream ZFS code (although not yet deployed in Manta
 production).
 
@@ -119,7 +123,7 @@ for those nodes with problematic fragmentation). We're also testing a
 proposed fix for OS-7151 on one of the nodes with the problematic fragmentation
 and it is working well so far.
 
-== Capacity Limit
+## Capacity Limit
 
 The investigation for OS-7151 has shown that our ZFS performance was dependent
 on the zpool fragmentation much more than on how full the dataset was. The
