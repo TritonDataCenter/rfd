@@ -98,7 +98,7 @@ where we see metaslabs being loaded and unloaded at
 high frequency. This in turn leads to long spa sync and zil commit times,
 which in turn leads to bad latency hiccups for object writes. In addition,
 we observed other zil commit latency issues
-([OS-7314](https://jira.joyent.us/browse/OS-314)), but those have since
+([OS-7314](https://jira.joyent.us/browse/OS-7314)), but those have since
 been fixed in the upstream ZFS code (although not yet deployed in Manta
 production).
 
@@ -132,7 +132,7 @@ dataset.
 
 By setting aside 1 TiB of space with a quota on the storage zone dataset, and
 then also setting a muskie limit of 95%, we are being quite conservative and
-leaving a lot of unusable storage on the table. At a minimum, we should account
+leaving a lot of usable storage on the table. At a minimum, we should account
 for the quota overhead in the overall calculation for how much space muskie
 be able to consume on the node. However, doing this directly would involve
 source code changes, which can be a slow process to implement and deploy.
