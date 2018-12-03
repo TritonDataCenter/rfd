@@ -193,7 +193,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 147 Project Tiresias: USB Topology](./rfd/0147/README.md) |
 | draft    | [RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md) |
 | draft    | [RFD 149 PostgreSQL Schema For Manta buckets](./rfd/0149/README.md) |
-| predraft | [RFD 150 Operationalizing Prometheus](./rfd/0150/README.md) |
+| draft    | [RFD 150 Operationalizing Prometheus](./rfd/0150/README.md) |
 | publish  | [RFD 151 Assessing Software Engineering Candidates](./rfd/0151/README.md) |
 | draft | [RFD 152 Rack Aware Networking](./rfd/0152/README.md) |
 | draft    | [RFD 153 Incremental metadata expansion for Manta buckets](./rfd/0153/README.md) |
@@ -201,7 +201,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 155 Manta Buckets API](./rfd/0155/README.md) |
 | draft    | [RFD 156 SmartOS/Triton Boot Modernization](./rfd/0156/README.md) |
 | draft    | [RFD 157 Notices to Operators](./rfd/0157/README.md) |
-| predraft | [RFD 158 NAT Reform](./rfd/0158/README.md) |
+| predraft | [RFD 158 NAT Reform, including public IPs for fabric-attached instances.](./rfd/0158/README.md) |
 | draft    | [RFD 159 Manta Storage Zone Capacity Limit](./rfd/0159/README.md) |
 
 ## Contents of an RFD

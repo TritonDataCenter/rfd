@@ -1,9 +1,10 @@
 ---
-authors: Jerry Jelinek <jerry@joyent.com>
+authors: Jerry Jelinek <jerry@joyent.com>, Kody Kantor <kody.kantor@joyent.com>
 state: draft
+discussion: https://github.com/joyent/rfd/issues/123
 ---
 
-# RFD 159 The Manta Storage Zone Capacity Limit
+# RFD 159 Manta Storage Zone Capacity Limit
 
 ## Overview and Motivation
 
@@ -150,3 +151,57 @@ we encounter new ZFS problems, before we deploy the updated limit to the entire
 fleet.
 
 As we develop this plan, it will be described in this RFD.
+
+## Current State
+
+As mentioned above, there are a currently a couple knobs to turn when it comes
+to changing the amount of available storage capacity in a Manta deployment.
+Again, those are:
+
+* Storage zone quotas
+* Muskie utilization percentage
+
+It's worth understanding how these get set today and what sort of problems we
+have in this area.
+
+### Quotas
+
+A quota is not automatically applied when an operator deploys a new storage
+zone. After a new storage zone is deployed the operator must go back and apply
+a quota. This is usually done using `vmadm update` invoked by `manta-oneach`,
+like in [CM-1448](https://jira.joyent.us/browse/CM-1448).
+
+Occasionally we forget to run this command and end up with a number of storage
+nodes that don't have _any_ quota. This is problematic, and could lead to a
+zone completely filling the zpool. Some examples of this problem can be found in
+[OPS-4338](https://jira.joyent.us/browse/OPS-4338) and
+[MANTA-3827](https://jira.joyent.us/browse/MANTA-3827).
+
+Further complicating things, if we realize that we forgot to apply a quota to a
+storage zone and apply one later, it is sometimes not applied. Quotas will not
+be enforced if the zone has already surpassed the quota when it is applied
+([OS-4302](https://jira.joyent.us/browse/OS-4302)).
+
+Another potential problem is that operators must know the correct quota to set
+for each storage zone. As discussed earlier, this is based on the zpool capacity
+of the storage node on which the zone is being deployed. Any time we install a
+storage node with a new zpool capacity the operator will have to re-calculate
+the proper quota to use for any storage zones it hosts. If the zpool capacity of
+storage nodes isn't homogenous then this quickly becomes an operational burdon
+and potential for misconfiguration.
+
+### Muskie Limit
+
+The feature to allow the Muskie storage utilization threshold be configurable
+was added in [MANTA-2947](https://jira.joyent.us/browse/MANTA-2947). This
+introduced the `MUSKIE_MAX_UTILIZATION_PCT` tunable for the `manta` application
+in SAPI. Relatedly, [MANTA-3488](https://jira.joyent.us/browse/MANTA-3488)
+allows the 'poseidon' user to write to Manta after it has reached the
+Muskie storage utilization threshold.
+
+This means that the Muskie storage utilization limit is effectively a
+region-wide value. When this limit is modified it will be propagated to each
+Muskie zone the next time the in-zone config-agent polls SAPI for configuration
+changes. The config-agent poll interval is currently set to two minutes. This
+will have be considered in the plan to gradually roll out storage utilization
+changes across a region.
