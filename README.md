@@ -202,6 +202,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 156 SmartOS/Triton Boot Modernization](./rfd/0156/README.md) |
 | draft    | [RFD 157 Notices to Operators](./rfd/0157/README.md) |
 | predraft | [RFD 158 NAT Reform](./rfd/0158/README.md) |
+| draft    | [RFD 159 Manta Storage Zone Capacity Limit](./rfd/0159/README.md) |
 
 ## Contents of an RFD
 
