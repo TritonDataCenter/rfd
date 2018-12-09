@@ -268,12 +268,12 @@ The following endpoints will be available for customers:
 
   This should call VMAPI (POST /vms/:id?action=migrate&migration_action=pause).
 
-- BeginMigrateMachine (POST /:login/machines/migrate?action=start&affinity=AFF)
+- BeginMigrateMachine (POST /:login/machines/migrate?action=begin&affinity=AFF)
   Starts an on-demand migration (i.e. just the "begin" phase) for an instance.
   Affinity rules can be added - see the [provisioning](#provisining) section for
   details.
 
-  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=start&affinity=AFF),
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=begin&affinity=AFF),
   which on success will return a 202 code and a JSON object containing the
   job uuid.
 
