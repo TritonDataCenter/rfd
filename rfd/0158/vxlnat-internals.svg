@@ -13,7 +13,6 @@
   <font id="EmbeddedFont_1" horiz-adv-x="2048">
    <font-face font-family="Liberation Sans embedded" units-per-em="2048" font-weight="normal" font-style="normal" ascent="1864" descent="432"/>
    <missing-glyph horiz-adv-x="2048" d="M 0,0 L 2047,0 2047,2047 0,2047 0,0 Z"/>
-   <glyph unicode="z" horiz-adv-x="866" d="M 83,0 L 83,137 688,943 117,943 117,1082 901,1082 901,945 295,139 922,139 922,0 Z"/>
    <glyph unicode="y" horiz-adv-x="1028" d="M 191,-425 C 142,-425 100,-421 67,-414 L 67,-279 C 92,-283 120,-285 151,-285 263,-285 352,-203 417,-38 L 434,5 5,1082 197,1082 425,484 C 428,475 432,464 437,451 442,438 457,394 482,320 507,246 521,205 523,196 L 593,393 830,1082 1020,1082 604,0 C 559,-115 518,-201 479,-258 440,-314 398,-356 351,-384 304,-411 250,-425 191,-425 Z"/>
    <glyph unicode="x" horiz-adv-x="1028" d="M 801,0 L 510,444 217,0 23,0 408,556 41,1082 240,1082 510,661 778,1082 979,1082 612,558 1002,0 Z"/>
    <glyph unicode="w" horiz-adv-x="1514" d="M 1174,0 L 965,0 776,765 740,934 C 734,904 725,861 712,805 699,748 631,480 508,0 L 300,0 -3,1082 175,1082 358,347 C 363,331 377,265 401,149 L 418,223 644,1082 837,1082 1026,339 1072,149 1103,288 1308,1082 1484,1082 Z"/>
@@ -115,7 +114,7 @@
        <g id="id3">
         <rect class="BoundingBox" stroke="none" fill="none" x="4173" y="2269" width="12703" height="21466"/>
         <path fill="none" stroke="rgb(0,0,0)" d="M 10524,23733 L 4174,23733 4174,2270 16874,2270 16874,23733 10524,23733 Z"/>
-        <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="635px" font-weight="400"><tspan class="TextPosition" x="4424" y="2971"><tspan fill="rgb(0,0,0)" stroke="none">vxlnat(7D) zone</tspan></tspan></tspan></text>
+        <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="635px" font-weight="400"><tspan class="TextPosition" x="4424" y="2971"><tspan fill="rgb(0,0,0)" stroke="none">vxlnat(7D) internals</tspan></tspan></tspan></text>
        </g>
       </g>
       <g class="com.sun.star.drawing.CustomShape">
@@ -224,7 +223,7 @@
       </g>
       <g class="com.sun.star.drawing.LineShape">
        <g id="id9">
-        <rect class="BoundingBox" stroke="none" fill="none" x="7730" y="20765" width="6150" height="346"/>
+        <rect class="BoundingBox" stroke="none" fill="none" x="7730" y="20764" width="6150" height="346"/>
         <path fill="none" stroke="rgb(0,0,0)" d="M 7731,21066 L 13878,21066"/>
         <text class="TextShape"><tspan class="TextParagraph" font-family="Liberation Sans, sans-serif" font-size="368px" font-weight="400"><tspan class="TextPosition" x="8400" y="21032"><tspan fill="rgb(0,0,0)" stroke="none">Etherstub with public IPs on it</tspan></tspan></tspan></text>
        </g>
