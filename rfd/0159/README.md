@@ -18,6 +18,46 @@ This RFD describes the relevant components and settings. It then describes
 possible future changes to some of these settings which could increase the
 usable capacity of a storage node.
 
+## Policy
+
+The intention of the policy for the capacity limit is that Manta should fill
+storage zones up to a max utilization of X% (for some specific X). X is chosen
+such that performance remains reliably good (at the expected fragmentation
+rate).
+
+The max utilization must also account for a fixed amount of space used for
+temporary log files, crash dumps, and other files used by the rest of the
+system.
+
+Over time, ongoing work may allow us to increase X which decreases the overall
+cost of Manta.
+
+## Mechanism
+
+While the policy is fairly straightforward, the mechanism to acheive that
+is more complicated.
+
+We want Manta to stop trying to use a storage zone before it's actually full,
+otherwise there would be requests that fail as the storage zone fills up.
+In addition, we wouldn't have room to write logs or other files inside the
+storage zone. This implies that Manta is aware of the physical space available
+in the storage zone and stops writing to it before it's full. This behavior is
+currently controlled globally by Muskie for all storage zones using the
+MUSKIE_MAX_UTILIZATION_PCT tunable.
+
+In addition, we want a ZFS quota on each storage zone to act as a backstop in
+case of a problem with the above mechanism.
+
+Since MUSKIE_MAX_UTILIZATION_PCT is effectively applied after the quota, if
+the policy has a target of X%, the operator must configure the quota and
+MUSKIE_MAX_UTILIZATION_PCT such that the product of these two represents X% of
+usable storage on the box. That implies MUSKIE_MAX_UTILIZATION_PCT will be
+slightly greater than X.
+
+While it may be obvious, it is worth reiterating that the quota on the zone
+is a backstop and cannot be used properly in lieu of the
+MUSKIE_MAX_UTILIZATION_PCT setting in Muskie.
+
 ## Measuring
 
 There are many different ways to measure the available and used storage on a
@@ -38,9 +78,9 @@ no usable storage and must be omitted.
 
 The **zpool list** command reports the size and free space for the zpool. The
 available space reported by the **zfs list** command will be less than the
-size reported by zpool. In general, the observed difference seems to
-be 3% - 4% less. This translates to a several TiB difference on our
-production storage nodes.
+size reported by zpool. In general, the observed difference is 3% - 4% less.
+This translates to a several TiB difference on our production storage nodes.
+This difference is known as the ZFS "slop space" and is by design.
 
 The zfs list value for **avail** will be controlled by any **quota** set on
 the dataset. We should never have a quota on the top-level 'zones' dataset
@@ -64,8 +104,9 @@ reflect any quota set on that dataset.
 
 ## Quota
 
-If we set a quota on the storage zone dataset, this obviously reduces the
-available space for object storage, due to the values reported by minnow.
+Setting a quota on the storage zone dataset obviously reduces the
+available space for object storage, as compared to the total space on the
+server, due to the values reported by minnow.
 
 Due to various bugs seen in the past, we prefer to use a quota here to prevent
 the entire system from filling up if there are bugs in Manta. That is,
@@ -83,6 +124,14 @@ should be more than adequate as a safety net for the rest of the system.
 To set a fixed 1 TiB quota, the total top-level space for the 'zones' dataset
 should be used, minus 1 TiB. The resulting value should be applied as the
 quota for the storage zone's dataset.
+
+Assuming a fixed 1 TiB for the quota, this accounts for a small precentage
+reduction in the total usable space on the system. However, given the
+size of our storage servers and the fact that capacity increases with
+each generation, this precentage is negligible. For example, on a 177 TiB
+server, it is .57% of total capacity, and this faction only goes down as
+we deploy larger servers. Thus, for practical purposes, we can usually choose
+to ignore the quota.
 
 ### Setting a Quota
 
@@ -112,9 +161,10 @@ burdon and potential for misconfiguration.
 
 ## Muskie Limit
 
-Within muskie, there is a limit as to how much space will be used in each
-storage zone. This limit is currently set to 95%, but there is a lot of
-relevant history behind this which we'll briefly summarize.
+As described in the 'Mechansim' section, within Muskie there is a limit
+(MUSKIE_MAX_UTILIZATION_PCT) as to how much space will be used in each storage
+zone. This limit is currently set to 95%, but there is some relevant
+history behind this which we'll briefly summarize.
 
 In the past, we had the limit set to 93%. The investigation on
 [MANTA-3571](https://jira.joyent.us/browse/MANTA-3571)
@@ -152,11 +202,14 @@ proposed fix for OS-7151 on one of the nodes with the problematic fragmentation
 and it is working well so far.
 
 There is one additional factor to be aware of with the Muskie limit. The way
-Muskie works, it actually rounds up the calculation. That is, with a setting
-of 95%, Muskie will actually use almost 96% of the storage in the zone.
-This provides a fortuitous situation where the storage zone's 1 TiB quota is
-more than offset on our production storage servers. Thus, the quota does not
-have to factor in to the general thinking around storage zone capacity.
+Muskie works, it rounds up its usage calculation. That is, with a
+setting of 95%, Muskie will actually only use slightly over 94% of the
+available storage in the zone.
+
+Thus, if our intended target utilization of the total space on the storage zone
+is 95%, then we must actually set the Muskie limit to 96%. Note that even with
+this setting, we won't go over 95% of the total space on the server since the
+quota has already been subtracted from the total available space to the zone.
 
 ### Setting the Muskie Limit
 
