@@ -365,9 +365,9 @@ format.
 
 ## Planned Testing
 
-Verify ability to create SmartOS ISO images
+Verify ability to create SmartOS ISO images (as non-root)
 
-Verify ability to create SmartOS USB images
+Verify ability to create SmartOS USB images (as non-root)
 
 Verify SmartOS boots with new USB image in legacy BIOS boot mode
 
@@ -432,6 +432,10 @@ in a RAN environment
 Verify `sdc-usbkey [-v] update [-n]`
 
 Verify `sdcadm experimental update-gz-tools`
+
+Verify `sdc-restore`, rest of `tools/bin/` from `sdc-headnode`
+
+Verify MG builds of ipxe repo
 
 ## References
 
