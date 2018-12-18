@@ -182,8 +182,8 @@ tools.
 
 For that reason, the "Legacy Upgrade Firmware Mode" boot option will not be
 supported on the new GPT/Loader based USB images and Freedos and memdisk
-will be removed from the joyent/sdcboot source repository. (This may entail
-retiring sdcboot entirely, and moving the delivery bits to `joyent/ipxe`.)
+will be removed from the key contents. The sdcboot repository will be archived,
+and iPXE bits directly delivered via `joyent/ipxe`.
 
 #### Build Tool Changes
 
@@ -253,7 +253,9 @@ https://docs.joyent.com/private-cloud/install/headnode-installation
 
 https://docs.joyent.com/private-cloud/install/compute-node-setup
 
-### Update iPXE
+### PXE changes
+
+#### Update iPXE
 
 In order to provide support for booting off of more modern network interfaces,
 the Joyent fork of ipxe will be resync'd to the tip of the upstream codebase.
@@ -262,7 +264,11 @@ At a minimum, the resulting binary will tested on every network interface used
 in a Joyent BOM, to ensure regressions are not introduced.
 
 Once that the resync has been tested, the updated ipxe will then be seeded into
-the joyent/sdcboot and joyent/kvm-cmd repos as needed.
+the joyent/ipxe, joyent/sdc-booter, and joyent/kvm-cmd repos as needed.
+
+#### EFI PXE boot
+
+FIXME: some notes about booting in EFI not from iPXE (do we still need to support this)
 
 ### Conversion Tool for OPS
 
@@ -313,8 +319,8 @@ the sdcboot tarball). Each PI also delivers its own `/os/20181203t230136z/platfo
 loader itself delivers `/etc/version/boot` as populated by the boot tarball created by the
 `smartos-live` build. Thus, we can see at a glance the component versions of what's on each USB key.
 
-We will also re-work the way the contents are updated. Instead of just iPXE, we'll deliver
-the whole of the `boot` and `sdcboot` tarballs, as well as `sdc-headnode`'s additions into
+We will also re-work the way the contents are updated. Instead of just iPXE binaries, we'll deliver
+the whole of the `boot` and `ipxe` tarballs, as well as `sdc-headnode`'s additions into
 `/opt/smartdc/share/usbkey/contents`. Instead of `sdc-usbkey update` directly copying files
 across, it will instead execute whatever it finds at `/opt/smartdc/share/usbkey/update-usbkey*`
 (in glob order). One of these scripts is the same old code that copied files across to the root
@@ -429,13 +435,24 @@ Verify ability to boot a SmartOS KVM via iPXE
 Verify ability to boot both a physical node and a KVM instance via iPXE
 in a RAN environment
 
-Verify `sdc-usbkey [-v] update [-n]`
+Verify `sdc-usbkey [-v] update [-n]` on legacy/EFI
 
 Verify `sdcadm experimental update-gz-tools`
 
 Verify `sdc-restore`, rest of `tools/bin/` from `sdc-headnode`
 
+Verify `reflash`
+
 Verify MG builds of ipxe repo
+
+Verify sdc-booter undionly chaining (legacy BIOS mode)
+
+Verify `sdc-headnode` `build.spec.local` changes: build-tgz, serial, ipxe
+
+Verify TOOLS-1000 behaviour
+
+Verify RICHMOND-16 systems
+
 
 ## References
 
