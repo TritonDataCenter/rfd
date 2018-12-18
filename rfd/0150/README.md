@@ -123,9 +123,9 @@ services. See also "M2" notes below.
 
 We have current outstanding changes to some repos for illumos/SmartOS support:
 
-- https://github.com/prometheus/prometheus/compare/release-2.5...joyent:joyent/2.5
-- https://github.com/fsnotify/fsnotify/compare/v1.4.7...joyent:joyent/1.4.7
-  See https://github.com/fsnotify/fsnotify/pull/263
+- [prometheus](https://github.com/prometheus/prometheus/compare/release-2.5...joyent:joyent/2.5)
+- [grafana](https://github.com/grafana/grafana/compare/v5.3.x...joyent:joyent/5.3.x)
+- [fsnotify](https://github.com/fsnotify/fsnotify/compare/v1.4.7...joyent:joyent/1.4.7) - For discussion, see https://github.com/fsnotify/fsnotify/pull/263
 
 ## Milestones
 
