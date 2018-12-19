@@ -26,85 +26,267 @@ research efforts.
 
 These are headers we will use on every request.
 
-### Authentication
+#### Authentication
 
-`Authorization` -- See RBAC.
+`Authorization` -- Existing RBAC mechanisms will be used to authenticate
+requests.
 
-### Versioning
+#### Versioning
 
 Semantic versioning.
 Current: `0.0.0`
 
-### Date
+#### Date
 
 RFC 1123.
 
-### Host
+#### Host
 
 `*.manta.joyent.com`
+
+#### Content-Length
+
+Ensure that we handle zero-byte objects. Zero-byte objects with a trailing
+slash may be treated as folders later.
+
 
 ## Routes
 
 We will add the following routes to Muskie to support Manta Buckets. See `MANTA-3898`
 for more information.
 
-### List buckets
+### Buckets
 
-`GET /$MANTA_USER`
+#### List buckets (PUT /:login/buckets)
 
-### Check bucket
+Sample Request
+```
+$ manta /$MANTA_USER/buckets -X GET
 
-`HEAD /$MANTA_USER/buckets/$BUCKET_NAME`
+GET /$MANTA_USER/buckets HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Tue, 18 Dec 2018 20:38:18 GMT
+Authorization: $Authorization
 
-### Create bucket
+HTTP/1.1 200 OK
+Date: Tue, 18 Dec 2018 20:38:18 GMT
+Server: Manta
+x-request-id: da0b31b0-0304-11e9-a402-b30a36c2c748
+x-response-time: 27
+x-server-name: $zonename
+Transfer-Encoding: chunked
 
-`POST /$MANTA_USER/buckets`
+{"name":"hello","type":"bucket","mtime":"2018-12-04T01:50:54.018Z"}
+{"name":"mybucket","type":"bucket","mtime":"2018-12-14T03:18:10.567Z"}
+```
 
-### Get bucket
+#### Check bucket (HEAD /:login/buckets/:bucket)
 
-`GET /$MANTA_USER/buckets/$BUCKET_NAME`
+TODO
 
-### Delete bucket
+#### Create bucket (PUT /:login/buckets/:bucket)
 
-`DELETE /$MANTA_USER/buckets/$BUCKET_NAME`
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/newbucket \
+    -X PUT \
+    -H "Content-Type: application/json; type=bucket"
 
-### List bucket contents in lexicographical order
+PUT /$MANTA_USER/buckets/newbucket HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+Content-Type: application/json; type=bucket
+date: Wed, 19 Dec 2018 21:38:00 GMT
+Authorization: $Authorization
 
-`GET /$MANTA_USER/buckets?order_by={order_by_string}`
+HTTP/1.1 204 No Content
+Connection: close
+Date: Wed, 19 Dec 2018 21:38:00 GMT
+Server: Manta
+x-request-id: 82692740-0305-11e9-a402-b30a36c2c748
+x-response-time: 185
+x-server-name: $zonename
+```
 
-### List paths under prefixes of the bucket
+#### Get bucket (GET /:login/buckets/:bucket)
 
-`GET /$MANTA_USER/buckets?prefix={prefix_string}`
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket -X GET
 
-### List objects
+GET /$MANTA_USER/buckets/mybucket HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Wed, 19 Dec 2018 21:39:06 GMT
+Authorization: $Authorization
 
-`GET /$MANTA_USER/buckets/$BUCKET_NAME`
+HTTP/1.1 200 OK
+Connection: close
+Content-Type: application/json
+Content-Length: 70
+Content-MD5: /U2BUYH8SXcSO6Tyo7PTiA==
+Date: Wed, 19 Dec 2018 21:39:06 GMT
+Server: Manta
+x-request-id: ddb1f290-0304-11e9-a402-b30a36c2c748
+x-response-time: 128
+x-server-name: $zonename
 
-### Check object
+{"name":"mybucket","type":"bucket","mtime":"2018-12-18T22:04:55.518Z"}
+```
 
-`HEAD /$MANTA_USER/buckets/$BUCKET_NAME/objects/$OBJECT_NAME`
+#### Delete bucket (DELETE /:login/buckets/:bucket)
 
-### Create or overwrite object
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/newbucket -X DELETE
 
-`PUT /$MANTA_USER/buckets/$BUCKET_NAME/objects/$OBJECT_NAME`
+DELETE /$MANTA_USER/buckets/newbucket HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Wed, 19 Dec 2018 21:39:56 GMT
+Authorization: $Authorization
 
-### Conditionally create or overwrite object
+HTTP/1.1 204 No Content
+Connection: close
+Date: Wed, 19 Dec 2018 21:39:56 GMT
+Server: Manta
+x-request-id: ddb1f290-0304-11e9-a402-b30a36c2c748
+x-response-time: 128
+x-server-name: $zonename
+```
 
-`PUT /$MANTA_USER/buckets/$BUCKET_NAME/objects/$OBJECT_NAME`
 
-### Get object
+### Objects
 
-`GET /$MANTA_USER/buckets/$BUCKET_NAME/objects/$OBJECT_NAME`
+#### List bucket contents unordered (GET /:login/buckets?sorted=false
 
-### Delete object
+TODO
 
-`DELETE /$MANTA_USER/buckets/$BUCKET_NAME/objects/$OBJECT_NAME`
+#### List bucket contents in lexicographical order (GET /:login/buckets?sorted=true)
 
-### Conditionally delete object
+TODO
 
-`DELETE /$MANTA_USER/buckets/$BUCKET_NAME/objects/$OBJECT_NAME`
+#### List paths under prefixes of the bucket (GET /:login/buckets?prefix={:filter})
 
-### Update object metadata
+TODO
 
-`PUT /$MANTA_USER/buckets/$BUCKET_NAME/objects/$OBJECT_NAME?metadata=true`
+#### List objects (GET /:login/buckets/:bucket/objects)
 
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket/objects -X GET
+
+GET /$MANTA_USER/buckets/mybucket/objects HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Wed, 19 Dec 2018 21:43:27 GMT
+Authorization: $Authorization
+
+HTTP/1.1 200 OK
+Date: Wed, 19 Dec 2018 21:43:28 GMT
+Server: Manta
+x-request-id: da0b31b0-0304-11e9-a402-b30a36c2c748
+x-response-time: 27
+x-server-name: $zonename
+Transfer-Encoding: chunked
+
+{"name":"myobject.json","etag":"6bf98a73-6cc7-4afb-9e3c-4ea0693b4cf1","size":18,"type":"bucketobject","contentType":"application/json; type=bucketobject","contentMD5":"UE8cRSdpJ/cMOc6ofHJFgw==","mtime":"2018-12-18T22:05:01.102Z"}
+{"name":"newobject.json","etag":"b56eb23c-90ce-47b3-9367-1f566d993d8e","size":18,"type":"bucketobject","contentType":"application/json; type=bucketobject","contentMD5":"UE8cRSdpJ/cMOc6ofHJFgw==","mtime":"2018-12-19T21:41:40.676Z"}
+```
+
+#### Check object (HEAD /:login/buckets/:bucket/objects/:object)
+
+TODO
+
+#### Create or overwrite object (PUT /:login/buckets/:bucket/objects/:object)
+
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket/objects/newobject.json \
+    -X PUT \
+    -H "Content-Type: application/json; type=bucketobject" \
+    -d '{"example":"text"}'
+
+PUT /$MANTA_USER/buckets/mybucket/objects/newobject.json HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+Content-Type: application/json; type=bucketobject
+date: Wed, 19 Dec 2018 21:41:40 GMT
+Authorization: $Authorization
+Content-Length: 18
+
+HTTP/1.1 204 No Content
+Connection: close
+Etag: b56eb23c-90ce-47b3-9367-1f566d993d8e
+Last-Modified: Wed, 19 Dec 2018 21:41:40 GMT
+Computed-MD5: UE8cRSdpJ/cMOc6ofHJFgw==
+Date: Wed, 19 Dec 2018 21:41:40 GMT
+Server: Manta
+x-request-id: 82692740-0305-11e9-a402-b30a36c2c748
+x-response-time: 185
+x-server-name: $zonename
+```
+
+#### Conditionally create or overwrite object (PUT /:login/buckets/:bucket/objects/:object)
+
+TODO
+
+### Get object (GET /:login/buckets/:bucket/objects/:object)
+
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X GET
+
+GET /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Wed, 19 Dec 2018 21:53:35 GMT
+Authorization: $Authorization
+
+HTTP/1.1 200 OK
+Connection: close
+Accept-Ranges: bytes
+Content-Type: application/json; type=bucketobject
+Content-MD5: UE8cRSdpJ/cMOc6ofHJFgw==
+Content-Length: 18
+Durability-Level: 2
+Date: Wed, 19 Dec 2018 21:53:35 GMT
+Server: Manta
+x-request-id: 88c12790-03d8-11e9-bc2d-0501f01773f1
+x-response-time: 355
+x-server-name: $zonename
+
+{"example":"text"}
+```
+
+### Delete object (DELETE /:login/buckets/:bucket/objects/:object)
+
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X DELETE
+
+DELETE /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Wed, 19 Dec 2018 21:47:39 GMT
+Authorization: $Authorization
+
+HTTP/1.1 204 No Content
+Connection: close
+Date: Wed, 19 Dec 2018 21:47:40 GMT
+Server: Manta
+x-request-id: b4e96f40-03d7-11e9-bc2d-0501f01773f1
+x-response-time: 251
+x-server-name: $zonename
+```
+
+### Conditionally delete object (DELETE /:login/buckets/:bucket/objects/:object)
+
+TODO
+
+
+## Unsupported operations
+
+* Snaplinks: object-level versioning will not be supported at this time.
+* Multi-Part Uploads: this is not supported for bucket objects.
