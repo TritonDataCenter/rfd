@@ -81,6 +81,25 @@ at a time.
 
 ![External network connectivity](external-network.svg)
 
+From a cloud administrator's perspective, existing Fabrics stay as they are,
+but new fabrics get created on top of NAT Reform zones with a
+`nat_reform_public` public IP.  Existing Fabrics with default routes can
+convert to NAT Reform by adding a `nat_reform_public` empty-IP UPDATE, and
+the submitted job will kill the old NAT zone and rewire its default router to
+be on its assigned NAT Reform zone.
+
+Also the cloud administrator can increase/decrease the number of NAT Reform
+zones with the ability to assign them to specific CNs, and the request of
+shared public IPs or one public IP per customer.  Once configured, Triton
+will balance Fabric Assignments as requests come in.
+
+From a cloud customer's POV.  Nothing changes unless they want to be "AIP
+ready" which will be a signal for the administrator to convert the customer's
+fabrics to NAT Reform.  It may be possible to allow the customer to initiate
+a no-going-back upgrade to NAT Reform for their networks.  Also the customer
+can request an AIP.  This should only work on an address or instance upgraded
+to be NAT Reform ready.
+
 This RFD will cover:
 
 - Technical details of the NAT Device - `vxlnat(7D)`.
@@ -287,9 +306,11 @@ possibly ones dedicated for NAT Reform.  This post-setup will establish:
   This results in SVP entries for the default routers
 
 - AIP assignments to the NAT Reform zones that match the default-router
-  assignment for its inner encapsulating network.  (e.g. an AIP for an
-  instance attached to 10.3.3.0/24 must reside on the same NAT Reform zone
-  as the default router for 10.3.3.0/24.)
+  assignment for its inner encapsulating network.  For example, an AIP for an
+  instance attached to 10.3.3.0/24 must reside on the same NAT Reform zone as
+  the default router for 10.3.3.0/24.  This way, AIP VMs will not need
+  a different default router, or worse, SVP trickery depending on if the
+  requesting VM is an AIP or not.
 
 Each NAT Reform zone will then boot.  At boot, a zone will query NAPI to
 obtain the list of fabric gateways (fabric network entries will now include
@@ -393,6 +414,13 @@ zone gets a new public IP, and is readily available for new fabrics or AIPs.
 
 ![Adding or recovering a NAT Reform zone](add-zone.svg)
 
+The two approaches circumscribe a tradeoff.  If adding a new NAT Reform Zone
+causes the *italicized* naive recovery approach, while the NAT flows get
+destroyed, the load of future flows IMMEDIATELY shifts to the new NAT zone,
+while in the **bold** new-public-IP approach, load will not shift at all
+until new fabric networks come online.  So the tradeoff is between no
+disruption or load rebalancing.
+
 Currently, the `vxlnat(7D)` driver does not indicate to `vxlnatd(1M)` any
 additions/deletions of NAT flows.  If it did, the problem of communicating
 these changes to other NAT Reform zones remains.  The [Possible
@@ -495,6 +523,11 @@ belongs_to_uuid | UUID       | UUID of the instance the AIP is assigned to (Opti
 belongs_to_type | String     | Type of triton object the AIP is pointing to e.g. "Instance" (Optional)
 owner_uuid      | UUID       | UUID of the owner
 
+##### DetachAIP (POST /:login/aips/:id?detach=true)
+
+Remove an AIP from active use, but still keep it available for the user
+specified in `:login`.  This primitive takes no inputs, and returns nothing.
+
 ##### UpdateAIP (PUT /:login/aips/:id)
 
 Assign an AIP to an instance. If you don't pass in the optional private-ip the
@@ -587,15 +620,42 @@ already in place, so this may not require much, if any, change.
 
 #### SAPI
 
-> XXX KEBE SAYS Fill in text about the `vxlnat(7D)` service.  Mention how
-> sdcadm(1M) will need to configure it.  Use electric-moray from Manta as an
-> example (since it too is replicable same-configuration zones).
+The actual NAT Reform zones that run `vxlnatd(1M)` to drive `vxlnat(7D)` will
+need to be managed by SAPI.  The word `vxlnat` will likely be added to
+various parts of the `sdcadm(1)` command, since it describes the VXLAN
+NAT-ting that is being managed.  The precedent for Fabric Networks using
+`post-setup` may also inform what an administrative interface would look
+like.
 
-> `post-setup vxlnat -s <SERVER1>....`
+##### Proposed additions to `sdcadm(1)`
 
-> Underlay network.
+The documentation for `sdcadm(1)` states:
 
-> Requesting a public IP?
+```
+Finally, the first instance of some services should not be created using this
+tool when there is an alternate choice provided by *post-setup* subcommand.
+```
+
+To that end, creating the first set of NAT Reform zones should be done by a
+`post-setup` command.
+
+```
+sdcadm post-setup vxlnat -s SERVER_UUID1 -s SERVER_UUID2...
+```
+
+Subsequent additions of NAT Reform zones can be done using a `create`
+command:
+
+```
+sdcadm create -s SERVERS vxlnat
+```
+
+There is no way currently to remove a NAT Reform zone without using SAPI
+directly.
+
+```
+sdc-sapi /instances/:uuid -X DELETE
+```
 
 #### VMAPI
 
