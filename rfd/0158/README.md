@@ -408,7 +408,7 @@ the same default router).  The following figure shows two AIPs for two
 different prefixes added to the initial example.  The additions for AIPs are
 in *italics*.
 
-![AIP entries](aips.svg)
+![AIP entries](aip.svg)
 
 
 #### CloudAPI
@@ -539,10 +539,11 @@ boolean, they alone cannot indicate the tri-state nature (off, NAT Zone, NAT
 Reform).  Additionally, NAT Reform Zones need to know the public IP for a
 given NAT Reform using Fabric Network.  A new variable: `nat_reform_public`
 needs to be attached to Fabric Networks which use NAT Reform zones.  This
-variable MUST be set to a public IP address, and SHOULD be allowed to be
-added to existing fabric networks as we upgrade them to use NAT Reform zones.
-NAT Reform Zones, which subscribe to NAPI Changefeeds, can create new NAT
-rules as Fabric Networks transition to use NAT Reform zones.
+variable MUST be set by NAPI to a public IP address, and SHOULD be allowed to
+be added (without an address) to an existing fabric networks as we upgrade
+them to use NAT Reform zones.  NAT Reform Zones, which subscribe to NAPI
+Changefeeds, can create new NAT rules as Fabric Networks transition to use
+NAT Reform zones.
 
 At start time, NAT Reform Zones must query NAPI to determine:
 
@@ -553,29 +554,48 @@ At start time, NAT Reform Zones must query NAPI to determine:
 NAT Reform Zones must additionally track via Changefeed `item-published`
 publisher events from NAPI to add or remove both NAT rules and 1-1 rules.
 
-#### PORTOLAN
+##### NAT Reform Zone assignment
 
-> Portolan is the source-of-truth about UL3 addresses, including those for
-> the default router.  Starting with NAT Reform, it will also have to be the
-> monitoring checker for NAT Reform zones, unless another suitable entity
-> exists. We need to fill in what all Portolan needs to do in a NAT Reform
-> world.  Initially I didn't think much, but the recent VPC+Triton call
-> suggests SOMETHING has to check NAT Reform zone health.
+When a new, post-NAT-Reform Fabric Network gets created, or when an existing
+Fabric Network gets a request for a `nat_reform_public` update.  NAPI will
+consult SAPI (see below) to obtain a public IP address for the Fabric
+Network, and NAPI will also set the default router UL3 address to the
+appropriate NAT Reform Zone.
 
-> XXX KEBE ASKS -- is this actually something we should have varpd(1M) do
-> instead?!?  The idea is someone's gotta detect a down vxlnat(7D) zone.
-> Maybe changefeed for CNAPI?!?  Since we only allow one-per-CN, maybe that's
-> doable?
+#### PORTOLAN AND `varpd(1M)`
+
+Portolan implements the server side of SmartDC VXLAN Protocol (SVP), and
+`varpd(1M)` implements the client side of SVP.  Portolan is the
+source-of-truth about Underlay Network (UL3) addresses, including those for
+the default router.  As shown in the examples, UL3 addresses for default
+routers change to shuffle outbound packets through different NAT Reform
+zones.
+
+Some entity must query for NAT Reform zone liveness. A case can be made for
+either Portolan itself or `varpd(1M)` to do so.  Portolan would need to know
+which UL3 IP addresses correspond to default routers.  When it answers with
+one of those UL3s, Portolan could check NAT Reform zone liveness, and
+indicate to NAPI if liveness fails.  Alternatively, `varpd(1M)` has knowledge
+if a default-router is being queried (due to the nature of its request), and
+as part of the SVP query can confirm/deny NAT Reform zone reachability.
+
+If neither Portolan or `varpd(1M)` is not ultimately responsible for NAT
+Reform zone liveness checking, they will need to handle changes for UL3
+addresses of default routers.  Once Portolan is updated, it must issue
+shootdowns.  The shootdown mechanism between Portolan and `varpd(1M)` is
+already in place, so this may not require much, if any, change.
 
 #### SAPI
 
-> Fill in text about the `vxlnat(7D)` service.  Mention how sdcadm(1M) will
-> need to configure it.  Use electric-moray from Manta as an example (since
-> it too is replicable same-configuration zones).
+> XXX KEBE SAYS Fill in text about the `vxlnat(7D)` service.  Mention how
+> sdcadm(1M) will need to configure it.  Use electric-moray from Manta as an
+> example (since it too is replicable same-configuration zones).
 
 > `post-setup vxlnat -s <SERVER1>....`
 
 > Underlay network.
+
+> Requesting a public IP?
 
 #### VMAPI
 
@@ -586,7 +606,12 @@ network is a `vxlnat(7D)`-connected one and if so, allocate a fabric's
 next-hop router, and have sdcadm(1M) assign it to the `vxlnat(7D)`
 configuration.
 
-> XXX KEBE SAYS Don't forget what a NAT Reform zone looks like under VMAPI.
+A NAT Reform zone under VMAPI itself will look similar to a traditional NAT
+zone from the point-of-view.  It will have `customer_metadata` including a
+SAPI URL (see above) and a `user-script`.  It may have `internal_metadata`,
+possibly including a set of initial configuration. It will have two `nics`:
+one attached to the underlay network, and one to the external network.  It
+may also have `tags` to further identify it as a NAT Reform zone.
 
 ### External network routing requirements
 
@@ -603,7 +628,9 @@ interoperability falls on the NAT Reform zone.
 
 ### Design Decisions and Tradeoffs
 
-> XXX KEBE SAYS THIS IS WHERE "Why didn't you X?" QUESTIONS AND ANSWERS GO.
+This project will make many design decisions and tradeoffs during its
+lifetime.  This section will document them both, and change as implementation
+experience informs decisions made pre-implemenatation.
 
 Today, NAT zones consume their own public IP (one per customer, per customer
 fabric network).  Moving to a NAT Reform approach should cut back public IP
@@ -635,7 +662,6 @@ this whole approach will have to be revisited.  Unlike OpenFlow (or at least
 earlier revisions of OpenFlow), NAT flows do not have to be propagated to all
 NAT Reform entities.
 
-
 > XXX KEBE SAYS MORE TO COME!  This especially includes the enumeration of
 > other possible technical solutions.
 
@@ -657,15 +683,19 @@ address on its direct attachment to the underlay network.
 The head node's services will need to determine when to start employing
 NAT Reform.  That can only happen when the following conditions occur:
 
-* NAPI supports 
+* NAPI supports the distinction between old-style NAT Zone Fabric Networks
+  and NAT Reform Fabric Networks (and the migration from one to another).
 
 * SAPI supports the control of NAT Reform Zones.
 
 * VMAPI supports fabric network bringup to use NAT Reform Zones.
 
-> XXX KEBE SAYS HOW DO WE DEPLOY NAT Reform IN A WORLD OF FABRIC NETS WITH
-> NAT ZONES?!  GOOD QUESTION.  WE MIGHT BE ABLE TO DO IT INCREMENTALLY IF WE
-> CAN PUSH THE PORTOLAN UPDATES OUT (and the NAPI ones, and the....)
+Once NAT Reform is available, it can be rolled out on a per-Fabric-Network
+basis.  Existing Fabric Networks will continue to use dedicated NAT Zones.
+New Fabric Networks will get a `nat_reform_public` IP added to their
+networks.  Existing Fabric Networks can be converted to use NAT Reform by
+adding an empty-address `nat_reform_public` field, which NAPI will in turn
+fill in based on SAPI information.
 
 ## What Problems This Does Not Solve
 
