@@ -1,6 +1,6 @@
 ---
 authors: Dan McDonald <danmcd@joyent.com>
-state: predraft
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=RFD+158
 ---
 
