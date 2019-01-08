@@ -11,7 +11,7 @@ discussion: https://github.com/joyent/rfd/issues?q=RFD+156
 -->
 
 <!--
-    Copyright (c) 2018, Joyent, Inc.
+    Copyright (c) 2019, Joyent, Inc.
 -->
 
 # RFD 156 SmartOS/Triton Boot Modernization
@@ -61,6 +61,17 @@ Triton is based on a fork of iPXE that was last synced with upstream in early
 2016.  Thus it does not support network booting on some of the newer network
 interfaces, including the Intel Fortville nics, which are the standard onboard
 interface on most currently shipping enterprise-level system boards.
+
+While iPXE has support for building UEFI binaries, they are not being
+built currently.  The build tools will be modified to both build the iPXE UEFI
+binaries and deliver them in the Triton software image.
+
+Finally, iPXE currently doesn't support booting from kernel images that use
+the multiboot2 image format - only multiboot1.  The illumos kernel is built
+with both multiboot 1 and 2 headers and so today iPXE falls back to the
+multiboot1 support. The problem there is that the multiboot1 specification
+doesn't support UEFI mode.  As part of this project, support for booting
+from multiboot2 images will be added to iPXE.
 
 
 ## Proposed Solution
