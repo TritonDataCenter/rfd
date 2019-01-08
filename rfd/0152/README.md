@@ -184,6 +184,9 @@ the NICs and IPs of various networks in a central location without requiring
 subsequent modifications to all affected Triton and Manta services, agents, and
 tools.
 
+Node.js common methods will be created in a new `triton-netconfig` module, and
+Bash common methods will be added to [sdc-scripts].
+
 
 ## Assumptions and Configuration Considerations
 
@@ -208,3 +211,4 @@ same type.
 [RFD 117]: https://github.com/joyent/rfd/blob/master/rfd/0117/README.md
 [RFC 3046]: https://tools.ietf.org/html/rfc3046
 [RFD 43]: https://github.com/joyent/rfd/blob/master/rfd/0043/README.md
+[sdc-scripts]: https://github.com/joyent/sdc-scripts
