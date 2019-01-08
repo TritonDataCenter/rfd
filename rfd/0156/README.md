@@ -447,6 +447,8 @@ Verify MG builds of ipxe repo
 
 Verify sdc-booter undionly chaining (legacy BIOS mode)
 
+Verify sdc-booter snponly chaining (EFI mode)
+
 Verify `sdc-headnode` `build.spec.local` changes: build-tgz, serial, ipxe
 
 Verify TOOLS-1000 behaviour
