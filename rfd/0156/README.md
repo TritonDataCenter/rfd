@@ -63,15 +63,13 @@ interfaces, including the Intel Fortville nics, which are the standard onboard
 interface on most currently shipping enterprise-level system boards.
 
 While iPXE has support for building UEFI binaries, they are not being
-built currently.  The build tools will be modified to both build the iPXE UEFI
-binaries and deliver them in the Triton software image.
+built currently.
 
 Finally, iPXE currently doesn't support booting from kernel images that use
 the multiboot2 image format - only multiboot1.  The illumos kernel is built
 with both multiboot 1 and 2 headers and so today iPXE falls back to the
 multiboot1 support. The problem there is that the multiboot1 specification
-doesn't support UEFI mode.  As part of this project, support for booting
-from multiboot2 images will be added to iPXE.
+doesn't support UEFI mode.
 
 
 ## Proposed Solution
@@ -264,22 +262,18 @@ https://docs.joyent.com/private-cloud/install/headnode-installation
 
 https://docs.joyent.com/private-cloud/install/compute-node-setup
 
-### PXE changes
-
-#### Update iPXE
+#### iPXE changes
 
 In order to provide support for booting off of more modern network interfaces,
 the Joyent fork of ipxe will be resync'd to the tip of the upstream codebase.
 
-At a minimum, the resulting binary will tested on every network interface used
-in a Joyent BOM, to ensure regressions are not introduced.
+The build tools will be modified to both build the iPXE UEFI binaries and deliver
+them in the Triton software image.
 
-Once that the resync has been tested, the updated ipxe will then be seeded into
-the joyent/ipxe, joyent/sdc-booter, and joyent/kvm-cmd repos as needed.
+Finally, support for booting from multiboot2 images will be added.
 
-#### EFI PXE boot
-
-FIXME: some notes about booting in EFI not from iPXE (do we still need to support this)
+The updated ipxe binaries will then be seeded into the joyent/ipxe,
+joyent/sdc-booter and joyent/kvm-cmd repos, as needed.
 
 ### Conversion Tool for OPS
 
