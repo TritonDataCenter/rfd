@@ -716,19 +716,18 @@ provisioned instance must reside in a CN in the same rack.
 
 # Allowing user migrations
 
-There will be two settings controlling whether a user is allowed to migrate
+There will two settings controlling whether a user is allowed to migrate
 their instances. These settings can only be set by an operator.
 
-- **CN.traits.user_migration_allowed** (boolean) trait on the CN can be set to
-  'true' to allow *user migration* of their instances on this CN, or
-  'false' to disallow migration. A missing value will imply a 'false' value.
+- **sdc.migration.user_migration_allowed** (boolean) trait on the global SDC
+  sapi object. When set to 'true' allows *user migration* for *any* of their
+  instances on any CN, or 'false' to disallow allow user migrations. This
+  setting can be overruled on a per-instance basis by the
+  *vm.internal_metadata.user_migration_allowed* setting (see below).
 
-  - should we also allow the **eol** trait?
-
-  Example:
-
-      $ sdc-cnapi /servers/$CN -X POST -d '{"traits": { "allow_user_migration": true }}'
-      $ sdc-migrate allow-cn $CN
+      $ sdc-migrate settings
+      $ sdc-migrate set allow_user_migrations true
+      $ sdc-migrate set allow_user_migrations false
 
 - **vm.internal_metadata.user_migration_allowed** (boolean) property on the
   instance can be set to 'true' to allow *user migration* of this instance, or
@@ -737,7 +736,13 @@ their instances. These settings can only be set by an operator.
   value will be inherited from the CN.traits.user_migration_allowed setting.
 
       $ sdc-vmapi "/vms/$VM?action=update" -X POST -d '{ "internal_metadata": { "user_migration_enabled": true }}'
-      $ sdc-migrate allow-instance $VM
+      $ sdc-migrate instance allow-user-migrations $VM
+      $ sdc-migrate instance disallow-user-migrations $VM
+
+Note that a previous version of the RFD also had a per-CN setting to control
+migrations off particular compute nodes - but this was judged to be ungainly
+(as it needed to modify the CNAPI server schema), and the same could be
+accomplished by using the "per-instance" setting on all instances on a given CN.
 
 # Re-sync algorithm
 
@@ -766,9 +771,14 @@ the migration service installation, or falling back to defaults) as:
 
     $ sdc-sapi /services?name=migration
     {
-      "zfs_send_mbps_limit": 500,  // megabits per second
-      "max_running_migrations_per_cn": 5
+      "allow_user_migrations": false,
+      "max_running_migrations_per_cn": 5,
+      "zfs_send_mbps_limit": 500 // megabits per second
     }
+
+    $ sdc-migrate settings
+    $ sdc-migrate set max_running_migrations_per_cn 10
+    $ sdc-migrate set zfs_send_mbps_limit 10
 
 The zfs send limits can be enforced by the application (e.g. Node.js), by
 adjusting the amount of data being sent/received (piped) to the target.
@@ -1090,7 +1100,8 @@ CN/Headnode:
 
     $ sdc-migrate settings [$CN]
     {
-        "max_migrations_per_cn": 5
+        "allow_user_migrations": false,
+        "max_migrations_per_cn": 5,
         "zfs_send_mbps_limit": 500
     }
     # Allow updating too?
@@ -1098,15 +1109,15 @@ CN/Headnode:
     $ sdc-migrate list [$CN1 $CN2 $CN3]
     ...<Show ongoing migrations, state, percentage>
 
-    $ sdc-migrate allow-cn $CN
-    Success - compute node $CN now allows user migrations.
+    $ sdc-migrate set allow_user_migrations true
+    Success - datacenter allows user migrations.
     $ sdc-migrate disallow-cn $CN
-    Success - user migrations are no longer allowed on compute node $CN.
+    Success - datacenter disallows user migrations.
 
-    $ sdc-migrate allow-instance $VM
-    Success - instance $VM can now be user migrated.
-    $ sdc-migrate disallow-instance $VM
-    Success - user migration not allowed for instance $VM.
+    $ sdc-migrate instance $VM allow_user_migrations true
+    Success - instance $VM can be user migrated.
+    $ sdc-migrate instance $VM allow_user_migrations false
+    Success - instance $VM will not allow user migration.
 
     $ sdc-migrate migrate $INSTANCE [$CN]
     Migrating $INSTANCE
@@ -1122,8 +1133,8 @@ CN/Headnode:
     ...<progress events>
     Success - migration was aborted, instance $INSTANCE is now $STATE.
 
-Once a CN (or instance) has been flagged as allowing migrations then the
-operator can send an announcement to end users allowing them to migrate their
+Once an instance has been flagged as allowing migrations then the
+operator can send an announcement to that user, allowing them to migrate their
 own instances via CloudAPI or Triton command line. The portal (AdminUI) may make
 use of these flags to notify that a CN is going down and that they can migrate
 their instances.
@@ -1174,7 +1185,7 @@ Add ability to schedule a migration.
 - how to control the creation of networks such that two instances have the same
   IP address/MAC etc... does it initially provision the target instance without
   networks and then later remove these networks from the source and then re-add
-  to the target instance (this is what the sdc-migrate script does, but it
+  to the target instance (this is what the legacy-migrate script does, but it
   also reserves the IP addresses so that they are not lost)?
 
 # Caveats
