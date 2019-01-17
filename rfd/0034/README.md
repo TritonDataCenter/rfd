@@ -719,7 +719,7 @@ provisioned instance must reside in a CN in the same rack.
 There will two settings controlling whether a user is allowed to migrate
 their instances. These settings can only be set by an operator.
 
-- **sdc.migration.user_migration_allowed** (boolean) trait on the global SDC
+- **sdc.migration.user_migration_allowed** (boolean) value on the global SDC
   sapi object. When set to 'true' allows *user migration* for *any* of their
   instances on any CN, or 'false' to disallow allow user migrations. This
   setting can be overruled on a per-instance basis by the
@@ -731,9 +731,9 @@ their instances. These settings can only be set by an operator.
 
 - **vm.internal_metadata.user_migration_allowed** (boolean) property on the
   instance can be set to 'true' to allow *user migration* of this instance, or
-  'false' to disallow migration of this instance. This value overrides the CN
-  trait.user_migration_allowed value. For a missing value (the default), the
-  value will be inherited from the CN.traits.user_migration_allowed setting.
+  'false' to disallow migration of this instance. This value overrides the
+  *sdc.migration.user_migration_allowed* value. For a missing value (the
+  default), the *sdc.migration.user_migration_allowed* setting is used.
 
       $ sdc-vmapi "/vms/$VM?action=update" -X POST -d '{ "internal_metadata": { "user_migration_enabled": true }}'
       $ sdc-migrate instance allow-user-migrations $VM
