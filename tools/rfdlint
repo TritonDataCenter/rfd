@@ -17,6 +17,7 @@ rfdlint_daycheck=45
 
 tmp=`mktemp`
 prog=`basename $0`
+script_dir=$(cd $(dirname $0) && pwd)
 
 if [[ ! -f README.md || ! -d ./rfd ]]; then
 	echo $prog: must be run in root directory of rfd repository
@@ -201,6 +202,26 @@ $prog: Then add to metadata section in ./$f:
 
 EOF
 			exit 1
+		fi
+	fi
+
+	# Ensure the contents of an RFD's 'components' field (if present) are
+	# defined in the list of allowable components. These roughly correspond to
+	# the list of components for the TRITON and MANTA projects in JIRA.
+	components=$(grep "^components: " $f | cut -d: -f2- | cut -c2-)
+	components_file="${script_dir}/components"
+	must_exit=""
+	if [[ -n "$components" ]]; then
+		for component in $(echo $components | awk 'gsub(/,[[:space:]]*/,"\n")'); do
+			grep -Fxq "$component" "$components_file"
+			if [[ $? -ne 0 ]]; then
+				where="$(basename $script_dir)/$(basename $components_file)"
+				>&2 echo "$f: component '$component' not found in $where"
+				must_exit=1
+			fi
+		done
+		if [[ $must_exit -eq 1 ]]; then
+			exit 1;
 		fi
 	fi
 done
