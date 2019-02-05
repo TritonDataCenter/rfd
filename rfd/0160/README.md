@@ -1,6 +1,7 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
 state: predraft
+discussion: https://github.com/joyent/rfd/issues/124
 ---
 
 <!--
