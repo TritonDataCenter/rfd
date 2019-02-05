@@ -5,7 +5,7 @@
 -->
 
 <!--
-    Copyright 2018 Joyent, Inc.
+    Copyright 2019 Joyent, Inc.
 -->
 
 # Requests for Discussion
@@ -201,8 +201,9 @@ formal writing that it has come to represent.)
 | predraft | [RFD 155 Manta Buckets API](./rfd/0155/README.md) |
 | draft    | [RFD 156 SmartOS/Triton Boot Modernization](./rfd/0156/README.md) |
 | draft    | [RFD 157 Notices to Operators](./rfd/0157/README.md) |
-| predraft | [RFD 158 NAT Reform, including public IPs for fabric-attached instances.](./rfd/0158/README.md) |
+| draft | [RFD 158 NAT Reform, including public IPs for fabric-attached instances.](./rfd/0158/README.md) |
 | draft    | [RFD 159 Manta Storage Zone Capacity Limit](./rfd/0159/README.md) |
+| predraft | [RFD 160 CloudWatch-like Metrics for Manta](./rfd/0160/README.md) |
 
 ## Contents of an RFD
 
