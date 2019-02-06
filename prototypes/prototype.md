@@ -11,7 +11,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+<Number>%22
 -->
 
 <!--
-    Copyright (c) 2018, <contributor>
+    Copyright (c) 2019, <contributor>
 -->
 
 # RFD <Number> <Title>
