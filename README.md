@@ -204,6 +204,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 158 NAT Reform, including public IPs for fabric-attached instances.](./rfd/0158/README.md) |
 | draft    | [RFD 159 Manta Storage Zone Capacity Limit](./rfd/0159/README.md) |
 | predraft | [RFD 160 CloudWatch-like Metrics for Manta](./rfd/0160/README.md) |
+| predraft | [RFD 161 Rust on SmartOS/illumos](./rfd/0161/README.md) |
 
 ## Contents of an RFD
 
