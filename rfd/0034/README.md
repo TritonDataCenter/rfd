@@ -235,7 +235,7 @@ The following endpoints will be available for customers:
   This should call VMAPI (GET /migrations?owner_uuid=:owner), which will return
   a JSON array of migration objects.
 
-- MigrateMachineEstimate (GET /:login/machines/:id/migrate?action=estimate)
+- MigrateMachineEstimate (GET /:login/machines?action=migrate&migration_action=estimate)
   Estimates how long it will take to complete a migration of this instance.
 
   This should call VMAPI (POST /vms/:id?action=migrate&migration_action=estimate),
@@ -896,94 +896,135 @@ TODO: Detail the events for this communication.
 
 ## Progress events
 
-The VMAPI progress endpoint will respond with a stream of events that
-describe all the completed migration phases and also the current state of the
-migration. Whilst connected to the endpoint, a current state event will be
-sent back every N seconds (e.g. every 2 seconds).
+The VMAPI migration watch endpoint will respond with a stream of JSON event
+objects. These JSON objects will be "progress" events that describe the
+migration phases and the progress/status for the migration phases and then the
+final event will be a special JSON "end" event.
+
+### Progress event
+
+Progress events are sent when something important occurs during the migration.
+There are actually two styles of progress events - one for major events (and/or
+warnings) and one to show the sync progress (bandwidth and eta).
 
     event {
 
+      type: "string"
+        // Type is "progress".
+
       phase: "string"
-        // The phase for this event, one of "begin", "sync" or "switch"
+        // Current phase.
 
       state: "string"
-        // The status for the event "success", "failed", "running" or "warning".
-        // The "warning" state will be used to notify the // user/operator of
-        // something unintened. The message field will contain the warning
-        // details, e.g. "source instance image cannot be migrated to the target
-        // CN".
+        // State in "running".
 
-      started_timestamp: "string"
-        // The ISO timestamp when the phase was started.
+      current_progress: "number"
+        // This is how much progress has been made. For the sync phase, this is
+        // the number of bytes that have been sent to the target.
 
-      finished_timestamp: "string" (optional)
-        // The ISO timestamp when the phase finished. When omitted, it indicates
-        // that this phase is still running.
-
-      job_uuid: "string" (optional)
-        // The job uuid associated with this event.
+      total_progress: "number"
+        // This is total possible progress. For the sync phase, this is
+        // the number of bytes that will need to be sent to the target.
 
       message: "string" (optional)
-        // Additional description message for this phase/state.
+        // Additional description message for this task.
 
-      current_progress: "number" (optional)
-        // Value for how much of the phase has been completed. For the "sync"
-        // phase this will be the number of bytes that have been sent to the
-        // target.
+      error: "string" (optional)
+        // Error occurred in this task - this is the description for that error.
 
-      total_progress: "number" (optional)
-        // Total value for large this phase is. For the "sync" phase this will
-        // be the total number of bytes that will need to be sent to the target.
+      started_timestamp: "string" (optional)
+        // The ISO timestamp when the phase was started.
+
+      duration_ms: "number" (optional)
+        // The number of milliseconds the phase has taken.
+
+      eta_ms: "number" (optional)
+        // Estimate of the number of milliseconds until the task is completed.
+
+      transfer_bytes_second: "number" (optional)
+        // The number of bytes being sent per second between the source and
+        // target instances during the "sync" phase.
     }
 
-Status event (successful):
+Progress event (sync started):
 
     {
-      phase: "begin",
-      state: "success",
-      started_timestamp: "2018-08-18T10:55:39.785Z",
-      finished_timestamp: "2018-08-18T10:58:01.402Z"
+      "type": "progress"
+      "phase": "sync",
+      "state": "running",
+      "message": "syncing data",
+      "current_progress": 1,
+      "total_progress": 100,
+      "started_timestamp": "2019-02-04T22:13:49.947Z",
+      "duration_ms": 377
     }
 
-Status event (sync just started running):
+Progress event (sync progress):
 
     {
-      phase: "sync",
-      state: "running",
-      started_timestamp: "2018-08-18T10:59:09.338Z",
-      current_progress: 0,
-      total_progress: 983374382
+      "type": "progress"
+      "phase": "sync",
+      "state": "running",
+      "current_progress": 45916,
+      "total_progress": 45916,
+      "eta_ms": 218,
+      "transfer_bytes_second": 22943,
     }
 
-Status event (sync running):
+Progress event (switch removing snapshots):
 
     {
-      phase: "sync",
-      state: "running",
-      started_timestamp: "2018-08-18T10:59:10.198Z",
-      current_progress: 12039472
-      total_progress: 983374382
+      "type": "progress"
+      "phase": "switch",
+      "state": "running",
+      "message": "removing sync snapshots",
+      "current_progress": 90,
+      "total_progress": 100,
     }
 
-Status event (sync successful):
+### End event
 
-    {
-      phase: "begin",
-      state: "success",
-      started_timestamp: "2018-08-18T10:59:10.198Z",
-      finished_timestamp: "2018-08-18T11:15:44.384Z"
-      current_progress: 983374382
-      total_progress: 983374382
+A final "end" event is sent when a migration task is completed. This can be
+used to see if the migration task was successful.
+
+    event {
+
+      type: "string"
+        // Type is "end"
+
+      phase: "string"
+        // The phase for this migration, one of "begin", "sync" or "switch".
+
+      state: "string"
+        // The status for the event, e.g. "paused", "successful" or "failed".
+
+      message: "string" (optional)
+        // Additional description message or error for this phase/state.
     }
 
-Status event (switch failure):
+End event (sync successful, state now paused):
 
     {
-      phase: "switch",
-      state: "failed",
-      message: "Failed to switched NICs to migrated target - aborted"
-      started_timestamp: "2018-08-18T11:16:12.600Z"
-      finished_timestamp: "2018-08-18T11:16:33.974Z"
+      "type": "end",
+      "phase": "sync",
+      "state": "paused"
+    }
+
+End event (switch successful, migration finished):
+
+    {
+      "type": "end",
+      "phase": "switch",
+      "state": "successful"
+    }
+
+End event (switch failure):
+
+    {
+      "type": "end",
+      "phase": "switch",
+      "state": "failed",
+      "message": "Failed to switch instances - could not mount filesystem"
     }
 
 # Scheduling
