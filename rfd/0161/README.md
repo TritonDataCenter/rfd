@@ -210,6 +210,14 @@ same time.  Nothing should prevent the creation of such a target if the
 resources (people, test machines, etc.) are available, however we shouldn't
 require it to proceed with the x86_64 illumos target.
 
+It should also be noted that the rust target triple is independent of the
+LLVM triple rust uses when compiling.  When one defines a rust target,
+one specifies the LLVM triple to use (while they may often match,
+there is no requirement that they do so).  This proposal is _not_
+proposing any new LLVM triples.  Any such discussions would be better
+served being done as their own initative, and as such are out of scope
+for this proposal.
+
 #### Forward compatability
 
 Currently, rust does not have any obvious facilities for build-time detection
