@@ -206,6 +206,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 160 CloudWatch-like Metrics for Manta](./rfd/0160/README.md) |
 | predraft | [RFD 161 Rust on SmartOS/illumos](./rfd/0161/README.md) |
 | predraft | [RFD 162 Online repair and rebalance of Manta objects](./rfd/0162/README.md) |
+| predraft | [RFD 163 Cloud Firewall Logging](./rfd/0163/README.md) |
 
 ## Contents of an RFD
 
