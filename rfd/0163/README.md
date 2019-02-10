@@ -88,6 +88,18 @@ Should we be logging rule add/remove/change?
   - File interval (time, size?)
   - Retention period
 
+### Record Format
+
+The first consumer of AuditAPI will be Cloud Firewall Logging.  There may be future consumers.  For instance, SmartOS auditing may be extended with a module similar to `audit_remote(5)` to forward operating system audit logs to AuditAPI.  The audit record format needs to be designed to meet current needs while being easily extended to meet future needs.
+
+- bunyan has some nice ideas, but it is designed for other uses.  Some of its [core fields](https://github.com/trentm/node-bunyan#core-fields) may not map well to AuditAPI's needs.
+
+### Persistence
+
+- Can [chunked encoding](https://github.com/joyent/manta/blob/master/docs/user-guide/storage-reference.md#content-length) be used to dribble the content into manta?
+  - If this is used, what precautions need to be taken against an AuditAPI zone outage?  That is, after reboot, will the current file need to start from the beginning?
+  - If it is not possible to resume an interrupted upload, what causes the partial upload to manta to be cleaned up?
+
 ## CloudAPI
 
 - Needs to be able to specify logging.
