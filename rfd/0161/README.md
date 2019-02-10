@@ -22,7 +22,8 @@ A bit less structured (at the moment) than other RFDs, but a place to
 gather all the various bits and and pieces of what's needed to improve the
 experience of using rust on SmartOS with the intention of making it a
 viable language option for new work.  At least parts of this will
-also likely be of interest to the broader illumos community as well (though other parts are going to be more focused on SmartOS/Triton/Manta).
+also likely be of interest to the broader illumos community as well (though
+other parts are going to be more focused on SmartOS/Triton/Manta).
 
 This is all still predraft, so nothing here should be set in stone or
 taken as the gospel truth.
@@ -66,38 +67,122 @@ Today, the pkgsrc rust uses `x86_64-sun-solaris` as the rust target triple
 when building on illumos.  This has a number of drawbacks, as illumos and
 Solaris have diverged enough we've discovered a number of issues:
 
-- The rand crate currently issues a direct getrandom(2) syscall.  As the getrandom(2) syscall numbers are different on illumos and Solaris, this causes programs using the rand crate to die on illumos when getrandom(2) is called.This is currently tracked as rust-random/rand#637 with a fix hopefully integrated soon.
+- The rand crate currently issues a direct getrandom(2) syscall.  As the
+   getrandom(2) syscall numbers are different on illumos and Solaris, this
+   causes programs using the rand crate to die on illumos when getrandom(2) is
+   called. This is currently tracked as rust-random/rand#637 with a fix
+   hopefully integrated soon.
 
-- The current rust binaries default to omit the use of frame pointers.  While a user can explicitly enable the use of frame pointers in their code, the core rust libraries (libstd, etc) bundled with the rust compiler that are linked in with most rust binaries will not utilize frame pointers.  This has an unfortunately consequence of triggering OS-7515 when rust code tries to invoke the system unwinder (such as when executing bundled tests).  Thankfully it appears a small patch can be applied while building the rust toolchain that will enable the use of frame pointers by default.  It is recommended that no _production_ binaries should be delivered until a rust toolchain with this fix is available (however it shouldn't block development work).
+- The current rust binaries default to omit the use of frame pointers.  While
+   a user can explicitly enable the use of frame pointers in their code, the
+   core rust libraries (libstd, etc) bundled with the rust compiler that are
+   linked in with most rust binaries will not utilize frame pointers.  This
+   has an unfortunately consequence of triggering OS-7515 when rust code tries
+   to invoke the system unwinder (such as when executing bundled tests).
+   Thankfully it appears a small patch can be applied while building the rust
+   toolchain that will enable the use of frame pointers by default.  It is
+   recommended that no _production_ binaries should be delivered until a rust
+   toolchain with this fix is available (however it shouldn't block development
+   work).
 
-- External library dependence.  Currently rust built binaries will link against things in /opt/local (such as libgcc_s.so).  This is not desirable for anything being delivered as part of the platform.  It does appear however, that the platform-bundled libgcc_s.so is sufficient, and manual editing (elfedit, etc.) can be used to work around this.
+- External library dependence.  Currently rust built binaries will link against
+   things in /opt/local (such as libgcc_s.so).  This is not desirable for
+   anything being delivered as part of the platform.  It does appear however,
+   that the platform-bundled libgcc_s.so is sufficient, and manual editing
+   (elfedit, etc.) can be used to work around this.
+
+- Currently epoll support is advertised as present in Solaris in the libc crate.
+    This is a lie, as it's only currently present on illumos.  It seems like
+    it might be a bit rude (even while unintentional) to potentially break
+    certain uses of rust on Solaris because of advertisement of non-existent
+    features.
 
 ## Immediate Steps
 
-The immediate priorities should be focused on mitigating the above issues.  Thankfully it appears that we are well on our way with the ongoing work.
+The immediate priorities should be focused on mitigating the above issues.
+Thankfully it appears that we are well on our way with the ongoing work.
 
 ## Intermediate Steps
 
-Due to the divergence of illumos and Solaris, we should create a separate rust target for illumos.  This will allow us to do things such as (not an exhaustive list):
+Due to the divergence of illumos and Solaris, we should create a separate rust
+target for illumos.  This will allow us to do things such as (not an exhaustive
+list):
+
 - Enforce the use of frame pointers by default everywhere
 - Disable the rust stack guard in favor of the platform guards
 - Enable the use of ELF TLS (thread local storage) over pthread_{get,set}key(3C).
 - Expose things such as epoll(2) via rust configuration attributes.
-- Allow panics to abort instead of print a backtrace + kill offending thread (note: while this is a target option in rust, no other targets are currently using it, so it is unknown how well it would work, but may be worth checking out)
+- Allow panics to abort instead of print a backtrace + kill offending thread
+    (note: while this is a target option in rust, no other targets are
+    currently using it, so it is unknown how well it would work, but may be
+    worth checking out)
 - Prevent Solaris features not present on illumos from causing problems.
-- Allow a illumos toolchain available via rustup to be more compatible with the pkgsrc rust toolchain.  To fix a number of the above issues, we can merely apply some patches during the pkgsrc build (as a x86_64-sun-solaris target).  For eventual rustup compataibility, we would want many of those changes to be upstreamed.  However, some things are going to pose a problem because of the differences between illumos and Solaris.  The best example of this is the stack guard feature.  As the rust built-in stack guard conflicts with the illumos stack guard, we need this disabled on illumos.  However, people using rust on actual Solaris likely _will_ want the stack guard feature.  This makes it somewhat intractible to have a rustup toolchain that targets x86_64-sun-solaris without the rust stack guards, while anyone use the same target for illumos needs this disabled.  Having a separate illumos target solves this (note: the rust target is a separate entity from the LLVM triple, so the creation of an illumos target does not require a new LLVM triple).
+- Allow a illumos toolchain available via rustup to be more compatible with the
+    pkgsrc rust toolchain.  To fix a number of the above issues, we can merely
+    apply some patches during the pkgsrc build (as a x86_64-sun-solaris target).
+    For eventual rustup compataibility, we would want many of those changes to
+    be upstreamed.  However, some things are going to pose a problem because of
+    the differences between illumos and Solaris.  The best example of this is
+    the stack guard feature.  As the rust built-in stack guard conflicts with
+    the illumos stack guard, we need this disabled on illumos.  However, people
+    using rust on actual Solaris likely _will_ want the stack guard feature.
+    This makes it somewhat intractible to have a rustup toolchain that targets
+    x86_64-sun-solaris without the rust stack guards, while anyone use the same
+    target for illumos needs this disabled.  Having a separate illumos target
+    solves this (note: the rust target is a separate entity from the LLVM
+    triple, so the creation of an illumos target does not require a new LLVM
+    triple).
 
-There will some upfront costs.  Any lower-level crates will likely need to have code contributed to include illumos in any platform-specific code.  Our current hope (based on some work already) suggests this should hopefully not pose a huge burden.  Generally it should be a one-time deal, and is often just a matter of adding `target_os="illumos"` in a few places.
+There will some upfront costs.  Any lower-level crates will likely need to have
+code contributed to include illumos in any platform-specific code.  Our current
+hope (based on some work already) suggests this should hopefully not pose a
+huge burden.  Generally it should be a one-time deal, and is often just a
+matter of adding `target_os="illumos"` in a few places.
 
-One other note -- we should probably avoid producing anything in rust that _presents_ an ABI interface that requires any sort of stability (e.g. shared libraries for general use).  The rust name mangling scheme is posed to change in the near-ish future, which would break ABI compatibility.  If any such use is needed, we should strive to keep it to a small self-contained set of objects that can be upgraded in unison with each other (XXX: is there a better way to say this?).
+One other note -- we should probably avoid producing anything in rust that
+_presents_ an ABI interface that requires any sort of stability (e.g. general
+use shared libraries).  The rust name mangling scheme is posed to change in the
+near-ish future, which would break ABI compatibility.  If any shared libraries
+are created, we should strive to keep their use limited to a small
+self-contained set of objects that can easily be upgraded in unison with each
+other (XXX: is there a better way to say this?).
+
+## Linker
+
+I'm not sure where this fits (other than it's unlikely to be an immediate
+issue), but currently rustc calls `cc` to perform linking (passing linker
+arguments as `-Wl,linker_arg`).  While this works, it creates a dependency --
+one must have a C compiler installed even when doing strictly rust work.
+This certainly isn't the end of the world, but is also less than ideal as well.
+It also means that we have some limitations in that we can only make use of
+linker features that are accessible via calling the C compiler.
+
+For the most part this isn't an issue (as the `-Wl,arg` feature generally covers what
+we need).  As we have discovered however, this means that we must rely on the
+C compiler to pass `values-Xc.o` and `values-xpg6.o` as well as _not_ pass
+`values-Xa.o` to the linker to get the desired behavior from libc and libm.
+It turns out the pkgsrc gcc's spec files (and likely even the upstream gcc
+tree) do not specify these for C99 other standards mode.  One must currently
+supply their own spec file to get around this.
+
+While pkgsrc will soon be updated to use the fixed specfile, others not using
+pkgsrc gcc will not be able to benefit (as this problem has existed for decades
+at this point, it seems likely that gcc itself is uninterested/unwilling to
+accept any patches to correct the behavior).  For both of those reasons, we
+should look into the effort to have rustc invoke `ld(1)` directly.
 
 ## Things to ponder / Avenues of futher investigation.
 
-As mentioned above, how we go about delivering things in the platform using rust needs some thought.
+As mentioned above, how we go about delivering things in the platform using
+rust needs some thought.
 
-What is the experience like using DTrace on rust binaries?  Creating static probes?  Are there things taht could be added/written to enhance/improve the experience?
+What is the experience like using DTrace on rust binaries?  Creating static
+probes?  Are there things needed that woud enhance/improve the experience?
 
-What is the port-mortem experience like with rust binaries?  How difficult is it to analyize a crashed rust binary?  We currently have changes out for reivew for demangling support for rust names which should help a bit, but what else is needed?  How does CTF work with rust?
+What is the port-mortem experience with rust binaries?  How difficult is it to
+analyize a core file from a rust binary?  We currently have changes out for
+review for demangling support for rust names which should help a bit, but what
+else is needed (if anything)?  How does CTF work with rust?
 
 ## rust illumos target
 
