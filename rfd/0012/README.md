@@ -143,15 +143,15 @@ GH issues for each non-trivial chunk of work here.
 | ListFirewallRuleMachines         | DONE     | `triton fwrule instances FWRULE-ID`                         |
 | ListMachineFirewallRules         | DONE     | `triton instance fwrules INST`                              |
 | **FABRICS**                      | \*NICS   |                                                             |
-| ListFabricVLANs                  | NYI      |                                                             |
-| CreateFabricVLAN                 | NYI      |                                                             |
-| GetFabricVLAN                    | NYI      |                                                             |
-| UpdateFabricVLAN                 | NYI      |                                                             |
-| DeleteFabricVLAN                 | NYI      |                                                             |
+| ListFabricVLANs                  | DONE     | `triton vlan list [FILTERS]`                                |
+| CreateFabricVLAN                 | DONE     | `triton vlan create VLAN`                                   |
+| GetFabricVLAN                    | DONE     | `triton vlan get VLAN`                                      |
+| UpdateFabricVLAN                 | DONE     | `triton vlan update VLAN [FIELD=VALUE ...]`                 |
+| DeleteFabricVLAN                 | DONE     | `triton vlan delete VLAN [VLAN ...]`                        |
 | ListFabricNetworks               | NYI      |                                                             |
-| CreateFabricNetwork              | NYI      |                                                             |
-| GetFabricNetwork                 | NYI      |                                                             |
-| DeleteFabricNetwork              | NYI      |                                                             |
+| CreateFabricNetwork              | DONE     | `triton network create VLAN`                                |
+| GetFabricNetwork                 | DONE     | `triton network get NETWORK`                                |
+| DeleteFabricNetwork              | DONE     | `triton network delete NETWORK [NETWORK ...]`               |
 | **NETWORKS**                     |          |                                                             |
 | ListNetworks                     | DONE     | `triton network list`, `triton networks`                    |
 | GetNetwork                       | DONE     | `triton network get NET`                                    |
