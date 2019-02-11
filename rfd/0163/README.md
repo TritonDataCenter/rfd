@@ -21,7 +21,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+163%22
 This RFD describes how Cloud Firewall may log accepted and rejected packets.  The intent is not to log every packet - rather just the beginning of a new TCP connection or series of related UDP packets.  This will be accomplished using the following components:
 
 * **IPFilter** (`ipf`) will make an initial pass at identifying which packets may be of interest and pass metadata to Cloud Firewall Log Daemon.
-* **Cloud Firewall Log Daemon (`cfwld`?)** will receive packet metadata from IPFilter, discarding uninteresting metadata.  Interesting metadata will be passed to AuditAPI.
+* **Cloud Firewall Log Daemon (`cfwlogd`)** will receive packet metadata from IPFilter, discarding uninteresting metadata.  Interesting metadata will be passed to AuditAPI.
 * **AuditAPI** is inclusive of an API and the associated service running on a head node or some other compute node.  The service is responsible for ingesting audit entries (e.g. containing connection metadata) and persisting it to a designated store, such as Manta.
 
 The start of each allowed or blocked TCP connection or connection-like series of UDP packets needs to log the following metadata:
@@ -57,7 +57,7 @@ This is done by `fwadm` and by the post-ready brand hook.
 ### Rules
 
 - `call` may be used by knowledgable hackers.  Is that us?  Should we use this rather than log?
-- Do we alter the rules to only log when logging is enabled by cloud firewall?  Or do we always log and let `cfwld` sort it out?
+- Do we alter the rules to only log when logging is enabled by cloud firewall?  Or do we always log and let `cfwlogd` sort it out?
 - Can we use `tag rule-uuid` with each rule so that the log entry will have the cloud firewall rule uuid?
 
 ## Cloud Firewall Log Daemon
@@ -71,7 +71,7 @@ This is a new component, likely written in rust.  It receives logged packet meta
 - Presumably this daemon makes REST calls to AuditAPI.
   - compressed streams ideal
 
-Dropping of log entries is acceptable if the log rate is too great to stream to AuditAPI or if AuditAPI is unavailable for a long enough time that local buffer space is exhausted.  `cfwld` should make a best effort to keep track of the number of dropped entries and log that as conditions normalize.
+Dropping of log entries is acceptable if the log rate is too great to stream to AuditAPI or if AuditAPI is unavailable for a long enough time that local buffer space is exhausted.  `cfwlogd` should make a best effort to keep track of the number of dropped entries and log that as conditions normalize.
 
 Should we be logging rule add/remove/change?
 
