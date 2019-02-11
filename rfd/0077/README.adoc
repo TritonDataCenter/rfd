@@ -721,12 +721,14 @@ To protect the token data in Moray, we will rely on the headnode disk
 encryption.
 
 XXX: Even though the HN token will not use the GetTokenPin
-API call to obtain it's pin, should we still go ahead and store its data in
-KBMAPI?
+API call to obtain it's pin, should we still go ahead and store the data for
+the HN token in KBMAPI?
 
-To accomplish the goals of being able to add new tokens, remove tokens,
-recover tokens, and obtain the pin of a token, the following REST endpoints
-are proposed:
+It's important to reiterate that complete removal of an token entry in KBMAPI
+renders all data protected by that token inaccessible.   Regardless of the
+form of the final endpoints used for KBAPI (a proposed set of of REST endpoints
+follows this section), care must be taken to prevent accidential loss of the
+token data due to operator error.
 
 #### CreateToken (POST /pivtokens)
 
@@ -838,7 +840,7 @@ this come sort of additional confirmation or authorization before this succeeds.
 
 #### Recovery
 
-The endpoints necessary for recovery are less well defined currently.  In a
+Currently, the endpoints necessary for recovery are less well defined.  In a
 recovery situation, the original token for a CN is unavailable due to damage,
 loss, etc. and must be replaced with a new token.  Since the original token
 is unavailable to authenticate the CN, the recovery token generated during the
@@ -902,6 +904,218 @@ replaced the token from the old chassis with the token on a new chassis.
 This is likely to take more time than merely moving the token, which may
 lead us to prefer option 1.  Though in this case we still would want to
 think of appropriate safeguards to prevent loss of the token data in KBMAPI.
+
+## kbmd
+
+### Introduction
+
+kbmd (read: kaboom-dee) has 3 big areas of responsibility:
+
+Firstly, it's responsible for the "recovery" process -- when a server
+has lost its primary Yubikey/PIV token, it is responsible for providing
+the interface an administrator uses (either on the console or a pty) to
+recover encryption keys, set up a new Yubikey, and get the system back
+on track. Since this logically requires it to be able to set up new
+Yubikeys from scratch, it's also involved in the initial setup process
+to keep all the responsibility for that together.
+
+Secondly, it's responsible for the "unlock" process at boot --
+determining whether the primary Yubikey is available, getting the PIN
+(from boot-time module or pool config for standalone, or spawning a
+client to talk to CNAPI or whatever headnode service stores it for a
+CN), and if those fail, deciding whether to enter "recovery".
+
+Thirdly, it's responsible for everything during normal runtime that's
+required to make those two processes work. This mostly means keeping
+track of the encrypted data boxes on the machine and the "recovery
+registry" (getting to that in a sec). It also means operating a door
+server and accepting requests from a commandline admin tool, "kbmadm".
+
+The name "kbmd" reflects this -- "Key Backup and Management Daemon".
+(Definitely not a backronym so we can pronounce it "kaboom". Definitely
+not.)
+
+Encrypted boxes on the system fundamentally come in two forms -- there's
+the boxes associated with the zpool (one set for the primary Yubikey and
+one set for recovery), and then there are boxes for each of the keys
+stored by the RFD77 soft-token (recall that the soft-token individually
+encrypts its keys even when zpool encryption is enabled, as part of the
+effort to make a "class break" that compromises all of the keys on the
+system in one single operation, as difficult as possible).
+
+The boxes themselves are stored as a zfs property (`rfd77:config`).  The
+currently size limitations of zfs properties should allow for a single
+property to store approximately 8 boxes worth of data.
+
+The soft-token keys have to be boxed individually to the primary token
+(so that the primary token can't unlock all of them in a single
+operation), but they do not have to be boxed individually to the backup
+keys. In fact, it would be pretty inconvenient if they were, because we
+would have to do the challenge-response process at least N times for a
+machine with N zones on it.
+
+So instead, the soft-token keys' backup comes in the form of a single
+large box (keyed only to the backup keys) which unlocks all of them.
+Every time we need to add or remove something from that box, we have to
+regenerate it from scratch using the individual boxes targetted to the
+primary Yubikey. So we keep a plaintext record next to it of the
+locations of all of the primary Yubikey boxes on disk. We call this
+whole structure together the "recovery registry".
+
+This implies that the storage of these keys is somewhat managed by the
+system, and it is. When the soft-token wants to generate a new key, it
+has to coordinate with kbmd (via its door) to let it know the correct
+filesystem paths to find the primary boxes, and make sure the entries
+are added to the recovery registry and everything there is dealt with.
+
+Since this happens when a new zone is provisioned, and an attacker is
+generally assumed to be able to provision things in the system, we don't
+really want this to cause us to bring keys belonging to existing zones
+into RAM in a predictable controllable fashion. So the recovery registry
+is in fact split into two parts -- the "old generation" and "new
+generation". When we add new keys we add them to the "new generation"
+and regenerate that only. Then, every 6-12 hours or so (completely at
+random) we combine the old and new generations together and regenerate
+the whole thing. This avoids an attacker being able to control the
+timing and nature of this operation easily (and it also means we don't
+have to regenerate the whole registry every time we make a change -- we
+basically bulk a bunch of changes up).
+
+### In depth: recovery
+
+A recovery instance is created when another program running as root with
+full privs connects to the kbmd door and sends a "begin recovery"
+request. If kbmd decides it needs to initiate recovery on the console
+(e.g. during boot), it forks a child to start kbmadm to do this and
+places it on the console.
+
+The "begin recovery" request is followed by a "conversation" similar to
+a PAM conversation: kbmd gives the client some text and instructions on
+what to ask the user and what options to allow them to reply with, the
+client replies with the user's response, kbmd gives more questions to
+ask the user etc.
+
+At the end of the conversation, kbmd does not reply to the final
+response until recovery is complete.
+
+kbmd then does the following:
+
+1. A new token value is added to the `rfd77:config` zfs property on the
+   primary zpool (i.e. zones).
+2. New managed box files with the GUID of the new token are created.
+3. Notify everybody of the change (presumably using the gossip protocol?)
+4. Remove the old primary token from the `rfd77:config` zfs property on the
+   primary zpool.
+5. Cleanup old managed box files: any box for a GUID not in `rfd77:config` or
+   otherwise not known are deleted.
+
+### In depth: first-time setup
+
+The "setup" process is set out the same as recovery, except that in the
+final stages, kbmd gives an nvlist of ZFS properties to set on the pool
+root FS and the raw key material to supply to the stdin of `zpool
+create`. The client is responsible then for creating the pool using this
+information and replying again once that has been completed. The client
+has to complete this step to avoid kbmd needing to handle the entire
+pool creation process (including disklayout etc), since the key material
+has to be given at creation and cannot be given later.
+
+The ultimate command that get runs should look something similar to:
+
+```
+zpool create \
+    -O encryption=on \
+    -O keyformat=raw \
+    -O keylocation=prompt \
+    -O rfd77:config=xxxx \
+    zones ....
+```
+
+Where the disk layout values are just passed through from the setup and we
+write the key value out to stdin of the zpool process from kbmd.
+
+Likely the joysetup.sh script will need to be updated to interact with kbmd
+when encryption is desired while setting up a new CN.
+
+### In depth: events
+
+The kbmd door also provides a mechanism for clients to receive events.
+The principal kind of event that clients are interested in is when the
+"primary token" of the system is about to change and has changed. All
+persistent users of kbmd are expected to handle this event.
+
+### In depth: managed boxes
+
+A client of the kbmd door may send a command to create a managed box
+(like the soft token key boxes). The command takes a "path pattern",
+which looks like: "/zones/abcd123/keys/auth.%s"
+
+If the current primary token has GUID 995E171383029CDA0D9CDBDBAD580813,
+the client must have already created
+"/zones/abcd123/keys/auth.995E171383029CDA0D9CDBDBAD580813" as a PIV-box
+format file, a single box keyed to that current primary token.
+
+kbmd will open that box and set up entries in the backup registry before
+returning from the door call.
+
+Thereafter, the application may not delete or modify the
+"/zones/abcd123/keys/auth.*" files, but it may open them for reading in
+order to retrieve the data held within. It must be subscribed to
+notifications about a change in primary token so that it always opens
+the correct auth.* file for the GUID of the current primary token at the
+moment when it opens it (and if it talks to piv-agent and discovers the
+key it needs to open a box is missing because of a primary token change,
+it should wait for the change notification and try again).
+
+If the system goes through recovery and has a new primary token, kbmd
+will create a new primary token box file with the new GUID based on the
+backup registry and the application will find it by asking for the new GUID.
+
+### Interaction: piv-agent
+
+The piv-agent is the intermediary that most other processes on the
+system will go through to make use of the Yubikey. piv-agent will
+connect to the kbmd door at startup and ask for the primary token and
+PIN, as well as setting up a subscription for primary token change events.
+
+If it receives a notification about the primary token changing, it
+changes its own configuration to use that new token (and new PIN) for
+all subsequent requests that it handles.
+
+### Interaction: soft token
+
+Like the piv-agent, the soft token daemon is interested in the primary
+token changing -- both for signing certificates and for making use of
+managed boxes.
+
+### Interaction: ZFS
+
+While kbmd does not involve itself directly in the creation of a new
+encrypted pool (the setup process is expected to use the data it
+provides to do that), after setup has completed it will manage the
+"rfd77:config" ZFS property on the pool itself directly. This will be
+read during boot and written during recovery or rekeying. kbmd itself
+will also make the libzfs call to provide key material to the pool
+during the unlock process (since it needs to do this and mount at least
+some of the pool's filesystems before it can check on the state of any
+managed boxes on disk).
+
+### Interaction: Triton
+
+:OS-7183: https://smartos.org/bugview/OS-7183
+
+kbmd will have a dependency on an SMF service that brings up the "admin"
+network early in boot ONLY when we booted with a networking.json (the
+SMF dep is still there in non-Triton but the service is a no-op). This
+is in order to enable it to retrieve the PIN for the primary token from
+CNAPI after authenticating with its 9E key.  This is currently tracked as
+{OS-7183}[OS-7183].
+
+### Interaction: ccid driver
+
+kbmd will utilize a new OS driver (ccid) to communicate with the PIV tokens.
+This will be via the apis provided by the libchipcard library detailed in
+<<os-infra>>.
 
 ## Relationship with TLS
 
@@ -1421,6 +1635,7 @@ setting management keys, changing PIN usage policies and performing attestation.
 We will not have a hard dependency on these extensions in the implementation of
 this RFD, but we may implement optional support for using them.
 
+[[os-infra]]
 ### Operating system infrastructure
 
 Most other open-source operating systems (e.g. GNU/Linux distributions) use a
