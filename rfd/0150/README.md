@@ -4,7 +4,7 @@ state: draft
 discussion: https://github.com/joyent/rfd/issues?q=RFD+150
 ---
 
-# RFD 150 Operationalizing Prometheus
+# RFD 150 Operationalizing Prometheus, Thanos, and Grafana
 
 This RFD's purpose is to define how Prometheus, Thanos, and Grafana will be
 added as core Triton and Manta components.

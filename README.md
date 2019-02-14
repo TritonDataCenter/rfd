@@ -193,7 +193,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 147 Project Tiresias: USB Topology](./rfd/0147/README.md) |
 | draft    | [RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md) |
 | draft    | [RFD 149 PostgreSQL Schema For Manta buckets](./rfd/0149/README.md) |
-| draft    | [RFD 150 Operationalizing Prometheus](./rfd/0150/README.md) |
+| draft    | [RFD 150 Operationalizing Prometheus, Thanos, and Grafana](./rfd/0150/README.md) |
 | publish  | [RFD 151 Assessing Software Engineering Candidates](./rfd/0151/README.md) |
 | draft | [RFD 152 Rack Aware Networking](./rfd/0152/README.md) |
 | draft    | [RFD 153 Incremental metadata expansion for Manta buckets](./rfd/0153/README.md) |
