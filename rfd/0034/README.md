@@ -251,7 +251,7 @@ The following endpoints will be available for customers:
   Starts a full "automatic" migration. Affinity rules can be added - see the
   [provisioning](#provisining) section for details.
 
-  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=full&affinity=AFF),
+  This should call VMAPI (POST /vms/:id?action=migrate&migration_action=begin&migration_automatic=true&affinity=AFF),
   which on success will return a 202 code and a JSON object containing the
   job uuid.
 
