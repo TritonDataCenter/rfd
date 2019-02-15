@@ -349,7 +349,7 @@ need to be on the external network.
     all the Prometheii from all the datacenters in the region.
 - What is the networking plan for Thanos?
 - Do we need to handle HA?
- - I (Isaac) am not sure how we could make Grafana handle this automatically.
+  - I (Isaac) am not sure how we could make Grafana handle this automatically.
 - How will we monitor Thanos?
   - Thanos, as a core Triton service, will be automatically monitored by the
     Triton Prometheus service.
