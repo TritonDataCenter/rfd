@@ -15,6 +15,7 @@ added as core Triton and Manta components.
 
 - [Status (2019-02-14)](#status-2019-02-14)
 - [Overview](#overview)
+- [What are Prometheus, Thanos, and Grafana?](#what-are-prometheus-thanos-and-grafana)
 - [Service requirements](#service-requirements)
 - [Milestones](#milestones)
   - [M0: plain bash setup scripts](#m0-plain-bash-setup-scripts)
@@ -78,6 +79,23 @@ configured, and upgraded by the usual Triton and Manta operator tooling.
 
 We will also deploy Thanos to aggregate Prometheus metrics between Prometheus
 and Grafana and perform long-term storage of metrics.
+
+## What are Prometheus, Thanos, and Grafana?
+
+- [Prometheus](https://github.com/prometheus/prometheus) is a monitoring system
+  and time-series database. It aggregates metrics exposed in a specific format
+  by various sources (In our case, Triton and Manta components) and presents
+  a query language and simple web interface for querying the collected data.
+- [Thanos](https://github.com/improbable-eng/thanos) aggregates metrics from
+  Prometheus instances. It manages the long-term retention of metrics in object
+  storage, deduplicates and merges metrics from Prometheus HA pairs, and
+  provides its own Prometheus-compatible interface that exposes all of the
+  metrics it's aggregated from individual Prometheus instances.
+- [Grafana](https://github.com/grafana/grafana) provides a full-featured web
+  interface that allows users to create and save dashboards that visualize the
+  results of queries against various metrics databases, including Prometheus.
+  In this deployment, Thanos will serve as Grafana's data source. Joyent
+  employees may be familiar with Grafana through Starfish.
 
 ## Service requirements
 
