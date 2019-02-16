@@ -1,6 +1,6 @@
 ---
 authors: Rob Johnston <rob.johnston@joyent.com>, John Levon <john.levon@joyent.com>
-state: draft
+state: publish
 discussion: https://github.com/joyent/rfd/issues?q=RFD+156
 ---
 
