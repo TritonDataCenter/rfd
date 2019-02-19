@@ -100,11 +100,6 @@ The first consumer of AuditAPI will be Cloud Firewall Logging.  There may be fut
   - If this is used, what precautions need to be taken against an AuditAPI zone outage?  That is, after reboot, will the current file need to start from the beginning?
   - If it is not possible to resume an interrupted upload, what causes the partial upload to manta to be cleaned up?
 
-## CloudAPI
-
-- Needs to be able to specify logging.
-  - Is this done per VM or per rule?
-
 ## FWAPI
 
 Currently rules look like:
@@ -121,8 +116,78 @@ Currently rules look like:
 }
 ```
 
-Presumably we need a boolean `log`. 
+Presumably we need a boolean `log`. Need schema migration to allow the new member `log (Boolean)` to be added. It would be desirable to follow up with somebody familiar with FWAPI and check if we need to add anything to the UFDS flavor of fwrules. Other than that, this would mean a moray version bump when adding the new member to the object. Apparently, there's not need for such field to be part of an index.
 
 ## fwadm
 
-Likely no changes.
+Requires updates to acomodate this new `log (Boolean)` value, affecting at least to rule creation/update/deletion and, additionally, to the output retrieved by get/list rules. (Default to false when nothing given or known).
+
+For example, the following output needs to be modified in order to include the "LOG" column:
+
+```
+[root@headnode (coal) ~]# fwadm list
+UUID                                 ENABLED RULE
+2532a46e-73bf-418b-b71e-7001027d9369 true    FROM any TO all vms ALLOW icmp TYPE all
+59ba1d92-48c8-425e-b740-70339a84b8fd true    FROM any TO all vms ALLOW icmp6 TYPE all
+6164f3cc-d1ad-4ac5-bcb2-e4b3ae2edd33 true    FROM subnet 10.99.99.0/24 TO tag "smartdc_role" ALLOW udp PORT all
+e1c9d7dc-2f59-4907-8c17-7cf5bf1136b9 true    FROM subnet 10.99.99.0/24 TO tag "smartdc_role" ALLOW tcp PORT all
+```
+
+## CloudAPI
+
+- Needs to be able to specify logging.
+  - Is this done per VM or per rule? Doing per rule will definitely simplify things, otherwise we'll need to raise multiple fwrules updates from VMAPI or from CloudAPI itself.
+  
+Given the `log (Boolean)` member in fwapi is not strictly required for the firewall rule to work, we should possibly give it exactly the same treatment as the existing `enabled (Boolean)`, it's to say, it's an additional parameter to the rule itself, and it's represented separately by CloudAPI.
+
+Additionaly, we have `enable|disable` end-points for fwrules in CloudAPI. May also consider having `addLogging|removeLoogin` end-points but initally just adding the required code changes to the existing update end-point should be more than enough.
+
+All the fwrules end-points need the new boolean value to be added (and tests need to be updated accordingly). By default, logging should be false and it must be documented in CloudAPI.
+
+Current fwrule format is:
+
+```
+{
+  "id": "38de17c4-39e8-48c7-a168-0f58083de860",
+  "rule": "FROM vm 3d51f2d5-46f2-4da5-bb04-3238f2f64768 TO subnet 10.99.99.0/24 BLOCK tcp PORT 25",
+  "enabled": true
+}
+```
+
+with the changes described, it should become:
+
+```
+{
+  "id": "38de17c4-39e8-48c7-a168-0f58083de860",
+  "rule": "FROM vm 3d51f2d5-46f2-4da5-bb04-3238f2f64768 TO subnet 10.99.99.0/24 BLOCK tcp PORT 25",
+  "enabled": true,
+  "log": false
+}
+```
+
+## node-triton
+
+Needs to be modified in order to be able to handle new member from CloudAPI both, reading and adding/removing it. Rule get and list output need to be updated. Tests need to be updated accordingly.
+
+## node-smartdc
+
+Deprecated unless User portal needs it and cannot transition to node-triton. No need to take any action.
+
+## AdminUI
+
+- Add a checkbox for the log (Boolean) new member (Can be bellow to the one existing for enabled in both the edit and create screens). 
+  - **We need a way to check availability of the logging feature** maybe checking `fwapi` version?
+  - When there's no availability of such feature, the application should either disable the aforementioned checkbox or
+  even do not display it at all.
+  
+## Portal
+- Once we have the CloudAPI/node-triton changes in place, can be altered to include a "log" option for each rule (Can be just a checkbox).
+- It may be nice to be able to batch update. On this page: https://my.joyent.com/main/#!/network/firewall#rule-form, select any number of rules then under the Actions drop down, select "Enable Log" or "Disable Log". The fact that I say "may be nice" means that it is not required for MVP.
+
+## sdcadm
+
+Despite of the final components we need to deploy, i.e. add or not AuditAPI, or just deploy `cwlogd` to a given set of CNs, we need to add a `sdcadm post-setup` subcommand which will be responsible to create the required SAPI services/instances.
+
+(`sdcadm post-setup` itself will appreciate some general purpose refactoring, given we have a lot of similar subcommands sharing intention and more code than differences but using c&p instead of something easier to maintain. That's obviously part of a separated problem).
+
+
