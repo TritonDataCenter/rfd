@@ -269,15 +269,18 @@ scraping the same set of zones. Thanos can deduplicate metrics.
       each Prometheus server will, in the limit, have responsibility for the
       same number of zones and distribution of different types of zones, leading
       to an even load distribution.
-      - This scheme would require a complete reassignment of tags every time a
-        Prometheus instance is added or removed. This would be identical to
-        assigning tags for the first time, and would thus be expensive.
-        - If this is an issue, we could assign tags using consistent hashing
-          instead, which would maintain an even distribution of zones among
-          Prometheii while allowing cheaper changes to the Prometheus fleet. If
-          we don't anticipate adding and removing Prometheii often, it may not
-          be worth it to write and maintain the extra code consistent hashing
-          would require.
+      - If we have _n_ zones and are scaling from _m_ to _m+1_ Prometheus
+        instances, we will need to reassign _n/(m+1)_ zones to achieve an even
+        distribution - the CLI tool will handle this. Adding a new Prometheus
+        instance after-the-fact will thus not be as expensive as deploying a
+        Prometheus fleet for the first time, though the expense will still scale
+        linearly with the number of zones in the Manta deployment.
+        - If this expense is an issue, we could assign tags using consistent
+          hashing instead, which would maintain an even distribution of zones
+          among Prometheii while allowing cheaper changes to the Prometheus
+          fleet. If we don't anticipate adding and removing Prometheii often, it
+          may not be worth it to write and maintain the extra code consistent
+          hashing would require.
         - We could also keep exact track of the number of zones assigned to each
           Prometheus instance. This would require a bookkeeping process
           somewhere - we would use changefeed or something similar to track zone
