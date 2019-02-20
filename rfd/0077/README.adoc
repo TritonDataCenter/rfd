@@ -1006,7 +1006,7 @@ headnode, and migrate the services from an unencrypted headnode to an
 encrypted headnode.
 
 For reasons similar to the headnode, one cannot take a live running compute
-node and encrypt it's zones pool.  Instead one must re-setup a CN (and
+node and encrypt its zones pool.  Instead one must re-setup a CN (and
 recreate the zones pool).  However, unlike with the head node, there is
 the possibility of (capacity permitting) evacuating a compute node (migrating
 all instances on a CN to other CNs), perform the re-setup, release the new
@@ -1510,13 +1510,13 @@ For Yubikeys, this is done by creating a special x509 certificate as detailed
 {yubi-attest}[here].
 
 If an operator wishes to require attestation, they must set the
-`KBMAPI_REQUIRE_ATTESTATION` SAPI parameter to `true'.  In addition, the
+`KBMAPI_REQUIRE_ATTESTATION` SAPI parameter to `true`.  In addition, the
 `KBMAPI_ATTESTATION_CA` SAPI parameter must be set to the CA certificate
 used for attestation.
 
 Additionally, an operator may wish to limit the tokens that are allowed to
 be used with KBMAPI to a known set of tokens.  To do so, an operator would
-set the SAPI parameter `KBMAPI_REQUIRE_TOKEN_PRELOAD` to `true'.  A command
+set the SAPI parameter `KBMAPI_REQUIRE_TOKEN_PRELOAD` to `true`.  A command
 line tool (working name 'kbmapi') is then used by the operator to load the
 range of serial numbers into KBMAPI.  This is only supported for tokens that
 support attestation (e.g. Yubikeys).
@@ -1530,22 +1530,22 @@ Moray buckets are likely sufficient for this purpose.  The persistent token
 data will likely resemble something similar to:
 
 [source,json]
----
- {
+----
+{
     "created": 123456789,
     "state": "assigned",
-    "model": "Yubico Yubikey 4",
-    "serial": 5213681,
+    "model": "Yubico Yubikey 4",
+    "serial": 5213681,
     "current": {
         "created": 123458765,
-        "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
-        "guid": "97496DD1C8F053DE7450CD854D9C95B4",
-        "pin": "123456",
-        "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
+        "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+        "guid": "97496DD1C8F053DE7450CD854D9C95B4",
+        "pin": "123456",
+        "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
         "pubkeys": {
-           "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+           "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
            "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
-           "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+           "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
         },
         "attestation": {
            "9e": "-----BEGIN CERTIFICATE-----....",
@@ -1557,14 +1557,14 @@ data will likely resemble something similar to:
         {
             "created": 123458765,
             "deleted": 123459999,
-            "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
-            "guid": "97496DD1C8F053DE7450CD854D9C95B4",
-            "pin": "123456",
-            "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
+            "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+            "guid": "97496DD1C8F053DE7450CD854D9C95B4",
+            "pin": "123456",
+            "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
             "pubkeys": {
-               "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+               "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
                "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
-               "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+               "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
             },
             "attestation": {
                "9e": "-----BEGIN CERTIFICATE-----....",
@@ -1574,11 +1574,16 @@ data will likely resemble something similar to:
     ],
     "audit": [
     ]
- }
----
+}
+----
 
-XXX: Add audit trail example values.  Entries should be have a well defined
-structure that make them easy to process, filter, aggregate, etc.
+XXX: Flush out the audit data more.  Entries should be have a well defined
+structure that make them easy to process, filter, aggregate, etc.  However
+it would be helpful to include at least one free form field in the audit data.
+For example, once a token has been disposed of, an operator will want to
+change its state to `deleted` to prevent any further use, but may also want
+to annotate the deletion event with some other information surrounding the
+deletion event.
 
  * created - The UTC timestamp when the entry was first created.  Once set it
    can not be modified.
@@ -1627,50 +1632,65 @@ structure that make them easy to process, filter, aggregate, etc.
   * audit - An audit trail of activity for this token.  XXX: This still needs
     to be defined.
 
+The combination of `model` + `serial` fields should be unique.  Likewise
+the `GUID` field should be unique across all `assigned` entries.
+
+The following table shows the which fields are present based on the `state`
+field of token:
+
 [options="header"]
 |===
 
-| Field                  | unassigned  | assigned | deleted
+| Field                  | `unassigned`  | `assigned` | `deleted`
 
-| created                | Required    | Required | Required
+| created                | Required      | Required   | Required
 
-| state                  | Required    | Required | Required
+| state                  | Required      | Required   | Required
 
-| model                  | Required    | Required | Required
+| model                  | Required      | Required   | Required
 
-| serial                 | Required    | Required | Required
+| serial                 | Required      | Required   | Required
 
-| current                | Not Present | Required | Not Present
+| current                | Not Present   | Required   | Not Present
 
-| current.created        | Not Present | Required | Not Present
+| current.created        | Not Present   | Required   | Not Present
 
-| current.cn_uuid        | Not Present | Required | Not Present
+| current.cn_uuid        | Not Present   | Required   | Not Present
 
-| current.guid           | Not Present | Required | Not Present
+| current.guid           | Not Present   | Required   | Not Present
 
-| current.pin            | Not Present | Required | Not Present
+| current.pin            | Not Present   | Required   | Not Present
 
-| current.recovery_token | Not Present | Required | Not Present
+| current.recovery_token | Not Present   | Required   | Not Present
 
-| current.pubkeys        | Not Present | Required | Not Present
+| current.pubkeys        | Not Present   | Required   | Not Present
 
-| current.pubkeys.9a     | Not Present | Required | Not Present
+| current.pubkeys.9a     | Not Present   | Required   | Not Present
 
-| current.pubkeys.9d     | Not Present | Required | Not Present
+| current.pubkeys.9d     | Not Present   | Required   | Not Present
 
-| current.pubkeys.9f     | Not Present | Required | Not Present
+| current.pubkeys.9f     | Not Present   | Required   | Not Present
 
-| current.attestation    | Not Present | Conditional footnoteref:[attest,If the token supports attestation, this is required, otherwise it is omitted] |
+| current.attestation
+| Not Present
+| Conditional footnoteref:[attest,If the token supports attestation, this is
+required, otherwise it is omitted]
 
-| current.attestation.9a | Not Present | Optional footnoteref:[attest] |
+| current.attestation.9a | Not Present | Optional foot  noteref:[attest]
 
-| current.attestation.9d | Not Present | Optional footnoteref:[attest] |
+| current.attestation.9d | Not Present | Optional footnoteref:[attest]
 
-| current.attestation.9f | Not Present | Optional footnoteref:[attest] |
+| current.attestation.9f | Not Present | Optional footnoteref:[attest]
 
-| history                | Required footnoteref:[empty,May be empty] | Required footnoteref:[empty] | footnoteref:Required[empty]
+| history
+| Required footnoteref:[empty,May be empty]
+| Required footnoteref:[empty]
+| footnoteref:Required[empty]
 
-| audit                  | Required[empty] | Required[empty] | Required[empty]
+| audit
+| Required footnoteref:[empty]
+| Required footnoteref:[empty]
+| Required footnoteref:[empty]
 
 |===
 
@@ -1678,14 +1698,14 @@ To protect the token data in Moray, we will rely on the headnode disk
 encryption.
 
 XXX: Even though the HN token will not use the GetTokenPin
-API call to obtain it's pin, should we still go ahead and store the data for
+API call to obtain its pin, should we still go ahead and store the data for
 the HN token in KBMAPI?
 
 Some examples of token data:
 
 A token that has been defined, but unassigned:
 [source,json]
----
+----
 {
     "created": 1550189286,
     "state": "unassigned",
@@ -1694,7 +1714,7 @@ A token that has been defined, but unassigned:
     "history": [],
     "audit": []
 }
----
+----
 
 XXX: More examples
 
@@ -1724,13 +1744,14 @@ present:
 [options="header"]
 |===
 
-| Header | Description
+| Header         | Description
 
 | Content-Length | How much content, in bytes
 
-| Content-Type | The format of the response (currently always `application/json`)
+| Content-Type
+| The format of the response (currently always `application/json`)
 
-| Content-MD5 | An MD5 checksum of the response
+| Content-MD5    | An MD5 checksum of the response
 
 |===
 
@@ -1776,11 +1797,17 @@ following fields:
  * attestation - If the token supports attestation, the attestation certs
    for the 9a, 9d, and 9e keys.
 
+If the signature check fails, a 401 Unauthorized error + NotAuthorized code
+is returned.
+
 If any of the above fields are missing, a 409 Conflict + InvalidArgument
 error is returned.
 
-If the signature check fails, a 401 Unauthorized error + NotAuthorized code
-is returned.
+If the request appears to be a duplicate CreateToken request (all of the fields
+in the request match an existing entry), the `recovery_token` value of the
+existing entry is returned **as long as the signature check succeeds**.  This
+allows a CN to retry a CreateToken request in the event the response is lost.
+The token data in KBMAPI itself is not changed in this situation.
 
 If the attestation section is supplied, the attestation certs _must_ agree
 with the pubkeys supplied in the request.  If they do not agree, or if
@@ -1821,7 +1848,7 @@ POST /pivtokens
 Host: kbmapi.mytriton.example.com
 Date: Thu, 13 Feb 2019 20:01:02 GMT
 Authorization: Signature <Base64(rsa(sha256($Date)))>
-Accept-Verison: ~1
+Accept-Version: ~1
 Accept: application/json
 
 {
@@ -1845,8 +1872,7 @@ Accept: application/json
 
 An example response might look like:
 
-[source,json]
----
+----
 HTTP/1.1 201 Created
 Location: /pivtokens/97496DD1C8F053DE7450CD854D9C95B4
 Content-Type: application/json
@@ -1862,31 +1888,132 @@ Response-Time: 42
     "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg="
 }
 
----
+----
+
+#### UpdateToken (PUT /pivtokens/:guid)
+
+Update the current fields of a token.  Currently, the only field that can be
+altered is the `cn_uuid` field (e.g. during a chassis swap).  If the new
+`cn_uuid` field is already associated with an assigned token, the update fails.
+
+This request is authenticated by signing the Date header with the token's 9e
+key (i.e. same as CreateToken).
+
+XXX: Add example
+
+#### RecoverToken (POST /pivtokens/:guid/recover)
+
+When a token is no longer available (lost, damaged, accidentially reinitialized,
+etc.), a recovery must be performed.  This allows a new token to replace the
+unavailable token.  When a recovery is required, an operator initiates the
+recovery process on the CN (via the console).  This recovery process on the CN
+will decrypt the `recovery_token` value for the lost token that was created
+during the CreateToken request (for the lost token).  It then includes the
+recovery token along with the information for the replacement token in a
+`replacement_token` property.  KBMAPI then returns a new `recovery_token` for
+the new token.
+
+The information from the old token (`:guid`) is moved to a history entry for
+that token.  If the new token serial number does not match the serial number
+for the old token, the old token state is also changed to `unassigned`.  If
+the new and old token serial numbers match, then the new token data is used
+as the data for the `current` property.
+
+An example request:
+
+----
+POST /pivtokens/97496DD1C8F053DE7450CD854D9C95B4/recover
+Host: kbmapi.mytriton.example.com
+Date: Thu, 13 Feb 2019 20:01:02 GMT
+Accept-Version: ~1
+Accept: application/json
+
+{
+    "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg="
+    "replacement_token": {
+        "model": "Yubico Yubikey 4",
+        "serial": 6324923,
+        "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+        "guid": "75CA077A14C5E45037D7A0740D5602A5",
+        "pin": "424242",
+        "pubkeys": {
+           "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+           "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+           "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+        },
+        "attestation": {
+           "9e": "-----BEGIN CERTIFICATE-----....",
+           "9d": "-----BEGIN CERTIFICATE-----....",
+           "9a": "-----BEGIN CERTIFICATE-----....."
+        }
+    }
+}
+----
+
+And an example response:
+
+----
+HTTP/1.1 201 Created
+Location: /pivtokens/75CA077A14C5E45037D7A0740D5602A5
+Content-Type: application/json
+Content-Length: 12345
+Content-MD5: s5ROP0dBDWlf5X1drujDvg==
+Date: Fri, 15 Feb 2019 12:54:56 GMT
+Server: Joyent KBMAPI 1.0
+Api-Version: 1.0
+Request-Id: 473bc7f4-05cf-4edb-9ef7-8b61cdd8e6b6
+Response-Time: 42
+
+{
+    "recovery_token": "ShCopwm8QUWsujJQHV7igNxVaWx4ZzmU5SpQtaOC+TY="
+}
+
+----
 
 #### ListTokens (GET /pivtokens)
 
-Gets all the known pivtokens.  The main requirement here is no sensitive
-information of a token is returned in the output.  With the above proposed
-model, the sensitive fields would include at least the `pin` and
-`recovery_token` fields.  It is possible additional fields might be added to
-the list of sensitive fields in the future.
+Gets all the known _active_ pivtokens.  The main requirement here is no
+sensitive information of a token is returned in the output.
 
-Aside from the above requirements, this can act like similar 'get items' type
-requests in other services.  It seems reasonable to support filtering by
-public attributes (e.g. ?cn_uuid=XXXX) as well as having support for windowing
-of the results.
+Filtering by at least the `cn_uuid` as well as windowing functions should be
+supported.
 
-As the results of this request could be multiple tokens, the possible output
-might look similar to:
+An example request:
 
-[json]
 ----
+GET /pivtokens
+Host: kbmapi.mytriton.example.com
+Date: Wed, 12 Feb 2019 02:04:45 GMT
+Accept-Version: ~1
+Accept: application/json
+----
+
+An example response:
+
+----
+HTTP/1.1 200 Ok
+Location: /pivtokens
+Content-Type: application/json
+Content-Length: 11222333
+Content-MD5: s5ROP0dBDWlf5X1drujDvg==
+Date: Wed, 12 Feb 2019 02:04:45 GMT
+Server: Joyent KBMAPI 1.0
+Api-Version: 1.0
+Request-Id: af32dafe-b9ed-c2c1-b5e5-f5fefc40aba4
+Response-Time: 55
+
 {
     [
         {
-            "guid": "12345...",
-             ....
+            "model": "Yubico Yubikey 4",
+            "serial": 5213681,
+            "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+            "guid": "97496DD1C8F053DE7450CD854D9C95B4"
+            "pubkeys": {
+               "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+               "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+               "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+            }
         },
         {
             "guid": "abcdef...",
@@ -1899,79 +2026,77 @@ might look similar to:
 
 #### GetToken (GET /pivtokens/:guid)
 
-Gets the public info for a specific token.  Output is similar to that of
-ListTokens, except a single JSON object is returned (and again only public
-fields are contained in the response).
+Gets the public info for a specific token.  Only the public fields are
+returned.
+
+Example request:
+
+----
+GET /pivtokens/97496DD1C8F053DE7450CD854D9C95B4
+Host: kbmapi.mytriton.example.com
+Date: Wed, 12 Feb 2019 02:10:32 GMT
+Accept-Version: ~1
+Accept: application/json
+----
+
+Example response:
+
+----
+HTTP/1.1 200 Ok
+Location: /pivtokens/97496DD1C8F053DE7450CD854D9C95B4
+Content-Type: application/json
+Content-Length: 4321
+Content-MD5: s5ROP0dBDWlf5X1drujDvg==
+Date: Wed, 12 Feb 2019 02:10:33 GMT
+Server: Joyent KBMAPI 1.0
+Api-Version: 1.0
+Request-Id: b9670a33-afb0-4af0-d8bc-d48d8ef801d4
+Response-Time: 36
+
+{
+   "model": "Yubico Yubikey 4",
+   "serial": 5213681,
+   "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+   "guid": "97496DD1C8F053DE7450CD854D9C95B4"
+   "pubkeys": {
+      "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+      "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+      "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+   }
+{
+----
 
 #### GetTokenPin (GET /pivtokens/:guid/pin)
 
 Like GetToken, except it also includes the `pin`.  The `recovery_token` field
 is *not* returned.  This request must be authenticated using the 9E key of the
-token specified by `:guid` to be successful.  The 9E key is just a certificate,
-and should work similar to how we use SSH public keys to authenticate users
-elsewhere in Triton API calls.  Unauthenticated requests should return
-failure.
+token specified by `:guid` to be successful.  An `Authorization` header should
+be included in the request, the value being the signature of the `Date` header
+(very similar to how CloudAPI authenticates users);
 
 This call is used by the CN during boot to enable it to unlock the other
 keys on the token.
+
+An example request:
+
+----
+GET /pivtokens/97496DD1C8F053DE7450CD854D9C95B4/pin
+Host: kbmapi.mytriton.example.com
+Date: Wed, 12 Feb 2019 02:11:32 GMT
+Accept-Version: ~1
+Accept: application/json
+Authorization: Signature <Base64(rsa(sha256($Date)))>
+----
+
+An example reply:
+
 
 #### DeleteToken (DELETE /pivtokens/:guid)
 
 Deletes information about a pivtoken.  We should almost certainly require
 this come sort of additional confirmation or authorization before this succeeds.
 
-#### Recovery
-
-Currently, the endpoints necessary for recovery are less well defined (as in
-there aren't any proposed designs currently).  In a recovery situation, the
-original token for a CN is unavailable due to damage, loss, etc. and must be
-replaced with a new token.  Since the original token is unavailable to
-authenticate the CN (as well as to load the zpool key), the recovery token
-generated during the original CreateToken call (and securly saved on the CN) is
-used to authenticate the recovery process.  An operator will direct kbmd to
-perform a recovery.  This involves a series of challenge and responses, the
-end result being the recovery token generated in the CreateToken call is
-decrypted and able to be used to authenticate a KBMAPI request to replace the
-missing token entry with a new one (such a request would also include all the
-information of the new token).
-
-An open question is what should this API call look like? PUT /pivtokens/:guid
-is a possibility, or perhaps POST /pivtokens with a parameter
-(maybe `?replace=guid` ?).
-
-Any solution is going to require a way to identify the old token, the
-recovery token value of the old token (to verify the request), and the
-information about the replacement token (this information should be the same
-information provided during token creation).  A new recovery token will need
-to be created for the new token
-
-To identify the token, it seems that the easiest way would be to include the
-GUID of the old token in the recovery request.  This should be available via
-the `rfd77:config` zfs property, but could also be queried by doing a
-ListTokens request filtering on the `cn_uuid` field.
-
-One idea for the form of the recovery request could be:
-
-[json]
-----
-{
-    "old_guid": "xxxx",
-    "recovery_token": "yyyyyy",
-    "new_token": {
-        "guid": ....
-        <same data as CreateToken>
-    }
-}
-----
-
-A nice feature of organizing the recovery request in this manner is that it is
-clear which data refers to the old token and which data refers to the new
-token.
-
-More likely, we'll want a way to keep the old token data for a limited,
-possibly configurable (likely through SAPI) amount of time (such as 30 days)
-as insurance against operator error.  We want only one token 'active' on
-a CN at a time though
+XXX: Add delete example
 
 ### Chassis Swaps
 
@@ -1986,7 +2111,7 @@ not necessary.  Instead the token can merely be moved along with the disks to
 the new server.
 
 When this occurs, kbmd is expected (after suitable operator confirmation) to
-update the assigned `cn_uuid` for the token.
+update the assigned `cn_uuid` for the token using PUT /pivtokens/:guid.
 
 ### Triton install
 
@@ -2075,3 +2200,13 @@ ChaCha20-Poly1305 is chosen because:
    been chosen, assuming that AES-NI or SSE3 are available, it is desirable to
    not have to require these CPU features for the system to operate safely.
 
+## Recovery Scenarios
+
+This is currently a placeholder, the intention is to add recovery scenarios
+and the example steps that would occur to recover. The design is such that
+as long as the `rfd77:config` property is intact, one should be able to either
+use the token 9a key or N of M recovery secrets (assigned to individuals) to
+recover the encryption key and mount the zpool.  We want to be able to validate
+the sequence of steps (including potential mis-steps) with the actions of
+KBMAPI and kbmd to minimize (or hopefully eliminate) any scenarios that lead to
+the loss of the zpool encryption key (and thus loss of data in the zpool).
