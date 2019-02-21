@@ -13,7 +13,7 @@
     License, v. 2.0. If a copy of the MPL was not distributed with this
     file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-    Copyright 2017 Joyent Inc
+    Copyright 2019 Joyent Inc
 ////
 
 # RFD 77 Hardware-backed per-zone crypto tokens
@@ -1475,6 +1475,7 @@ This will be via the apis provided by the libchipcard library detailed in
 [[triton-infra]]
 ## Triton infrastructure
 
+[[kbmapi]]
 ### KBMAPI
 
 As mentioned in <<at-rest>>, a trusted node service will be needed in a
@@ -1483,7 +1484,7 @@ datacenter.  This service is the Key Backup and Management API (KBMAPI).
 
 KBMAPI should be a fairly simple and minimal REST service.  API endpoints
 (proposed endpoints are described in detail below, based on some early
-prototypeing) provide the means for adding new tokens, removing tokens,
+prototyping) provide the means for adding new tokens, removing tokens,
 recovering tokens (i.e. replacing a token), as well as providing the PIN of a
 token to an authenticated entity.
 
@@ -1494,6 +1495,7 @@ as described in <<prov-backups>>.  Second, it is also used by the CN as a
 shared secret with KBMAPI for the purposes of replacing the token information
 of a CN with the data from a new token.
 
+[[kbmapi-history]]
 When tokens are deleted or reinitialized, the old token data should be kept in a
 KBMAPI-maintained history.  This history maintains the token data for an
 amount of time defined by the `KBMAPI_HISTORY_DURATION` SAPI variable.  The
@@ -1521,202 +1523,309 @@ line tool (working name 'kbmapi') is then used by the operator to load the
 range of serial numbers into KBMAPI.  This is only supported for tokens that
 support attestation (e.g. Yubikeys).
 
-XXX: Create examples of kbmapi command usage for loading tokens.
+It should be noted that since both the attestation and device serial numbers
+are non-standard PIV extensions.  As such support for either feature will
+require kbmd / piv-tool and potentially kbmapi to support a particular device's
+implementation.  Similarly, enabling the feature requires the use of PIV tokens
+that implement the corresponding feature (attestation or a static serial number).
+The initial scope will only include support for Yubikey attestation and serial
+numbers.
+
+In both cases, enforcement of the policy occurs during the provisioning
+process (i.e. at the time of a CreateToken call).  Changes to either policy
+do _not_ affect existing tokens in KBMAPI.
+
+**XXX**: Create examples of kbmapi command usage for loading tokens.
 
 #### Token object
 
-The data managed by KBMAPI must be persistent (for hopefully obvious reasons).
-Moray buckets are likely sufficient for this purpose.  The persistent token
-data will likely resemble something similar to:
+The token data needs to be presistently store (for hopefully obvious reasons).
+A moray bucket will be used to store the token data. The JSON config of the
+bucket will be:
 
 [source,json]
 ----
 {
-    "created": 123456789,
-    "state": "assigned",
-    "model": "Yubico Yubikey 4",
-    "serial": 5213681,
-    "current": {
-        "created": 123458765,
-        "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
-        "guid": "97496DD1C8F053DE7450CD854D9C95B4",
-        "pin": "123456",
-        "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
-        "pubkeys": {
-           "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
-           "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
-           "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
-        },
-        "attestation": {
-           "9e": "-----BEGIN CERTIFICATE-----....",
-           "9d": "-----BEGIN CERTIFICATE-----....",
-           "9a": "-----BEGIN CERTIFICATE-----....."
+    "desc": "token data",
+    "name": "tokens",
+    "schema": {
+        "index": {
+            "guid": { "type": "string", "unique": true },
+            "cn_uuid": { "type": "uuid", "unique": true }
         }
-    },
-    "history": [
-        {
-            "created": 123458765,
-            "deleted": 123459999,
-            "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
-            "guid": "97496DD1C8F053DE7450CD854D9C95B4",
-            "pin": "123456",
-            "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
-            "pubkeys": {
-               "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
-               "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
-               "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
-            },
-            "attestation": {
-               "9e": "-----BEGIN CERTIFICATE-----....",
-               "9d": "-----BEGIN CERTIFICATE-----....",
-            }
-        }
-    ],
-    "audit": [
-    ]
+    }
 }
 ----
 
-XXX: Flush out the audit data more.  Entries should be have a well defined
-structure that make them easy to process, filter, aggregate, etc.  However
-it would be helpful to include at least one free form field in the audit data.
-For example, once a token has been disposed of, an operator will want to
-change its state to `deleted` to prevent any further use, but may also want
-to annotate the deletion event with some other information surrounding the
-deletion event.
+The token object itself will be represented using JSON similar to:
 
- * created - The UTC timestamp when the entry was first created.  Once set it
-   can not be modified.
- * state - String - The state of the token.  Must be one of the following
-   values:
-   * `unassigned` - The token has been defined for use but has not been
-     assigned to a CN.  The token is available to be assigned to a CN.
-   * `assigned` - The token has been initialized and assigned to a CN.
-   * `deleted` - The token has been removed from use, and can no longer be
-     assigned to a CN.
- * model - String - The model of the token.  This is set when the token is
-   first added (either unassigned or assigned to a CN), and can not be modified
-   after creation.
- * serial - String - The serial number of the token.  This is set when the token
-   is first added (either unassigned or assigned to a CN), and can not be
-   modified after creation.
- * current - The currently defined token data.  Only present when the token
-   is in the `assigned` state.  These are effectively the results of
-   initializing a token for use on a CN.
-   * created - The timestamp when the current token data.  Effectively this
-     ends up being the time when the CreateToken endpoint was called with
-     token data.
-   * cn_uuid - The UUID of the CN this token is assigned to.  No other token
-     in the `assigned` state may have the same cn_uuid value.
-   * guid - The GUID of the token created during initialization.
-   * pin - The randomly generated PIN for the token.
-   * recovery_token - A random stream of bytes (XXX: how long?) generated by
-     KBMAPI when a token is initialized.
-   * pubkeys - The public keys generated during token initialization.  The
-     names represent the standard slot values for each key.  Detailed use of
-     the each key is documented in the corresponding endpoints, and only a
-     very brief summary is provided here:
-     * 9a - The key used for PIV authentication (pin required to unlock).
-     * 9d - The key used for confidentiality (pin required to unlock).
-     * 9e - The key used for token authentication (no pin required).
-   * attestation - The attestation certficates for the 'pubkeys' public keys
-     documented above.  If the token supports attestation, these are always
-     saved, regardless of the value of any SAPI settings.
-  * history - A limited history of initalized token data.  When a token is
-    re-initialized, the 'current' data is copied and appended to the history
-    property, and the 'deleted' property is added to the _copied_ token data
-    containing the timestamp when the data was copied into the history array.
-    The amount of history retained is controlled by the
-    `KBMAPI_TOKEN_HISTORY_DURATION` SAPI property (default is 14 days).  A
-    daily scan is run that removes any history entries older than this value.
-  * audit - An audit trail of activity for this token.  XXX: This still needs
-    to be defined.
-
-The combination of `model` + `serial` fields should be unique.  Likewise
-the `GUID` field should be unique across all `assigned` entries.
-
-The following table shows the which fields are present based on the `state`
-field of token:
+[source,json]
+----
+{
+    "model": "Yubico Yubikey 4",
+    "serial": 5213681,
+    "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+    "guid": "97496DD1C8F053DE7450CD854D9C95B4",
+    "pin": "123456",
+    "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
+    "pubkeys": {
+       "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+       "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+       "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+    },
+    "attestation": {
+       "9e": "-----BEGIN CERTIFICATE-----....",
+       "9d": "-----BEGIN CERTIFICATE-----....",
+       "9a": "-----BEGIN CERTIFICATE-----....."
+    }
+}
+----
 
 [options="header"]
 |===
 
-| Field                  | `unassigned`  | `assigned` | `deleted`
+| Field | Required | Description
 
-| created                | Required      | Required   | Required
+| model
+| No
+| The model of the token.
 
-| state                  | Required      | Required   | Required
+| serial
+| No
+| The serial number of the token (if available).
 
-| model                  | Required      | Required   | Required
+| cn_uuid
+| Yes
+| The UUID of the compute node that contains this token
 
-| serial                 | Required      | Required   | Required
+| guid
+| Yes
+| The GUID of the provisioned token.
 
-| current                | Not Present   | Required   | Not Present
+| pin
+| Yes
+| The pin of the provisioned token.
 
-| current.created        | Not Present   | Required   | Not Present
+| recovery_token
+| Yes
+| The recovery token used to recover the encryption keys of a zpool protected
+by this token.  Also used when replacing a token.
 
-| current.cn_uuid        | Not Present   | Required   | Not Present
+| pubkeys
+| Yes
+| A JSON object containing the _public_ keys of the token
 
-| current.guid           | Not Present   | Required   | Not Present
+| pubkeys.9a
+| Yes
+| The public key used for authentication after the token has been unlocked.
 
-| current.pin            | Not Present   | Required   | Not Present
+| pubkeys.9d
+| Yes
+| The public key used for encryption after the token has been unlocked.
 
-| current.recovery_token | Not Present   | Required   | Not Present
+| pubkeys.9e
+| Yes
+| The public key used for authenticating the token itself without a pin (e.g.
+used when requesting the pin of a token).
 
-| current.pubkeys        | Not Present   | Required   | Not Present
-
-| current.pubkeys.9a     | Not Present   | Required   | Not Present
-
-| current.pubkeys.9d     | Not Present   | Required   | Not Present
-
-| current.pubkeys.9f     | Not Present   | Required   | Not Present
-
-| current.attestation
-| Not Present
-| Conditional footnoteref:[attest,If the token supports attestation, this is
-required, otherwise it is omitted]
-
-| current.attestation.9a | Not Present | Optional foot  noteref:[attest]
-
-| current.attestation.9d | Not Present | Optional footnoteref:[attest]
-
-| current.attestation.9f | Not Present | Optional footnoteref:[attest]
-
-| history
-| Required footnoteref:[empty,May be empty]
-| Required footnoteref:[empty]
-| footnoteref:Required[empty]
-
-| audit
-| Required footnoteref:[empty]
-| Required footnoteref:[empty]
-| Required footnoteref:[empty]
+| attestation
+| No
+| The attestation certificates for the corresponding pubkeys.
 
 |===
+
+Note that when provisioning a token, if any of the optional fields are known,
+(e.g. `attestation` or `serial`) they should be supplied during provisioning.
+
+#### Token History
+
+As a failsafe measure, when a token is deleted, the entry from the token
+bucket is saved into a history bucket.  This bucket retains up to
+`KBMAPI_HISTORY_DURATION` days of token data (see <<kbmapi-history>>).
+
+The history bucket looks very similar to the token bucket:
+
+[source,json]
+----
+{
+    "desc": "token history",
+    "name": "token_history",
+    "schema": {
+        "index": {
+            "guid": { "type": "string" }
+            "cn_uuid": { "type": "uuid" }
+            "active_range": { "type": "daterange" }
+        }
+    }
+}
+----
+
+The major difference is that the index fields are not unique as well as the
+`active_range` index.  An accidentially deleted token that's restored might end
+up with multiple history entries, and a CN which has had a token replacement
+will also have multiple history entries.
+
+The moray entry in the history bucket also looks similar, but not quite the
+same as the token bucket:
+
+[source,json]
+----
+{
+    "active_range": "[2019-01-01 00:00:00, 2019-03-01 05:06:07]",
+    "model": "Yubico Yubikey 4",
+    "serial": 5213681,
+    "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+    "guid": "97496DD1C8F053DE7450CD854D9C95B4",
+    "pin": "123456",
+    "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
+    "pubkeys": {
+       "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+       "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+       "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+    },
+    "attestation": {
+       "9e": "-----BEGIN CERTIFICATE-----....",
+       "9d": "-----BEGIN CERTIFICATE-----....",
+       "9a": "-----BEGIN CERTIFICATE-----....."
+    },
+    "comment": ""
+}
+----
+
+The major difference is the addition of the `active_range` property as well as
+the `comment` property. The `active_range` property represents the (inclusive)
+start and end dates that the provisioned token was in use.
+
+It's permitted that the same provisioned token might have multiple entries in
+the history table.  An example would be a token accidentially deleted and
+restored would have an entry for the deletion, and then a second entry when
+the token is retired (or reprovisioned).
+
+The `comment` field is an optional field that contains free form text.  It is
+intended to note the reason for the deletion.
 
 To protect the token data in Moray, we will rely on the headnode disk
 encryption.
 
-XXX: Even though the HN token will not use the GetTokenPin
+**QUESTION**: Even though the HN token will not use the GetTokenPin
 API call to obtain its pin, should we still go ahead and store the data for
 the HN token in KBMAPI?
 
-Some examples of token data:
+#### Preloading Tokens
 
-A token that has been defined, but unassigned:
+To support an operator preloading unprovisioned tokens, we track ranges of
+serial numbers that are allowed to be provisioned.  We use a separate
+moray bucket for tracking these ranges of serial numbers:
+
 [source,json]
 ----
 {
-    "created": 1550189286,
-    "state": "unassigned",
-    "model": "Yubico Yubikey 4",
-    "serial": "111222333",
-    "history": [],
-    "audit": []
+    "desc": "token serials",
+    "name": "token_serial",
+    "schema": {
+        "index": {
+            "ca_dn": { "type": "string" }
+            "serial_range": { "type": "numrange" }
+        }
+    }
 }
 ----
 
-XXX: More examples
+The entries looks similar to:
+
+[source,json]
+----
+{
+    "serial_range": "[111111, 123456]",
+    "allow": true,
+    "ca_dn": "cn=my manf authority",
+    "comment": "A useful comment here"
+}
+----
+
+[options="header"]
+|===
+
+| Field | Description
+
+| serial_range
+| An range of serial numbers.  This range is inclusive.
+
+| allow
+| Set to true if this range is allowed, or false is this range is blacklisted.
+
+| ca_dn
+| The distinguished name (DN) of the attestation CA for this token.  Used to
+disambiguate any potential duplicate serial numbers between vendors.
+
+| comment
+| An operator supplied free form comment
+|===
+
+The `kbmadm` command is used to manage this data.
+
+#### Audit Trail
+
+Given the critical nature of the token data, we want to provide an audit
+trail of activity.  While there is discussion of creating an AuditAPI at
+some point in the future, it currently does not look like it would be available
+to meet the current deadlines.  Once available, we should look at the effort
+to migrate this functionality to AuditAPI, as well as how one could transition
+existing records to it.
+
+In the meantime, the following bucket will be used:
+
+[source,json]
+----
+{
+    "desc": "token audit log",
+    "name": "token_audit",
+    "schema": {
+        "index": {
+            "uuid": { "type": "uuid", "unique": true },
+            "timestamp": { "type": "date" },
+            "event": { "type": "string" }
+        }
+    }
+}
+----
+
+Each audit entry will look similar to:
+
+[source,json]
+----
+{
+    "uuid": "6404d770-176a-4838-a848-a62548793952",
+    "timestamp": 1550790944,
+    "event": "provision",
+    "guid": "97496DD1C8F053DE7450CD854D9C95B4",
+    "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5"
+}
+----
+
+Events are currently one of:
+
+|===
+
+| Event
+| Description
+
+| provision
+| A token has been provisioned
+
+| delete
+| A token has been deleted
+
+| undelete
+| A deleted token has been undeleted from the history
+
+| recovery
+| A recovery request has occured
+
+| range_op
+| The allowed range of token serial numbers has been changed
+
+|===
 
 ### Responses
 
@@ -1784,30 +1893,74 @@ be '1.0'.
 
 Add a new initialized PIV token.  Included in the request should be an
 `Authorization` header with a method of 'Signature' with the date header
-signed using the token's 9e key.  The payload is a JSON object with the
+signed using the token's `9e` key.  The payload is a JSON object with the
 following fields:
 
- * cn_uuid - The UUID of the CN where this token resides.
- * guid - The GUID of the token itself
- * pin - The pin for this token generated by the CN during the setup process.
- * pubkeys - The certificates created on the Token.  This should include at
-   minimum the 9e, 9d, and 9a keys of the token.
- * serial - String describing the serial# of the token.
- * model - String describing the model of the token
- * attestation - If the token supports attestation, the attestation certs
-   for the 9a, 9d, and 9e keys.
+[options="header"]
+|===
+
+| Field | Required | Description
+
+| guid
+| Yes
+| The GUID of the provisioned token
+
+| cn_uuid
+| Yes
+| The UUID if the CN that contains this token
+
+| pin
+| Yes
+| The pin for the token generated during provisioning
+
+| model
+| No
+| The model of the token (if known)
+
+| serial
+| No
+| The serial number of the token (if known)
+
+| pubkeys
+| Yes
+| The public keys of the token generated during provisioning
+
+| pubkeys.9a
+| Yes
+| The `9a` public key of the token
+
+| pubkeys.9d
+| Yes
+| The `9d` public key of the token
+
+| pubkeys.9e
+| Yes
+| The `9e` public key of the token
+
+| attestation
+| No
+| The attestation certificates corresponding to the `9a`, `9d`, and `9e`
+public keys.
+
+|===
+
+Note: for the optional fields, they should be supplied with the request when
+known.  Unfortunately, there is no simple way to enforce this optionality on
+the server side, so we must depend on the CN to supply the optional data
+when appropriate.
 
 If the signature check fails, a 401 Unauthorized error + NotAuthorized code
 is returned.
 
-If any of the above fields are missing, a 409 Conflict + InvalidArgument
+If any of the required fields are missing, a 409 Conflict + InvalidArgument
 error is returned.
 
-If the request appears to be a duplicate CreateToken request (all of the fields
-in the request match an existing entry), the `recovery_token` value of the
-existing entry is returned **as long as the signature check succeeds**.  This
-allows a CN to retry a CreateToken request in the event the response is lost.
-The token data in KBMAPI itself is not changed in this situation.
+If the `guid` or `cn_uuid` fields contain a value already in use in the
+`tokens` bucket, a new entry is _not_ created.  Instead, the `9e` public key
+from the request is compared to the `9e` key in the stored token data.  If
+the keys match, and the signature check succeeds, then the `recovery_token`
+value of the existing entry is returned and a 200 response is returned. This
+allows the CN to retry a request in the event the response was lost.
 
 If the attestation section is supplied, the attestation certs _must_ agree
 with the pubkeys supplied in the request.  If they do not agree, or if
@@ -1815,8 +1968,8 @@ with the pubkeys supplied in the request.  If they do not agree, or if
 409 Conflict + InvalidArgument error is returned.
 
 If `KBMAPI_REQUIRE_TOKEN_PRELOAD` is `true', the model and serial number of
-the token must already be defined in KBMAPI.  If it is not found, a
-409 Conflict + InvalidArgument error is returned
+the token must be present in the request defined in KBMAPI.  If the token is
+not found, a 409 Conflict + InvalidArgument error is returned
 
 If the token already exists in KBMAPI (regardless of the status of any
 SAPI parameters), the token _must_ be in the `unassigned` state.  If there is
