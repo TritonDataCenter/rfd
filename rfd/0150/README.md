@@ -415,8 +415,10 @@ fashion as Starfish.
 - The Triton Grafana image is in review (MANTA-3992).
 
 ### Remaining Tasks (2019-02-14)
-- `graf-proxy` has a bug where it becomes unresponsive after running for a
-  period of time. Isaac is investigating this.
+- The current iteration of the image directly scrapes the Triton Prometheus.
+  Once we have a Thanos image, we must change the Grafana image to scrape
+  Thanos. In the interim, we may want the Grafana image to directly scrape
+  the Manta Prometheii as well.
 
 ### Unresolved Questions
 
