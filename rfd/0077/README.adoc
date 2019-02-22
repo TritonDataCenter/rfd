@@ -2050,7 +2050,7 @@ altered is the `cn_uuid` field (e.g. during a chassis swap).  If the new
 `cn_uuid` field is already associated with an assigned token, the update fails.
 
 This request is authenticated by signing the Date header with the token's 9e
-key (i.e. same as CreateToken).
+key (same as CreateToken).
 
 XXX: Add example
 
@@ -2059,18 +2059,28 @@ XXX: Add example
 When a token is no longer available (lost, damaged, accidentially reinitialized,
 etc.), a recovery must be performed.  This allows a new token to replace the
 unavailable token.  When a recovery is required, an operator initiates the
-recovery process on the CN (via the console).  This recovery process on the CN
-will decrypt the `recovery_token` value for the lost token that was created
-during the CreateToken request (for the lost token).  It then includes the
-recovery token along with the information for the replacement token in a
-`replacement_token` property.  KBMAPI then returns a new `recovery_token` for
-the new token.
+recovery process on the CN.  This recovery process on the CN will decrypt the
+`recovery_token` value for the lost token that was created during the lost
+token's CreateToken request.  The CN then submits a RecoverToken request to
+replace the unavailable token with a new token.  The `:guid` parameter is the
+guid of the unavailable token.  The data included in the request is identical
+to that of a CreateToken request.  The major difference is that instead of
+using a token's 9e key to sign the date field, the decrypted `recovery_token`
+value is used as the signing key.
 
-The information from the old token (`:guid`) is moved to a history entry for
-that token.  If the new token serial number does not match the serial number
-for the old token, the old token state is also changed to `unassigned`.  If
-the new and old token serial numbers match, then the new token data is used
-as the data for the `current` property.
+**QUESTION**: Should we also include an additional header with the date signed
+by the new token's 9e key?  Or is it sufficient to trust the data if signed by
+the recovery token?  While unusual, if the lost token does not exist in
+KBMAPI, should we reject the recovery request, or proceed like it's a regular
+CreateToken request?  For the latter, we'd still want to verify the 9e key.
+Alternatively, we can return a specific error in this case and require the
+client (kbmd) to try a regular CreateToken request instead.
+
+If the request fails the authentication requests, a 401 Unauthorized error
+is returned.
+
+If all the checks succeed, the information from the old token (`:guid`) is
+moved to a history entry for that token.
 
 An example request:
 
@@ -2078,27 +2088,25 @@ An example request:
 POST /pivtokens/97496DD1C8F053DE7450CD854D9C95B4/recover
 Host: kbmapi.mytriton.example.com
 Date: Thu, 13 Feb 2019 20:01:02 GMT
+Authorization: Signature <Base64(rsa(sha256($Date)))>
 Accept-Version: ~1
 Accept: application/json
 
 {
-    "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg="
-    "replacement_token": {
-        "model": "Yubico Yubikey 4",
-        "serial": 6324923,
-        "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
-        "guid": "75CA077A14C5E45037D7A0740D5602A5",
-        "pin": "424242",
-        "pubkeys": {
-           "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
-           "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
-           "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
-        },
-        "attestation": {
-           "9e": "-----BEGIN CERTIFICATE-----....",
-           "9d": "-----BEGIN CERTIFICATE-----....",
-           "9a": "-----BEGIN CERTIFICATE-----....."
-        }
+    "model": "Yubico Yubikey 4",
+    "serial": 6324923,
+    "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+    "guid": "75CA077A14C5E45037D7A0740D5602A5",
+    "pin": "424242",
+    "pubkeys": {
+       "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+       "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+       "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+    },
+    "attestation": {
+       "9e": "-----BEGIN CERTIFICATE-----....",
+       "9d": "-----BEGIN CERTIFICATE-----....",
+       "9a": "-----BEGIN CERTIFICATE-----....."
     }
 }
 ----
@@ -2120,12 +2128,13 @@ Response-Time: 42
 {
     "recovery_token": "ShCopwm8QUWsujJQHV7igNxVaWx4ZzmU5SpQtaOC+TY="
 }
-
 ----
+
+Note that the location contains the guid of the _new_ token.
 
 #### ListTokens (GET /pivtokens)
 
-Gets all the known _active_ pivtokens.  The main requirement here is no
+Gets all provisioned pivtokens.  The main requirement here is no
 sensitive information of a token is returned in the output.
 
 Filtering by at least the `cn_uuid` as well as windowing functions should be
@@ -2169,8 +2178,15 @@ Response-Time: 55
             }
         },
         {
-            "guid": "abcdef...",
-            ....
+            "model": "Yubico Yubikey 5",
+            "serial": 12345123,
+            "cn_uuid": "e9498ab2-d6d8-ca61-b908-fb9e2fea950a",
+            "guid": "75CA077A14C5E45037D7A0740D5602A5",
+            "pubkeys": {
+               "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+               "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+               "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+            }
         },
         ....
     ]
@@ -2198,13 +2214,13 @@ Example response:
 HTTP/1.1 200 Ok
 Location: /pivtokens/97496DD1C8F053DE7450CD854D9C95B4
 Content-Type: application/json
-Content-Length: 4321
-Content-MD5: s5ROP0dBDWlf5X1drujDvg==
-Date: Wed, 12 Feb 2019 02:10:33 GMT
+Content-Length: 12345
+Content-MD5: s5REP1dBDWlf5X1drujDvg==
+Date: Wed, 12 Feb 2019 02:10:35 GMT
 Server: Joyent KBMAPI 1.0
 Api-Version: 1.0
-Request-Id: b9670a33-afb0-4af0-d8bc-d48d8ef801d4
-Response-Time: 36
+Request-Id: de02d045-f8df-cf51-c424-a21a7984555b
+Response-Time: 55
 
 {
    "model": "Yubico Yubikey 4",
@@ -2216,7 +2232,7 @@ Response-Time: 36
       "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
       "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
    }
-{
+}
 ----
 
 #### GetTokenPin (GET /pivtokens/:guid/pin)
@@ -2243,13 +2259,67 @@ Authorization: Signature <Base64(rsa(sha256($Date)))>
 
 An example reply:
 
+----
+HTTP/1.1 200 OK
+Location: /pivtokens/97496DD1C8F053DE7450CD854D9C95B4/pin
+Content-Type: application/json
+Content-Length: 2231
+Date: Thu, 13 Feb 2019 02:11:33 GMT
+Api-Version: 1.0
+Request-Id: 57e46450-ab5c-6c7e-93a5-d4e85cd0d6ef
+Response-Time: 1
+
+{
+    "model": "Yubico Yubikey 4",
+    "serial": 5213681,
+    "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
+    "guid": "97496DD1C8F053DE7450CD854D9C95B4",
+    "pin": "123456",
+    "pubkeys": {
+       "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+       "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
+       "9a": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA..."
+    },
+    "attestation": {
+       "9e": "-----BEGIN CERTIFICATE-----....",
+       "9d": "-----BEGIN CERTIFICATE-----....",
+       "9a": "-----BEGIN CERTIFICATE-----....."
+    }
+}
+----
 
 #### DeleteToken (DELETE /pivtokens/:guid)
 
-Deletes information about a pivtoken.  We should almost certainly require
-this come sort of additional confirmation or authorization before this succeeds.
+Deletes information about a pivtoken.  This would be called during the
+decommission process of a CN.  The request is authenticated using the 9e
+key of the token.
 
-XXX: Add delete example
+Sample request:
+
+----
+DELETE /pivtokens/97496DD1C8F053DE7450CD854D9C95B4 HTTP/1.1
+Host: kbmapi.mytriton.example.com
+Accept: application/json
+Authorization: Signature <Base64(rsa(sha256($Date)))>
+Api-Version: ~1
+Content-Length: 0
+----
+
+Sample response:
+
+----
+HTTP/1.1 204 No Content
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Headers: Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, Api-Version, Response-Time
+Access-Control-Allow-Methods: GET, HEAD, POST, DELETE
+Access-Control-Expose-Headers: Api-Version, Request-Id, Response-Time
+Connection: Keep-Alive
+Date: Thu, 21 Feb 2019 11:26:19 GMT
+Server: Joyent KBMAPI 1.0.0
+Api-Version: 1.0.0
+Request-Id: f36b8a41-5841-6c05-a116-b517bf23d4ab
+Response-Time: 997
+----
 
 ### Chassis Swaps
 
@@ -2268,7 +2338,7 @@ update the assigned `cn_uuid` for the token using PUT /pivtokens/:guid.
 
 ### Triton install
 
-Since our model requires that encryption is setup at the time of zpool creation,
+Since our model requires setting up encryption at the time of zpool creation,
 we must add support when installing head nodes and compute nodes to setup
 encryption.  As stated in <<customer-features>>, we should not require
 encryption to be an all-or nothing deal -- it should be permissible to allow
