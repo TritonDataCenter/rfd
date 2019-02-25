@@ -1466,6 +1466,18 @@ CNAPI after authenticating with its 9E key.  This is currently tracked as
 We might also want to perform some sanity checks during boot to ensure
 the token attached to the booting CN is also assigned correctly in KBMAPI.
 
+Additionally, to support provisioning an instance onto an encrypted CN,
+sysinfo will need to be updated to report if the zpool is encrypted.  It
+should be sufficient for it to example the value of the `encryption` property
+of the zones dataset (i.e. `zfs get encryption zones`).  sysinfo will include
+an additional property in it's output `CN Encrypted`.  If
+`zfs get encryption zones` reports a value of 'off', the value of the sysinfo
+property will be 'false'.  For any other value of the zfs property, the
+sysinfo property will be 'true.'
+
+We will then create new triton packages that when selected force provisioning
+onto encrypted CNs.  The names and sizing of these packages is TBD.
+
 #### Interaction: ccid driver
 
 kbmd will utilize a new OS driver (ccid) to communicate with the PIV tokens.
@@ -1482,7 +1494,7 @@ As mentioned in <<at-rest>>, a trusted node service will be needed in a
 datacenter to store the pins and recovery data for all of the tokens in the
 datacenter.  This service is the Key Backup and Management API (KBMAPI).
 
-KBMAPI should be a fairly simple and minimal REST service.  API endpoints
+KBMAPI will be a fairly simple and minimal REST service.  API endpoints
 (proposed endpoints are described in detail below, based on some early
 prototyping) provide the means for adding new tokens, removing tokens,
 recovering tokens (i.e. replacing a token), as well as providing the PIN of a
@@ -1521,7 +1533,9 @@ be used with KBMAPI to a known set of tokens.  To do so, an operator would
 set the SAPI parameter `KBMAPI_REQUIRE_TOKEN_PRELOAD` to `true`.  A command
 line tool (working name 'kbmapi') is then used by the operator to load the
 range of serial numbers into KBMAPI.  This is only supported for tokens that
-support attestation (e.g. Yubikeys).
+support attestation (e.g. Yubikeys).  In other words, enabling
+`KBMAPI_REQUIRE_TOKEN_PRELOAD` requires `KBMAPI_REQUIRE_ATTESTATION` to also
+be enabled (but not necessarily vice versa).
 
 It should be noted that since both the attestation and device serial numbers
 are non-standard PIV extensions.  As such support for either feature will
@@ -1652,8 +1666,8 @@ The history bucket looks very similar to the token bucket:
     "name": "token_history",
     "schema": {
         "index": {
-            "guid": { "type": "string" }
-            "cn_uuid": { "type": "uuid" }
+            "guid": { "type": "string" },
+            "cn_uuid": { "type": "uuid" },
             "active_range": { "type": "daterange" }
         }
     }
@@ -1724,7 +1738,7 @@ moray bucket for tracking these ranges of serial numbers:
     "name": "token_serial",
     "schema": {
         "index": {
-            "ca_dn": { "type": "string" }
+            "ca_dn": { "type": "string" },
             "serial_range": { "type": "numrange" }
         }
     }
@@ -1760,6 +1774,7 @@ disambiguate any potential duplicate serial numbers between vendors.
 
 | comment
 | An operator supplied free form comment
+
 |===
 
 The `kbmadm` command is used to manage this data.
@@ -1805,6 +1820,7 @@ Each audit entry will look similar to:
 
 Events are currently one of:
 
+[options="header"]
 |===
 
 | Event
@@ -1826,6 +1842,9 @@ Events are currently one of:
 | The allowed range of token serial numbers has been changed
 
 |===
+
+**XXX**: There's probably more events that haven't been thought of yet.  The
+important part os that the event_type (at least) has well defined values.
 
 ### Responses
 
@@ -1873,7 +1892,7 @@ in the body of the response:
 ----
 {
     "code": "CODE",
-    "message: "human readable string"
+    "message": "human readable string"
 }
 ----
 
@@ -1962,24 +1981,27 @@ the keys match, and the signature check succeeds, then the `recovery_token`
 value of the existing entry is returned and a 200 response is returned. This
 allows the CN to retry a request in the event the response was lost.
 
+If the `9e` key in the request does not match the `9e` key for the existing
+token in the `tokens` bucket, then either the `guid` or `cn_uuid` fields
+match an existing entry.  In either case, a 409 Conflict error is returned.
+In this instance, an operator must manually verify if the information in the
+token bucket is out of data and manually delete it.  Since we have seen
+duplicate CN UUIDs appear in the past, we don't want to overwrite the existing
+data in the event is is referring to another physical CN with a duplicate UUID.
+
+If the request does not generate any of the above errors, the request is
 If the attestation section is supplied, the attestation certs _must_ agree
 with the pubkeys supplied in the request.  If they do not agree, or if
 `KBMAPI_ATTESTATION_REQUIRED` is true and no attestation certs are provided, a
 409 Conflict + InvalidArgument error is returned.
 
-If `KBMAPI_REQUIRE_TOKEN_PRELOAD` is `true', the model and serial number of
-the token must be present in the request defined in KBMAPI.  If the token is
-not found, a 409 Conflict + InvalidArgument error is returned
-
-If the token already exists in KBMAPI (regardless of the status of any
-SAPI parameters), the token _must_ be in the `unassigned` state.  If there is
-an existing token entry that is not in the `unassigned` state, a 403 Forbidden
-error is returned.
-
-If a token with the same GUID already exists, a 403 Forbidden error is returned.
-
-If the CN indicated by the `cn_uuid` field already has an assigned token,
-a 403 Forbidden error is returned.
+If `KBMAPI_REQUIRE_TOKEN_PRELOAD` is `true', the serial number of
+the token as well as the attestation certificates of the token in question
+must be present in the CreateToken request.  KBMAPI performs a search for
+a range of allowed serial numbers in the `token_serial` bucket whose
+attestation CA DN matches the attestation CA of the token in the request.
+If the serial number is not part of an allowed range, a
+409 Conflict + InvalidArgument error is returned.
 
 If the request does not generate any of the above errors, the request is
 processed.  If the token already exists, the data from the request is merged
@@ -2040,8 +2062,11 @@ Response-Time: 42
 {
     "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg="
 }
-
 ----
+
+**QUESTION**: Is there a way we can protect the recovery token in transit?
+For example, do pivtokens allow you to decrypt something encrypted with their
+9e key?
 
 #### UpdateToken (PUT /pivtokens/:guid)
 
@@ -2320,6 +2345,60 @@ Api-Version: 1.0.0
 Request-Id: f36b8a41-5841-6c05-a116-b517bf23d4ab
 Response-Time: 997
 ----
+
+Note: alternatively, an operator can manually run kbmadm to delete an entry.
+
+### kbmadm
+
+This is a command line tool that exists in the KBMAPI zone used to manage
+the KBMAPI data by an operator.
+
+#### kbmadm add-serials
+
+Usage: `kbmadm add-serials -d CA_dn start [end]`
+
+Adds the range [`start`, `end`] (i.e. inclusive) that use `CA_dn` as their
+attestation CA to the list of tokens that can be provisioned. If `end` is
+omitted, the range is treated as [`start`, `start`] (i.e. a single entry).
+
+#### kbmadm delete-serials
+
+Usage: `kbmadm delete-serials -d CA_dn start [end]`
+
+Removes the serial number range [`start`, `end`] which use `CA_dn` as their
+attestation CA to the list of tokens that can be provisioned.  If `end` is
+omitted the range is treated as [`start`, `start`] (i.e. a single entry).
+
+#### kbmadm delete-token
+
+Usage: `kbmadm delete-token guid`
+
+Deletes the token with the given guid
+
+#### kbmadm restore
+
+Usage: `kbmadm restore [-f] [-c cn_uuid] guid [timestamp]`
+
+Restores the data for the token with the given uuid from the history table.
+If multiple entries for the same GUID are present, `timestamp` must be
+supplied to identify the entry to restore (the entry whose active range
+contains timestamp is chosen).  Optionally, restore the token to the given
+CN (if different from the history entry).
+
+If the given CN already has a provisioned token assigned to it, this fails
+unless the -f flag is provided.
+
+#### kbmadm history
+
+Shows the history entries
+
+**XXX**: Add more detail.
+
+#### kbmadm audit-log
+
+Shows the audit log
+
+**XXX**: Add more detail.
 
 ### Chassis Swaps
 
