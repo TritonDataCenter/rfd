@@ -32,6 +32,7 @@ The start of each allowed or blocked TCP connection or connection-like series of
 * Protocol
 * Cloud Firewall rule uuid
 * VM uuid
+* VM alias
 * Customer uuid (XXX questionable - can be derived from VM uuid)
 
 Each customer that uses Cloud Firewall Logging must have Manta space available.
