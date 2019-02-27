@@ -998,19 +998,75 @@ Response: gavNBWVjZHNhEWNoYWNoYTIwLXBvbHkxMzA1DOsc+I31pxTqOL75flqSq5Cuz9hqfvKaRZ
 
 :RFD67: https://github.com/joyent/rfd/tree/master/rfd/0067
 
-For an existing DC, one current limitation is that it will be difficult to
-encrypt the zpool of the headnode.  This is due to the requirement that
-encryption is enabled at the time of zpool creation. When complete,
-{RFD67}[RFD-67] might allow one to designate a new machine as a new encrypted
-headnode, and migrate the services from an unencrypted headnode to an
-encrypted headnode.
+Deploying to an existing Triton installation will require some compromises.
+Since encryption can only be enabled when creating a ZFS dataset (clones
+inherit the encryption status of their parent), this limits the options
+available.  The best we can do at the current time is encrypt the dataset used
+by manatee to store the postgres tables.  This dataset is not a child of any
+existing datasets, so we can replicate it to an encrypted dataset without
+breaking any parent/child dataset relationships.  We will leverage our
+existing HA tooling surrounding manatee to replicate the postgres database to
+an encrypted datastore, and then promote the encrypted replica.
 
-For reasons similar to the headnode, one cannot take a live running compute
-node and encrypt its zones pool.  Instead one must re-setup a CN (and
-recreate the zones pool).  However, unlike with the head node, there is
-the possibility of (capacity permitting) evacuating a compute node (migrating
-all instances on a CN to other CNs), perform the re-setup, release the new
-encrypted CNs for use, and then repeat as desired.
+During the initial encryption setup on a headnode, the setup process will
+prompt to operator to insert a pivtoken into an available USB slot (if they
+have not done so already) to provision.  The setup process will prompt the
+user on the desired method of managing the pin for the head node token.  The
+current options will be to store it on the usbkey (to facilitate head node
+reboots without requiring operator intervention), or to require an operator to
+enter the pin on the console during boot.  The setup process will then
+provision the token (prompt the token to generate new sets of keys) and
+generate a pin.
+
+Once the token has been provisioned, the setup script will check the amount of
+free space on the head node.  If the amount of free space on the node is less
+than the current size of the manatee instance plus a (TBD) margin, it will
+notify the user that they must expand their zpool before being
+able to encrypt manatee (**XXX** this should include an option to re-run the
+manatee encryption step at a later time).
+
+If sufficient space exists to hold a second copy of the manatee instance,
+the script will prompt the user if they wish to continue.  Assuming
+yes, it will then proceed to provision a second manatee instance on the head
+node.  The key differences between this process and
+`sdcadm post-setup ha-manatee` is that the instance will be provisioned on
+the head node (i.e. there will be two manatee instances on the same server)
+and the creation of the delegated dataset used by manatee will enable
+encryption and set an `rfd77:config` property containing the key and recovery
+information for the password of the dataset.  Once the initial send of data
+has completed, the operator will at a time of their choosing promote the
+new replica to a master.  Once this is complete, the old unencrypted master
+instance should be deleted by the script.
+
+It should be noted that the freed unencrypted blocks will still be present on
+the headnode. An operator desiring maximum security should plan to replace the
+disks in the head node after the manatee encryption is complete using the
+normal zfs disk replacement procedures and dispose of or wipe the old disks as
+they see fit.  We will not require or enforce such an action. Instead, we will
+leave it to the operator to decide.  When zfs trim support is integrated,
+we _may_ opt to add a step where a whole zpool trim is performed after
+encrypting manatee.  Once trim support is integrated, we can decide if we
+wish to (as it's dependent on firmware doing the correct thing, doing a trim
+may not provide sufficient -- that is any -- security benefits to warray
+performing it after encrypting manatee).
+
+Once the manatee instance on the head node is encrypted, using
+`sdcadm post-setup ha-manatee` to enable additional manatee replicas should
+disallow replicating to a non-encrypted node.
+
+:pg-repack: http://reorg.github.io/pg_repack/
+
+The other alternative considered was to utilize postgres tablespaces.  The
+setup process would create a new encrypted delegated dataset, create a
+tablespace on the dataset, then migrate the postgres tables to the new dataset,
+possibly using a tool such as {pg-repack}[pg-repack] to facilitate the
+migration.
+
+This was discounted due to the larger number of unknowns.  Tablespaces would
+introduce unknown risk to existing tooling (such as HA manatee) as well as
+the behavior during the migration of tables.  Since manatee works, its
+behavior is well known (including most importantly its failure modes), that
+seems to be the least risky option.
 
 ## Implementation and intermediate states
 
@@ -1823,8 +1879,7 @@ Events are currently one of:
 [options="header"]
 |===
 
-| Event
-| Description
+| Event | Description
 
 | provision
 | A token has been provisioned
@@ -2352,6 +2407,10 @@ Note: alternatively, an operator can manually run kbmadm to delete an entry.
 
 This is a command line tool that exists in the KBMAPI zone used to manage
 the KBMAPI data by an operator.
+
+**QUESTION**: This is strictly for managing the KBMAPI data.  Should we pick
+a different/better name to avoid confusion with the command to
+administer/manage kbmd?
 
 #### kbmadm add-serials
 
