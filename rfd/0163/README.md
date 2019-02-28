@@ -100,7 +100,7 @@ A typical accepted connection will look like the following.
 ```json
 {
   "event": "allow",
-  "time", "2019-02-25T21:02:18.658Z",
+  "time": "2019-02-25T21:02:18.658Z",
   "source_ip": "10.1.0.23",
   "source_port": 1027,
   "destination_ip": "10.1.0.4",
@@ -119,7 +119,7 @@ A typical denied connection will look like the following.
 ```json
 {
   "event": "reject",
-  "time", "2019-02-25T21:02:18.658Z",
+  "time": "2019-02-25T21:02:18.658Z",
   "source_ip": "10.1.0.23",
   "source_port": 1028,
   "destination_ip": "10.1.0.4",
