@@ -253,5 +253,5 @@ predate their proliferation.  In repositories that are attracting
 attention (in the form of use, contributors, issues, etc.), a formal code
 of conduct is likely well-advised.  This should be done in consultation
 with the OSCO, but it is recommended that projects use a derivative of the
-Contributor Covenant.
+<a href="https://www.contributor-covenant.org/">Contributor Covenant</a>.
 
