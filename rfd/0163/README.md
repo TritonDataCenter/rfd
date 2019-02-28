@@ -1,5 +1,5 @@
 ---
-authors: Mike Gerdts <mike.gerdts@joyent.com>
+authors: Mike Gerdts <mike.gerdts@joyent.com>, Pedro Palazón Candel <pedro@joyent.com>
 state: predraft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+163%22
 ---
@@ -22,7 +22,7 @@ This RFD describes how Cloud Firewall may log accepted and rejected packets.  Th
 
 * **IPFilter** (`ipf`) will make an initial pass at identifying which packets may be of interest and pass metadata to Cloud Firewall Log Daemon.
 * **Cloud Firewall Log Daemon (`cfwlogd`)** will receive packet metadata from IPFilter, discarding uninteresting metadata.  Interesting metadata will be passed to AuditAPI.
-* **AuditAPI** is inclusive of an API and the associated service running on a head node or some other compute node.  The service is responsible for ingesting audit entries (e.g. containing connection metadata) and persisting it to a designated store, such as Manta.
+* **hermes** will gather log files from compute nodes and store them in the appropriate manta accounts.
 
 The start of each allowed or blocked TCP connection or connection-like series of UDP packets needs to log the following metadata:
 
@@ -33,18 +33,12 @@ The start of each allowed or blocked TCP connection or connection-like series of
 * Cloud Firewall rule uuid
 * VM uuid
 * VM alias
-* Customer uuid (XXX questionable - can be derived from VM uuid)
 
 Each customer that uses Cloud Firewall Logging must have Manta space available.
 
 In the event of abnormally high logging activity or an extended outage to AuditAPI, log entries may be dropped.
 
-Where is logging specified?
-- The firewall rule?  <<<< Seems the most straight forward
-- The VM?
-- The NIC?
-- The network?
-- The customer?
+What gets logged will be determined by a `log` boolean attribute on each firewall rule. If and only if it is set to `true` will the rule trigger logging.  The default is for it to be unset, which is the equivalent of `false`.
 
 ## IPFilter
 
@@ -63,43 +57,79 @@ This is done by `fwadm` and by the post-ready brand hook.
 
 ## Cloud Firewall Log Daemon
 
-This is a new component, likely written in rust.  It receives logged packet metadata from the kernel via a door or socket.  It runs in the global zone on each compute node under the watchful eye of SMF.
+This is a new component, likely written in rust.  It reads logged packet metadata from the kernel via a device file.  It runs in the global zone on each compute node under the watchful eye of SMF.
 
 - Likely does filtering beyond what is done by ipf
   - Keep some state of recent UDP traffic, logging only first recent
 - Buffer some data when AuditAPI endpoint is not available
-- Is this a general purpose audit forwarder?  Should it be designed to forward Solaris audit logs, or is that something different?
-- Presumably this daemon makes REST calls to AuditAPI.
-  - compressed streams ideal
 
 Dropping of log entries is acceptable if the log rate is too great to stream to AuditAPI or if AuditAPI is unavailable for a long enough time that local buffer space is exhausted.  `cfwlogd` should make a best effort to keep track of the number of dropped entries and log that as conditions normalize.
 
 Should we be logging rule add/remove/change?
 
-## AuditAPI
+### Log location
 
-- One or more zones on the admin network
-- If multiple
-  - How does the log daemon know which one to log to?
-  - How are logs coalesced so that instance A does not clobber instance B's logs?
-- Needs to be able to receive streamed audit logs
-- Need definition of audit entries and audit log format
-- How is it configured?
-  - Manta path for each customer
-  - File interval (time, size?)
-  - Retention period
+`cfwlogd` logs will be stored in a new dataset that will be mounted at `/var/log/firewall`.  This dataset should have compression enabled.  Logs will be named
+
+```
+/var/log/firewall/:customer_uuid/:vm_uuid/current.json
+```
+
+### Log rotation
+
+When `cfwlogd` receives a `SIGHUP` (or some other mechanism TBD), it will close all log files and reopen on demand.  It is expected that this will be delivered on a regular (e.g. hourly) basis by `logadm`.
+
+`logadm` will be configured to periodically rotate all `current.log` files found in `/var/log/firewall/*/*` to `:iso8601stamp.json`.
+
+### Log collection
+
+Hermes will be configured to collect all of the `/var/log/firewall/:customer_uuid/:vm_uuid/:iso8601stamp.json` files and place them in Manta at `/:customer_login/reports/firewall-logs/:vm_uuid/:year/:month/:day/:iso8601stamp.json`.  Once hermes has stored the file in Manta, hermes will remove it from the compute node.
+
+### Log retention
+
+Triton will not automatically remove old log files.  It is up to the customer to remove expired logs.
 
 ### Record Format
 
-The first consumer of AuditAPI will be Cloud Firewall Logging.  There may be future consumers.  For instance, SmartOS auditing may be extended with a module similar to `audit_remote(5)` to forward operating system audit logs to AuditAPI.  The audit record format needs to be designed to meet current needs while being easily extended to meet future needs.
+Each log entry will be json object stored on a single line with no extra white space. For the sake of clarity in this document, pretty-printed records appear below.
 
-- bunyan has some nice ideas, but it is designed for other uses.  Some of its [core fields](https://github.com/trentm/node-bunyan#core-fields) may not map well to AuditAPI's needs.
+#### Allowed Connection
 
-### Persistence
+A typical accepted connection will look like the following.
 
-- Can [chunked encoding](https://github.com/joyent/manta/blob/master/docs/user-guide/storage-reference.md#content-length) be used to dribble the content into manta?
-  - If this is used, what precautions need to be taken against an AuditAPI zone outage?  That is, after reboot, will the current file need to start from the beginning?
-  - If it is not possible to resume an interrupted upload, what causes the partial upload to manta to be cleaned up?
+```json
+{
+  "event": "allow",
+  "time", "2019-02-25T21:02:18.658Z",
+  "source_ip": "10.1.0.23",
+  "source_port": 1027,
+  "destination_ip": "10.1.0.4",
+  "destination_port": 22,
+  "protocol": "tcp",
+  "rule": "ae8a7fe6-f8c5-4670-bef8-196a8071cb84",
+  "vm": "8b43c12b-6643-cee7-ad7b-b87a53ae257d",
+  "alias": "some-friendly-name-here"
+}
+```
+
+#### Denied Connection
+
+A typical denied connection will look like the following.
+
+```json
+{
+  "event": "reject",
+  "time", "2019-02-25T21:02:18.658Z",
+  "source_ip": "10.1.0.23",
+  "source_port": 1028,
+  "destination_ip": "10.1.0.4",
+  "destination_port": 23,
+  "protocol": "tcp",
+  "rule": "ae8a7fe6-f8c5-4670-bef8-196a8071cb84",
+  "vm": "8b43c12b-6643-cee7-ad7b-b87a53ae257d",
+  "alias": "some-friendly-name-here"
+}
+```
 
 ## FWAPI
 
@@ -155,7 +185,7 @@ Current fwrule format is:
 }
 ```
 
-with the changes described, it should become:
+With the changes described, it should become:
 
 ```
 {
