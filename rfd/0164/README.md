@@ -103,11 +103,17 @@ to actively push changes upstream where and as appropriate.
 ### Personal attribution
 
 Any open source contribution from Joyent must have the personal
-attribution of the engineer (or engineers) who did the work.  At no point
-should work by one engineer be passed off as the work of another; it is
-every engineer's responsibility to assure that their peers are
-appropriately recognized.  Further, even with attribution, work should not
-be upstreamed without the original engineer's knowledge.
+attribution of the engineer (or engineers) who did the work.  (In general,
+this attribution will take the form of the ```Author``` field of a git
+commit, which can differ from the ```Commit``` field.) At no point should
+work by one engineer be passed off as the work of another; it is every
+engineer's responsibility to assure that their peers are appropriately
+recognized.  Further, even with attribution, the original
+engineer should generally be made aware that their work is being
+upstreamed.  This is a courtesy (and may help inform the testing or
+correctness of the upstreaming); if it's not possible to engage with
+the original engineer, it should not impede upstreaming their committed
+work.
 
 ### Copyright
 
@@ -143,7 +149,7 @@ should be added to it, e.g.:
  * Copyright (c) 2016, 2017 by Delphix. All rights reserved.
  * Copyright 2016 Nexenta Systems, Inc.
  * Copyright 2017 RackTop Systems.
- * Copyright 2019, Joyent, Inc.
+ * Copyright 2019 Joyent, Inc.
  */
 ```
 
@@ -151,6 +157,14 @@ If the project differs in the way that it presents copyright (e.g.,
 with a range of years, with the "(c)" symbol, etc.), these are acceptable.
 We do not, however, allow contributions without any Joyent attribution
 whatsoever.
+
+### Contributing source from third parties
+
+There are occasions when we wish to integrate source from third
+parties into other open source projects.  If the third party source is
+not already open source, this activity must be done in concert with the
+OSCO, who will take responsibility for assuring that the third party has
+condoned this activity and that risk is appropriately minimized.
 
 ### De minimis change
 
@@ -170,7 +184,7 @@ A challenge of contributing to open source projects is that we expect our
 staff to professionally engage with people who are not Joyent employees.
 It is our expectation that conduct in open source engagement will reflect
 the professionalism of our workplace.  Where this is not the case -- where
-we believe that actions by others in the community is violating our
+we believe that actions by others in the community are violating our
 standards for our own conduct -- action should be taken.  Employees who
 wish to report this conduct should either report it to the OSCO or to
 Joyent HR.  Working with the employee, the OSCO and/or Joyent HR will
