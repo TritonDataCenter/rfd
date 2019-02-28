@@ -49,10 +49,13 @@ to open source.
 
 This RFD creates a role, the Open Source Counsel Office (OSCO), that
 serves as a focal point for consultation and approval with respect to open
-source policy.  If and as much as additional counsel is required (e.g.,
-legal counsel), it is up to the OSCO to make this determination.  This
-role is nowhere near a full-time job; it is anticipated that this function
-will be performed or delegated by the CTO or equivalent.
+source policy.  The OSCO takes responsibility for balancing our principles
+surrounding open source with organizational risk -- with the goal being
+to adhere to our open source principles while minimizing risk.  If and as
+much as additional counsel is required (e.g., legal counsel), it is up to
+the OSCO to make this determination.  This role is nowhere near a full-time
+job; it is anticipated that this function will be performed or delegated
+by the CTO or equivalent.
 
 ## Open source use
 
