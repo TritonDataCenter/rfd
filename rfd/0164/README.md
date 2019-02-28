@@ -79,6 +79,7 @@ used licenses can be freely used without additional disclosure or approval:
 - zlib/libpng License
 - PHP License
 - ICU License
+- Eclipse Public License
 
 Components with the following licenses can be freely used for *internal
 use* (that is, not part of any service or software offering), but can only
