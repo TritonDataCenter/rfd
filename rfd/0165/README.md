@@ -1,7 +1,7 @@
 ---
 authors: Chris Burroughs <chris.burroughs@joyent.com>
-state: predraft
-discussion: discussion: https://github.com/joyent/rfd/issues?q=%22RFD+165%22
+state: draft
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+165%22
 ---
 
 # RFD 165 Security Updates for Triton/Manta Core Images

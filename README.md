@@ -208,7 +208,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 162 Online repair and rebalance of Manta objects](./rfd/0162/README.md) |
 | predraft | [RFD 163 Cloud Firewall Logging](./rfd/0163/README.md) |
 | draft | [RFD 164 Open Source Policy](./rfd/0164/README.md) |
-| draft | [RFD 165 Security Updates for Triton/Manta Core Images]((./rfd/0165/README.md)) |
+| draft | [RFD 165 Security Updates for Triton/Manta Core Images](./rfd/0165/README.md) |
 
 ## Contents of an RFD
 
