@@ -211,8 +211,9 @@ This means that these guidelines should essentially be followed.
 ### Repositories
 
 Absent explicit permission from the OSCO, all new repositories should be
-in GitHub, under the "joyent" GitHub account (that is, not under personal
-accounts).
+in GitHub, under the `joyent` GitHub organization (that is, not under personal
+accounts). As a corollary, any private repository within the "joyent" GitHub 
+organization should not be made public without explicit permision from the OSCO.
 
 ### License
 
