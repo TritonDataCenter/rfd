@@ -1474,7 +1474,7 @@ of the compute node.
 Given that the requirement for encryption for a VM is a constraint for DAPI, we
 should store that as an affinity rule which will be used at creation time to
 pick the right CN and, since we've added the requirement to persist the affinity
-rules into VMs as part of {RFD=34}[RFD 34] (See {TRITON-779}[TRITON-779],
+rules into VMs as part of {RFD-34}[RFD 34] (See {TRITON-779}[TRITON-779],
 already implemented), there is no need to add further modifications and, for
 example, there's no need to alter VMAPI's schema for Virtual Machines.
 
