@@ -1452,6 +1452,8 @@ managed boxes on disk).
 
 :OS-7183: https://smartos.org/bugview/OS-7183
 :OS-7633: https://smartos.org/bugview/OS-7633
+:TRITON-779: https://smartos.org/bugview/TRITON-779
+:RFD-34: https://github.com/joyent/rfd/blob/master/rfd/0034/README.md
 
 kbmd will have a dependency on an SMF service that brings up the "admin"
 network early in boot ONLY when we booted with a networking.json (the
@@ -1468,6 +1470,29 @@ sysinfo will updated to report if the zpool is encrypted.  This is currently
 tracked as {OS-7633}[OS-7633].  In short, a new property `CN Encrypted` will
 be added to the sysinfo JSON that is produced, indicating the encryption status
 of the compute node.
+
+Given that the requirement for encryption for a VM is a constraint for DAPI, we
+should store that as an affinity rule which will be used at creation time to
+pick the right CN and, since we've added the requirement to persist the affinity
+rules into VMs as part of {RFD=34}[RFD 34] (See {TRITON-779}[TRITON-779],
+already implemented), there is no need to add further modifications and, for
+example, there's no need to alter VMAPI's schema for Virtual Machines.
+
+The required changes would be:
+
+* Decide which is the affinity rule for a Virtual Machine which requires
+  encryption, for example, server==encrypted (which will also allow the
+  explicit opposite rule server!=encrypted).
+
+* Any machine created/migrated through CloudAPI can use such rule as we do
+  today for other affinity rules. This needs to be clearly documented, given the
+  public nature of the API.
+
+* Update DAPI to know about this rule when picking machines CNs, either for
+  provision or migration of machines.
+
+This assumes that DAPI is able to use the `CN Encrypted` property from sysinfo,
+as described in {OS-7633}[OS-7633].
 
 #### Interaction: ccid driver
 
