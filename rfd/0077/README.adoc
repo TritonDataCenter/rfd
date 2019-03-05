@@ -997,7 +997,7 @@ Response: gavNBWVjZHNhEWNoYWNoYTIwLXBvbHkxMzA1DOsc+I31pxTqOL75flqSq5Cuz9hqfvKaRZ
 Deployment to an existing DC will require at least one empty compute node.
 The operator starts by installing kbmapi on the head node by running
 `sdcadm post-setup kbmapi`.  This will install and start the KBMAPI service on
-the head node.  Once complete, the operator proceeds to re-run the setup
+the head node.  Once complete, the operator proceeds to run the setup
 process on the empty nodes.  The empty nodes must have a PIV token inserted
 at the time of setup.  The setup program will provision the PIV token (using
 piv-tool), create the encrypted zpool, and store the pin information in KBMAPI.
@@ -1565,8 +1565,6 @@ In both cases, enforcement of the policy occurs during the provisioning
 process (i.e. at the time of a CreateToken call).  Changes to either policy
 do _not_ affect existing tokens in KBMAPI.
 
-**XXX**: Create examples of kbmapi command usage for loading tokens.
-
 #### Token object
 
 The token data needs to be presistently store (for hopefully obvious reasons).
@@ -1801,11 +1799,10 @@ Given the critical nature of the token data, we want to provide an audit
 trail of activity.  While there is discussion of creating an AuditAPI at
 some point in the future, it currently does not look like it would be available
 to meet the current deadlines.  Once available, we should look at the effort
-to migrate this functionality to AuditAPI, as well as how one could transition
-existing records to it.
+to migrate this functionality to AuditAPI.
 
 In the meantime, we will provide the option of uploading the KBMAPI logs to
-a Manta installation using hagfish.
+a Manta installation using hermes.
 
 ### Responses
 
@@ -1849,9 +1846,7 @@ KBMAPI will return one of the following codes on an error:
 [options="header"]
 |===
 
-| Code
-| Description
-| Details
+| Code | Description | Details
 
 | 401
 | Unauthorized
@@ -1887,8 +1882,7 @@ Where `code` is one of:
 [options="header"]
 |===
 
-| Code
-| Description
+| Code | Description
 
 | BadRequest
 | Bad HTTP was sent
@@ -2018,7 +2012,7 @@ with the pubkeys supplied in the request.  If they do not agree, or if
 `KBMAPI_ATTESTATION_REQUIRED` is true and no attestation certs are provided, a
 409 Conflict + InvalidArgument error is returned.
 
-If `KBMAPI_REQUIRE_TOKEN_PRELOAD` is `true', the serial number of
+If `KBMAPI_REQUIRE_TOKEN_PRELOAD` is `true`, the serial number of
 the token as well as the attestation certificates of the token in question
 must be present in the CreateToken request.  KBMAPI performs a search for
 a range of allowed serial numbers in the `token_serial` bucket whose
