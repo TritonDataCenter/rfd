@@ -157,7 +157,7 @@ The following serves as an example of how this may be configured.
   {
     "name": "firewall_logs",
     "search_dirs": [ "/var/log/firewall" ],
-    "regex": "^/var/log/firewall/([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12})/([0-9a-f]{8}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{4}\-[0-9a-f]{12})/([0-9]+)-([0-9]+)-([0-9]+)T([0-9]+):([0-9]+):([0-9]+)\\.json.gz$",
+    "regex": "^/var/log/firewall/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9]+)-([0-9]+)-([0-9]+)T([0-9]+):([0-9]+):([0-9]+)\\.json.gz$",
     "manta_path": "/%U/reports/firewall-logs/$2/#y/#m/#d/#y-%m-%dT%H:%M:%S.json.gz",
     "account_uuid": "$1",
     "date_string": {
