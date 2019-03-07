@@ -114,14 +114,14 @@ A typical denied connection will look like the following.
 `cfwlogd` logs will be stored in a new dataset that will be mounted at `/var/log/firewall`.  This dataset should have compression enabled.  Logs will be named
 
 ```
-/var/log/firewall/:customer_uuid/:vm_uuid/current.json.gz
+/var/log/firewall/:customer_uuid/:vm_uuid/current.log.gz
 ```
 
 ### Log rotation
 
 When `cfwlogd` receives a `SIGHUP` (or some other mechanism TBD), it will close all log files and reopen on demand.  It is expected that this will be delivered on a regular (e.g. hourly) basis by `logadm`.
 
-`logadm` will be configured to periodically rotate all `current.log` files found in `/var/log/firewall/*/*` to `:iso8601stamp.json.gz`.
+`logadm` will be configured to periodically rotate all `current.log` files found in `/var/log/firewall/*/*` to `:iso8601stamp.log.gz`.
 
 **XXX should the stamp be the time of the first record or the last?**
 
@@ -143,9 +143,9 @@ As alluded to above, the log files will be written as gzip files.  On-the-fly co
 
 ## Log Archiver Service
 
-A new Triton service, `logarchiver`, will be created.  This service will have a core VM `logarchive0` that will run a hermes master and a hermes proxy. This service will be responsible for creating an SMF service, `svc:/system/smartdc/logarchiver:default`, that will run the hermes actor.  See [sdc-hermes](https://github.com/joyent/sdc-hermes) for more information related to hermes.
+A new Triton service, `logarchiver`, will be created.  This service will have a core VM `logarchiver0` that will run a hermes master and a hermes proxy. This service will be responsible for creating an SMF service, `svc:/smartdc/agent/logarchiver-agent:default`, that will run the hermes actor.  See [sdc-hermes](https://github.com/joyent/sdc-hermes) for more information related to hermes.
 
-Hermes will be configured to collect all of the `/var/log/firewall/:customer_uuid/:vm_uuid/:iso8601stamp.json.gz` files and place them in Manta at `/:customer_login/reports/firewall-logs/:vm_uuid/:year/:month/:day/:iso8601stamp.json.gz`.  Once hermes has stored the file in Manta, hermes will remove it from the compute node.
+Logarchiver-agent will be configured to collect all of the `/var/log/firewall/:customer_uuid/:vm_uuid/:iso8601stamp.log.gz` files and place them in Manta at `/:customer_login/reports/firewall-logs/:vm_uuid/:year/:month/:day/:iso8601stamp.log.gz`.  Once hermes has stored the file in Manta, hermes will remove it from the compute node.  Note that `/var/log/firewall` is a distinct directory from `/var/log/fw`, the location for the global zone's firewaller agent.
 
 ### Customer UUID to Manta account translation
 
@@ -157,8 +157,8 @@ The following serves as an example of how this may be configured.
   {
     "name": "firewall_logs",
     "search_dirs": [ "/var/log/firewall" ],
-    "regex": "^/var/log/firewall/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9]+)-([0-9]+)-([0-9]+)T([0-9]+):([0-9]+):([0-9]+)\\.json.gz$",
-    "manta_path": "/%U/reports/firewall-logs/$2/#y/#m/#d/#y-%m-%dT%H:%M:%S.json.gz",
+    "regex": "^/var/log/firewall/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9]+)-([0-9]+)-([0-9]+)T([0-9]+):([0-9]+):([0-9]+)\\.log.gz$",
+    "manta_path": "/%U/reports/firewall-logs/$2/#y/#m/#d/#y-%m-%dT%H:%M:%S.log.gz",
     "account_uuid": "$1",
     "date_string": {
       "y": "$3", "m": "$4", "d": "$5",
@@ -179,6 +179,8 @@ In the event that the translation fails or `/%U/reports/firewall-logs/` is not w
 
 To meet initial needs while working toward a more scalable hermes implementation, the logarchiver work will be delivered in phases.
 
+XXX Phases 1 & 2 can probably be collapsed, which maybe makes it so that we can just do an upgrade of hermes in the sdc zone and forgo splitting it off into logarchiver0.
+
 The logarchiver service remains experimental until phase three begins.
 
 ### Log Archiver Phase 1: Basic functionality.
@@ -194,7 +196,7 @@ The proxy is believed to be the least scalable part of the architecture.  That w
 * Use multiple hermes proxy instances in logarchiver0 that are fronted by HAProxy to balance the load between them.
 * Create multiple logarchiver service zones, each containing a hermes proxy.  [Binder](https://github.com/joyent/binder) would then be used to distribute the load across the horizontally scaled proxy zones.
 * Create multiple logarchiver service zones, each containing a hermes master and proxy.  This approach would require work to support multiple masters.
-* Replace the current hermes proxy with [nginx](https://nginx.org/en/).  In this architecture shift, the hermes master would be provided the actor with an `msign`ed URL.  The actor would then send the log file to Manta via the/an nginx proxy.
+* Replace the current hermes proxy with [nginx](https://nginx.org/en/).  The actor is already provided with appropriate credentials to perform the upload - the proxy just needs to forward the TCP stream.
 
 This phase may also deliver load smoothing to ensure that there is not a "top of the hour" spike.
 
