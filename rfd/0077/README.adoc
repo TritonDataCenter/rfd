@@ -1467,9 +1467,9 @@ the token attached to the booting CN is also assigned correctly in KBMAPI.
 
 Additionally, to support provisioning an instance onto an encrypted CN,
 sysinfo will updated to report if the zpool is encrypted.  This is currently
-tracked as {OS-7633}[OS-7633].  In short, a new property `CN Encrypted` will
+tracked as {OS-7633}[OS-7633].  In short, a new property `Zpool Encrypted` will
 be added to the sysinfo JSON that is produced, indicating the encryption status
-of the compute node.
+of the main zpool.
 
 Given that the requirement for encryption for a VM is a constraint for DAPI, we
 should store that as an affinity rule which will be used at creation time to
@@ -1491,8 +1491,8 @@ The required changes would be:
 * Update DAPI to know about this rule when picking machines CNs, either for
   provision or migration of machines.
 
-This assumes that DAPI is able to use the `CN Encrypted` property from sysinfo,
-as described in {OS-7633}[OS-7633].
+This assumes that DAPI is able to use the `Zpool Encrypted` property from
+sysinfo, as described in {OS-7633}[OS-7633].
 
 #### Interaction: ccid driver
 
@@ -1998,13 +1998,20 @@ value of the existing entry is returned and a 200 response is returned. This
 allows the CN to retry a request in the event the response was lost.
 
 If the `9e` key in the request does not match the `9e` key for the existing
-token in the `tokens` bucket, then either the `guid` or `cn_uuid` fields
-match an existing entry.  In either case, a 409 Conflict + NotAuthorized error
+token in the `tokens` bucket, but either (or both) the `guid` or `cn_uuid`
+fields match an existing entry, a 409 Conflict + NotAuthorized error
 is returned.  In such an instance, an operator must manually verify if the
-information in the token bucket is out of data and manually delete it.  Since
-we have seen duplicate CN UUIDs appear in the past, we don't want to overwrite
-the existing data in the event the existing entry is legitimately referring to
-another CN with a duplicated UUID.
+information in the token bucket is out of date and manually delete it before
+the token provisioning can proceed.
+
+If an operator has hardware with duplicate UUIDs, they must contact
+their hardware vendor to resolve the situation prior to attempting to provision
+the PIV token on the system with a duplicate UUID.  While we have seen such
+instances in the past, they are now fairly rare.  Our past experience has
+shown that attempting to work around this at the OS and Triton level is
+complicated and prone to breaking.  Given what is at stake in terms of the
+data on the system, we feel it is an unacceptable risk to try to work around
+such a situation (instead of having the hardware vendor resolve it).
 
 If the request does not generate any of the above errors, the request is
 If the attestation section is supplied, the attestation certs _must_ agree
