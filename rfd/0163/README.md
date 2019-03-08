@@ -149,7 +149,7 @@ Logarchiver-agent will be configured to collect all of the `/var/log/firewall/:c
 
 ### Customer UUID to Manta account translation
 
-The [`logsets.json`](https://github.com/joyent/sdc-hermes/blob/master/etc/logsets.json.sample) file format will be extended to allow `%U` to represent a manta username.  The value of `%U` may be obtained by translating an account UUID using mahi.  The `account_uuid` is the source UUID for this translation.
+The [`logsets.json`](https://github.com/joyent/sdc-hermes/blob/master/etc/logsets.json.sample) file format will be extended to allow `%U` to represent a manta username.  The value of `%U` may be obtained by translating an account UUID using mahi.  The `customer_uuid` is the source UUID for this translation.
 
 The following serves as an example of how this may be configured.
 
@@ -159,7 +159,7 @@ The following serves as an example of how this may be configured.
     "search_dirs": [ "/var/log/firewall" ],
     "regex": "^/var/log/firewall/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9]+)-([0-9]+)-([0-9]+)T([0-9]+):([0-9]+):([0-9]+)\\.log.gz$",
     "manta_path": "/%U/reports/firewall-logs/$2/#y/#m/#d/#y-%m-%dT%H:%M:%S.log.gz",
-    "account_uuid": "$1",
+    "customer_uuid": "$1",
     "date_string": {
       "y": "$3", "m": "$4", "d": "$5",
       "H": "$6", "M": "$7", "S": "$8"
