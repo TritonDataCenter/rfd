@@ -214,7 +214,7 @@ As alluded to above, the log files will be written as gzip files.  On-the-fly co
 
 A new Triton service, `logarchiver`, will be created.  This service will have a core VM `logarchiver0` that will run a hermes master and a hermes proxy. This service will be responsible for creating an SMF service, `svc:/smartdc/agent/logarchiver-agent:default`, that will run the hermes actor.  See [sdc-hermes](https://github.com/joyent/sdc-hermes) for more information related to hermes.
 
-Logarchiver-agent will be configured to collect all of the `/var/log/firewall/:customer_uuid/:vm_uuid/:iso8601stamp.log.gz` files and place them in Manta at `/:customer_login/reports/firewall-logs/:vm_uuid/:year/:month/:day/:iso8601stamp.log.gz`.  Once hermes has stored the file in Manta, hermes will remove it from the compute node.  Note that `/var/log/firewall` is a distinct directory from `/var/log/fw`, the location for the global zone's firewaller agent.
+Logarchiver-agent will be configured to collect all of the `/var/log/firewall/:customer_uuid/:vm_uuid/:iso8601stamp.log.gz` files and place them in Manta at `/:customer_login/reports/firewall-logs/:year/:month/:day/:vm_uuid/:iso8601stamp.log.gz`.  Once hermes has stored the file in Manta, hermes will remove it from the compute node.  Note that `/var/log/firewall` is a distinct directory from `/var/log/fw`, the location for the global zone's firewaller agent.
 
 ### Customer UUID to Manta account translation
 
