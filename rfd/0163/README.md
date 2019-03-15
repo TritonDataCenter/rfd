@@ -16,13 +16,11 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+163%22
 
 # RFD 163 Cloud Firewall Logging
 
-**This is very rough.  Please fix.**
+This RFD describes how Cloud Firewall may log accepted and rejected packets.  The intent is not to log every packet - rather just the beginning of a new TCP connection or series of related UDP or other packets.  This will be accomplished using the following components:
 
-This RFD describes how Cloud Firewall may log accepted and rejected packets.  The intent is not to log every packet - rather just the beginning of a new TCP connection or series of related UDP packets.  This will be accomplished using the following components:
-
-* **IPFilter** (`ipf`) will make an initial pass at identifying which packets may be of interest and pass metadata to Cloud Firewall Log Daemon.
-* **Cloud Firewall Log Daemon (`cfwlogd`)** will receive packet metadata from IPFilter, discarding uninteresting metadata.  Interesting metadata will be passed to AuditAPI.
-* **hermes** will gather log files from compute nodes and store them in the appropriate manta accounts.
+* **IPFilter** (`ipf`) will pass records for new connections, new connection-like traffic, and rejected traffic to the Cloud Firewall Log Daemon.
+* **Cloud Firewall Log Daemon** (`cfwlogd`) will receive events from IPFilter, match these events with relevant per-zone metadata, and write logs to the file system.
+* **Triton Log Archiver Service** will gather the logs written by Cloud Firewall Log Daemon and store them in Manta.
 
 The start of each allowed or blocked TCP connection or connection-like series of UDP packets needs to log the following metadata:
 
@@ -42,30 +40,101 @@ What gets logged will be determined by a `log` boolean attribute on each firewal
 
 ## IPFilter
 
+IPFilter will be enhanced in the following ways:
+
+* It will gain the ability to optionally log connection and connection-like events using a `call` action.  These will be logged to a new special-purpose device.
+* Each rule will be optionally tagged with a UUID
+
 ### Configuration
 
-This is done by `fwadm` and by the post-ready brand hook.
-
-- What is responsible for pushing rules (initial, updates) from Triton?
-  - Does this interface need to change to be able to pass a logging switch?
+The IPFilter configuration for each zone lives in `/zones/:zone/config/ipf[6].conf`.  The generation of these files is discussed in the *fwadm* section below.
 
 ### Rules
 
-- `call` may be used by knowledgable hackers.  Is that us?  Should we use this rather than log?
-- Do we alter the rules to only log when logging is enabled by cloud firewall?  Or do we always log and let `cfwlogd` sort it out?
-- Can we use `tag rule-uuid` with each rule so that the log entry will have the cloud firewall rule uuid?
+Traditionally, an `ipf.conf` file may look like:
+
+```
+# rule=da831f67-5016-42ec-817e-be7471445906, version=1521822733108.003634, wildcard=any
+pass in quick proto icmp from any to any  keep frags
+
+# rule=0366b13a-d9eb-47a6-9590-43708cc499cf, version=1521822734055.003636, wildcard=any
+
+# fwadm fallbacks
+block in all
+pass out quick proto tcp from any to any flags S/SA keep state
+pass out proto tcp from any to any
+pass out proto udp from any to any keep state
+pass out quick proto icmp from any to any keep state
+pass out proto icmp from any to any
+```
+
+Supposing that the first rule in the configuration above is to be logged, it would become:
+
+```
+# rule=da831f67-5016-42ec-817e-be7471445906, version=1521822733108.003634, wildcard=any
+pass in quick proto icmp from any to any  keep frags set-tag(uuid=da831f67-5016-42ec-817e-be7471445906) call ipf_kebe_please_fix_me
+```
+
+**XXX KEBE: ^^^^ what will the `call` really look like?  Will it be `call`?**
+
+The UUID will be stored in the kernel along with the rest of the rule configuration.  It will be included with each event.  If an event is logged and no `uuid` tag was specified, the logged UUID will be the nil UUID, 00000000-0000-0000-0000-000000000000.
+
+### Event device
+
+A new device, `/dev/XXX`, will be created with the intent that there will be a single processing reading records from it.  The record for each PASS and BLOCK event matches this structure:
+
+```
+/* XXX is this helpful for future implementors */
+typedef struct cfwev_hdr {
+       uint16_t cfweh_type;
+       uint16_t cfweh_size;
+} cfwev_hdr_t;
+
+/*
+ * PASS and BLOCK events
+ */
+/* XXX padding for alignment and size */
+typedef struct cfwev_s {
+        cfwev_hdr_t cfwev_hdr;
+#define cfwev_type cfwev_hdr.cfweh_type
+#define cfwev_size cfwev_hdr.cfweh_size
+        uint8_t cfwev_direction;
+        uint8_t cfwev_protocol; /* IPPROTO_* */
+        /*
+         * The above "direction" informs if src/dst are local/remote or
+         * remote/local.
+         */
+        uint16_t cfwev_sport;   /* Source port */
+        uint16_t cfwev_dport;   /* Dest. port */
+        in6_addr_t cfwev_saddr; /* Can be clever later with unions, w/not. */
+        in6_addr_t cfwev_daddr;
+        /* XXX KEBE ASKS hrtime for relative time from some start instead? */
+        struct timeval cfwev_tstamp;
+        zoneid_t cfwev_zonedid; /* Pullable from ipf_stack_t. */
+        uint32_t cfwev_ruleid;  /* Pullable from fr_info_t. */ /* XXX */
+        uuid_t   cfwev_ruleuuid;
+} cfwev_t;
+```
+
+Over time other event types may be added.  Each event type will start with a 2-byte `type` field that stores the type and a 2-byte `size` field that stores the size of the entire structure in bytes. No event will be larger than 8 KiB.
+
+A successful `read()` from `/dev/XXX` will return one or more event structures.  If there are no events available, the `read()` will block.  The number of events returned will be determined by the size of the passed buffer and the number of available events.  Each returned event may be of a different type and/or size.  Variable sized event types are allowed.
+
+The process that reads from `/dev/XXX` must check the `type` field.  If an unknown type is encountered, the `size` field should be used to find the start of the next event.
+
+If the read rate on `/dev/XXX` is to low.  Events may be dropped.  A best effort will be made to track the number of dropped events.  **XXX specify mechanism.**
 
 ## Cloud Firewall Log Daemon
 
-This is a new component, likely written in rust.  It reads logged packet metadata from the kernel via a device file.  It runs in the global zone on each compute node under the watchful eye of SMF.
+The Cloud Firewall Log Daemon, `cfwlogd`, is a new component that reads events from `/dev/XXX`.  Each event is processed, transforming it into a json-formatted log entry which is then written to a per-VM log file.
 
-- Likely does filtering beyond what is done by ipf
-  - Keep some state of recent UDP traffic, logging only first recent
-- Buffer some data when AuditAPI endpoint is not available
+In the event of insufficient disk space or other conditions, log entries may be dropped.
 
-Dropping of log entries is acceptable if the log rate is too great to stream to AuditAPI or if AuditAPI is unavailable for a long enough time that local buffer space is exhausted.  `cfwlogd` should make a best effort to keep track of the number of dropped entries and log that as conditions normalize.
+**XXX Should we be logging rule add/remove/change?**
 
-Should we be logging rule add/remove/change?
+### SMF Services
+
+The Cloud Firewall Log Daemon will be delivered with the [firewaller](https://github.com/joyent/sdc-firewaller-agent) agent.  That is, it will not be part of the platform image.  It runs in the global zone on each compute node under the watchful eye of SMF in the `svc:/smartdc/agent/firewaller-logger:default` service.  Setup of this agent will be handled by the `svc:/smartdc/agent/firewaller-logger-setup:default` service.  See the *FWAPI* section below.
 
 ### Record Format
 
@@ -111,7 +180,7 @@ A typical denied connection will look like the following.
 
 ### Log location
 
-`cfwlogd` logs will be stored in a new dataset that will be mounted at `/var/log/firewall`.  This dataset should have compression enabled.  Logs will be named
+`cfwlogd` logs will be stored in a new dataset that will be mounted at `/var/log/firewall`.  Logs will be named
 
 ```
 /var/log/firewall/:customer_uuid/:vm_uuid/current.log.gz
@@ -158,7 +227,7 @@ The following serves as an example of how this may be configured.
     "name": "firewall_logs",
     "search_dirs": [ "/var/log/firewall" ],
     "regex": "^/var/log/firewall/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9a-f]{8}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{4}\\-[0-9a-f]{12})/([0-9]+)-([0-9]+)-([0-9]+)T([0-9]+):([0-9]+):([0-9]+)\\.log.gz$",
-    "manta_path": "/%U/reports/firewall-logs/$2/#y/#m/#d/#y-%m-%dT%H:%M:%S.log.gz",
+    "manta_path": "/%U/reports/firewall-logs/#y/#m/#d/$2/#y-%m-%dT%H:%M:%S.log.gz",
     "customer_uuid": "$1",
     "date_string": {
       "y": "$3", "m": "$4", "d": "$5",
@@ -221,6 +290,29 @@ Currently rules look like:
 ```
 
 Presumably we need a boolean `log`. Need schema migration to allow the new member `log (Boolean)` to be added. It would be desirable to follow up with somebody familiar with FWAPI and check if we need to add anything to the UFDS flavor of fwrules. Other than that, this would mean a moray version bump when adding the new member to the object. Apparently, there's not need for such field to be part of an index.
+
+### Firewaller Agent
+
+As described in the *Cloud Firewall Log Daemon* section above, firewaller agent services will change.  In particular:
+
+* `cfwlogd` will be delivered to each compute node with this agent.
+* `svc:/smartdc/agent/firewaller-logger-setup:default` will handle the setup required for `cfwlogd`.
+* `svc:/smartdc/agent/firewaller-logger:default` is a new service that will run `cfwlogd`.
+
+As described in the *fwadm* section below and the *IPFilter* section above, the per-zone `ipf.conf` and `ipf6.conf` files will change in a way that is not backward compatible.  The `firewaller-logger-setup` service will be responsible for ensuring that each zone's `ipf` configuration files are a version that is compatible with the running system.
+
+**XXX The compatibility check mechanism has not been worked out.  This could be as simple as checking to see if /dev/XXX exists, or it could be something like is described in OS-4121.**
+
+To ensure that the `ipf` configuration files are compatible before zones start to boot, `svc:/smartdc/agent/firewaller-logger-setup:default` will be depended upon by `svc:/system/smartdc/vmadmd:default` and `svc:/system/zones:default`.  These dependencies will be added to the `svc:/smartdc/agent/firewaller-logger-setup:default` service using `dependent` elements similar to the following:
+
+```xml
+  <dependent name="smartdc_vmadmd" grouping="optional_all" restart_on="none">
+    <service_fmri value='svc:/system/smartdc/vmadmd:default' />
+  </dependent>
+  <dependent name="system_zones" grouping="optional_all" restart_on="none">
+    <service_fmri value='svc:/system/zones:default' />
+  </dependent>
+```
 
 ## fwadm
 
