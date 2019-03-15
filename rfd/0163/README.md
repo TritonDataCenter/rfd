@@ -34,7 +34,7 @@ The start of each allowed or blocked TCP connection or connection-like series of
 
 Each customer that uses Cloud Firewall Logging must have Manta space available.
 
-In the event of abnormally high logging activity or an extended outage to AuditAPI, log entries may be dropped.
+In the event of abnormally high logging activity or an extended outage the log archiver service, log entries may be dropped.
 
 What gets logged will be determined by a `log` boolean attribute on each firewall rule. If and only if it is set to `true` will the rule trigger logging.  The default is for it to be unset, which is the equivalent of `false`.
 
@@ -81,9 +81,9 @@ The UUID will be stored in the kernel along with the rest of the rule configurat
 
 ### Event device
 
-A new device, `/dev/XXX`, will be created with the intent that there will be a single processing reading records from it.  The record for each PASS and BLOCK event matches this structure:
+A new device, `/dev/XXX`, will be created with the intent that there will be a single process reading records from it.  The record for each PASS and BLOCK event is as described below.
 
-```
+```c
 /* XXX is this helpful for future implementors */
 typedef struct cfwev_hdr {
        uint16_t cfweh_type;
@@ -116,13 +116,13 @@ typedef struct cfwev_s {
 } cfwev_t;
 ```
 
-Over time other event types may be added.  Each event type will start with a 2-byte `type` field that stores the type and a 2-byte `size` field that stores the size of the entire structure in bytes. No event will be larger than 8 KiB.
+Over time other event types may be added.  Each event will start with a 2-byte `type` field that stores the type and a 2-byte `size` field that stores the size of the entire structure in bytes. No event will be larger than 8 KiB, the minimum recommend size of the buffer used when reading from the device.
 
 A successful `read()` from `/dev/XXX` will return one or more event structures.  If there are no events available, the `read()` will block.  The number of events returned will be determined by the size of the passed buffer and the number of available events.  Each returned event may be of a different type and/or size.  Variable sized event types are allowed.
 
 The process that reads from `/dev/XXX` must check the `type` field.  If an unknown type is encountered, the `size` field should be used to find the start of the next event.
 
-If the read rate on `/dev/XXX` is to low.  Events may be dropped.  A best effort will be made to track the number of dropped events.  **XXX specify mechanism.**
+If the read rate on `/dev/XXX` is too low events may be dropped.  A best effort will be made to track the number of dropped events.  **XXX specify mechanism.**
 
 ## Cloud Firewall Log Daemon
 
@@ -296,7 +296,7 @@ Presumably we need a boolean `log`. Need schema migration to allow the new membe
 As described in the *Cloud Firewall Log Daemon* section above, firewaller agent services will change.  In particular:
 
 * `cfwlogd` will be delivered to each compute node with this agent.
-* `svc:/smartdc/agent/firewaller-logger-setup:default` will handle the setup required for `cfwlogd`.
+* `svc:/smartdc/agent/firewaller-logger-setup:default` is a new service that will handle the setup required for `cfwlogd`.
 * `svc:/smartdc/agent/firewaller-logger:default` is a new service that will run `cfwlogd`.
 
 As described in the *fwadm* section below and the *IPFilter* section above, the per-zone `ipf.conf` and `ipf6.conf` files will change in a way that is not backward compatible.  The `firewaller-logger-setup` service will be responsible for ensuring that each zone's `ipf` configuration files are a version that is compatible with the running system.
@@ -382,6 +382,8 @@ Deprecated unless User portal needs it and cannot transition to node-triton. No 
 
 ## sdcadm
 
-Despite of the final components we need to deploy, i.e. add or not AuditAPI, or just deploy `cwlogd` to a given set of CNs, we need to add a `sdcadm post-setup` subcommand which will be responsible to create the required SAPI services/instances.
+**XXX update pending review of firewaller agent section**
+
+Despite of the final components we need to deploy, i.e. add or not AuditAPI, or just deploy `cfwlogd` to a given set of CNs, we need to add a `sdcadm post-setup` subcommand which will be responsible to create the required SAPI services/instances.
 
 (`sdcadm post-setup` itself will appreciate some general purpose refactoring, given we have a lot of similar subcommands sharing intention and more code than differences but using c&p instead of something easier to maintain. That's obviously part of a separated problem).
