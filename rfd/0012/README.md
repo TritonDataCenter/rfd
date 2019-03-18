@@ -122,16 +122,6 @@ GH issues for each non-trivial chunk of work here.
 | GetMachineTag                    | DONE     | `triton instance tag get INST KEY`                          |
 | DeleteMachineTag(s)              | DONE     | `triton instance tag delete INST [KEY ...]`                 |
 | -------------------------------- | -------- | ----------------------------------------------------------- |
-| **ANALYTICS**                    |          |                                                             |
-| DescribeAnalytics                | -        |                                                             |
-| ListInstrumentations             | -        |                                                             |
-| GetInstrumentation               | -        |                                                             |
-| GetInstrumentationValue          | -        |                                                             |
-| GetInstrumentationHeatmap        | -        |                                                             |
-| GetInstrumentationHeatmapDetails | -        |                                                             |
-| CreateInstrumentation            | -        |                                                             |
-| DeleteInstrumentation            | -        |                                                             |
-| -------------------------------- | -------- | ----------------------------------------------------------- |
 | **FIREWALL RULES**               |          |                                                             |
 | ListFirewallRules                | DONE     | `triton fwrule list`                                        |
 | GetFirewallRule                  | DONE     | `triton fwrule get FWRULE-ID`                               |
