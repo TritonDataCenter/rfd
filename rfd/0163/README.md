@@ -42,7 +42,7 @@ What gets logged will be determined by a `log` boolean attribute on each firewal
 
 IPFilter will be enhanced in the following ways:
 
-* It will gain the ability to optionally log connection and connection-like events using a `call` action.  These will be logged to a new special-purpose device.
+* It will gain the ability to optionally log connection and connection-like events that gain state via `keep cfw`.  These will be logged to a new special-purpose device.
 * Each rule will be optionally tagged with a UUID
 
 ### Configuration
@@ -72,10 +72,10 @@ Supposing that the first rule in the configuration above is to be logged, it wou
 
 ```
 # rule=da831f67-5016-42ec-817e-be7471445906, version=1521822733108.003634, wildcard=any
-pass in quick proto icmp from any to any  keep frags set-tag(uuid=da831f67-5016-42ec-817e-be7471445906) call ipf_kebe_please_fix_me
+pass in quick proto icmp from any to any keep frags keep cfw set-tag(uuid=da831f67-5016-42ec-817e-be7471445906)
 ```
 
-**XXX KEBE: ^^^^ what will the `call` really look like?  Will it be `call`?**
+**XXX KEBE: ^^^^ please confirm `keep cfw`** above
 
 The UUID will be stored in the kernel along with the rest of the rule configuration.  It will be included with each event.  If an event is logged and no `uuid` tag was specified, the logged UUID will be the nil UUID, 00000000-0000-0000-0000-000000000000.
 
@@ -210,6 +210,22 @@ As alluded to above, the log files will be written as gzip files.  On-the-fly co
 
 `cfwlogd` MUST NOT blindly open logs in append mode, as a compressed log file that was not closed properly is likely to be in a state that would cause any appended data to be unreadable.  Instead, when `cfwlogd` finds an existing log file, it will rename it according to the same pattern that is used during log rotation.  The log file open (creation) will then be retried.
 
+### Triton Cloud Firewall Log Agent
+
+A new agent, `firewall-loggger-agent`, will be created.  It will consists of:
+
+* `cfwlogd`
+* `svc:/smartdc/agent/firewall-logger-setup:default` is a new service that will handle the setup required for `cfwlogd`.
+* `svc:/smartdc/agent/firewall-logger:default` is a new service that will run `cfwlogd`.
+
+Dependencies will be established in the services mentioned above to ensure the following order:
+
+1. `svc:/smartdc/agent/firewall-logger-setup:default`
+2. `svc:/smartdc/agent/firewall-logger:default`
+3. Services that may boot zones
+   - `svc:/system/zones:default`
+   - `svc:/system/smartdc/vmadmd:default`
+
 ## Log Archiver Service
 
 A new Triton service, `logarchiver`, will be created.  This service will have a core VM `logarchiver0` that will run a hermes master and a hermes proxy. This service will be responsible for creating an SMF service, `svc:/smartdc/agent/logarchiver-agent:default`, that will run the hermes actor.  See [sdc-hermes](https://github.com/joyent/sdc-hermes) for more information related to hermes.
@@ -293,17 +309,7 @@ Presumably we need a boolean `log`. Need schema migration to allow the new membe
 
 ### Firewaller Agent
 
-As described in the *Cloud Firewall Log Daemon* section above, firewaller agent services will change.  In particular:
-
-* `cfwlogd` will be delivered to each compute node with this agent.
-* `svc:/smartdc/agent/firewaller-logger-setup:default` is a new service that will handle the setup required for `cfwlogd`.
-* `svc:/smartdc/agent/firewaller-logger:default` is a new service that will run `cfwlogd`.
-
-As described in the *fwadm* section below and the *IPFilter* section above, the per-zone `ipf.conf` and `ipf6.conf` files will change in a way that is not backward compatible.  The `firewaller-logger-setup` service will be responsible for ensuring that each zone's `ipf` configuration files are a version that is compatible with the running system.
-
-**XXX The compatibility check mechanism has not been worked out.  This could be as simple as checking to see if /dev/XXX exists, or it could be something like is described in OS-4121.**
-
-To ensure that the `ipf` configuration files are compatible before zones start to boot, `svc:/smartdc/agent/firewaller-logger-setup:default` will be depended upon by `svc:/system/smartdc/vmadmd:default` and `svc:/system/zones:default`.  These dependencies will be added to the `svc:/smartdc/agent/firewaller-logger-setup:default` service using `dependent` elements similar to the following:
+As described in the *fwadm* section below and the *IPFilter* section above, the per-zone `ipf.conf` and `ipf6.conf` files will change in a way that is not backward compatible.  A new service, `svc:/smartdc/agent/firewaller-config-migration:default`, will be responsible for ensuring that each zone's `ipf` configuration files are a version that is compatible with the running system.  This new service will be depended upon by `svc:/system/smartdc/vmadmd:default` and `svc:/system/zones:default`.  These dependencies will be added to the `svc:/smartdc/agent/firewaller-config-migration:default` service using `dependent` elements similar to the following:
 
 ```xml
   <dependent name="smartdc_vmadmd" grouping="optional_all" restart_on="none">
@@ -313,6 +319,8 @@ To ensure that the `ipf` configuration files are compatible before zones start t
     <service_fmri value='svc:/system/zones:default' />
   </dependent>
 ```
+
+**XXX The compatibility check mechanism has not been worked out.  This could be as simple as checking to see if /dev/XXX exists, or it could be something like is described in OS-4121.**
 
 ## fwadm
 
