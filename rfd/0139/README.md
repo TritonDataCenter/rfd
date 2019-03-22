@@ -226,12 +226,13 @@ clearly reporting subtests.
 
 ### The bad with node-tap
 
-- Current node-tap states it wants node v4, at least.
+- Modern node-tap versions require newer versions of node than some of our
+  ancient usage.
 
-    ```
-    $ json -f package.json engines -0
-    {"node":">=4"}
-    ```
+    - node-tap v12: requires node >=6
+    - node-tap v10 and v11: require node >=4. Some of its deps "want" node >=6
+      which might mean that some features (e.g. coverage?) break with node v4.
+      I haven't test.
 
   Some Triton repos are still on node 0.10. [RFD 59](../0059/) is attempting
   to migrate all those to node v4 or, more recently, v6. Hopefully this then
@@ -289,7 +290,8 @@ ok 1 - hi.test.js # time=254.482ms
 Like [this](https://github.com/trentm/node-smaller/blob/9152d4c17d93168c2803162eebf380d3599011e8/pkgs/tap/Makefile#L14-L30).
 
 TODO: debate whether the overhead of this maintenance of a (light) fork of
-node-tap is worth the size gain.
+node-tap is worth the size gain. I'm now leaning towards shipping test
+packages for our components separately. We then separate concerns.
 
 
 ### But I want coverage!
@@ -305,6 +307,12 @@ node-tap library usage in tap files. (For guidelines on setting up setup testing
 in general in Joyent Triton repos, I defer to the hopefully coming
 <https://github.com/joyent/node-triton-package-boilerplate> for Node.js packages
 and <https://github.com/joyent/triton-service-boilerplate> repos.)
+
+### Do **not** use the `TAP` envvar in your Makefile
+
+`TAP=1` is used by the `tap` test runner to mean "emit TAP format output".
+This guideline is here because it is an otherwise common pattern in Joyent
+Engineering Makefiles to have a var for tool "foo" called "FOO".
 
 ### Use `tap -T ...` to disable default 30s test timeout.
 
@@ -354,9 +362,9 @@ top-level test like this:
 
 ```js
 // ...
-test('affinity (triton create -a RULE ...)', testOpts, function (tt) {
+test('affinity (triton create -a RULE ...)', testOpts, function (suite) {
 
-    tt.test('triton create -n db1 -a instance==db0', function (t) {
+    suite.test('triton create -n db1 -a instance==db0', function (t) {
         //...
         t.end();
     });
@@ -431,6 +439,9 @@ This is a quick list of points against nodeunit from memory:
   deepEqual results though. If the object changes after deepEqual is called,
   then it prints out the modified version.
     https://github.com/joyent/smartos-live/blob/master/src/fw/tools/nodeunit.patch
+- nodeunit asserts don't allow a final string argument to print
+  context/description of the assert. That forces test output to be near useless
+  for debuggin
 
 
 ### Appendix D: mocha
@@ -438,7 +449,7 @@ This is a quick list of points against nodeunit from memory:
 tl;dr: Mocha is disqualified because: (a) it doesn't support parallel running
 (though there [is a module for
 that](https://www.npmjs.com/package/mocha-parallel-tests), modulo
-[this](https://github.com/yandex/mocha-parallel-tests/issues/129)), (b) is runs
+[this](https://github.com/yandex/mocha-parallel-tests/issues/129)), (b) it runs
 test files in a special environment, (c) its use of exception capture conflats
 test assertions with programmer errors in test code.
 
