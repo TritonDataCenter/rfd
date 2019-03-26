@@ -40,13 +40,13 @@ As this works quite well for us, there seems no reason to not use pkgsrc
 rust in all the places we use pkgsrc today.
 
 One place we don't currently use pkgsrc is for components bundled as a
-part of SmartOS.  This makes sense since out intention (as stated earlier)
+part of SmartOS.  This makes sense since our intention (as stated earlier)
 is that pkgsrc sits on top of the platform.  That does mean that anything
 intended to be delivered as part of the platform and be written in rust
 may not be able to utilize the pkgsrc rust.  Today, most things are written
 in C, bash/ksh, or node.  We build a platform-specific version of node as
 part of the illumos-extra repository, and platform bundled node code
-utilizied that.  For rust, we will need to think how we want to handle this.
+utilizes that.  For rust, we will need to think how we want to handle this.
 Our experiences w/ the platform bundled node should certainly inform these
 discussions, though should not dictate any particular solution.
 
@@ -55,7 +55,7 @@ discussions, though should not dictate any particular solution.
 The official mechanism for downloading/using rust is using rustup.  We
 should aim to have rust binaries that run on illumos available via rustup.
 These rustup binaries should be as similar/compatible with the pkgsrc
-delivered rust as make sense (e.g. one might expect some differents with
+delivered rust as make sense (e.g. one might expect some differences with
 respect to pathing and such between the two binaries).
 
 While this should be a goal, it need not be an immediate goal that blocks
@@ -133,10 +133,10 @@ list):
     triple, so the creation of an illumos target does not require a new LLVM
     triple).
 
-There will some upfront costs.  Any lower-level crates will likely need to have
-code contributed to include illumos in any platform-specific code.  Our current
-hope (based on some work already) suggests this should hopefully not pose a
-huge burden.  Generally it should be a one-time deal, and is often just a
+There will be some upfront costs.  Any lower-level crates will likely need to
+have code contributed to include illumos in any platform-specific code.  Our
+current hope (based on some work already) suggests this should hopefully not
+pose a huge burden.  Generally it should be a one-time deal, and is often just a
 matter of adding `target_os="illumos"` in a few places.
 
 One other note -- we should probably avoid producing anything in rust that
@@ -177,7 +177,7 @@ As mentioned above, how we go about delivering things in the platform using
 rust needs some thought.
 
 What is the experience like using DTrace on rust binaries?  Creating static
-probes?  Are there things needed that woud enhance/improve the experience?
+probes?  Are there things needed that would enhance/improve the experience?
 
 What is the port-mortem experience with rust binaries?  How difficult is it to
 analyize a core file from a rust binary?  We currently have changes out for
