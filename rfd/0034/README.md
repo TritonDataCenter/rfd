@@ -530,8 +530,6 @@ operations:
         //  "paused"     - the "begin" phase (and possibly "sync" phase) has
         //                 been run - now waiting for a call to "sync"
         //                 or the final call to "switch"
-        //  "aborting"   - attempting to abort the migration
-        //  "pausing"    - attempting to pause the migration
         //  "aborted"    - user or operator aborted the migration attempt
         //  "failed"     - migration operation could not complete, see "error"
         //  "successful" - migration was successfully completed, you can use the
@@ -569,7 +567,7 @@ operations:
         //  "begin"            - just starting the migration operation
         //  "sync"             - updating filesystems using the "sync" phase
         //  "switch"           - sending final zfs datasets and switching
-        //  "finished"         - completed
+        //  "abort"            - aborting the migration
 
       num_sync_phases: "number"
         // The number of successful "sync" phases this migration has performed.
