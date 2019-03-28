@@ -1350,24 +1350,233 @@ kbmd then does the following:
 1. A new token value is added to the `rfd77:config` zfs property on the
    primary zpool (i.e. zones).
 2. New managed box files with the GUID of the new token are created.
-3. Notify everybody of the change (presumably using the gossip protocol?)
+3. Notify any local users of the PIV token of the change.  Interested local
+   users will issue a 'register' command along with the fd of a door server
+   in the interested program.  kbmd will use this door server to send the
+   notification (most of this will likely be abstracted behind a library
+   interface to minimize the amount of work required by the interested party).
 4. Remove the old primary token from the `rfd77:config` zfs property on the
    primary zpool.
 5. Cleanup old managed box files: any box for a GUID not in `rfd77:config` or
    otherwise not known are deleted.
 
+#### In depth: boxes and eboxes
+
+##### DH Box
+
+As mentioned previously, a DH box is an encrypted container used to hold
+a key.  The design is such that only the holder of the private key of the
+box (which in our design is the PIV token) can decrypt and access the
+contents of the box.  The box also includes some metadata to facilitate
+their use.  The format of a box is illustrated by the following diagram:
+
+....
++---------------+
+| magic         | uint8 0xB0
+|               | uint8 0xC5
++---------------+
+| version       | uint8 (01)
++---------------+
+|               |
+| guid          | string
+|               |
+|               |               /+---------------+
++---------------+              / |               |
+| slot          | uint8 (9D)  /  | type          | cstring
++---------------+------------+   |               | (ecdsa-sha2-nistp*)
+|               |                +---------------+
+| ephem pubkey  | string         | curve         | cstring
+|               |                +---------------+
+|               |                |               |
++---------------+------------+   | ecpoint       | string
+|               |             \  |               | (0x04, ...)
+| dest pubkey   | string       \ |               | uncompressed
+|               |               \+---------------+
+|               |
++---------------+
+|               |
+| cipher        | cstring (chacha20-poly1305)
+|               |
++---------------+
+|               |
+| kdf           | cstring (sha512)
+|               |
++---------------+
+|               |
+| iv            | string
+|               |
+|               |
++---------------+
+|               |
+| encdata       | string
+|               |
+|               |
++---------------+
+....
+
+The types of each field refer to the types used by SSH for parsing.
+
+##### ebox
+
+An ebox (enhanced box) can contain a box as described above, as well as one
+or more recovery boxes.  If an ebox contains multiple recovery boxes, these
+are the M pieces of an N of M threshold scheme (where N of M pieces are needed
+to determine the key).
+
+....
++---------------+
+| magic         | uint8 (0xEB)
+|               | uint8 (0x0C)
++---------------+
+| version       | uint8 (01)
++---------------+
+| type          | uint8 (xx = EBOX_KEY, xx = EBOX_STREAM)
++---------------+
+|               |
+| cipher        | cstring
+|               |
++---------------+
+|               |
+| iv            | string
+|               |
++---------------+
+|               |
+| encdata       | string       /+---------------+
+|               |             / | type          | uint8
++---------------+            /  +---------------+
+| nconfigs      | uint8     /   | n             | uint8
++---------------+----------+    +---------------+
+|               |               | m             | uint8
+| config        |               +---------------+
+|               |               |               |
++---------------+----------+    | part          |
+|               |           \   |               |
+| config...     |            \  +---------------+
+|               |             \ | part...       |
++---------------+              \+---------------+
+....
+
+`nconfigs` determine the number of config structures are in the ebox (at least
+1 is required).
+
+For each config, `m` determines the number of parts present.  Each `part` is
+a sequence of tag/value pairs terminated by a `EBOX_PART_END` tag.
+
+Generic structure
+....
++---------------+
+| tag           | uint8
++---------------+
+|               |
+| value         |
+|               |
++---------------+
+| tag           | uint8
++---------------+
+|               |
+| value         |
+|               |
++---------------+
+| ...           |
++---------------+
+| tag           | uint8 (EBOX_PART_END)
++---------------+
+....
+
+Public key
+....
++---------------+
+| tag           | uint8 (EBOX_PART_PUBKEY)
++---------------+
+|               |
+| pubkey        | stringb
+|               |
++---------------+
+....
+
+Card Authentication Key (CAK)
+....
++---------------+
+| tag           | uint8 (EBOX_PART_CAK)
++---------------+
+|               |
+| cak           | stringb
+|               |
++---------------+
+....
+
+Name
+....
++---------------+
+| tag           | uint8 (EBOX_PART_NAME)
++---------------+
+|               |
+| name          | cstring
+|               |
++---------------+
+....
+
+GUID
+....
++---------------+
+| tag           | uint8 (EBOX_PART_GUID)
++---------------+
+|               |
+| guid          | string
+|               |
++---------------+
+....
+
+BOX
+....
++---------------+
+| tag           | uint8 (EBOX_PART_BOX)
++---------------+
+|               |
+| box           | (see above definition)
+|               |
++---------------+
+....
+
+XXX: Add info about ebox templates
+
 #### In depth: first-time setup
 
-The "setup" process is set out the same as recovery, except that in the
-final stages, kbmd gives an nvlist of ZFS properties to set on the pool
-root FS and the raw key material to supply to the stdin of `zpool
-create`. The client is responsible then for creating the pool using this
-information and replying again once that has been completed. The client
-has to complete this step to avoid kbmd needing to handle the entire
-pool creation process (including disklayout etc), since the key material
-has to be given at creation and cannot be given later.
+When an operator sets up a compute node using `sdc-server setup`, the UR
+instance running on the compute node in question runs the `joysetup.sh` script
+which (among other things) passes a JSON description of the pool layout to
+create on the compute node (raidz2, spares, etc) to the `mkzpool` command
+(which resides on the PI) which then runs `zpool create` with the necessary
+command line parameters based on the given JSON topology.
 
-The ultimate command that get runs should look something similar to:
+The mkzpool command will be extended to accept an `-e` flag to create an
+encrypted zpool.  When present, instead of executing `zpool create`,
+instead `mkzpool` will execute `kbmadm create-zpool` with the same parameters
+as `zpool create`.
+
+kbmd will then search for a pivtoken that has not been setup.  If no such
+token is present, the command will fail.  If a pivtoken is found, kbmd will
+perform the following steps:
+
+. Initialize the token.  The token will generate a random GUID.
+. Create the 9a, 9c, 9d, and 9e keys on the token, as well as the attestation
+  certificates (if supported by the token).
+. Set a random 6-digit pin for the token.
+. Generate a random encryption key for the pool
+. Create a DH box and store the key in the box.
+. Save the pivtoken information (including the pin) with KBMAPI and obtain the
+  recovery key.
+. Create a recovery box using the current set of recovery keys reported by
+  the gossip service and the recovery key obtained from KBMAPI.
+. Create an ebox with the encryption key and recovery keys.
+. Execute `zpool create` prepending the arguments necessary to enable
+  encryption on the pool, obtain the key from stdin, and set the `rfd77:config`
+  property to the base64 encoded value of the ebox.  kbmd will write the
+  random encryption key generated in the earlier step to the stdin of the
+  `zpool create` command so that it's not readily observable from the running
+  system.
+
+The ultimate `zpool create` command that executes will look similar to:
 
 [source,shell]
 ----
@@ -1375,15 +1584,13 @@ zpool create \
     -O encryption=on \
     -O keyformat=raw \
     -O keylocation=prompt \
-    -O rfd77:config=xxxx \
-    zones ....
+    -O rfd77:config=<base64 encoded ebox> \
+    zones <arguments to kbmadm create-zpool>
 ----
 
-Where the disk layout values are just passed through from the setup and we
-write the key value out to stdin of the zpool command from kbmd.
-
-Likely the joysetup.sh script will need to be updated to interact with kbmd
-when encryption is desired while setting up a new CN.
+The `kbmadm create-zpool` command will block until the zpool has been created
+or an error occurs.  It is important to note that the `kbmadm` command sends
+the create request to `kbmd` and `kbmd` does the actual work.
 
 #### In depth: events
 
@@ -1438,15 +1645,12 @@ managed boxes.
 
 #### Interaction: ZFS
 
-While kbmd does not involve itself directly in the creation of a new
-encrypted pool (the setup process is expected to use the data it
-provides to do that), after setup has completed it will manage the
-"rfd77:config" ZFS property on the pool itself directly. This will be
-read during boot and written during recovery or rekeying. kbmd itself
-will also make the libzfs call to provide key material to the pool
-during the unlock process (since it needs to do this and mount at least
-some of the pool's filesystems before it can check on the state of any
-managed boxes on disk).
+After setup has completed kbmd will manage the "rfd77:config" ZFS property on
+the pool itself directly. This will be read during boot and written during
+recovery or rekeying. kbmd itself will also make the libzfs call to provide
+key material to the pool during the unlock process (since it needs to do this
+and mount at least some of the pool's filesystems before it can check on the
+state of any managed boxes on disk).
 
 #### Interaction: Triton
 
