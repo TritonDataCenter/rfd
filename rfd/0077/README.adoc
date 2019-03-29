@@ -1569,14 +1569,12 @@ perform the following steps:
 . Create a recovery box using the current set of recovery keys reported by
   the gossip service and the recovery key obtained from KBMAPI.
 . Create an ebox with the encryption key and recovery keys.
-. Execute `zpool create` prepending the arguments necessary to enable
-  encryption on the pool, obtain the key from stdin, and set the `rfd77:config`
-  property to the base64 encoded value of the ebox.  kbmd will write the
-  random encryption key generated in the earlier step to the stdin of the
-  `zpool create` command so that it's not readily observable from the running
-  system.
+. Return the additional `-O` arguments for the `zpool create` command as well
+  as the pool encryption key to the invoking `kbmadm` process.
 
-The ultimate `zpool create` command that executes will look similar to:
+The `kbmadm` command takes the returned arguments, combined with the
+`zpool create` arguments passed to it to create the actual `zpool create`
+command that is executed.  The command will look similar to:
 
 [source,shell]
 ----
@@ -1588,9 +1586,8 @@ zpool create \
     zones <arguments to kbmadm create-zpool>
 ----
 
-The `kbmadm create-zpool` command will block until the zpool has been created
-or an error occurs.  It is important to note that the `kbmadm` command sends
-the create request to `kbmd` and `kbmd` does the actual work.
+The `kbmadm` command will write the pool encryption key to the stdin of the
+execed `zpool create` command.
 
 #### In depth: events
 
