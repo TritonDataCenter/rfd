@@ -209,6 +209,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 163 Cloud Firewall Logging](./rfd/0163/README.md) |
 | draft | [RFD 164 Open Source Policy](./rfd/0164/README.md) |
 | draft | [RFD 165 Security Updates for Triton/Manta Core Images](./rfd/0165/README.md) |
+| predraft | [RFD 166 Improving phy Management](./rfd/0166/README.md) |
 
 ## Contents of an RFD
 
