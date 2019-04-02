@@ -1,6 +1,6 @@
 ---
 authors: Brittany Wald <brittany.wald@joyent.com>
-state: predraft
+state: draft
 discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+155%22'
 ---
 <!--
@@ -10,21 +10,42 @@ discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+155%22'
 -->
 
 <!--
-    Copyright (c) 2018, Joyent, Inc
+    Copyright (c) 2019, Joyent, Inc
 -->
 
 # RFD 155 Manta Buckets API
 
-This RFD will describe the new buckets API for the Manta storage service.
+This RFD will describe the new buckets API for the Manta storage service. The
+functional purpose of this requires some background understanding of Manta's
+capabilities today.
+
+We expect that each directory or object creation requires about the same
+amount of database work. Because of our usage of a metadata tier, which, among
+other things, ensures that database records (metadata) are all around the same
+size regardless of the size of the actual object stored to disk, we describe
+our workload capacity in terms of TPS (transactions per second).
+
+This is related to, but not the same as, total throughput in bytes. This is
+because we use a hierarchical data storage filesystem. Whenever we create an
+object, we may also have to create some number of its parent directories. On
+average, the number of directories created in order to upload an object is 3.8.
+
+Switching to an API which uses buckets will bring our ratio of objects created
+to database records created to 1:1. This will improve write performance, as
+well as simplify conversions from database TPS to bytes throughput.
+
 
 # HTTP API
 
-This is a preliminary API design, which may change as we proceed through
-research efforts.
+We use a RESTful API design. For now, this includes the ability to create, get,
+delete, and list buckets as well as objects in buckets. Eventually this API
+will need to expand to include the ability to do multi-part uploads.
+
 
 ## Headers
 
 These are headers we will use on every request.
+
 
 #### Authentication
 
@@ -33,8 +54,7 @@ requests.
 
 #### Versioning
 
-Semantic versioning.
-Current: `0.0.0`
+Semantic versioning. Current: `0.0.0`
 
 #### Date
 
@@ -55,9 +75,16 @@ slash may be treated as folders later.
 We will add the following routes to Muskie to support Manta Buckets. See `MANTA-3898`
 for more information.
 
+
 ### Buckets
 
 #### List buckets (PUT /:login/buckets)
+
+List all buckets for an account's namespace. The `type` of each object in the `\n`
+separated JSON stream should be `bucket`, since each object returned should
+represent a Manta bucket. A successful request should return an HTTP status
+code of 200, as well as records containing a `name`, a `type` (of "bucket", as
+stated previously), and an `mtime`.
 
 Sample Request
 ```
@@ -68,7 +95,10 @@ Host: *.manta.joyent.com
 Accept: */*
 date: Tue, 18 Dec 2018 20:38:18 GMT
 Authorization: $Authorization
+```
 
+Sample Response
+```
 HTTP/1.1 200 OK
 Date: Tue, 18 Dec 2018 20:38:18 GMT
 Server: Manta
@@ -83,9 +113,39 @@ Transfer-Encoding: chunked
 
 #### Check bucket (HEAD /:login/buckets/:bucket)
 
-TODO
+Ping a bucket as specified in the HTTP Request-URI. A successful response should
+return an HTTP status code of 200, and no response body.
+
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket -X HEAD -vvv
+
+HEAD /$MANTA_USER/buckets/mybucket HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Mon, 01 Apr 2019 22:50:10 GMT
+Authorization: $Authorization
+```
+
+Sample Response
+```
+HTTP/1.1 200 OK
+Connection: close
+Date: Mon, 01 Apr 2019 22:50:10 GMT
+Server: Manta
+x-request-id: 80e3e320-54d0-11e9-8c2b-2bfe93ce4d12
+x-response-time: 141
+x-server-name: $zonename
+```
 
 #### Create bucket (PUT /:login/buckets/:bucket)
+
+Idempotent create or update a bucket in one operation. Your private namespace
+begins with `:/login/buckets`. You can create buckets in that namespace. To
+create a bucket, set the HTTP Request-URI to the buckets path you want to make
+or update, and set the `Content-Type` header to `application/json; type=bucket`.
+There is no request or response body. An HTTP status code of 204 is returned on
+success.
 
 Sample Request
 ```
@@ -99,7 +159,10 @@ Accept: */*
 Content-Type: application/json; type=bucket
 date: Wed, 19 Dec 2018 21:38:00 GMT
 Authorization: $Authorization
+```
 
+Sample Response
+```
 HTTP/1.1 204 No Content
 Connection: close
 Date: Wed, 19 Dec 2018 21:38:00 GMT
@@ -111,6 +174,10 @@ x-server-name: $zonename
 
 #### Get bucket (GET /:login/buckets/:bucket)
 
+Get a bucket as specified in the HTTP Request-URI. A successful response should
+return an HTTP status code of 200, and a body containing a record with a `name`,
+a `type` of "bucket", and an ISO8601 timestamp `mtime`.
+
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/mybucket -X GET
@@ -120,7 +187,10 @@ Host: *.manta.joyent.com
 Accept: */*
 date: Wed, 19 Dec 2018 21:39:06 GMT
 Authorization: $Authorization
+```
 
+Sample Response
+```
 HTTP/1.1 200 OK
 Connection: close
 Content-Type: application/json
@@ -137,6 +207,9 @@ x-server-name: $zonename
 
 #### Delete bucket (DELETE /:login/buckets/:bucket)
 
+Delete a bucket as specified in the HTTP Request-URI. A successful response will
+return an HTTP status code of 204, and no response data.
+
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/newbucket -X DELETE
@@ -146,7 +219,10 @@ Host: *.manta.joyent.com
 Accept: */*
 date: Wed, 19 Dec 2018 21:39:56 GMT
 Authorization: $Authorization
+```
 
+Sample Response
+```
 HTTP/1.1 204 No Content
 Connection: close
 Date: Wed, 19 Dec 2018 21:39:56 GMT
@@ -159,19 +235,22 @@ x-server-name: $zonename
 
 ### Objects
 
-#### List bucket contents unordered (GET /:login/buckets?sorted=false
-
-TODO
-
-#### List bucket contents in lexicographical order (GET /:login/buckets?sorted=true)
-
-TODO
-
-#### List paths under prefixes of the bucket (GET /:login/buckets?prefix={:filter})
-
-TODO
-
 #### List objects (GET /:login/buckets/:bucket/objects)
+
+List objects within a bucket.
+
+TBD: Sorting parameters may be specified in the format:
+`/:login/buckets?sorted=false` for unordered listing of bucket contents. `sorted=true`
+would list in lexicographical order. Listing paths under prefixes would use the
+format `:login/buckets?prefix={:filter}`.
+
+
+The `type` of each object in the `\n` separated JSON stream should be `bucketobject`
+since each object returned should represent a Manta bucket object. A successful
+request should return an HTTP status code of 200, as well as records containing
+a `name`, an `etag`, a `size`, a `type` (of "bucketobject", as stated
+previously), a `contentType` of "application/json; type=bucketobject", a `contentMD5`
+string, and an `mtime`.
 
 Sample Request
 ```
@@ -182,7 +261,10 @@ Host: *.manta.joyent.com
 Accept: */*
 date: Wed, 19 Dec 2018 21:43:27 GMT
 Authorization: $Authorization
+```
 
+Sample Response
+```
 HTTP/1.1 200 OK
 Date: Wed, 19 Dec 2018 21:43:28 GMT
 Server: Manta
@@ -197,9 +279,38 @@ Transfer-Encoding: chunked
 
 #### Check object (HEAD /:login/buckets/:bucket/objects/:object)
 
-TODO
+Ping a bucket object as specified in the HTTP Request-URI. A successful response
+should return an HTTP status code of 200, and no response body.
+
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X HEAD -vvv
+
+HEAD /$MANTA_USER//buckets/mybucket/objects/myobject.json HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Mon, 01 Apr 2019 22:59:50 GMT
+Authorization: $Authorization
+```
+
+Sample Response
+```
+HTTP/1.1 200 OK
+Connection: close
+Durability-Level: 2
+Content-Length: 18
+Content-MD5: UE8cRSdpJ/cMOc6ofHJFgw==
+Content-Type: application/json; type=bucketobject
+Date: Mon, 01 Apr 2019 22:59:51 GMT
+Server: Manta
+x-request-id: dadb6460-54d1-11e9-8ff7-393f00357a3f
+x-response-time: 297
+x-server-name: $zonename
+```
 
 #### Create or overwrite object (PUT /:login/buckets/:bucket/objects/:object)
+
+Conditional headers may be supported.
 
 Sample Request
 ```
@@ -215,7 +326,10 @@ Content-Type: application/json; type=bucketobject
 date: Wed, 19 Dec 2018 21:41:40 GMT
 Authorization: $Authorization
 Content-Length: 18
+```
 
+Sample Response
+```
 HTTP/1.1 204 No Content
 Connection: close
 Etag: b56eb23c-90ce-47b3-9367-1f566d993d8e
@@ -228,10 +342,6 @@ x-response-time: 185
 x-server-name: $zonename
 ```
 
-#### Conditionally create or overwrite object (PUT /:login/buckets/:bucket/objects/:object)
-
-TODO
-
 ### Get object (GET /:login/buckets/:bucket/objects/:object)
 
 Sample Request
@@ -243,7 +353,10 @@ Host: *.manta.joyent.com
 Accept: */*
 date: Wed, 19 Dec 2018 21:53:35 GMT
 Authorization: $Authorization
+```
 
+Sample Response
+```
 HTTP/1.1 200 OK
 Connection: close
 Accept-Ranges: bytes
@@ -262,6 +375,8 @@ x-server-name: $zonename
 
 ### Delete object (DELETE /:login/buckets/:bucket/objects/:object)
 
+Conditional headers may be supported.
+
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X DELETE
@@ -271,7 +386,10 @@ Host: *.manta.joyent.com
 Accept: */*
 date: Wed, 19 Dec 2018 21:47:39 GMT
 Authorization: $Authorization
+```
 
+Sample Response
+```
 HTTP/1.1 204 No Content
 Connection: close
 Date: Wed, 19 Dec 2018 21:47:40 GMT
@@ -281,12 +399,17 @@ x-response-time: 251
 x-server-name: $zonename
 ```
 
-### Conditionally delete object (DELETE /:login/buckets/:bucket/objects/:object)
 
-TODO
+## Errors
+
+New errors for buckets include:
+
+ParentNotBucketError
+ParentNotBucketRootError
 
 
 ## Unsupported operations
 
 * Snaplinks: object-level versioning will not be supported at this time.
-* Multi-Part Uploads: this is not supported for bucket objects.
+* Multi-Part Uploads: this is not yet supported for bucket objects.
+* Jobs: compute functionality is not available with buckets.
