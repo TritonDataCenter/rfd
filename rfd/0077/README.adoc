@@ -1332,8 +1332,8 @@ basically bulk a bunch of changes up).
 
 A recovery instance is created when another program running as root with
 full privs connects to the kbmd door and sends a "begin recovery"
-request. If kbmd decides it needs to initiate recovery on the console
-(e.g. during boot), it forks a child to start kbmadm to do this and
+request (`kbmadm recover`). If kbmd decides it needs to initiate recovery on
+the console (e.g. during boot), it forks a child to start kbmadm to do this and
 places it on the console.
 
 The "begin recovery" request is followed by a "conversation" similar to
@@ -1345,16 +1345,17 @@ ask the user etc.
 At the end of the conversation, kbmd does not reply to the final
 response until recovery is complete.
 
-kbmd then does the following:
+kbmd does the following before replying to the final response:
 
 1. A new token value is added to the `rfd77:config` zfs property on the
    primary zpool (i.e. zones).
 2. New managed box files with the GUID of the new token are created.
 3. Notify any local users of the PIV token of the change.  Interested local
-   users will issue a 'register' command along with the fd of a door server
-   in the interested program.  kbmd will use this door server to send the
-   notification (most of this will likely be abstracted behind a library
-   interface to minimize the amount of work required by the interested party).
+   users will issue a 'register' command ahead of time along with the fd of a
+   door server in the interested program.  kbmd will use this door server to
+   send the notification (most of this will likely be abstracted behind a
+   library interface to minimize the amount of work required by the interested
+   party).
 4. Remove the old primary token from the `rfd77:config` zfs property on the
    primary zpool.
 5. Cleanup old managed box files: any box for a GUID not in `rfd77:config` or
