@@ -1269,8 +1269,8 @@ to keep all the responsibility for that together.
 Secondly, it's responsible for the "unlock" process at boot --
 determining whether the primary Yubikey is available, getting the PIN
 (from boot-time module or pool config for standalone, or spawning a
-client to talk to CNAPI or whatever headnode service stores it for a
-CN), and if those fail, deciding whether to enter "recovery".
+client to talk to KBMAPI), and if those fail, deciding whether to enter
+"recovery".
 
 Thirdly, it's responsible for everything during normal runtime that's
 required to make those two processes work. This mostly means keeping
