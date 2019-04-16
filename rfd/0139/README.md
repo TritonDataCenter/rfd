@@ -370,36 +370,29 @@ test('affinity (triton create -a RULE ...)', testOpts, function (suite) {
     });
 
     // ...
+
+    suite.end();
 });
 ```
 
 can allow one to set a skip or a test timeout in the one place, `testOpts` in
 the example above, if a test config says to skip this set of tests. For example,
-[this](https://github.com/joyent/node-triton/blob/6015cf2145cd4dbd312cd30d4904b65146dc6ab8/test/integration/cli-affinity.test.js#L25-L39)
+[this](https://github.com/joyent/node-triton/blob/master/test/integration/cli-affinity.test.js)
 is from the node-triton integration test suite:
 
 
 ```js
-var h = require('./helpers');
-
 var testOpts = {
-    skip: !h.CONFIG.allowWriteActions || h.CONFIG.skipAffinityTests
+    skip: (
+        (!CONFIG.allowWriteActions || CONFIG.skipAffinityTests)
+        && "requires config.allowWriteActions and config.skipAffinityTests=false"
+    )
 };
 
-test('affinity (triton create -a RULE ...)', testOpts, function (tt) {
-```
-
-TODO: ^^ This hierarchy was used with `tape`. Perhaps with node-tap we could
-do something simpler like the following?
-
-```
-// ...
-if (!h.CONFIG.allowWriteActions || h.CONFIG.skipAffinityTests) {
-    test.skip('skipping affinity tests per config');
-    process.exit(0);
+test('affinity (triton create -a RULE ...)', testOpts, function (suite) {
+    // ...
 }
 ```
-
 
 
 
