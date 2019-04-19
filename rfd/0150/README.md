@@ -179,6 +179,17 @@ of the admin or poseidon account for Triton and Manta, respectively. The
 Prometheus image will contain a `certgen` script that generates this key upon
 provisioning.
 
+Prometheus must be able to resolve CNS-generated domain names. However, it is
+not sufficient to put CNS resolvers in `/etc/resolv.conf`. Theoretically, there
+could be an arbitrary number of CNS instances deployed in the Triton deployment,
+and we'd like Prometheus to be able to use all of the CNS resolvers. However,
+the native Go name resolution only looks at the first three resolvers in
+`/etc/resolv.conf`. To circumvent this limitation, the Prometheus zone will run
+its own BIND server listening on localhost. This will be the only entry in
+`/etc/resolv.conf`. The server will replicate the CNS zone locally, and forward
+all other requests to the Binder and public-internet resolvers. This will allow
+name resolution using an arbitrary number of CNS resolvers.
+
 Prometheus will store metrics for one month by default -- this will be a (SAPI)
 tunable -- on a delegate dataset to preserve across reprovisions. Long term
 storage of Prometheus metrics is the subject of
