@@ -131,7 +131,7 @@ Notice that there are three broad classes of datasets:
 
 ## Snapshot space accounting
 
-When a ZFS snapshot is created, a very small amount of space (kilobytes) is consumed for metadata.  Additional space is consumed to reference all of the blocks in the snapshotted filesystem or volume that are not already referenced.  Prior to creating the snapshot, the filesystem's or volume's *written* zfs property can be queried to see how much space (sans constant metadata overhead) will be required.
+When a ZFS snapshot is created, a very small amount of space (kilobytes) is consumed for metadata.  Additional space is consumed to reference all of the blocks in the snapshotted filesystem or volume that are not already referenced.  Prior to creating the snapshot, the filesystem's or volume's *written* zfs property can be queried to see how much space (sans constant metadata overhead) will be used by this snapshot.
 
 The snapshot's *referenced* property indicates how much space the snapshot references.  Each referenced block may be referenced by other datasets and as such is not useful in understanding the space consumed by the snapshot.
 
@@ -142,11 +142,10 @@ When a snapshot is destroyed, any blocks that are referenced by another snapshot
 * *usedbysnapshots* will decrease
 * *used* will decrease
 * *usedbyreservation* will decrease if *used* becomes less than *reservation*
-* 
 
-have their space accounting associated with the newest snapshot that references the blocks.
+As mentioned above, a snapshot's space is charged against the *refreservation* then the *available* space.  Two snapshots that reference the same block result in one block of charge.
 
-As mentioned above, a snapshot's space is charged against the *refreservation* then the *available* space.  Two snapshots that reference the same block result in one block of charge.  Before creating a snapshot, the filesystem or volume's *written* property can be used to determine how much space a snapshot will consume.
+When a `refreservation` is in place, there must be enough `available` space on that dataset to allow a full overwrite of at least `refreservation` bytes.  That is `available` must be larger than `refreservation` for a snapshot to succeed.  The difference of `available` and `refreservation` must be large enough to store the snapshot metadata, which is a few kilobytes.
 
 ## Clones
 
