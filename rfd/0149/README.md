@@ -81,8 +81,6 @@ fourteen columns. The description each column is as follows:
     were last updated or when the object was created.
   * `creator` - The unique identifier of the account creating the object if it
     differs from the value of `owner`
-  * `vnode` - A 64 bit integer value indicating the vnode that the object is
-    associated with
   * `content_length` - A 64 bit integer value representing the number of bytes
     of object data.
   * `content_md5` - A byte sequence representing the MD5 hash of the object content
@@ -91,7 +89,9 @@ fourteen columns. The description each column is as follows:
   * `headers` - A set of key-value mappings from HTTP header name to HTTP header value.
   * `sharks` - A set of key-value mappings from datacenter to manta storage
     identifier. This value of this column indicates where the object data
-    resides.
+    resides. The type of this column is a text array to account for the
+    possibility that more than one copy of an object is stored in the same
+    datacenter (`hstore` types do not support duplicate keys).
   * `properties` - This column provides a place to store unstructured data in
     situations where it becomes valuable or necessary to store information that could
     impact performance or correctness of the system, but for which a proper
@@ -108,12 +108,11 @@ CREATE TABLE manta_bucket_object (
     created timestamptz DEFAULT current_timestamp NOT NULL,
     modified timestamptz DEFAULT current_timestamp NOT NULL,
     creator uuid,
-    vnode bigint NOT NULL,
     content_length bigint,
     content_md5 bytea,
     content_type text,
     headers hstore,
-    sharks hstore,
+    sharks text[],
     properties jsonb,
 
     PRIMARY KEY (owner, bucket_id, name)
@@ -192,8 +191,6 @@ The description each column is as follows:
     were last updated or when the object was created.
   * `creator` - The unique identifier of the account creating the object if it
     differs from the value of `owner`
-  * `vnode` - A 64 bit integer value indicating the vnode that the object is
-    associated with
   * `content_length` - A 64 bit integer value representing the number of bytes
     of object data.
   * `content_md5` - A byte sequence representing the MD5 hash of the object content
@@ -202,7 +199,9 @@ The description each column is as follows:
   * `headers` - A set of key-value mappings from HTTP header name to HTTP header value.
   * `sharks` - A set of key-value mappings from datacenter to manta storage
     identifier. This value of this column indicates where the object data
-    resides.
+    resides. The type of this column is a text array to account for the
+    possibility that more than one copy of an object is stored in the same
+    datacenter (`hstore` types do not support duplicate keys).
   * `properties` - This column provides a place to store unstructured data in
     situations where it becomes valuable or necessary to store information that could
     impact performance or correctness of the system, but for which a proper
@@ -221,12 +220,11 @@ CREATE TABLE manta_bucket_deleted_object (
     created timestamptz NOT NULL,
     modified timestamptz NOT NULL,
     creator uuid,
-    vnode bigint NOT NULL,
     content_length bigint,
     content_md5 bytea,
     content_type text,
     headers hstore,
-    sharks hstore,
+    sharks text[],
     properties jsonb,
     deleted_at timestamptz DEFAULT current_timestamp NOT NULL
 );
@@ -366,26 +364,25 @@ VALUES ('293def5e-a57f-11e8-9ef0-bf343ab6f823',
 ```SQL
 WITH write_deletion_record AS (
   INSERT INTO manta_bucket_deleted_object (
-    id, owner, bucket_id, name, created, modified, creator, vnode,
+    id, owner, bucket_id, name, created, modified, creator,
     content_length, content_md5, content_type, headers, sharks, properties
   )
-  SELECT id, owner, bucket_id, name, created, modified, creator, vnode,
+  SELECT id, owner, bucket_id, name, created, modified, creator,
          content_length, content_md5, content_type, headers, sharks, properties
   FROM manta_bucket_object
   WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7'
   AND bucket_id = '293def5e-a57f-11e8-9ef0-bf343ab6f823'
   AND name = 'myobject'
 )
-INSERT INTO manta_bucket_object (id, owner, bucket_id, name, vnode,
+INSERT INTO manta_bucket_0.manta_bucket_object (id, owner, bucket_id, name,
 content_length, content_md5, content_type, headers, sharks)
 VALUES ('06d40bb8-a581-11e8-84b2-93ddb053d02b',
 '14aafd84-a57f-11e8-8706-4fc23c74c5e7', '293def5e-a57f-11e8-9ef0-bf343ab6f823',
-'myobject', 2091564, 14917, '\xc736398c96d1f6b72b3118657268bff2'::bytea,
+'myobject', 14917, '\xc736398c96d1f6b72b3118657268bff2'::bytea,
 'text/plain', 'm-custom-header1=>value1,m-custom-header2=>value2',
-'us-east-1=>1.stor.us-east.joyent.com,us-east1=>3.stor.us-eas.joyent.com')
+'{us-east-1:1.stor.us-east.joyent.com,us-east1:3.stor.us-eas.joyent.com}')
 ON CONFLICT (owner, bucket_id, name) DO UPDATE
 SET id = EXCLUDED.id,
-  vnode = EXCLUDED.vnode,
   created = current_timestamp,
   modified = current_timestamp,
   content_length = EXCLUDED.content_length,
@@ -444,10 +441,10 @@ WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7' AND name = 'mybucket';
 ```SQL
 WITH write_deletion_record AS (
   INSERT INTO manta_bucket_deleted_object (
-    id, owner, bucket_id, name, created, modified, creator, vnode,
+    id, owner, bucket_id, name, created, modified, creator,
     content_length, content_md5, content_type, headers, sharks, properties
   )
-  SELECT id, owner, bucket_id, name, created, modified, creator, vnode,
+  SELECT id, owner, bucket_id, name, created, modified, creator,
          content_length, content_md5, content_type, headers, sharks, properties
   FROM manta_bucket_object
   WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7'
