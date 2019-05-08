@@ -1,6 +1,6 @@
 ---
-authors: Brian Bennett <brian.bennett@joyent.com>, Todd Whiteman
-state: predraft
+authors: Brian Bennett <brian.bennett@joyent.com>, Todd Whiteman <todd.whiteman@joyent.com>
+state: publish
 ---
 
 # RFD 34 Instance migration
