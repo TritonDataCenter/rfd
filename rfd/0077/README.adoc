@@ -280,10 +280,12 @@ a node's hardware crypto token. Clearly it would be undesirable to create a
 single point of hardware failure that results in all data on the node being
 irretrievable. As a result, an additional step is added where as well as
 creating an encrypted DH box keyed to the hardware token for that CN, we create
-a second box keyed to a set of offline "recovery keys" for the datacenter. The
-public half of the recovery keys are distributed to all CNs for this purpose,
-but the private half is kept in offline redundant secure storage to only be used
-in emergencies. This is explored further in <<prov-backups>>.
+a second box keyed to a set of offline "recovery keys" for the datacenter, in a
+threshold scheme. The public half of the recovery keys are distributed to all CNs
+for this purpose, but the private halves are generated on hardware tokens
+elsewhere, held by specific trusted persons within the organisation, with a
+"2-person" or "N-person" rule applied. This is explored further in
+<<prov-backups>>.
 
 ### Overview: authentication
 
