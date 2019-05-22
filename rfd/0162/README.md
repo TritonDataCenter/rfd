@@ -1,5 +1,5 @@
 ---
-authors: David Pacheco <dap@joyent.com>
+authors: David Pacheco <dap@joyent.com>, Rui Loura <rui@joyent.com>
 state: predraft
 ---
 
@@ -34,20 +34,24 @@ This RFD describes a system for part (3): repairing objects having a copy that's
 
 For reasons described in more detail later, we propose a phased approach.
 
-### Milestone M1 Self-contained service, local state, centralized transfer
+### Milestone M1 Direct transfer between storage zones, local state
 
-The very first deliverable would be a new API and set of tools for managing **repair jobs**.  Each job describes a particular operation and a set of objects to operate on.  The following operations (use-cases) would be supported:
-
-- "Forget" one copy of an object (identified by storage node).  Creates a new copy and updates all metadata to remove the old node and add the new node.  The assumption is that the old storage node is being completely, permanently removed.  (See "Other considerations.")
-- "Move" one copy of an object (identified by storage node).  Similar to "forget" one copy, but the old copy is removed.
+The first deliverable is the capability to remove all objects from a given storage node.  This operation will be called "evacuate."
 
 This deliverable would include:
 
 - a new SAPI service and component with one main SMF service to implement object repair and rebalancing
 - Prometheus metrics exposed by the service
 - automatic pausing of jobs that have experienced too many transient errors
-- a CLI tool for listing jobs, creating jobs, observing job status, pausing jobs, resuming jobs; observing the status of individual repairs within a job; observing a summary of transient and permanent errors from a job, with example objects; viewing the progress of a job (i.e., how many objects it will process, how many are in-progress, how many have finished, how many are queued for retry due to a transient error, and so on). 
-- data transfers would happen to and from this new zone, rather than directly between storage zones
+- a CLI tool for:
+    * listing jobs
+    * creating jobs
+    * observing job status
+    * pausing jobs
+    * resuming jobs
+    * observing a summary of transient and permanent errors from a job, with example objects
+    * viewing the progress of a job (i.e., how many objects it will process, how many are in-progress, how many have finished, how many are queued for retry due to a transient error, and so on). 
+- data transfers would happen directly between storage zones
 - automatic tests for as much as possible
 - configurable throttles on usage of the metadata tier and storage tier
 
@@ -55,24 +59,12 @@ When a job is complete, all information about the job would be archived into Man
 
 This implementation would *not* handle the so-called "walking link" problem.  For safety, it would only operate on metadata with `single_path` set, from a whitelisted set of accounts, or when requested by an operator to override these checks.  (In practice, it would likely be sufficient to override the checks and scan muskie logs for snaplink creation if we're worried about that case.)
 
-This component could be deployed immediately to any Manta deployment to carry out safe object repair and rebalancing.
+This zone (remora zone) could be deployed anywhere in the Manta fleet.  It's not clear if it's better suited to a storage server or a metadata server.
 
-This zone could be deployed anywhere in the Manta fleet.  It's not clear if it's better suited to a storage server or a metadata server.
-
-
-### Milestone M2 Direct transfer between storage zones
-
-The only changes with this deliverable are:
-
-- We add a new component to be deployed with storage zones to support direct zone-to-zone transfer of objects.  This component might provide a single API operation to fetch an object from some other storage zone and upload the contents to the local mako.
-- The repair-and-rebalance service is modified to use this new component when present on a particular target storage node.
-
-To use the new behavior, we'd have to update effectively all storage zones to run the new component.
-
-It's an open question whether we would remove support for centralized transfer.  The sole advantage to that approach is avoiding having to update the storage zones.
+The direct zone to zone data transfer will require and update to the storage nodes to add a component (remora agent) to manage that transfer.
 
 
-### Milestone M3 Shared storage for repair jobs
+### Milestone M2 Shared storage for repair jobs
 
 This milestone:
 
@@ -88,13 +80,33 @@ Milestone M2 and M3 can be reversed if the priority makes sense.
 
 Other features we can add at any point after M1:
 
-- a storage server API for calculating the md5sum of an object, plus support for verifying that on source objects
+- Expose an endpoint on the remora agent to calculate and report the md5sum of a locally object
 - a proper solution (or better intermediate solutions) to the "walking link" problem
 - additional operations, including:
   - "Add Copy": increase the durability of an object
   - "Remove Copy": decrease the durability of an object
-  - "Audit": check whether the existing metadata meets desired constraints (e.g., both copies in different datacenters) and update them accordingly.  Potentially also validate the object's checksum.
+  - "Audit" or "Scrub": check whether the existing metadata meets desired constraints (e.g., both copies in different datacenters) and update them accordingly.  Potentially also validate the object's checksum.
   - an operation that could be used to indicate that a particular storage node's ID and/or datacenter was changed.  This would be a fairly special case to handle MANTA-3827 / OPS-4691.
+
+
+## Components
+__this probably belongs elsewhere in the document__
+
+### Remora Zone
+
+The remora zone is responsible for managing each rebalancer job and coordinating the tasks for each remora agent.
+
+### Remora Agent
+
+- Expose and API which is only consumed by the remora zone.
+- Excepts assignments which are simply lists of tasks.
+- Task Types:
+    * Download:
+        * Check for object on disk and matching MD5 sum
+        * If object does not exist or there is an MD5 mismatch, download the object from the URL provided
+        * Uses a pull method to get objects from another storage node.
+        * Is thus idempotent
+    * Others: Future work
 
 
 ## Deeper background and use-cases
