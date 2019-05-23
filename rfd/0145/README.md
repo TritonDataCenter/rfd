@@ -1,6 +1,6 @@
 ---
 authors: Tim Foster <tim.foster@joyent.com>
-state: predraft
+state: publish
 discussion: https://github.com/joyent/rfd/issues?q=RFD+145
 ---
 
@@ -11,7 +11,7 @@ discussion: https://github.com/joyent/rfd/issues?q=RFD+145
 -->
 
 <!--
-    Copyright (c) 2018, Joyent, Inc.
+    Copyright 2019 Joyent, Inc.
 -->
 
 # RFD 145 Lullaby 3: Improving the Triton/Manta builds
@@ -26,8 +26,8 @@ with the overall aim to:
 In this document, we'll discuss these aims and will describe some work that
 will help us achieve them.
 
-Some of the attributes of the build system that we aspire to are written
-up in [this gist](https://gist.github.com/timfoster/8e7cd48bf39dc34922b5815cefde50c6)
+Some attributes of the build system that we aspire to are written up in
+[this gist](https://gist.github.com/timfoster/8e7cd48bf39dc34922b5815cefde50c6)
 which provides more of the motivation behind the work described in this RFD.
 
 ## Background and scope
@@ -84,7 +84,7 @@ component
 
 ### Improve the sharing of build infrastructure by using eng.git as a submodule
 
-By moving eng.git as a submodule of all Manta/Triton repositories, eg.
+By moving eng.git as a submodule of all Manta/Triton repositories, e.g.
 
 `<component>/eng/`
 
@@ -103,28 +103,52 @@ unfamiliar with git submodules, performing the upgrade of a component to
 use the latest changes from eng.git is as simple as:
 
 ```
-$ cd eng
-$ git checkout master
-$ cd ..
-$ git add eng
-$ git commit -m "updated eng to latest bits"
+$ git submodule update --remote deps/eng
+$ git add deps/eng
 ```
+
+Developers should then commit changes as usual. Some deps/eng updates may
+need to be applied across all repositories that use eng.git as a submodule,
+other changes may be performed on an as-needed basis for the specific
+repositories that require new eng.git features or bug fixes.
 
 Before this RFD, we were being conservative about which new eng.git code was
 used in each component. This RFD proposes we become aggressive about taking
 all eng.git changes, at least to the granularity of a single git commit, but
-ideally having all components stay current. The build ought to warn when
-a component does not have the latest eng.git changes.
+ideally having all components stay current.
 
-We replace uses of shared tools/mk/Makefile.* with eng/tools/mk/Makefile.*
+We replace uses of shared tools/mk/Makefile.* with deps/eng/tools/mk/Makefile.*
 and ensure that the eng submodule is always checked out and present in a
-repository using a ./<component>/Makefile macro definition:
+repository using a `./<component>/Makefile` macro definition:
 
 ```
-REQUIRE_ENG := $(shell git submodule update --init eng)
+REQUIRE_ENG := $(shell git submodule update --init deps/eng)
 ```
 
-which allows for subsequent `include eng/tools/mk/...` statements to Just Work.
+This allows for subsequent `include deps/eng/tools/mk/...` statements
+to Just Work.
+
+If developers are modifying files in deps/eng, for example when testing eng.git
+changes, then uncommitted files will not be overritten as a result of the
+`$(REQUIRE_ENG)` macro, however **any commits made to a local deps/eng
+repository would be clobbered**, so either temporarily comment out the
+`REQUIRE_ENG` macro, or temporarily point the deps/eng submodule to a
+local eng.git clone, taking care to revert that change before committing:
+
+```
+$ git config -f .gitmodules --replace-all submodule.deps/eng.url /home/timf/projects/my-eng-clone.git
+$ git submodule sync deps/eng
+Synchronizing submodule url for 'deps/eng'
+$ git submodule update --remote deps/eng
+remote: Enumerating objects: 5, done.
+remote: Counting objects: 100% (5/5), done.
+remote: Compressing objects: 100% (3/3), done.
+remote: Total 3 (delta 2), reused 0 (delta 0)
+Unpacking objects: 100% (3/3), done.
+From /home/timf/projects/my-eng-clone
+   d25b8fc..7a03a85  master     -> origin/master
+Submodule path 'deps/eng': checked out '7a03a85352a6035b1f098ff41fb7ff112bda052b'
+```
 
 Over time, we expect additional common build tools to be added to eng.git,
 again, ensuring that components upgrade to versions of eng.git that they're
@@ -146,7 +170,8 @@ cumbersome, and imposes a delay on the build.
 
 The ['buildymcbuildface'](https://github.com/joyent/buildymcbuildface)
 prototype showed that it is possible to create images directly on the build
-machine, so the work covered by this RFC will extend that prototype.
+machine, so the work covered by this RFD extends that prototype, and
+introduces `buildimage`.
 
 Each component includes the metadata required to build it or its dependencies
 (eg. software agents) Agent builds can either be downloaded in the style of
@@ -174,7 +199,7 @@ make up a component.
 
 The [Joyent Engineering Guide](https://github.com/joyent/eng/blob/master/docs/index.md#user-content-packagejson-and-git-submodules)
 and the draft [RFD 105](https://github.com/joyent/rfd/blob/master/rfd/0105/README.md)
-have some guidelines of the use of `package.json`, recommending exact
+have some guidelines on the use of `package.json`, recommending exact
 (semver)[https://docs.npmjs.com/getting-started/semantic-versioning] versioning
 at the top-level (i.e. the component's immediate dependencies) for dependencies
 not controlled by Joyent. However, that doesn't lock the versions right down
@@ -191,12 +216,18 @@ version 5.1.x and later) we solve the problem above by guaranteeing that,
 until the package-lock.json file changes, we always build the same software.
 
 Moving components towards using npm v5.1.x involves upgrading the version
-of node that many components use. (XXX establish what the minimal version of
-node is here)
+of node that many components use. From experimentation, the earliest node
+version in use across Manta/Triton that seems capable of running npm 5.1.0
+is node v4.6.1.
 
 A side effect of using a package-lock.json file, is that we may be able to
 more effectively cache downloaded npm content and thereby reduce our reliance
 on the network, though that is not the primary goal.
+
+As an aid to investigating build reproducibility, during publication, the
+build saves the result of `npm ls --json` which would allow us to develop
+automation to determine package differences across releases for components
+which aren't yet using `package-lock.json` files.
 
 ### Validate the build environment
 
@@ -243,16 +274,44 @@ builds performed on the same system, reducing the chances of getting build
 reproducibility.
 
 Instead, components which require privileged operations on build machines should
-use RBAC configurations (likely delivered by the pkgsrc packages mentioned
+use RBAC configurations (possibly delivered by the pkgsrc packages mentioned
 in the previous section) which are responsible for doing the setup/tear down
 of any privileged resources.
 
 To address this problem, and the one concerning build environment cleanliness,
 we might also consider shipping a "builder" user on the equivalent of the
-"Jenkins agent image" (or whatevever we name it), which is configured with the
+"Jenkins agent image" (or whatever we name it), which is configured with the
 correct environment.
 This may introduce an inconvenience for developers used to building as
 their own user however, perhaps such that developers would ignore this facility.
 
 If we do ship a 'builder' user, we should have a mechanism to inherit certain
 important attributes from a developer's own environment (such as ssh keys)
+
+### Current status ###
+
+At the time of writing, the Lullaby 3 project is considered "complete".
+
+The project delivery was staggered over four phases, with TOOLS-2043
+being the Jira ticket that tracked the overall project progress.
+
+The flag day mails for these phases were:
+
+phase 1: build framework and a few components converted to use it
+  * https://gist.github.com/timfoster/ebd30a91087ca2c09b2d68a03ecbaba4
+
+phase 2: Triton components converted to build framework
+  * https://gist.github.com/timfoster/1dc9fb5d8e2fd80e1c94e7987851b42d
+
+phase 3: Manta components converted to build framework
+  * https://gist.github.com/timfoster/82802c2ab95b5af5d6bc76127d8059f3
+
+phase 4: smartos-live, sdc-headnode and firmware-tools converted to build framework
+  * https://gist.github.com/timfoster/fb31254fd726af217397da40b622c637
+
+While we have not yet reached build reproducibility across all projects,
+it should continue to be a goal, and new projects should have reproducible
+builds by default.
+
+We are updating the Manta and Triton developer documentation to reflect
+the build changes that were delivered (MANTA-4132 and TRITON-1376).
