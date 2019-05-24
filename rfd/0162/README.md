@@ -89,17 +89,17 @@ Other features we can add at any point after M1:
   - an operation that could be used to indicate that a particular storage node's ID and/or datacenter was changed.  This would be a fairly special case to handle MANTA-3827 / OPS-4691.
 
 
-## Components
+# Components
 __this probably belongs elsewhere in the document__
 
-### Remora Zone
+## Remora Zone
 
 The remora zone is responsible for managing each rebalancer job and coordinating the tasks for each remora agent.
 
-### Remora Agent
+## Remora Agent
 
 - Expose and API which is only consumed by the remora zone.
-- Excepts assignments which are simply lists of tasks.
+- Excepts arrays of tasks in the form of assignments.
 - Task Types:
     * Download:
         * Check for object on disk and matching MD5 sum
@@ -107,6 +107,139 @@ The remora zone is responsible for managing each rebalancer job and coordinating
         * Uses a pull method to get objects from another storage node.
         * Is thus idempotent
     * Others: Future work
+
+
+### Tasks
+#### Download
+```
+pub struct Assignment {
+	id: String, // UUID of request
+    dest_shark: MantaObjectShark,
+    tasks: Vec<Task>,
+}
+
+pub enum Task {
+    Download(DownloadTask),
+    ... Future work ...
+}
+
+pub struct DownloadTask {
+    source: String, // Mako IP or DNS name from which to download file
+    owner: String,
+    object_id: String, // UUID of object 
+    md5_sum: String, // MD5 check sum of object
+    content_length: u64,
+}
+
+```
+`origin`, `owner`, and `object_id` can be substituted with a single URL string
+
+This can be seralized or deserialized to/from json as:
+
+```
+{
+    "action": "download",
+    "source": "1.stor.east.joyent.us",
+    "owner": "37fffb8f-5f29-4f67-b2b2-591f3f103eb0",
+    "object_id": "c7d5a531-832c-4095-b940-f920ccaa3257",
+    "md5_sum": ""
+}
+```
+
+### Agent Interface
+
+## ListAssignments
+
+Returns a list of assignments 
+
+### Inputs
+
+| Field  | Type    | Description                    |
+| ------ | ------- | ------------------------------ |
+| offset | Integer | Starting offset for pagination |
+| limit  | Integer | Maximum number of responses    | 
+
+### Example
+	GET /assignments
+	
+	[
+		{
+            "id": "bc7e140a-f1fe-49fd-8b70-26379fa04492",
+            "status": "running",
+            "error_count": 7
+            "tasks_remaining": 589795,
+            "tasks_completed": 98734382,
+		}
+		{
+            "id": "856e77b0-c0b2-4a6a-8c17-4ec1017360af",
+            "status": "complete",
+            "error_count": 5740 
+            "tasks_remaining": 0,
+            "tasks_completed": 8972630,
+		}
+	]
+
+## GetAssignment
+
+Returns details of a specific assignment
+
+### Example
+	GET /assignments/:id
+	
+    {
+        "id": "bc7e140a-f1fe-49fd-8b70-26379fa04492",
+        "status": "complete",
+        "successful_tasks": [{
+            "action": "download",
+            "source": "1.stor.east.joyent.us",
+            "owner": "37fffb8f-5f29-4f67-b2b2-591f3f103eb0",
+            "object_id": "c7d5a531-832c-4095-b940-f920ccaa3257",
+            "md5_sum": "GO4i6ZQq5SeWxYQlfkxUzQ==",
+            "content_length": 54, 
+        }, {
+            ...
+        }],
+        "failed_tasks": [{
+            "action": "download",
+            "source": "7.stor.east.joyent.us",
+            "owner": "76809b8f-5a20-4f76-b2b2-591f3f6fb709",
+            "object_id": "df4c1682-a77d-11e2-aafc-5354b5c883c7",
+            "md5_sum": "GO4i6ZQq5SeWxYQlfkxUzQ==",
+            "content_length": 109, 
+        }, {
+            ...
+
+        ]
+    }
+
+**we may consider returning only the objectid for successful and failed tasks as well as the error.**
+
+
+## CreateAssignment (POST /assignment)
+
+| Field   | Type   | Description     |
+| ------- | -------| --------------- |
+| tasks   | Array  | Array of tasks  |
+
+
+### Example:
+    POST /task
+        -d
+    {
+        "tasks": [{
+            "action": "download",
+            "source": "1.stor.east.joyent.us",
+            "owner": "37fffb8f-5f29-4f67-b2b2-591f3f103eb0",
+            "object_id": "c7d5a531-832c-4095-b940-f920ccaa3257",
+            "md5_sum": "GO4i6ZQq5SeWxYQlfkxUzQ==",
+            "content_length": 54, 
+        }, {
+            ...
+        }]
+    }
+
+Returns a uuid that identifies this assignment
+
 
 
 ## Deeper background and use-cases
@@ -190,7 +323,7 @@ Key points:
 * Metadata that refers to an old copy of an object must be updated (to remove that reference) before the old copy of the object is removed.
 * Metadata updates should be careful to avoid clobbering concurrent changes (e.g., using a conditional PUT-with-etag request).  Those changes may be made by a Manta client or another instance of this system (or any other system in Manta that may modify metadata).
 
-**Goal:** Operators should be able to specify objects for repair by **_objectid_**.  They may also like to be able to specify all objectids assigned to a particular server, but this is beyond the initial scope of this system.  The existing [sharkspotter tool](https://github.com/joyent/manta-sharkspotter) can be used to identify the objectids associated with a particular storage server.
+**Goal:** Operators should be able to specify objects for repair by **_objectid_** or all object from a particular server. 
 
 **Goal:** Operators should be able to group objects to be repaired into something like a _job_ so that the progress of the entire operation can be queried and managed as a unit.  For example, evacuating a particular storage node might represent a single job.  Operators shouldn't have to separately track the status of millions of objects that are all part of the same operation.  (As mentioned above, it _is_ currently expected that operators will have to enumerate the set of objects in a job explicitly.)  Jobs should support at least one tag that could be used to associate them with JIRA tickets for more information.
 
@@ -209,7 +342,6 @@ Key points:
 * A basic control to avoid overloading itself could include tunable limits of the the numbers of queued and running repairs.
 * This system will interact with both the metadata tier and storage tier.  Load on the metadata tier is critical to availability and end-user performance of Manta, so it's critical that this system provide a throttle on all of its metadata operations to avoid overloading the metadata tier.  Ideally, operators would be able to adjust a tunable to control what fraction of metadata tier resources are used by this system.
 
-**Goal:** We'd like to deliver a minimally functional implementation as soon as possible, using multiple phases to expand on the initial implementation.  We already have an urgent need for this system.  More on the minimally functional implementation later.
 
 **Goal:** The system's progress should not depend on any particular server being available, but operator intervention may be required to resume jobs that were being managed by a component that is offline.  If a component running a job goes offline, operators should be able to either bring the original component back online or resume the job from some other instance.  (Automatic resumption of jobs by other instances is explicitly out of scope of this RFD.)
 
@@ -255,7 +387,7 @@ This section includes a lot of information about the considerations that went in
 
 ### Should this system write new objects using the public API or modify internal metadata and storage directly?
 
-**Approach 1: write new objects through the external API.**  If we read any object successfully, we can write it back to Manta with the desired durability level, which should always create new copies.
+**Approach 1 (rejected): write new objects through the external API.**  If we read any object successfully, we can write it back to Manta with the desired durability level, which should always create new copies.
 
 Pros:
 
@@ -272,7 +404,7 @@ Cons:
 * Without using internal APIs, we cannot validate that the new copies were correctly written.  We're just relying on the normal data path to be working correctly.  Put differently, this approach does not also provide an on-demand audit ability.
 
 
-**Approach 2: implement a new system using private interfaces inside Manta.**  With this approach, the repair service would fetch individual copies from storage nodes, validate them, create copies on other storage nodes, and update metadata internally, ideally without modifying an object's mtime.
+**Approach 2(preferred): implement a new system using private interfaces inside Manta.**  With this approach, the repair service would fetch individual copies from storage nodes, validate them, create copies on other storage nodes, and update metadata internally, ideally without modifying an object's mtime.
 
 Pros:
 
