@@ -261,7 +261,8 @@ but then once the vnode data is transferred to the new pnode it must be deleted
 from the old pnode. With a single table this could be time-consuming and those
 deletes will create dead tuples that eventually must be cleaned up by postgres
 autovacuum. Another approach is to partition the data using some ratio of
-partitions to vnodes. Postgres offers a few f`. The ideal ratio of
+partitions to vnodes. Postgres offers a few levels of hierarchy for dividing up
+data in this manner: database, schema, and table. The ideal ratio of
 partitions to vnodes is one-to-one. This is the most easy configuration for a
 human to reason about because the partition naming can reflect the vnode of that
 data it contains and it avoids the requirement for any other schemes for placing
