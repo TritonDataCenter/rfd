@@ -78,7 +78,7 @@ for more information.
 
 ### Buckets
 
-#### List buckets (PUT /:login/buckets)
+#### List buckets (GET /:login/buckets)
 
 List all buckets for an account's namespace. The `type` of each object in the `\n`
 separated JSON stream should be `bucket`, since each object returned should
@@ -140,12 +140,12 @@ x-server-name: $zonename
 
 #### Create bucket (PUT /:login/buckets/:bucket)
 
-Idempotent create or update a bucket in one operation. Your private namespace
+Create a bucket if it does not already exist. Your private namespace
 begins with `:/login/buckets`. You can create buckets in that namespace. To
 create a bucket, set the HTTP Request-URI to the buckets path you want to make
 or update, and set the `Content-Type` header to `application/json; type=bucket`.
-There is no request or response body. An HTTP status code of 204 is returned on
-success.
+There is no request body. An HTTP status code of 204 is returned on
+success and a 409 is returned in the event the bucket already exists.
 
 Sample Request
 ```
@@ -170,39 +170,6 @@ Server: Manta
 x-request-id: 82692740-0305-11e9-a402-b30a36c2c748
 x-response-time: 185
 x-server-name: $zonename
-```
-
-#### Get bucket (GET /:login/buckets/:bucket)
-
-Get a bucket as specified in the HTTP Request-URI. A successful response should
-return an HTTP status code of 200, and a body containing a record with a `name`,
-a `type` of "bucket", and an ISO8601 timestamp `mtime`.
-
-Sample Request
-```
-$ manta /$MANTA_USER/buckets/mybucket -X GET
-
-GET /$MANTA_USER/buckets/mybucket HTTP/1.1
-Host: *.manta.joyent.com
-Accept: */*
-date: Wed, 19 Dec 2018 21:39:06 GMT
-Authorization: $Authorization
-```
-
-Sample Response
-```
-HTTP/1.1 200 OK
-Connection: close
-Content-Type: application/json
-Content-Length: 70
-Content-MD5: /U2BUYH8SXcSO6Tyo7PTiA==
-Date: Wed, 19 Dec 2018 21:39:06 GMT
-Server: Manta
-x-request-id: ddb1f290-0304-11e9-a402-b30a36c2c748
-x-response-time: 128
-x-server-name: $zonename
-
-{"name":"mybucket","type":"bucket","mtime":"2018-12-18T22:04:55.518Z"}
 ```
 
 #### Delete bucket (DELETE /:login/buckets/:bucket)
