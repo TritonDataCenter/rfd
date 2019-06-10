@@ -301,6 +301,17 @@ object. Since garbage collection is idempotent, this is always safe when we're
 going to return an error after we've talked to any "sharks".
 
 
+## Open Questions
+
+### Billing
+
+It was pointed out that customers that use the Manta job-based billing are [not
+charged for space used by secondary links to their
+objects](https://github.com/joyent/manta-mackerel/blob/6e55545e6040a3270dd4b8c9ac83d41d4201d41f/assets/lib/storage-reduce1.js#L142-L150).
+We should decide whether or not we need to keep this behavior and if so, how
+we'd want to determine which objects should not be billed.
+
+
 ## See Also
 
 * [RFD 123](https://github.com/joyent/rfd/blob/master/rfd/0123/README.md)
