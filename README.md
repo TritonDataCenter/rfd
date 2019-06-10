@@ -77,7 +77,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 31 libscsi and uscsi(7I) Improvements for Firmware Upgrade](./rfd/0031/README.md) |
 | draft    | [RFD 32 Multiple IP Addresses in NAPI](./rfd/0032/README.md) |
 | publish  | [RFD 33 Moray client v2](./rfd/0033/README.md) |
-| predraft | [RFD 34 Instance migration](./rfd/0034/README.md) |
+| publish | [RFD 34 Instance migration](./rfd/0034/README.md) |
 | draft    | [RFD 35 Distributed Tracing for Triton](./rfd/0035/README.md) |
 | draft    | [RFD 36 Mariposa](./rfd/0036/README.md) |
 | draft    | [RFD 37 Metrics Instrumenter](./rfd/0037/README.md) |
@@ -188,7 +188,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 142 Use SMF logging for Manta services](./rfd/0142/README.md) |
 | draft    | [RFD 143 Manta Scalable Garbage Collection Plan](./rfd/0143/README.md) |
 | predraft | [RFD 144 Conch: Datacenter Switch Automation](./rfd/0144/README.md) |
-| predraft | [RFD 145 Lullaby 3: Improving the Triton/Manta builds](./rfd/0145/README.md) |
+| publish | [RFD 145 Lullaby 3: Improving the Triton/Manta builds](./rfd/0145/README.md) |
 | predraft | [RFD 146 Conch: Inventory System](./rfd/0146/README.md) |
 | publish  | [RFD 147 Project Tiresias: USB Topology](./rfd/0147/README.md) |
 | draft    | [RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md) |
