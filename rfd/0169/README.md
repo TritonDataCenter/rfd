@@ -66,10 +66,10 @@ an encryption key.
 ### ```dumpadm``` changes
 
 The <a href="https://illumos.org/man/1M/dumpadm">dumpadm</a> command will
-be extended to take an optional
-file that points to on-disk (or at least, on-filesystem) representation
-of a key.  Once a key has been set, encryption will be enabled on the
-dump (there is currently no way to disable dump encryption once enabled).
+be extended to take an optional file that points to on-disk representation of a
+key (or, by specifying ```/dev/stdin```, indicates that the key should be read
+from standard input).  Once a key has been set, encryption will be enabled on
+the dump (there is currently no way to disable dump encryption once enabled).
 
 Proposed additions to the dumpadm man page:
 
@@ -135,7 +135,7 @@ otherwise unencrypted media.
 
 While the overriding principle is robustness, it must also be true that
 crash dumping is not made pathologically slow.  ChaCha20 seems to 
-fit these constraints but to be able to see the performance in prouduction,
+fit these constraints but to be able to see the performance in production,
 the (terrible) ```METRICS.csv``` has been augmented to include 
 the amount of time spent in encryption (```..crypt nsec```).  While the
 exact number will naturally fluctuate based on machine and architecture,
