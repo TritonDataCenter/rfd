@@ -223,10 +223,10 @@ Returns details of a specific assignment
 
 
 ### Example:
-    POST /task
+    POST /assignments
         -d
-    {
-        "tasks": [{
+    [
+        {
             "action": "download",
             "source": "1.stor.east.joyent.us",
             "owner": "37fffb8f-5f29-4f67-b2b2-591f3f103eb0",
@@ -235,8 +235,8 @@ Returns details of a specific assignment
             "content_length": 54, 
         }, {
             ...
-        }]
-    }
+        }
+    ]
 
 Returns a uuid that identifies this assignment
 
