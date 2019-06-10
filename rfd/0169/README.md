@@ -42,7 +42,7 @@ the overriding principle here is to keep the dump path as simple as
 possible; in the dump path, where there is a choice between performance and
 simplicity (and therefore, robustness), painful history has taught us to
 <a href="https://github.com/joyent/smartos-live/commit/aff9687fd077bca1157b7481d4a9da81e7dce498">choose
-the former</a>.
+the latter</a>.
 
 ## Encryption algorithm
 
@@ -134,8 +134,9 @@ otherwise unencrypted media.
 ## Performance
 
 While the overriding principle is robustness, it must also be true that
-crash dumping is not made pathologically slow.  ChaCha20 seem to 
-The (terrible) ```METRICS.csv``` has been augmented to include 
+crash dumping is not made pathologically slow.  ChaCha20 seems to 
+fit these constraints but to be able to see the performance in prouduction,
+the (terrible) ```METRICS.csv``` has been augmented to include 
 the amount of time spent in encryption (```..crypt nsec```).  While the
 exact number will naturally fluctuate based on machine and architecture,
 the cost of compression appears to be on the order of ~2 μsecs/page -- which
