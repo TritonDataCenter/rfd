@@ -250,6 +250,19 @@ The primary changes here as far as other components are concerned would be:
    will be used by muskie/webapi.
 
 
+### Billing
+
+It was pointed out that customers that use the Manta job-based billing are [not
+charged for space used by secondary links to their
+objects](https://github.com/joyent/manta-mackerel/blob/6e55545e6040a3270dd4b8c9ac83d41d4201d41f/assets/lib/storage-reduce1.js#L142-L150).
+If we wanted to keep this behavior, we'd need some mechanism to identify links
+at the point where billing reports are generated.
+
+However, it was subsequently pointed out that there were going to be big billing
+changes in the near future, and that billing should not be part of the scope of
+this discussion.
+
+
 ## Additional Work
 
 ### Cleanup
@@ -299,17 +312,6 @@ change and ensure that if we fail to create links on any of the "sharks", we add
 a `manta_fastdelete_queue` entry to cleanup the potentially partially written
 object. Since garbage collection is idempotent, this is always safe when we're
 going to return an error after we've talked to any "sharks".
-
-
-## Open Questions
-
-### Billing
-
-It was pointed out that customers that use the Manta job-based billing are [not
-charged for space used by secondary links to their
-objects](https://github.com/joyent/manta-mackerel/blob/6e55545e6040a3270dd4b8c9ac83d41d4201d41f/assets/lib/storage-reduce1.js#L142-L150).
-We should decide whether or not we need to keep this behavior and if so, how
-we'd want to determine which objects should not be billed.
 
 
 ## See Also
