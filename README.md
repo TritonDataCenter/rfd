@@ -213,6 +213,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 167 Drop i386 and multiarch Package Sets](./rfd/0167/README.md) |
 | draft | [RFD 168 Bootstrapping a Manta Buckets deployment](./rfd/0168/README.md) |
 | draft | [RFD 169 Encrypted kernel crash dump](./rfd/0169/README.md) |
+| predraft | [RFD 170 Manta Picker Component](./rfd/0170/README.md) |
 
 ## Contents of an RFD
 
