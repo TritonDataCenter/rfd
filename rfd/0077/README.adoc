@@ -1645,7 +1645,7 @@ managed boxes.
 
 #### Interaction: ZFS
 
-After setup has completed kbmd will manage the "rfd77:config" ZFS property on
+After setup has completed kbmd will manage the `rfd77:config` ZFS property on
 the pool itself directly. This will be read during boot and written during
 recovery or rekeying. kbmd itself will also make the libzfs call to provide
 key material to the pool during the unlock process (since it needs to do this
@@ -1799,7 +1799,13 @@ The token object itself will be represented using JSON similar to:
     "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
     "guid": "97496DD1C8F053DE7450CD854D9C95B4",
     "pin": "123456",
-    "recovery_token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg=",
+    "recovery_tokens": [{
+        "created": 123456789,
+        "token": "jmzbhT2PXczgber9jyOSApRP337gkshM7EqK5gOhAcg="
+    }, {
+        "created": 2233445566,
+        "token": "QmUgc3VyZSB0byBkcmluayB5b3VyIG92YWx0aW5l"
+    }]
     "pubkeys": {
        "9e": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
        "9d": "ecdsa-sha2-nistp256 AAAAE2VjZHNhLXNoYTItbmlzdHAyNTYA...",
@@ -1838,10 +1844,9 @@ The token object itself will be represented using JSON similar to:
 | Yes
 | The pin of the provisioned token.
 
-| recovery_token
+| recovery_tokens
 | Yes
-| The recovery token used to recover the encryption keys of a zpool protected
-by this token.  Also used when replacing a token.
+| An array of recovery tokens.  Used to recover the encryption keys of a zpool protected by this token.  Also used when replacing a token.  When the recovery configuration is updated, a new recovery token is generated and added to the list.
 
 | pubkeys
 | Yes
@@ -2348,13 +2353,19 @@ When a token is no longer available (lost, damaged, accidentially reinitialized,
 etc.), a recovery must be performed.  This allows a new token to replace the
 unavailable token.  When a recovery is required, an operator initiates the
 recovery process on the CN.  This recovery process on the CN will decrypt the
-`recovery_token` value for the lost token that was created during the lost
-token's CreateToken request.  The CN then submits a RecoverToken request to
-replace the unavailable token with a new token.  The `:guid` parameter is the
-guid of the unavailable token.  The data included in the request is identical
-to that of a CreateToken request.  The major difference is that instead of
-using a token's 9e key to sign the date field, the decrypted `recovery_token`
-value is used as the signing key.
+current `recovery_token` value for the lost token that was created during the
+lost token's CreateToken request or a subsequent `CreateRecoveryToken` request.
+For some TBD amount of time, earlier `recovery_token` values may also be allowed
+to account for propagation delays when updating recovery configurations using
+the gossip protocol. KBMAPI may also optionally periodically purge members of
+a token's `recovery_tokens` array that are sufficiently old to no longer
+be considered valid (even when accounting for propagation delays).
+
+The CN submits a RecoverToken request to replace the unavailable token
+with a new token.  The `:guid` parameter is the guid of the unavailable token.
+The data included in the request is identical to that of a CreateToken request.
+The major difference is that instead of using a token's 9e key to sign the date
+field, the decrypted `recovery_token` value is used as the signing key.
 
 **QUESTION**: Should we also include an additional header with the date signed
 by the new token's 9e key?  Or is it sufficient to trust the data if signed by
@@ -2419,6 +2430,49 @@ Response-Time: 42
 ----
 
 Note that the location contains the guid of the _new_ token.
+
+#### CreateRecoveryToken (GET /pivtokens/:guid/recover)
+
+Create a new recovery token for the given PIV token.  The request should be
+authenticated by the PIV token.  When a new recovery configuration is propagated
+to CNs via the gossip protocol, a new ebox is created which includes a new
+recovery token.  The request _must_ be authenticated using the 9e key.  If
+authentication fails, a 401 Unauthorized error + NotAuthorized code is returned.
+
+Example request:
+
+----
+GET /pivtokens/75CA077A14C5E45037D7A0740D5602A5/recover
+Host: kbmapi.mytriton.example.com
+Date: Fri, 5 Jun 2019 11:24:00 GMT
+Authorization: Signature <Base64(rsa(sha256($Date)))>
+Accept-Version: ~1
+Accept: application/json
+----
+
+Example reply:
+
+----
+HTTP/1.1 201 Created
+Location: /pivtokens/75CA077A14C5E45037D7A0740D5602A5/recover
+Content-Type: application/json
+Content-Length: 12345
+Content-MD5: s5RFP2dBDXlf5X1drujDvg==
+Date: Fri, 5 Jun 2019 11:24:24 GMT
+Server: Joyent KBMAPI 1.0
+Api-Version: 1.0
+Request-Id: bd73cff7-325f-64d8-cb0f-8c2ca8ecbd7d
+Response-Time: 16
+
+{
+    "recovery_token": "QmUgc3VyZSB0byBkcmluayB5b3VyIG92YWx0aW5l"
+}
+----
+
+XXX: Is 201 the best thing to return here?  Should we consider some mechanism
+in the request/response to make this retry-able w/o generating and saving a new
+token each time (to prevent a single recovery configuration update from
+creating multiple recovery tokens due to network/retry issues).
 
 #### ListTokens (GET /pivtokens)
 
