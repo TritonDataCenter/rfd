@@ -353,6 +353,72 @@ not just to the same contents but the same instance of uploading those contents
 us to be having different `etag:` values for separated links since these two are
 now independent instances of the object.
 
+#### Additional Concerns with ETags and Upgrades
+
+It [was raised](https://github.com/joyent/rfd/issues/135#issuecomment-501458279)
+that when we are doing the upgrade from old SnapLinks (same objectId) to new
+SnapLinks (different objectIds), that if someone did a GET or HEAD call before
+the upgrade and stored that ETag somewhere for the duration of the upgrade and
+then did another GET or HEAD after the upgrade, they'd see a different ETag and
+it's possible something they are doing would be confused by this.
+
+### Capacity Questions
+
+Several [issues related to capacity](https://github.com/joyent/rfd/issues/135#issuecomment-501458279)
+were raised in the discussion issue. This section attempts to summarize those.
+
+#### Additional Usage Due to Rebalance
+
+When SnapLinks have been created, and a rebalance occurs it's possible for
+rebalanced objects to no longer be on the same storage zone (shark/mako). In
+this case the physical usage of the entire Manta system would be increased by
+the size of the objects that were moved to new storage zones.
+
+With large objects it has been posited that this could surprise operators. It's
+also the case that if a manta is full, it might not be possible to do
+rebalancing since we'd need to have room for the new objects on the target and
+we should make sure this behavior is clear.
+
+#### Creating SnapLinks on "full" Storage Zones
+
+We set a limit on the utilization of a zpool for storage zones. If we're at that
+limit what should we do when someone tries to SnapLink an object that lives on
+that storage zone since some (small) amount of space is still needed to make a
+link?
+
+ * create the link anyway (going over the limit)?
+   ** if enough links are created we might hit 100% and really run out of space
+ * fail to create the link?
+   ** this adds a failure mode to PutSnapLink that doesn't exist now
+
+### Identifying Links
+
+Currently SnapLinks have a property:
+
+```
+"createdFrom":"/96c4ecc0-89aa-4e15-958f-3f50d5e 2a68b/public/plugin.c"
+```
+
+that indicates the object they were created from. Unfortunately this is not that
+useful for our purposes here.
+
+If you create a SnapLink from a SnapLink, it's the source SnapLink's path that's
+used. So if you do:
+
+ * mln ~~/public/object1 ~~/public/object2
+ * mln ~~/public/object2 ~~/public/object3
+
+the `createdFrom` for object3 will show object2's path.
+
+It was [suggested that we should have a mechanism for identifying
+links](https://github.com/joyent/rfd/issues/135#issuecomment-501458279)
+
+I think it might be sufficient here to track the original objectId when making a
+symlink. Though another question is whether we should track both the very first
+objectId (in the above example would be object1 for both object2 and object3)
+and the immediate source (object1 for object2 and object2 for object3) or
+whether one or the other is sufficient here.
+
 
 ## Additional Work
 
