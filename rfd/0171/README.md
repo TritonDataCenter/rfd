@@ -248,12 +248,16 @@ The primary changes here as far as other components are concerned would be:
  * In the metadata tier, each object will have its own ObjectId.
  * There will be an additional interface on the mako for creating a link which
    will be used by muskie/webapi.
+ * ETag for a HEAD/GET on a SnapLink target object would be different from the
+   source due to the separate ObjectIds (see below)
 
 
 ### Billing
 
-It was pointed out that customers that use the Manta job-based billing are [not
-charged for space used by secondary links to their
+It was [pointed out in the GH
+issue](https://github.com/joyent/rfd/issues/135#issuecomment-500566030) that
+customers that use the Manta job-based billing are [not charged for space used
+by secondary links to their
 objects](https://github.com/joyent/manta-mackerel/blob/6e55545e6040a3270dd4b8c9ac83d41d4201d41f/assets/lib/storage-reduce1.js#L142-L150).
 If we wanted to keep this behavior, we'd need some mechanism to identify links
 at the point where billing reports are generated.
@@ -261,6 +265,93 @@ at the point where billing reports are generated.
 However, it was subsequently pointed out that there were going to be big billing
 changes in the near future, and that billing should not be part of the scope of
 this discussion.
+
+
+### ETags
+
+[A question was raised about ETags](https://github.com/joyent/rfd/issues/135#issuecomment-501367643)
+
+Currently when you create a SnapLink, in moray the two links will have
+different `_etag` values in Moray:
+
+```
+moray=# select objectid,_etag From manta where dirname = '/96c4ecc0-89aa-4e15-958f-3f50d5e2a68b/public';
+               objectid               |  _etag
+--------------------------------------+----------
+ 09241c22-8da6-c142-d515-e1bb0aab703f | 52D3803A
+ 09241c22-8da6-c142-d515-e1bb0aab703f | A7100205
+(2 rows)
+
+moray=#
+```
+
+However looking at these same two objects with minfo we see instead:
+
+```
+$ minfo ~~/public/plugin.c
+HTTP/1.1 200 OK
+etag: 09241c22-8da6-c142-d515-e1bb0aab703f
+last-modified: Wed, 12 Jun 2019 17:59:57 GMT
+access-control-allow-origin: *
+durability-level: 2
+content-length: 5110
+content-md5: U7C89aOfz3X1Gap/uP4C2w==
+content-type: text/x-c
+date: Wed, 12 Jun 2019 18:06:50 GMT
+server: Manta
+x-request-id: 3d225429-ae36-446b-bbc3-245e21abf011
+x-response-time: 167
+x-server-name: 4e32fe68-774b-4a58-9731-ad452e641cd8
+connection: keep-alive
+x-request-received: 1560362810063
+x-request-processing-time: 237
+
+$ minfo ~~/public/plugin2.c
+HTTP/1.1 200 OK
+etag: 09241c22-8da6-c142-d515-e1bb0aab703f
+last-modified: Wed, 12 Jun 2019 18:00:05 GMT
+access-control-allow-origin: *
+durability-level: 2
+content-length: 5110
+content-md5: U7C89aOfz3X1Gap/uP4C2w==
+content-type: text/x-c
+date: Wed, 12 Jun 2019 18:07:02 GMT
+server: Manta
+x-request-id: 8d642694-64f9-4499-b00d-ab9de1b8b17b
+x-response-time: 145
+x-server-name: 4e32fe68-774b-4a58-9731-ad452e641cd8
+connection: keep-alive
+x-request-received: 1560362822628
+x-request-processing-time: 183
+```
+
+So we're not getting the `_etag` value from the database. Instead we're using
+the objectId as the `etag:` value.
+
+At the time of this writing none of:
+
+ * [The Manta API Documentation](https://apidocs.joyent.com/manta/api.html)
+ * [The Node SDK Documentation](https://apidocs.joyent.com/manta/nodesdk.html)
+ * [The java-manta-client Documentation](https://javadoc.io/doc/com.joyent.manta/java-manta-client/3.4.0)
+
+appears to define `HEAD` requests at all (what minfo uses), nor do they define
+semantics around ETags for HEAD/GET on objects. As such it seems any existing
+client that does depend on the current semantics is relying on undocumented
+behavior, so it is unclear what might break if suddenly the `etag:` header for a
+linked object now has a different UUID (the UUID of the new object) where
+previously a link had the same UUID.
+
+With [Buckets](https://github.com/joyent/rfd/blob/master/rfd/0155/README.md) I
+have been informed that we are also going to be using the objectId as the etag.
+So this would at least be consistent.
+
+[The discussion in the GH
+issue](https://github.com/joyent/rfd/issues/135#issuecomment-501394987) suggests
+that the intention here was for the ETag to indicate when: "two objects refer
+not just to the same contents but the same instance of uploading those contents
+-- even across snaplinks". In that case, it seems that it would be correct for
+us to be having different `etag:` values for separated links since these two are
+now independent instances of the object.
 
 
 ## Additional Work
