@@ -249,7 +249,7 @@ The primary changes here as far as other components are concerned would be:
  * There will be an additional interface on the mako for creating a link which
    will be used by muskie/webapi.
  * ETag for a HEAD/GET on a SnapLink target object would be different from the
-   source due to the separate ObjectIds (see below)
+   source due to the separate ObjectIds (though this is not necessary, see below)
 
 
 ### Billing
@@ -353,6 +353,17 @@ not just to the same contents but the same instance of uploading those contents
 us to be having different `etag:` values for separated links since these two are
 now independent instances of the object.
 
+As an option, in order to make this match the previous behavior we could combine
+this with the field mentioned in the "Identifying Links" section below, and have
+muskie return (pseudocode):
+
+```
+headers.etag = originalObjectId || objectId
+```
+
+instead of setting the etag to the objectId for SnapLinks. If we decide this is
+critical.
+
 #### Additional Concerns with ETags and Upgrades
 
 It [was raised](https://github.com/joyent/rfd/issues/135#issuecomment-501458279)
@@ -361,6 +372,9 @@ SnapLinks (different objectIds), that if someone did a GET or HEAD call before
 the upgrade and stored that ETag somewhere for the duration of the upgrade and
 then did another GET or HEAD after the upgrade, they'd see a different ETag and
 it's possible something they are doing would be confused by this.
+
+This would not be a problem if we set the ETag to the originalObjectId as
+described above as an option.
 
 ### Capacity Questions
 
@@ -414,7 +428,7 @@ It was [suggested that we should have a mechanism for identifying
 links](https://github.com/joyent/rfd/issues/135#issuecomment-501458279)
 
 I think it might be sufficient here to track the original objectId when making a
-symlink. Though another question is whether we should track both the very first
+SnapLink. Though another question is whether we should track both the very first
 objectId (in the above example would be object1 for both object2 and object3)
 and the immediate source (object1 for object2 and object2 for object3) or
 whether one or the other is sufficient here.
@@ -423,6 +437,8 @@ This property most likely can live only in the metadata tier and only be
 available for internal tools and for debugging. It is not expected that it needs
 to be in the public API or exposed to users in any way.
 
+If we use the originalObjectId and keep that through subsequent SnapLinks, we
+could mitigate some of the backward incompatible change here.
 
 ## Additional Work
 
