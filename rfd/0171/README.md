@@ -393,7 +393,7 @@ link?
 
 ### Identifying Links
 
-Currently SnapLinks have a property:
+Currently SnapLink objects in the `manta` bucket in Moray have a property:
 
 ```
 "createdFrom":"/96c4ecc0-89aa-4e15-958f-3f50d5e 2a68b/public/plugin.c"
@@ -418,6 +418,10 @@ symlink. Though another question is whether we should track both the very first
 objectId (in the above example would be object1 for both object2 and object3)
 and the immediate source (object1 for object2 and object2 for object3) or
 whether one or the other is sufficient here.
+
+This property most likely can live only in the metadata tier and only be
+available for internal tools and for debugging. It is not expected that it needs
+to be in the public API or exposed to users in any way.
 
 
 ## Additional Work
