@@ -1,6 +1,6 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
-state: draft
+state: abandoned
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+148%22
 ---
 
@@ -11,8 +11,18 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+148%22
 -->
 
 <!--
-    Copyright (c) 2018, Joyent, Inc
+    Copyright 2019 Joyent, Inc
 -->
+
+# RFD 148 Snapper: VM Snapshots
+
+## Abandoned
+
+This RFD describes an approach to bhyve snapshots that is more complicated than
+what has been implemented.  Instead of this approach, which focuses on off-CN
+storage of snapshots, the existing snapshot mechanism used by containers has
+been opened up to bhyve VMs.  See [RFD 154](../0154/README.md) for explanation
+of how snapshots of bhyve VMs are related to other storage management features.
 
 # RFD 148 Snapper: VM Snapshots
 

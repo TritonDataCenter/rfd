@@ -191,7 +191,7 @@ formal writing that it has come to represent.)
 | publish | [RFD 145 Lullaby 3: Improving the Triton/Manta builds](./rfd/0145/README.md) |
 | predraft | [RFD 146 Conch: Inventory System](./rfd/0146/README.md) |
 | publish  | [RFD 147 Project Tiresias: USB Topology](./rfd/0147/README.md) |
-| draft    | [RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md) |
+| abandoned | [RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md) |
 | draft    | [RFD 149 PostgreSQL Schema For Manta buckets](./rfd/0149/README.md) |
 | draft    | [RFD 150 Operationalizing Prometheus, Thanos, and Grafana](./rfd/0150/README.md) |
 | publish  | [RFD 151 Assessing Software Engineering Candidates](./rfd/0151/README.md) |
