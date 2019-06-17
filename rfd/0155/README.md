@@ -78,6 +78,33 @@ for more information.
 
 ### Buckets
 
+#### Check allowed methods for buckets (OPTIONS /:login/buckets)
+
+Returns the HTTP methods allowed for this resourcein the `Allow` response header
+value. No response body is returned.
+
+Sample Request
+```
+$ manta /$MANTA_USER/buckets -X OPTIONS
+
+OPTIONS /$MANTA_USER/buckets HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Tue, 18 Dec 2018 20:38:18 GMT
+Authorization: $Authorization
+```
+
+Sample Response
+```
+HTTP/1.1 204 No Content
+Allow: OPTIONS, GET
+Date: Tue, 18 Dec 2018 20:38:18 GMT
+Server: Manta
+x-request-id: da0b31b0-0304-11e9-a402-b30a36c2c748
+x-response-time: 27
+x-server-name: $zonename
+```
+
 #### List buckets (GET /:login/buckets)
 
 List all buckets for an account's namespace. The `type` of each object in the `\n`
