@@ -1,6 +1,6 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
-state: draft
+state: publish
 discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+154%22'
 ---
 <!--
@@ -10,7 +10,7 @@ discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+154%22'
 -->
 
 <!--
-    Copyright (c) 2018, Joyent, Inc
+    Copyright 2019 Joyent, Inc.
 -->
 
 # RFD 154 Flexible disk space for bhyve VMs
@@ -80,7 +80,7 @@ Additionally, customers that may be transitioning from LX to bhyve may have an e
 
 If a package is not a flexible disk package, the changes described in this RFD do not apply to a VM using that package.
 
-An instance that is not a flexible disk instance may become a flexible disk instance by being resized into a flexible disk package.
+An instance that is not a flexible disk instance may become a flexible disk instance through operator intervention.
 
 To support flexible disks, changes are required in packages, CloudAPI, AdminUI, the User Portal, and the platform. Full realization of the benefits will require actions within guests. These in-guest changes may be accomplished through in-image automation and/or instance-specific procedures.
 
@@ -90,7 +90,7 @@ These changes are explained in detail below.
 
 CloudAPI will be enhanced to allow various attributes of any number of disks to be specified at instance creation time. Most importantly, the size of each disk may be specified, subject to the size limit imposed by the package. Disks may be resized, added, and deleted.
 
-This new functionality will be added with CloudAPI version 9.x.y
+This new functionality will be added with CloudAPI version 9.4.3
 
 ### `CreateMachine`
 
@@ -100,11 +100,11 @@ This new functionality will be added with CloudAPI version 9.x.y
 >
 > | Field | Type | Description |
 > | ----- | ---- | ----------- |
-> | disks | Array | A list of objects representing disks to provision. New in CloudAPI 9.x.y. Each disk may specify the attributes described in the inputs to `CreateMachineDisk`. If the first disk (the boot disk) does not specify `size`, the `image` must be defined and the size of the image will be used. |
+> | disks | Array | A list of objects representing disks to provision. New in CloudAPI 9.4.3. Each disk may specify the attributes described in the inputs to `CreateMachineDisk`. If the first disk (the boot disk) does not specify `size`, the `image` must be defined and the size of the image will be used. |
 >
 > **disks**
 >
-> New in API version 9.x.y. The use of `disks` is only supported if the package has [flexible disk support enabled](XXX link). The `disks` input parameter allows the user to specify a list of disks to provision for the new machine. The first disk is the boot disk. A maximum of 8 disks per VM are supported.
+> New in API version 9.4.3. The use of `disks` is only supported if the package has [flexible disk](https://github.com/joyent/sdc-papi/blob/master/docs/index.md#package-flexible_disk). The `disks` input parameter allows the user to specify a list of disks to provision for the new machine. The first disk is the boot disk. A maximum of 8 disks per VM are supported.
 >
 > ```json
 > {
@@ -130,7 +130,7 @@ This new functionality will be added with CloudAPI version 9.x.y
 > | Field | Type | Description |
 > | ----- | ---- | ----------- |
 > | image | String | The image UUID used when provisioning the root disk |
-> | disks | Array[Object] | (v9.x.y+) One disk object per disk in the VM. See `GetMachine` for details. |
+> | disks | Array[Object] | (v9.4.3+) One disk object per disk in the VM. See `GetMachine` for details. |
 
 Suppose the example input above is used with this package for the boot disk:
 
@@ -179,14 +179,13 @@ needs to be added to CloudAPI's `GetMachine` and `ListMachines` regarding Machin
 
 > **GetMachine (GET /:login/machines/:id)**
 >
-> The details of a virtual machine's disks and unallocated disk space, only supported with bhyve VMs has been added in CloudAPI 9.x.y.
+> The details of a virtual machine's disks and unallocated disk space, only supported with bhyve VMs has been added in CloudAPI 9.4.3.
 >
 > **Returns**
 >
 > | Field | Type | Description |
 > | ----- | ---- | ----------- |
 > | disks | Array | An array of disk objects. Each disk object is described in a table below. |
-> | total\_space | Number | Maximum size in mebibytes available to the VM for disks and snapshots of those disks. This value will match the package's `disk` value. |
 > | free\_space | Number | Size in mebibytes of space that is not allocated to disks nor in use by snapshots of those disks. If snapshots are present, writes to disks may reduce this value. |
 > | flexible | Boolean | Does this machine use the [flexible disk space](XXX link) feature? |
 >
@@ -194,23 +193,22 @@ needs to be added to CloudAPI's `GetMachine` and `ListMachines` regarding Machin
 >
 > | Field | Type | Description |
 > | ----- | ---- | ----------- |
-> | slot  | String | An indentifier that describes where this disk is attached to the VM. (`disk0`, `disk1`, ..., `disk7`)
-> | boot  | Boolean | Is this disk the boot disk? |
-> | image | UUID | The image from which this disk was created |
+> | boot  | Boolean | (optional) Is this disk the boot disk? |
+> | id    | UUID | The UUID of this disk |
+> | image | UUID | (optional) The image from which this disk was created |
 > | size  | Number | The size of the disk in mebibytes |
-> | snapshot\_size | Number | The amount of space in mebibytes used by all snapshots of this disk |
+> | snapshot\_size | Number | (optional) The amount of space in mebibytes used by all snapshots of this disk |
 
 ### `ResizeMachineDisk`
 
 `ResizeMachineDisk` will be added, with the following CloudAPI documentation.
 
-> **ResizeMachineDisk (POST /:login/machines/:id/disks/:slot)**
+> **ResizeMachineDisk (POST /:login/machines/:id/disks/:disk_id)**
 >
-> Resizes a VM's disk. Only supported with bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.x.y.
+> Resizes a VM's disk. Only supported with bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.4.3.
 >
 > While the ability to shrink disks is offered, its purpose is to recover from accidental growth of the wrong disk. Shrinking a disk preserves the first part of the disk, permanently discarding the end of the disk. VM snapshots offer no protection against accidental shrinkage. If a file system within the VM has been grown to use the new space after accidental growth, shrinking the disk will result in file system corruption and data loss.
 >
-**XXX should deletion protection also protect against truncating disks? This would be useful for providing oversight if RBAC allowed `ResizeMachineDisk` but did not allow `DisableMachineDeletionProtection`.**
 >
 > **Inputs**
 >
@@ -229,7 +227,7 @@ needs to be added to CloudAPI's `GetMachine` and `ListMachines` regarding Machin
 >
 > | Error Code | Description |
 > | ---------- | ----------- |
-> | ResourceNotFound | If `:login`, `:id` or `:slot` does not exist. |
+> | ResourceNotFound | If `:login`, `:id` or `:disk_id` does not exist. |
 > | InvalidArgument | `size` was specified such that it would shrink the disk but `dangerous_allow_shrink` was not set to true. |
 > | InsufficientSpace | There is not sufficient `free_space` (see `GetMachineDisks`) to grow the disk to specified size. |
 
@@ -239,7 +237,7 @@ needs to be added to CloudAPI's `GetMachine` and `ListMachines` regarding Machin
 >
 > **CreateMachineDisk (POST /:login/machines/:id/disks)**
 >
-> Creates a VM's disk. Only supported with bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.x.y.
+> Creates a VM's disk. Only supported with bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.4.3.
 >
 > **Inputs**
 >
@@ -265,9 +263,9 @@ needs to be added to CloudAPI's `GetMachine` and `ListMachines` regarding Machin
 
 **XXX should deletion protection also protect against deleting disks? This would be useful for providing oversight if RBAC allowed `DeleteMachineDisk` but did not allow `DisableMachineDeletionProtection`.**
 
-> **DeleteMachineDisk (DELETE /:login/machines/:id/disks/:slot)**
+> **DeleteMachineDisk (DELETE /:login/machines/:id/disks/:disk_id)**
 >
-> Deletes a VM's disk. Only supported to remove data disks (disks other than the boot disk) from bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.x.y.
+> Deletes a VM's disk. Only supported to remove data disks (disks other than the boot disk) from bhyve instances that use the [flexible disk space](XXX link) feature. New in CloudAPI 9.4.3.
 >
 > **Inputs**
 >
@@ -283,8 +281,8 @@ needs to be added to CloudAPI's `GetMachine` and `ListMachines` regarding Machin
 >
 > | Error Code | Description |
 > | ---------- | ----------- |
-> | InvalidArgument | `:slot` belongs to the boot disk. |
-> | ResourceNotFound | If `:login`, `:id` or `:slot` does not exist. |
+> | InvalidArgument | `:disk_id` belongs to the boot disk. |
+> | ResourceNotFound | If `:login`, `:id` or `:disk_id` does not exist. |
 
 ## Package Changes
 
@@ -390,9 +388,10 @@ Where "INST" is an instance name, id, or short id.
 An example of the default output is:
 
 ```
-NAME  SIZE
-disk0 10240
-disk1 92160
+$ triton instance disks 38328b88
+SHORTID   SIZE
+11c1a5a7  10240
+04d28a0a  102400
 ```
 
 The JSON output is as shown in `GetMachineDisks`.
@@ -425,14 +424,16 @@ A disk may be removed from a flexible disk instance with `disk delete`, describe
 Delete a disk from a flexible disk instance.
 
 Usage:
-    triton instance disk delete [OPTIONS] INST
+    triton instance disk delete [OPTIONS] INST DISK
 
 Options:
     -h, --help           Show this help.
     -w, --wait           Block until instance state indicates the action is
                          complete.
 
-Where "INST" is an instance name, id, or short id.
+Arguments:
+    INST        Instance name, id, or short id
+    DISK        Disk id or short id
 ```
 
 ### `triton instance disk resize`
@@ -460,14 +461,14 @@ Other options:
 
 Arguments:
     INST        Instance name, id, or short id
-    DISK        Disk name, such as "disk0"
+    DISK        Disk id or short id
     SIZE        Size in mebibytes. If --dangerous-allow-shrink is not also used,
                 SIZE must be greater than the current size of the disk.
 ```
 
 ## VMAPI changes
 
-Alonside the changes described here for VMAPI's end-points, there will be required changes
+Alongside the changes described here for VMAPI's end-points, there will be required changes
 for VMAPI (3 new workflows for disks creation, resize and deletion), modifications of the
 create VM workflow if needed, and updates of VMAPI's parameter validations.
 
@@ -503,12 +504,12 @@ VMAPI's end-point with exactly the same input than CloudAPI's [`CreateMachineDis
 ### ResizeVmDisk (POST /vms/:uuid?action=resize_disk)
 
 VMAPI's end-point with exactly the same input than CloudAPI's [`ResizeMachineDisk`](#resizemachinedisk).
-Target disk will be referenced by `:slot` parameter (exactly the same way than CloudAPI).
+Target disk will be referenced by `:disk_id` parameter (exactly the same way than CloudAPI).
 
 ### DeleteVmDisk (POST /vms/:uuid?action=delete_disk)
 
 VMAPI's end-point with exactly the same input than CloudAPI's [`DeleteMachineDisk`](#deletemachinedisk).
-Target disk will be referenced by `:slot` parameter (exactly the same way than CloudAPI).
+Target disk will be referenced by `:disk_id` parameter (exactly the same way than CloudAPI).
 
 
 ## Platform Image changes
@@ -590,8 +591,6 @@ EOF
 Successfuly updated 926b8205-4b16-6ec4-f9ad-9883a8c84ce1
 ```
 
-**XXX We may want to limit this to one disk update per call to `vmadm update` so that we can't have partial failures. Alternatively, we could explore using [ZFS channel programs](https://www.delphix.com/blog/delphix-engineering/zfs-channel-programs) to allow multiple updates that are applied atomically. Use of ZFS channel programs is not straight-forward as they do not yet support changing property values, such as `volsize`.**
-
 ### `VM.js` PCI slot assignment for disks
 
 The PCI slot for each disk can be specified with `disks.*.pci_slot`, which will correspond to an optional `pci_slot` property in each NIC.
@@ -645,7 +644,7 @@ allocatable = VM.flexible_disk_size - DISK_SIZE - DISK_SNAP
 
 #### Calculation of ZFS space
 
-As described in [RFD 148's snapspace](../0148/snapspace.md), the zone's top-level ZFS `quota` and `reservation` properties are set to matching values. These ensure that the VM has acccess to all of the space that is allocated to it without being able to consume more space.
+As described in [RFD 148's snapspace](../0148/snapspace.md), the zone's top-level ZFS `quota` and `reservation` properties are set to matching values. These ensure that the VM has access to all of the space that is allocated to it without being able to consume more space.
 
 The ZFS `quota` and `reservation` properties on the zone's top-level dataset (`zones/<UUID>`) are set to the sum of:
 
@@ -661,7 +660,7 @@ zfs.reservation = zfs.quota = VM.quota + VM.flexible_disk_size + DISK_RESV - DIS
 
 The `zfs.quota` and `zfs.reservation` values need to be recalculated in the following circumstances:
 
-* `VM.flexible_disk_size` changes, such as when a VM is asscociated with a different package that has different value for `package.disk`
+* `VM.flexible_disk_size` changes, such as when a VM is associated with a different package that has different value for `package.disk`
 * A disk is resized
 * A disk is added
 * A disk is removed
@@ -676,7 +675,7 @@ It is likely fairly straight-forward to support resizing of disks without a rebo
 
 ## Guest Support for Resize
 
-Modern operating systems tend to support the idea that disks may be resized and as such support growing partition tables and file systems. This is true of Ubuntu 16.04 and later, CentOS 7 and later, and Windows Server 2012r2 and later (**XXX verify all of these**).
+Modern operating systems tend to support the idea that disks may be resized and as such support growing partition tables and file systems. This is true of Ubuntu 16.04 and later, CentOS 7 and later, and Windows Server 2012r2 and later.
 
 ### Guests that use cloud-init
 

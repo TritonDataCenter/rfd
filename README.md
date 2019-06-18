@@ -197,7 +197,7 @@ formal writing that it has come to represent.)
 | publish  | [RFD 151 Assessing Software Engineering Candidates](./rfd/0151/README.md) |
 | draft | [RFD 152 Rack Aware Networking](./rfd/0152/README.md) |
 | draft    | [RFD 153 Incremental metadata expansion for Manta buckets](./rfd/0153/README.md) |
-| draft    | [RFD 154 Flexible disk space for bhyve VMs](./rfd/0154/README.md) |
+| publish  | [RFD 154 Flexible disk space for bhyve VMs](./rfd/0154/README.md) |
 | draft | [RFD 155 Manta Buckets API](./rfd/0155/README.md) |
 | publish  | [RFD 156 SmartOS/Triton Boot Modernization](./rfd/0156/README.md) |
 | draft    | [RFD 157 Notices to Operators](./rfd/0157/README.md) |
