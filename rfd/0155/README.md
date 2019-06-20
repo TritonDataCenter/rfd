@@ -1,5 +1,5 @@
 ---
-authors: Brittany Wald <brittany.wald@joyent.com>
+authors: Brittany Wald <brittany.wald@joyent.com>, Kelly McLaughlin <kelly.mclaughlin@joyent.com>
 state: draft
 discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+155%22'
 ---
@@ -41,7 +41,6 @@ We use a RESTful API design. For now, this includes the ability to create, get,
 delete, and list buckets as well as objects in buckets. Eventually this API
 will need to expand to include the ability to do multi-part uploads.
 
-
 ## Headers
 
 These are headers we will use on every request.
@@ -69,6 +68,14 @@ RFC 1123.
 Ensure that we handle zero-byte objects. Zero-byte objects with a trailing
 slash may be treated as folders later.
 
+
+## Object names
+
+There are very few limitations imposed on object names. This includes using
+object names that include forward slash characters to create the suggestion of a
+directory hierarchy for a set of object even though the buckets system uses a
+flat namespace. Care must be taken, however, to properly URL encode all object
+names to avoid problems when interacting with the server.
 
 ## Routes
 
@@ -202,7 +209,9 @@ x-server-name: $zonename
 #### Delete bucket (DELETE /:login/buckets/:bucket)
 
 Delete a bucket as specified in the HTTP Request-URI. A successful response will
-return an HTTP status code of 204, and no response data.
+return an HTTP status code of 204, and no response data. If the bucket does not
+exist then an HTTP status code of 404 is returned. If the bucket is not empty
+the deletion is not performed and an HTTP status code of 409 is returned.
 
 Sample Request
 ```
@@ -276,6 +285,12 @@ Transfer-Encoding: chunked
 Ping a bucket object as specified in the HTTP Request-URI. A successful response
 should return an HTTP status code of 200, and no response body.
 
+The following HTTP conditional headers are supported:
+* `If-Modified-Since`
+* `If-Unmodified-Since`
+* `If-Match`
+* `If-None-Match`
+
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X HEAD -vvv
@@ -304,7 +319,11 @@ x-server-name: $zonename
 
 #### Create or overwrite object (PUT /:login/buckets/:bucket/objects/:object)
 
-Conditional headers may be supported.
+The following HTTP conditional headers are supported:
+* `If-Modified-Since`
+* `If-Unmodified-Since`
+* `If-Match`
+* `If-None-Match`
 
 Sample Request
 ```
@@ -338,6 +357,12 @@ x-server-name: $zonename
 
 ### Get object (GET /:login/buckets/:bucket/objects/:object)
 
+The following HTTP conditional headers are supported:
+* `If-Modified-Since`
+* `If-Unmodified-Since`
+* `If-Match`
+* `If-None-Match`
+
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X GET
@@ -369,7 +394,11 @@ x-server-name: $zonename
 
 ### Delete object (DELETE /:login/buckets/:bucket/objects/:object)
 
-Conditional headers may be supported.
+The following HTTP conditional headers are supported:
+* `If-Modified-Since`
+* `If-Unmodified-Since`
+* `If-Match`
+* `If-None-Match`
 
 Sample Request
 ```
@@ -393,13 +422,76 @@ x-response-time: 251
 x-server-name: $zonename
 ```
 
+### Get object metadata (GET /:login/buckets/:bucket/objects/:object/metadata)
+
+The following HTTP conditional headers are supported:
+* `If-Modified-Since`
+* `If-Unmodified-Since`
+* `If-Match`
+* `If-None-Match`
+
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json/metadata -X GET
+
+GET /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Wed, 19 Dec 2018 21:53:35 GMT
+Authorization: $Authorization
+```
+
+Sample Response
+```
+HTTP/1.1 200 OK
+Connection: close
+Accept-Ranges: bytes
+Content-Type: application/json
+m-custom-header: myheadervalue
+Date: Wed, 19 Dec 2018 21:53:35 GMT
+Server: Manta
+x-request-id: 88c12790-03d8-11e9-bc2d-0501f01773f1
+x-response-time: 355
+x-server-name: $zonename
+```
+
+### Update object metadata (PUT /:login/buckets/:bucket/objects/:object/metadata)
+
+Sample Request
+```
+$ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json/metadata -X PUT -H 'm-custom-header: myupdatedheadervalue'
+
+PUT /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
+Host: *.manta.joyent.com
+Accept: */*
+date: Wed, 19 Dec 2018 21:53:35 GMT
+m-custom-header: myupdatedheadervalue
+Authorization: $Authorization
+```
+
+Sample Response
+```
+HTTP/1.1 204 No Content
+Connection: close
+Etag: 4d39c55e-a204-6a2b-f220-c5566b3c657a
+Last-Modified: Thu, 20 Jun 2019 13:16:56 GMT
+m-custom-header: myupdatedheadervalue
+Date: Thu, 20 Jun 2019 13:16:56 GMT
+Server: Manta
+x-request-id: ad59b5d0-935d-11e9-9d8b-cd762420ff2a
+x-response-time: 147
+x-server-name: 6a05c503-0313-4666-a24c-5a24c2777f07
+
+```
 
 ## Errors
 
 New errors for buckets include:
 
-ParentNotBucketError
-ParentNotBucketRootError
+BucketAlreadyExists
+BucketNotEmpty
+BucketNotFound
+ObjectNotFound
 
 
 ## Unsupported operations
