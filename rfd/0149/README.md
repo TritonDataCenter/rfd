@@ -87,6 +87,7 @@ fourteen columns. The description each column is as follows:
   * `content_type` - A string representing the value of the HTTP Content-Type
     header for this object.
   * `headers` - A set of key-value mappings from HTTP header name to HTTP header value.
+  * `roles` - An array of UUID values representing the valid roles for the object.
   * `sharks` - A set of key-value mappings from datacenter to manta storage
     identifier. This value of this column indicates where the object data
     resides. The type of this column is a text array to account for the
@@ -112,6 +113,7 @@ CREATE TABLE manta_bucket_object (
     content_md5 bytea,
     content_type text,
     headers hstore,
+    roles uuid[],
     sharks text[],
     properties jsonb,
 
@@ -196,7 +198,9 @@ The description each column is as follows:
   * `content_md5` - A byte sequence representing the MD5 hash of the object content
   * `content_type` - A string representing the value of the HTTP Content-Type
     header for this object.
-  * `headers` - A set of key-value mappings from HTTP header name to HTTP header value.
+  * `headers` - A set of key-value mappings from HTTP header name to HTTP header
+    value.
+  * `roles` - An array of UUID values representing the valid roles for the object.
   * `sharks` - A set of key-value mappings from datacenter to manta storage
     identifier. This value of this column indicates where the object data
     resides. The type of this column is a text array to account for the
@@ -224,6 +228,7 @@ CREATE TABLE manta_bucket_deleted_object (
     content_md5 bytea,
     content_type text,
     headers hstore,
+    roles uuid[],
     sharks text[],
     properties jsonb,
     deleted_at timestamptz DEFAULT current_timestamp NOT NULL
@@ -344,7 +349,7 @@ WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7' AND name = 'mybucket';
 
 ```SQL
 SELECT id, owner, bucket_id, name, created, modified, content_length,
-       content_md5, content_type, headers, sharks, properties
+       content_md5, content_type, headers, roles, sharks, properties
 FROM manta_bucket_object
 WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7'
 AND bucket_id = '293def5e-a57f-11e8-9ef0-bf343ab6f823'
@@ -365,21 +370,22 @@ VALUES ('293def5e-a57f-11e8-9ef0-bf343ab6f823',
 WITH write_deletion_record AS (
   INSERT INTO manta_bucket_deleted_object (
     id, owner, bucket_id, name, created, modified, creator,
-    content_length, content_md5, content_type, headers, sharks, properties
+    content_length, content_md5, content_type, headers, roles, sharks, properties
   )
   SELECT id, owner, bucket_id, name, created, modified, creator,
-         content_length, content_md5, content_type, headers, sharks, properties
+         content_length, content_md5, content_type, headers, roles, sharks, properties
   FROM manta_bucket_object
   WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7'
   AND bucket_id = '293def5e-a57f-11e8-9ef0-bf343ab6f823'
   AND name = 'myobject'
 )
 INSERT INTO manta_bucket_0.manta_bucket_object (id, owner, bucket_id, name,
-content_length, content_md5, content_type, headers, sharks)
+content_length, content_md5, content_type, headers, roles, sharks)
 VALUES ('06d40bb8-a581-11e8-84b2-93ddb053d02b',
 '14aafd84-a57f-11e8-8706-4fc23c74c5e7', '293def5e-a57f-11e8-9ef0-bf343ab6f823',
 'myobject', 14917, '\xc736398c96d1f6b72b3118657268bff2'::bytea,
 'text/plain', 'm-custom-header1=>value1,m-custom-header2=>value2',
+'{0e1fe0a7-9520-4d17-be24-ec43b42bfb6d}',
 '{us-east-1:1.stor.us-east.joyent.com,us-east1:3.stor.us-eas.joyent.com}')
 ON CONFLICT (owner, bucket_id, name) DO UPDATE
 SET id = EXCLUDED.id,
@@ -389,6 +395,7 @@ SET id = EXCLUDED.id,
   content_md5 = EXCLUDED.content_md5,
   content_type = EXCLUDED.content_md5,
   headers = EXCLUDED.headers,
+  roles = EXCLUDED.roles,
   sharks = EXCLUDED.sharks,
   properties = EXCLUDED.properties;
 ```
@@ -442,10 +449,10 @@ WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7' AND name = 'mybucket';
 WITH write_deletion_record AS (
   INSERT INTO manta_bucket_deleted_object (
     id, owner, bucket_id, name, created, modified, creator,
-    content_length, content_md5, content_type, headers, sharks, properties
+    content_length, content_md5, content_type, headers, roles, sharks, properties
   )
   SELECT id, owner, bucket_id, name, created, modified, creator,
-         content_length, content_md5, content_type, headers, sharks, properties
+         content_length, content_md5, content_type, headers, roles, sharks, properties
   FROM manta_bucket_object
   WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7'
   AND bucket_id = '293def5e-a57f-11e8-9ef0-bf343ab6f823'
@@ -461,7 +468,7 @@ AND name = 'myobject';
 
 ```SQL
 SELECT id, owner, bucket_id, name, created, modified, content_length,
-       content_md5, content_type, headers, sharks, properties
+       content_md5, content_type, headers, roles, sharks, properties
 FROM manta_bucket_deleted_object
 WHERE owner = '14aafd84-a57f-11e8-8706-4fc23c74c5e7'
 AND bucket_id = '293def5e-a57f-11e8-9ef0-bf343ab6f823'
@@ -481,7 +488,7 @@ ORDER BY deleted_at LIMIT 25;
 
 ```SQL
 SELECT id, owner, bucket_id, name, created, modified, content_length,
-       content_md5, content_type, headers, sharks, properties
+       content_md5, content_type, headers, roles, sharks, properties
 FROM manta_bucket_deleted_object
 WHERE deleted_at < current_timestamp - interval '24 hours'
 ORDER BY deleted_at LIMIT 100;
