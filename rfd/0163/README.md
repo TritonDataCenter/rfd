@@ -1,6 +1,6 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>, Pedro Palazón Candel <pedro@joyent.com>
-state: predraft
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+163%22
 ---
 
@@ -11,7 +11,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+163%22
 -->
 
 <!--
-    Copyright (c) 2019, Joyent, Inc.
+    Copyright 2019 Joyent, Inc.
 -->
 
 # RFD 163 Cloud Firewall Logging
@@ -42,8 +42,8 @@ What gets logged will be determined by a `log` boolean attribute on each firewal
 
 IPFilter will be enhanced in the following ways:
 
-* It will gain the ability to optionally log connection and connection-like events that gain state via `keep cfw`.  These will be logged to a new special-purpose device.
-* Each rule will be optionally tagged with a UUID
+* It will gain the ability to optionally log connection and connection-like events that gain state via `set-tag(cfwlog)`.  These will be logged to a new special-purpose device.
+* Each rule will be optionally tagged with a UUID, which is noted in the ipf rule with `set-tag(uuid=<uuid>)`.
 
 ### Configuration
 
@@ -72,69 +72,66 @@ Supposing that the first rule in the configuration above is to be logged, it wou
 
 ```
 # rule=da831f67-5016-42ec-817e-be7471445906, version=1521822733108.003634, wildcard=any
-pass in quick proto icmp from any to any keep frags keep cfw set-tag(uuid=da831f67-5016-42ec-817e-be7471445906)
+pass in quick proto icmp from any to any keep frags set-tag(cfwlog, uuid=da831f67-5016-42ec-817e-be7471445906)
 ```
-
-**XXX KEBE: ^^^^ please confirm `keep cfw`** above
 
 The UUID will be stored in the kernel along with the rest of the rule configuration.  It will be included with each event.  If an event is logged and no `uuid` tag was specified, the logged UUID will be the nil UUID, 00000000-0000-0000-0000-000000000000.
 
 ### Event device
 
-A new device, `/dev/XXX`, will be created with the intent that there will be a single process reading records from it.  The record for each PASS and BLOCK event is as described below.
+A new device, `/dev/ipfev`, will be created with the intent that there will be a single process reading records from it.  The record for each BEGIN and BLOCK event is as described below.
 
 ```c
-/* XXX is this helpful for future implementors */
-typedef struct cfwev_hdr {
-       uint16_t cfweh_type;
-       uint16_t cfweh_size;
-} cfwev_hdr_t;
+#define	CFWEV_BLOCK	1
+#define	CFWEV_BEGIN	2
+#define	CFWEV_END	3
+#define	CFWDIR_IN	1
+#define	CFWDIR_OUT	2
 
-/*
- * PASS and BLOCK events
- */
-/* XXX padding for alignment and size */
-typedef struct cfwev_s {
-        cfwev_hdr_t cfwev_hdr;
-#define cfwev_type cfwev_hdr.cfweh_type
-#define cfwev_size cfwev_hdr.cfweh_size
-        uint8_t cfwev_direction;
-        uint8_t cfwev_protocol; /* IPPROTO_* */
-        /*
-         * The above "direction" informs if src/dst are local/remote or
-         * remote/local.
-         */
-        uint16_t cfwev_sport;   /* Source port */
-        uint16_t cfwev_dport;   /* Dest. port */
-        in6_addr_t cfwev_saddr; /* Can be clever later with unions, w/not. */
-        in6_addr_t cfwev_daddr;
-        /* XXX KEBE ASKS hrtime for relative time from some start instead? */
-        struct timeval cfwev_tstamp;
-        zoneid_t cfwev_zonedid; /* Pullable from ipf_stack_t. */
-        uint32_t cfwev_ruleid;  /* Pullable from fr_info_t. */ /* XXX */
-        uuid_t   cfwev_ruleuuid;
+typedef	struct cfwev_s {
+	uint16_t cfwev_type;    /* BEGIN, END, BLOCK */
+	uint16_t cfwev_length;  /* in bytes, so capped to 65535 bytes */
+	zoneid_t cfwev_zonedid; /* Pullable from ipf_stack_t. */
+
+	uint32_t cfwev_ruleid;  /* Pullable from fr_info_t. */
+	uint16_t cfwev_sport;   /* Source port (network order) */
+	uint16_t cfwev_dport;   /* Dest. port (network order) */
+
+	uint8_t cfwev_protocol; /* IPPROTO_* */
+	/* "direction" informs if src/dst are local/remote or remote/local. */
+	uint8_t cfwev_direction;
+	uint8_t cfwev_reserved[6];      /* Ensures 64-bit alignment. */
+
+	in6_addr_t cfwev_saddr; /* IPv4 addresses are V4MAPPED. */
+	in6_addr_t cfwev_daddr;
+
+	/*
+	 * Because of 'struct timeval' being different between 32-bit and
+	 * 64-bit ABIs, this interface is only usable by 64-bit binaries.
+	 */
+	struct timeval cfwev_tstamp;
+
+	uuid_t cfwev_ruleuuid;  /* Pullable from fr_info_t. */
 } cfwev_t;
 ```
 
 Over time other event types may be added.  Each event will start with a 2-byte `type` field that stores the type and a 2-byte `size` field that stores the size of the entire structure in bytes. No event will be larger than 8 KiB, the minimum recommend size of the buffer used when reading from the device.
 
-A successful `read()` from `/dev/XXX` will return one or more event structures.  If there are no events available, the `read()` will block.  The number of events returned will be determined by the size of the passed buffer and the number of available events.  Each returned event may be of a different type and/or size.  Variable sized event types are allowed.
+A successful `read()` from `/dev/ipfev` will return one or more event structures.  If there are no events available, the `read()` will block.  The number of events returned will be determined by the size of the passed buffer and the number of available events.  Each returned event may be of a different type and/or size.  Variable sized event types are allowed.
 
-The process that reads from `/dev/XXX` must check the `type` field.  If an unknown type is encountered, the `size` field should be used to find the start of the next event.
+The process that reads from `/dev/ipfev` must check the `type` field.  If an unknown type is encountered, the `size` field should be used to find the start of the next event.
 
-If the read rate on `/dev/XXX` is too low events may be dropped.  A best effort will be made to track the number of dropped events.  **XXX specify mechanism.**
+If the read rate on `/dev/ipfev` is too low events may be dropped.  A best effort will be made to track the number of dropped events.
 
 ## Cloud Firewall Log Daemon
 
-The Cloud Firewall Log Daemon, `cfwlogd`, is a new component that reads events from `/dev/XXX`.  Each event is processed, transforming it into a json-formatted log entry which is then written to a per-VM log file.
+The Cloud Firewall Log Daemon, `cfwlogd`, is a new component that reads events from `/dev/ipfev`.  Each event is processed, transforming it into a json-formatted log entry which is then written to a per-VM log file.
 
 In the event of insufficient disk space or other conditions, log entries may be dropped.
 
-**XXX Should we be logging rule add/remove/change?**
-
 ### SMF Services
 
-The Cloud Firewall Log Daemon will be delivered with the [firewaller](https://github.com/joyent/sdc-firewaller-agent) agent.  That is, it will not be part of the platform image.  It runs in the global zone on each compute node under the watchful eye of SMF in the `svc:/smartdc/agent/firewaller-logger:default` service.  Setup of this agent will be handled by the `svc:/smartdc/agent/firewaller-logger-setup:default` service.  See the *FWAPI* section below.
+The Cloud Firewall Log Daemon will be delivered with the [firewall-logger-agent](https://github.com/joyent/firewall-logger-agent) agent.  That is, it will not be part of the platform image.  It runs in the global zone on each compute node under the watchful eye of SMF in the `svc:/smartdc/agent/firewall-logger-agent:default` service.  Setup of this agent will be handled by the `svc:/smartdc/agent/firewall-logger-setup:default` service.  See the *FWAPI* section below.
 
 ### Record Format
 
@@ -142,39 +139,41 @@ Each log entry will be json object stored on a single line with no extra white s
 
 #### Allowed Connection
 
-A typical accepted connection will look like the following.
+The pretty-printed log entry for a typical allowed connection will look like the following.
 
 ```json
 {
-  "event": "allow",
-  "time": "2019-02-25T21:02:18.658Z",
-  "source_ip": "10.1.0.23",
-  "source_port": 1027,
-  "destination_ip": "10.1.0.4",
+  "event": "begin",
+  "protocol": "TCP",
+  "direction": "in",
+  "source_port": 1234,
   "destination_port": 22,
-  "protocol": "tcp",
-  "rule": "ae8a7fe6-f8c5-4670-bef8-196a8071cb84",
-  "vm": "8b43c12b-6643-cee7-ad7b-b87a53ae257d",
-  "alias": "some-friendly-name-here"
+  "source_ip": "::ffff:192.168.128.12",
+  "destination_ip": "::ffff:192.168.128.5",
+  "timestamp": "2019-05-02T14:27:32.104586532Z",
+  "rule": "43854efd-976b-485c-9e79-6f4e94eba8fd",
+  "vm": "473b158d-023c-c4f7-9785-b027275580c9",
+  "alias": "cfw-test-1"
 }
 ```
 
 #### Denied Connection
 
-A typical denied connection will look like the following.
+The pretty-printed log entry for a typical blocked connection will look like the following.
 
 ```json
 {
-  "event": "reject",
-  "time": "2019-02-25T21:02:18.658Z",
-  "source_ip": "10.1.0.23",
-  "source_port": 1028,
-  "destination_ip": "10.1.0.4",
-  "destination_port": 23,
-  "protocol": "tcp",
-  "rule": "ae8a7fe6-f8c5-4670-bef8-196a8071cb84",
-  "vm": "8b43c12b-6643-cee7-ad7b-b87a53ae257d",
-  "alias": "some-friendly-name-here"
+  "event": "block",
+  "protocol": "UDP",
+  "direction": "in",
+  "source_port": 2116,
+  "destination_port": 60973,
+  "source_ip": "::ffff:192.168.128.12",
+  "destination_ip": "::ffff:192.168.128.5",
+  "timestamp": "2019-04-11T18:30:53.000730227Z",
+  "rule": "66cb0a3e-4843-46aa-9a35-330a20800462",
+  "vm": "473b158d-023c-c4f7-9785-b027275580c9",
+  "alias": "cfw-test-1"
 }
 ```
 
@@ -183,20 +182,18 @@ A typical denied connection will look like the following.
 `cfwlogd` logs will be stored in a new dataset that will be mounted at `/var/log/firewall`.  Logs will be named
 
 ```
-/var/log/firewall/:customer_uuid/:vm_uuid/current.log.gz
+/var/log/firewall/:customer_uuid/:vm_uuid/current.log
 ```
 
 ### Log rotation
 
-When `cfwlogd` receives a `SIGHUP` (or some other mechanism TBD), it will close all log files and reopen on demand.  It is expected that this will be delivered on a regular (e.g. hourly) basis by `logadm`.
+When `cfwlogd` receives a `SIGHUP`, it will close all log files and reopen on demand.  It is expected that this will be delivered on a regular (e.g. hourly) basis by `logadm`.
 
 `logadm` will be configured to periodically rotate all `current.log` files found in `/var/log/firewall/*/*` to `:iso8601stamp.log.gz`.
 
-**XXX should the stamp be the time of the first record or the last?**
-
 ### Log archival
 
-The `logarchiver` service, described in the *Log Archiver Service* section below, will be responsible for gathering cloud firewall logs from each compute node and storing them in Manta.
+The `triton-logarchiver` service, described in the *Log Archiver Service* section below, will be responsible for gathering cloud firewall logs from each compute node and storing them in Manta.
 
 ### Log retention
 
@@ -204,15 +201,9 @@ Triton will not automatically remove old log files that reside in the Manta repo
 
 Any file in `/var/log/firewall/*/*` that reaches seven days old (`find -mtime +7`) will be removed.
 
-### Log Compression
-
-As alluded to above, the log files will be written as gzip files.  On-the-fly compression is used so that a zone that is experiencing a very heavy connection rate will be logging at a rate that does not quickly fill the available log space.  Experimentation shows that a simulated DDoS attack generates a stream that compresses with `gzip` to 0.5% of its original size.  This level of compression can also greatly reduce the load on the archival process.
-
-`cfwlogd` MUST NOT blindly open logs in append mode, as a compressed log file that was not closed properly is likely to be in a state that would cause any appended data to be unreadable.  Instead, when `cfwlogd` finds an existing log file, it will rename it according to the same pattern that is used during log rotation.  The log file open (creation) will then be retried.
-
 ### Triton Cloud Firewall Log Agent
 
-A new agent, `firewall-loggger-agent`, will be created.  It will consists of:
+A new agent, `firewall-loggger-agent`, will be created.  It will consist of:
 
 * `cfwlogd`
 * `svc:/smartdc/agent/firewall-logger-setup:default` is a new service that will handle the setup required for `cfwlogd`.
@@ -228,7 +219,7 @@ Dependencies will be established in the services mentioned above to ensure the f
 
 ## Log Archiver Service
 
-A new Triton service, `logarchiver`, will be created.  This service will have a core VM `logarchiver0` that will run a hermes master and a hermes proxy. This service will be responsible for creating an SMF service, `svc:/smartdc/agent/logarchiver-agent:default`, that will run the hermes actor.  See [sdc-hermes](https://github.com/joyent/sdc-hermes) for more information related to hermes.
+A new Triton service, `triton-logarchiver`, will be created.  This service will have a core VM `logarchiver0` that will run a hermes master and a hermes proxy. This service will be responsible for creating an SMF service, `svc:/smartdc/agent/logarchiver-agent:default`, that will run the hermes actor.  See [sdc-hermes](https://github.com/joyent/sdc-hermes) for more information related to hermes.
 
 Logarchiver-agent will be configured to collect all of the `/var/log/firewall/:customer_uuid/:vm_uuid/:iso8601stamp.log.gz` files and place them in Manta at `/:customer_login/reports/firewall-logs/:year/:month/:day/:vm_uuid/:iso8601stamp.log.gz`.  Once hermes has stored the file in Manta, hermes will remove it from the compute node.  Note that `/var/log/firewall` is a distinct directory from `/var/log/fw`, the location for the global zone's firewaller agent.
 
@@ -260,35 +251,6 @@ The following serves as an example of how this may be configured.
 
 In the event that the translation fails or `/%U/reports/firewall-logs/` is not writeable, an error will be returned to the hermes actor and the log file will not be removed from compute node.
 
-### Phased Delivery
-
-To meet initial needs while working toward a more scalable hermes implementation, the logarchiver work will be delivered in phases.
-
-XXX Phases 1 & 2 can probably be collapsed, which maybe makes it so that we can just do an upgrade of hermes in the sdc zone and forgo splitting it off into logarchiver0.
-
-The logarchiver service remains experimental until phase three begins.
-
-### Log Archiver Phase 1: Basic functionality.
-
-The initial implementation of logarchiver will be simple - comparable to the hermes instance found in the sdc zone.  Each CN will have multiple hermes actors: the traditional sdc hermes instance and the new logarchiver instance.
-
-### Log Archiver Phase 2: Scalability
-
-The second phase of logarchiver will focus on scalability, with the goal of being able to scale up the capacity to be able to handle all cloud firewall logs as well as those traditionally handled by hermes in the sdc zone.
-
-The proxy is believed to be the least scalable part of the architecture.  That will be addressed using one or more of the following techniques:
-
-* Use multiple hermes proxy instances in logarchiver0 that are fronted by HAProxy to balance the load between them.
-* Create multiple logarchiver service zones, each containing a hermes proxy.  [Binder](https://github.com/joyent/binder) would then be used to distribute the load across the horizontally scaled proxy zones.
-* Create multiple logarchiver service zones, each containing a hermes master and proxy.  This approach would require work to support multiple masters.
-* Replace the current hermes proxy with [nginx](https://nginx.org/en/).  The actor is already provided with appropriate credentials to perform the upload - the proxy just needs to forward the TCP stream.
-
-This phase may also deliver load smoothing to ensure that there is not a "top of the hour" spike.
-
-### Log Archiver Phase 3: Retire hermes from sdc zone
-
-During this phase, hermes is removed from the sdc zone.  The work previously done by this hermes instance is transitioned to logarchiver.
-
 ## FWAPI
 
 Currently rules look like:
@@ -305,7 +267,7 @@ Currently rules look like:
 }
 ```
 
-Presumably we need a boolean `log`. Need schema migration to allow the new member `log (Boolean)` to be added. It would be desirable to follow up with somebody familiar with FWAPI and check if we need to add anything to the UFDS flavor of fwrules. Other than that, this would mean a moray version bump when adding the new member to the object. Apparently, there's not need for such field to be part of an index.
+A new boolean `log` will be added to indicate whether matching connection begin and reject events should be logged.  Schema migration to allow the new `log (Boolean)` will be implemented.
 
 ### Firewaller Agent
 
@@ -320,9 +282,25 @@ As described in the *fwadm* section below and the *IPFilter* section above, the 
   </dependent>
 ```
 
-**XXX The compatibility check mechanism has not been worked out.  This could be as simple as checking to see if /dev/XXX exists, or it could be something like is described in OS-4121.**
+The existence of `/dev/ipfev` indicates that the new rule format should be used. Otherwise the old format should be used.  Care should be taken to avoid needlessly rewriting all of the configuration files, as over time no compute node will require the old configuration syntax version.  The migration script will look for `# smartos_ipf_version <version>` in `ipf*.conf` files to determine which configuration syntax version is used.  An `ipf*.conf` file that uses the `cfwlog` or `uuid` tags introduced in this project will use configuration version 2 and as such will have the following comment.
+
+```
+# smartos_ipf_version 2
+```
+
+Any `ipf*.conf` file that does not specify `smartos_ipf_version` is considered to be a version 1 file.  Version 1 does not use `cfwlog` or `uuid` tags.
+
+The configuration syntax version supported by a compute node is dependent on the PI that is currently running.  The firewaller agent is not part of the PI and as such the same version of the firewaller agent may be deployed across many PI versions.  Future platform images may support different features that require yet another version bump.  The latest configuration syntax version supported by the platform is stored in `/etc/ipf/smartos_version`.  If this file does not exist, version 1 is assumed.  If an `ipf*.conf` file's configuration syntax version does not match the platform's latest supported configuration syntax version, the `ipf*.conf` file is rewritten using the platform's configuration syntax version.
+
+The format of `/etc/ipf/smartos_version` is a single line containing a single integer.  For example, this project delivers a file containing only the following:
+
+```
+2
+```
 
 ## fwadm
+
+**XXX Pedro: How much of this was done?**
 
 Requires updates to accommodate this new `log (Boolean)` value, affecting at least to rule creation/update/deletion and, additionally, to the output retrieved by get/list rules. (Default to false when nothing given or known).
 
@@ -339,12 +317,9 @@ e1c9d7dc-2f59-4907-8c17-7cf5bf1136b9 true    FROM subnet 10.99.99.0/24 TO tag "s
 
 ## CloudAPI
 
-- Needs to be able to specify logging.
-  - Is this done per VM or per rule? Doing per rule will definitely simplify things, otherwise we'll need to raise multiple fwrules updates from VMAPI or from CloudAPI itself.
+Given the `log (Boolean)` member in fwapi is not strictly required for the firewall rule to work, we should possibly give it exactly the same treatment as the existing `enabled (Boolean)`. That is, it is an additional parameter to the rule itself, and it's represented separately by CloudAPI.
 
-Given the `log (Boolean)` member in fwapi is not strictly required for the firewall rule to work, we should possibly give it exactly the same treatment as the existing `enabled (Boolean)`, it's to say, it's an additional parameter to the rule itself, and it's represented separately by CloudAPI.
-
-Additionally, we have `enable|disable` end-points for fwrules in CloudAPI. May also consider having `addLogging|removeLoogin` end-points but initially just adding the required code changes to the existing update end-point should be more than enough.
+**XXX Pedro?** Additionally, we have `enable|disable` end-points for fwrules in CloudAPI. May also consider having `addLogging|removeLogging` end-points but initially just adding the required code changes to the existing update end-point should be more than enough.
 
 All the fwrules end-points need the new boolean value to be added (and tests need to be updated accordingly). By default, logging should be false and it must be documented in CloudAPI.
 
@@ -371,26 +346,40 @@ With the changes described, it should become:
 
 ## node-triton
 
-Needs to be modified in order to be able to handle new member from CloudAPI both, reading and adding/removing it. Rule get and list output need to be updated. Tests need to be updated accordingly.
+node-triton will be updated to handle reading and modifying `fwrule.log`.  The output of `triton fwrule list` will be updated to include a `LOG` column, as shown below.
 
-## node-smartdc
+```
+SHORTID   ENABLED  GLOBAL  LOG   RULE
+285d7f76  false    -       true  FROM any TO vm efe45825-4c0d-48f5-d62c-c5a50433fad1 BLOCK tcp PORT 666        4ef987de  true     -       true  FROM subnet 10.99.99.0/TO vm 3a2b9998-965d-c4ab-d952-eb2802f8d6b9 ALLOW tcp PORT all
+44eae6bb  true     -       true  FROM subnet 10.99.99.0/24 TO vm efe45825-4c0d-48f5-d62c-c5a50433fad1 ALLOW tcp PORT all
+```
 
-Deprecated unless User portal needs it and cannot transition to node-triton. No need to take any action.
+The output of `triton frwrule get` is updated to include the `log` member.
+
+```
+$ triton fwrule get 44eae6bb
+{
+    "id": "44eae6bb-337f-45ba-8ff9-dddcd46e5918",
+    "rule": "FROM subnet 10.99.99.0/24 TO vm efe45825-4c0d-48f5-d62c-c5a50433fad1 ALLOW tcp PORT all",
+    "enabled": true,
+    "log": true
+}
+```
+
+`triton fwrule create <-l|--log>` may be used for creating a rule with logging enabled.  `triton fwrule update <rule> log=<true|false>` may be used to enable or disable logging on a rule.
+
 
 ## AdminUI
 
-- Add a checkbox for the log (Boolean) new member (Can be bellow to the one existing for enabled in both the edit and create screens).
-  - **We need a way to check availability of the logging feature** maybe checking `fwapi` version?
-  - When there's no availability of such feature, the application should either disable the aforementioned checkbox or
-  even do not display it at all.
+AdminUI will be updated to include a checkbox on each firewall rule to indicate whether logging is enabled.  This will be present on the edit and create screens.  If the cloud firewall logging feature is not supported by `fwapi`, the checkbox is disabled.
 
 ## Portal
-- Once we have the CloudAPI/node-triton changes in place, can be altered to include a "log" option for each rule (Can be just a checkbox).
-- It may be nice to be able to batch update. On this page: https://my.joyent.com/main/#!/network/firewall#rule-form, select any number of rules then under the Actions drop down, select "Enable Log" or "Disable Log". The fact that I say "may be nice" means that it is not required for MVP.
+
+Changes in portal will mimic those done in AdminUI.  This is not required for MVP.
 
 ## sdcadm
 
-**XXX update pending review of firewaller agent section**
+**XXX Pedro, please update**
 
 Despite of the final components we need to deploy, i.e. add or not AuditAPI, or just deploy `cfwlogd` to a given set of CNs, we need to add a `sdcadm post-setup` subcommand which will be responsible to create the required SAPI services/instances.
 
