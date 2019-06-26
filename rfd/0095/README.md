@@ -1,7 +1,7 @@
 ---
-authors: Joshua M. Clulow <jmc@joyent.com>
+authors: Joshua M. Clulow <jmc@joyent.com>, John Levon <john.levon@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+95%22
+discussion: https://github.com/joyent/rfd/issues?q=RFD+95
 ---
 
 <!--
@@ -11,7 +11,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+95%22
 -->
 
 <!--
-    Copyright (c) 2017, Joyent, Inc.
+    Copyright 2019, Joyent, Inc.
 -->
 
 # RFD 95 Seamless Muppet Reconfiguration
@@ -19,9 +19,9 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+95%22
 ## Background
 
 Manta is predominantly accessed via a HTTPS API, exposed to the public Internet
-via a set of load balancers.  The load balancer service, "Muppet", provides TLS
-termination at the exterior edge of the Manta system, distributing inbound
-requests amongst servers in the first internal tier (Muskie).
+via a set of load balancers.  The `loadbalancer` service, also known as "Muppet",
+provides TLS termination at the exterior edge of the Manta system, distributing
+inbound requests amongst servers in the first internal tier (Muskie).
 
 Muppet is composed of three chief components:
 
@@ -43,15 +43,17 @@ Today, the reconfiguration of HAProxy by Muppet is quite disruptive to service.
 Muppet connects to ZooKeeper, reacting to changes in the set of registered
 Muskie instances.  Whenever the membership of the set of Muskies changes,
 Muppet immediately writes an updated HAProxy configuration and restarts the
-HAProxy service.
+HAProxy service. Only recently was Muppet changed to provide some hysteresis
+and throttling in this process via [MANTA-4337](https://jira.joyent.us/browse/MANTA-4337).
+For example, a simple reboot of a Muskie should no longer cause a restart of HAProxy.
 
-This restart terminates all in flight connections.  There is also a brief
+This restart terminates all in-flight connections.  There is also a brief
 period between when the original `haproxy` process has closed its listen socket
 and the new `haproxy` process has started listening; incoming connections which
 arrive in this window are actively refused.  Further compounding the problem,
 all Muppets in the fleet generally receive their topology updates at the same
 time, triggering a simultaneous wave of restarts and disruption to _all_ Manta
-traffic.
+traffic, although a randomized restart time does help a little here.
 
 In light of these shortcomings, Manta operators would be forgiven for giving a
 wide berth to any maintenance activity which adds or removes a Muskie.  In
@@ -61,121 +63,93 @@ configuration changes -- ideally to zero!
 
 ## Proposed Solution
 
-HAProxy provides for a type of "soft" reload of its configuration.  The `-sf`
-option to `haproxy` accepts the process ID of an existing `haproxy` process.
-This option instructs the new process to take over the listen socket without
-interruption.  Once the new process has the listen socket open and can service
-requests, it sends a series of signals to the old process, informing it to stop
-listening and complete any in flight requests.  Once there are no more requests
-in flight, the old process terminates gracefully and the reconfiguration is
-complete.
+With the [master-worker](https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#3.1-master-worker) setting, haproxy will spawn child processes for handling connections, and keep around a parent "master" process.
+On receiving `SIGUSR2`, the master will re-exec itself, passing the listen sockets
+to a new child process (via the [expose-fd listeners](https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#5.1-expose-fd%20listeners) option). Any new connections will be processed by the new child.
+When the old worker(s) are drained of connections, they will terminate gracefully.
 
-Unfortunately, the reconfiguration procedure described above partially depends
-on operating system support for the `SO_REUSEPORT` socket option.  This option
-allows for a process to take over a listen socket from another, unrelated
-process.  This option has slightly different semantics on at least Linux and
-the BSDs, and there is presently no native support for it in illumos.  Without
-`SO_REUSEPORT`, the old and the new `haproxy` processes cannot concurrently
-listen on the same port; the short period of refused connections during the
-handover remains.
+With this process, there is no harsh interruption to service or existing connections.
 
-Instead of `SO_REUSEPORT`, we can use another HAProxy feature: binding to an
-already established listen socket inherited from a parent process.  The HAProxy
-configuration generally contains `bind` directives which are usually used to
-nominate a bind address and listen port, or perhaps a UNIX domain socket path,
-on which to establish a front end service.  The software will also accept _a
-file descriptor_ (e.g., `bind fd@100`), which it treats as a socket on which
-[bind(3SOCKET)][bind] and [listen(3SOCKET)][listen] have already been called.
-Even more conveniently, the software will expand an environment variable in the
-`bind` directive; e.g., `bind fd@${FD_HTTP_0}`.
-
-With a relatively simple C program, we can provide a supervisor of sorts for
-HAProxy.  This supervisor would be responsible for opening the configured set
-of listen sockets, and starting `haproxy` processes.  On the receipt of a
-reconfiguration signal (e.g., `SIGUSR1`), the supervisor would start a new
-`haproxy` process using the `-sf` option, as described earlier in this section.
-The supervisor would track the drain and exit of the old `haproxy` process as
-part of ensuring a flurry of configuration events does not result in an
-unbounded number of concurrent restarts.
-
-In this model, the _supervisor_ manages the long term life cycle of all listen
-sockets.  Each new `haproxy` process will be a direct child of the supervisor,
-and can therefore use the inherited file descriptor `bind` directives in the
-HAProxy configuration file.  This obviates the need for `haproxy` to close and
-reopen the listen sockets, closing the active refusal window.  The supervisor
-can provide the file descriptors to the child via symbolic names using
-environment variables.
-
-Since [MANTA-3110][MANTA-3110] was integrated, the set of listen ports is more
-complicated than a single internal and a single public interface, but it is
-still generally static through the life of a particular load balancer instance.
-The configuration does not come from SAPI, but rather from the `sdc:nics`
-property available via [the SmartOS metadata interface][sdcnics].  Muppet uses
-this metadata key to generate `bind` directives in the HAProxy configuration
-today, and can be adjusted to generate a table of listen sockets for the
-supervisor; e.g., the supervisor configuration might look like:
-
-```
-FD_HTTPS		127.0.0.1	8443
-FD_HTTP_INTERNAL	172.27.3.22	80
-FD_HTTP_EXTERNAL_0	172.26.3.44	80
-FD_HTTP_EXTERNAL_1	192.168.0.1	80
-```
-
-The supervisor would open three listen sockets, and pass the file descriptor
-number to each `haproxy` child through the environment, using the provided
-variable name.  The front end portion of the HAProxy configuration generated
-by muppet would then look like this:
-
-```
-frontend https
-	bind fd@${FD_HTTPS} accept-proxy
-	default_backend secure_api
-
-frontend http_internal
-	bind fd@${FD_HTTP_INTERNAL}
-	default_backend secure_api
-
-frontend http_external
-	bind fd@${FD_HTTP_EXTERNAL_0}
-	bind fd@${FD_HTTP_EXTERNAL_1}
-	default_backend insecure_api
-```
+The old child processes continue their operation with the old configuration. This does
+mean that existing connections will neither use newly-added Muskie instances, nor avoid
+Muskie instances removed from Zookeeper. Instead, such an open connection will respond
+to haproxy's layer 4 and layer 7 health check timeouts as needed.
 
 Muppet does not run HAProxy directly as a child process.  Instead, it
 manipulates the `svc:/manta/haproxy:default` [SMF][smf] service via
-[svcadm(1M)][svcadm] commands.  We can introduce the new HAProxy supervisor
-program into the existing `haproxy` SMF service, adding a `refresh` method
-which sends the appropriate signal for seamless reconfiguration.  Whereas today
-Muppet does a hard `svcadm restart` of the service, in the future it would
-perform the new, softer `svcadm refresh` instead.
+[svcadm(1M)][svcadm] commands. Muppet will be updated to invoke `svcadm refresh`
+on haproxy, which sends the `SIGUSR2`. As the master haproxy process stays
+around, this doesn't affect SMF's fault management of the haproxy service
+instance - the re-exec is not visible to SMF. At the same time, any issues
+with the child processes (such as a core dump) will still trigger the traditional
+SMF behaviour such as restarting the entire service.
 
-## Impact on Operation and Development
+### Updating haproxy version
+
+Currently we are deploying HAProxy 1.5. To get these new features, we need to update
+to the latest LTS version - at the time of writing, this is 1.8.20. The event port
+poll handler has to be ported to this version, as there are some significant changes
+from 1.5. Updating also gives us some other potential advantages, such as possibly
+replacing stud with haproxy's own SSL termination.
+
+### pfiles(1) issues
+
+During testing, [MANTA-4335](https://smartos.org/bugview/MANTA-4335) was discovered. As
+we are only deploying HAProxy single-threaded, however, we will apply a workaround to
+our version of haproxy. The thread management code has changed significantly in HAProxy 2.0,
+so hopefully we won't need it for the next update. The underlying OS issue has also
+been fixed, but we can't yet presume we're running on a PI with that fix.
+
+### Child worker management
+
+As mentioned above, after a reload, the old child worker process stays open (in what
+HAProxy calls "soft-stop") until the final client connection is closed. This can be
+arbitrarily long, especially in the case of clients such as `marlin-agent`, which has
+a tendency to hold onto connections.
+
+Since each worker child takes some amount of RSS and other resources in the `loadbalancer`
+zone, we don't want the process list to grow unbounded. To this end, we'll introduce a
+new `max-old-workers` configuration property for HAProxy. On reaching this limit, the
+oldest still extant child process will be sent `SIGTERM`. This will close the connection
+of any old clients still connected to it. On re-connection, they will connect to the
+current child worker instead.
+
+The hope is that most clients will be done with old children before we hit the worker
+maximum limit, and those that persist such as `marlin-agent` cope well with losing
+their connection.
+
+This was deemed preferable to the other option, the existing [hard-stop-after](https://cbonte.github.io/haproxy-dconv/1.8/configuration.html#hard-stop-after) option, on the basis that there is no
+good timeout value we could choose that's suitable for all scenarios (especially large PUTs).
+
+This is strictly an improvement on the status quo, of course, which would terminate
+such connections via restarting HAProxy.
+
+Note that the Manta alarm tracking HAProxy RSS only works on a per-process basis. However,
+it still seems likely that a runaway HAProxy will be reflected in an individual process
+rather than in aggregate, so the alarm seems sufficient as is.
+
+# Impact on Operation and Development
 
 Apart from a mild increase in implementation complexity, there should be no
-degradation in the operability of the system.  HAProxy itself is still calling
-[accept(3SOCKET)][accept] on the listen socket, even though it did not open it
--- there is no additional layer of indirection to obscure the source of the
-connection.
+significant degradation in the operability of the system.  As discussed, the fault management
+properties of SMF are unaffected, and HAProxy logging remains much the same with
+the new version and new configuration (including staying compatible with [haplog](https://github.com/joyent/node-haproxy-log). `haproxystat`, used in Manta alarming, remains functional as
+the statistics domain socket is served by the current child process. This does *not*
+provide visibility into old, active, workers however.
 
-The HAProxy service exposes statistics, using a UNIX domain socket and a TCP
-listen port.  We can continue to expose those same facilities, with a minor
-enhancement: the supervisor would be responsible for opening a socket at a path
-which includes the process ID of the HAProxy instance; e.g,
-`/tmp/haproxy.39430`.  The supervisor could also maintain a symbolic link from
-`/tmp/haproxy` to the statistics socket for the current primary HAProxy
-instance.
+As open client connections stay connected to an old child worker, there is potential
+risk there. As mentioned, if a Muskie backend goes away or is unhealthy, the connection
+would have to wait for haproxy's health checks to decide it is unavailable before
+closing the request. This could lead to increased timeouts on the client side.
 
-The supervisor should be written to be conservative in the system state that it
-will accept.  In the event that something unforeseen happens, e.g. `haproxy`
-exits unexpectedly, the supervisor should log an error and degrade to the
-traditional, disruptive restart.
-
+A future enhancement to Muppet may ameliorate this concern: it is possible to directly
+disable a backend over the HAProxy socket via the "CLI" interface. If we are solely
+removing Muskie instances, we could use this direct mechanism to avoid even needing to
+reload HAProxy at all.
 
 [bind]: https://illumos.org/man/3SOCKET/bind
 [listen]: https://illumos.org/man/3SOCKET/listen
 [accept]: https://illumos.org/man/3SOCKET/accept
 [smf]: https://illumos.org/man/5/smf
 [svcadm]: https://illumos.org/man/1M/svcadm
-[MANTA-3110]: https://smartos.org/bugview/MANTA-3110
 [sdcnics]: https://eng.joyent.com/mdata/datadict.html#sdcnics
