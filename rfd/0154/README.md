@@ -349,8 +349,6 @@ In this example, all space not allocated to the image remains free for future di
 
 Various `triton instance` commands will be changed and/or added to mirror the CloudAPI changes.
 
-**XXX in these we use "name" instead of "slot".  I'm conflicted as to which one we should use.**
-
 ### `triton instance create` options
 
 Disks may be specified with the new `--disks` option, described in `triton instance create --help` as:
@@ -396,7 +394,7 @@ SHORTID   SIZE
 
 The JSON output is as shown in `GetMachineDisks`.
 
-### `triton instance disk create`
+### `triton instance disk add`
 
 A new disk may be added to a flexible disk instance `disk add`, described in `triton instance disk add --help` as:
 
@@ -720,6 +718,7 @@ The general rule is that a VM may be resized only to a larger package. That does
 ```
 DISK_SIZE + DISK_SNAP <= newpackage.disk
 ```
+Note that VM resize is not supported at this time.
 
 # Development Phases
 
