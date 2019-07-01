@@ -98,7 +98,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 52 Moray test suite rework](./rfd/0052/README.md) |
 | draft    | [RFD 53 Improving ZFS Pool Layout Flexibility](./rfd/0053/README.md) |
 | predraft | [RFD 54 Remove 'autoboot' when VMs stop from within](./rfd/0054/README.md) |
-| abandoned | [RFD 55 LX support for Mount Namespaces](./rfd/0055/README.md) |
+| abandoned | ~~[RFD 55 LX support for Mount Namespaces](./rfd/0055/README.md)~~ |
 | predraft | [RFD 56 Revamp Cloudapi](./rfd/0056/README.md) |
 | publish  | [RFD 57 Moving to Content Addressable Docker Images](./rfd/0057/README.md) |
 | predraft | [RFD 58 Moving Net-Agent Forward](./rfd/0058/README.md) |
@@ -106,7 +106,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 60 Scaling the Designation API](./rfd/0060/README.md) |
 | draft    | [RFD 61 CNAPI High Availability](./rfd/0061/README.md) |
 | predraft | [RFD 62 Replace Workflow API](./rfd/0062/README.md) |
-| abandoned | [RFD 63 Adding branding to kernel cred\_t](./rfd/0063/README.md) |
+| abandoned | ~~[RFD 63 Adding branding to kernel cred\_t](./rfd/0063/README.md)~~ |
 | predraft | [RFD 64 Hardware Inventory GRUB Menu Item](./rfd/0064/README.md) |
 | publish | [RFD 65 Multipart Uploads for Manta](./rfd/0065/README.md) |
 | draft | [RFD 66 USBA improvements for USB 3.x](./rfd/0066/README.md) |
@@ -115,10 +115,10 @@ formal writing that it has come to represent.)
 | publish | [RFD 69 Metadata socket improvements](./rfd/0069/README.md) |
 | draft | [RFD 70 Joyent Repository Metadata](./rfd/0070/README.md) |
 | publish | [RFD 71 Manta Client-side Encryption](./rfd/0071/README.md) |
-| abandoned | [RFD 72 Chroot-independent Device Access](./rfd/0072/README.md) |
+| abandoned | ~~[RFD 72 Chroot-independent Device Access](./rfd/0072/README.md)~~ |
 | publish  | [RFD 73 Moray client support for SRV-based service discovery](./rfd/0073/README.md) |
 | draft    | [RFD 74 Manta fault tolerance test plan](./rfd/0074/README.md) |
-| abandoned | [RFD 75 Virtualizing the number of CPUs](./rfd/0075/README.md) |
+| abandoned | ~~[RFD 75 Virtualizing the number of CPUs](./rfd/0075/README.md)~~ |
 | draft    | [RFD 76 Improving Manta Networking Setup](./rfd/0076/README.md) |
 | draft    | [RFD 77 Hardware-backed per-zone crypto tokens](./rfd/0077/README.adoc) |
 | publish | [RFD 78 Making Moray's findobjects requests robust with regards to unindexed fields](./rfd/0078/README.md) |
@@ -149,7 +149,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 103 Operationalize Resharding](./rfd/0103/README.md) |
 | draft    | [RFD 104 Engineering Guide - General Principles](./rfd/0104/README.md) |
 | draft    | [RFD 105 Engineering Guide - Node.js Best Practices](./rfd/0105/README.md) |
-| abandoned | [RFD 106 Engineering Guide - Go Best Practices](./rfd/0106/README.adoc) |
+| abandoned | ~~[RFD 106 Engineering Guide - Go Best Practices](./rfd/0106/README.adoc)~~ |
 | publish  | [RFD 107 Self assigned IP's and reservations](./rfd/0107/README.md) |
 | draft    | [RFD 108 Remove Support for the Kernel Memory Cage](./rfd/0108/README.md) |
 | predraft | [RFD 109 Run Operator-Script Earlier during Image Creation](./rfd/0109/README.md) |
@@ -163,7 +163,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 117 Network Traits](./rfd/0117/README.md) |
 | draft    | [RFD 118 MAC Checksum Offload Extensions](./rfd/0118/README.md)
 | draft    | [RFD 119 Routing Between Fabric Networks](./rfd/0119/README.md)
-| abandoned | [RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md) |
+| abandoned | ~~[RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md)~~ |
 | predraft | [RFD 121 bhyve brand](./rfd/0121/README.md)
 | draft    | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md)
 | predraft | [RFD 123 Online Manta Garbage Collection](./rfd/0123/README.md)
@@ -191,7 +191,7 @@ formal writing that it has come to represent.)
 | publish | [RFD 145 Lullaby 3: Improving the Triton/Manta builds](./rfd/0145/README.md) |
 | predraft | [RFD 146 Conch: Inventory System](./rfd/0146/README.md) |
 | publish  | [RFD 147 Project Tiresias: USB Topology](./rfd/0147/README.md) |
-| abandoned | [RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md) |
+| abandoned | ~~[RFD 148 Snapper: VM Snapshots](./rfd/0148/README.md)~~ |
 | draft    | [RFD 149 PostgreSQL Schema For Manta buckets](./rfd/0149/README.md) |
 | draft    | [RFD 150 Operationalizing Prometheus, Thanos, and Grafana](./rfd/0150/README.md) |
 | publish  | [RFD 151 Assessing Software Engineering Candidates](./rfd/0151/README.md) |
