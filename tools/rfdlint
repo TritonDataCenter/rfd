@@ -86,6 +86,12 @@ cat > $tmp <<EOF
 		exit 1;
 	}
 
+	if (state == "abandoned" && \$4 != "~~[RFD") {
+	    printf("$prog: abandoned RFD %s must use strikethrough markup\n",
+	        rfd);
+	    exit 1;
+	}
+
 	link = substr(\$0, index(\$0, "]") + 1, length(\$0));
 
 	link = substr(link, 2, index(link, ")") - 2);
