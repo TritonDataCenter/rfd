@@ -300,8 +300,6 @@ The format of `/etc/ipf/smartos_version` is a single line containing a single in
 
 ## fwadm
 
-**XXX Pedro: How much of this was done?**
-
 Requires updates to accommodate this new `log (Boolean)` value, affecting at least to rule creation/update/deletion and, additionally, to the output retrieved by get/list rules. (Default to false when nothing given or known).
 
 For example, the following output needs to be modified in order to include the "LOG" column:
@@ -314,12 +312,11 @@ UUID                                 ENABLED RULE
 6164f3cc-d1ad-4ac5-bcb2-e4b3ae2edd33 true    FROM subnet 10.99.99.0/24 TO tag "smartdc_role" ALLOW udp PORT all
 e1c9d7dc-2f59-4907-8c17-7cf5bf1136b9 true    FROM subnet 10.99.99.0/24 TO tag "smartdc_role" ALLOW tcp PORT all
 ```
+Not implemented yet.
 
 ## CloudAPI
 
 Given the `log (Boolean)` member in fwapi is not strictly required for the firewall rule to work, we should possibly give it exactly the same treatment as the existing `enabled (Boolean)`. That is, it is an additional parameter to the rule itself, and it's represented separately by CloudAPI.
-
-**XXX Pedro?** Additionally, we have `enable|disable` end-points for fwrules in CloudAPI. May also consider having `addLogging|removeLogging` end-points but initially just adding the required code changes to the existing update end-point should be more than enough.
 
 All the fwrules end-points need the new boolean value to be added (and tests need to be updated accordingly). By default, logging should be false and it must be documented in CloudAPI.
 
@@ -379,8 +376,125 @@ Changes in portal will mimic those done in AdminUI.  This is not required for MV
 
 ## sdcadm
 
-**XXX Pedro, please update**
+### Setup Firewall Loger Agent using sdcadm:
 
-Despite of the final components we need to deploy, i.e. add or not AuditAPI, or just deploy `cfwlogd` to a given set of CNs, we need to add a `sdcadm post-setup` subcommand which will be responsible to create the required SAPI services/instances.
+#### Command usage options:
 
-(`sdcadm post-setup` itself will appreciate some general purpose refactoring, given we have a lot of similar subcommands sharing intention and more code than differences but using c&p instead of something easier to maintain. That's obviously part of a separated problem).
+```
+sdcadm post-setup help firewall-logger-agent
+Create "firewall-logger-agent" service and the required agent instances.
+
+Usage:
+     sdcadm post-setup firewall-logger-agent
+
+Options:
+    -h, --help                          Show this help.
+    -y, --yes                           Answer yes to all confirmations.
+    -n, --dry-run                       Do a dry-run.
+
+  Server selection (by default all setup servers are updated):
+    -s NAMES, --servers=NAMES           Comma-separated list of servers (either
+                                        hostnames or uuids) on which to update
+                                        cn_tools.
+    -S NAMES, --exclude-servers=NAMES   Comma-separated list of servers (either
+                                        hostnames or uuids) to exclude from
+                                        cn_tools update.
+    -j CONCURRENCY, --concurrency=CONCURRENCY
+                                        Number of concurrent servers being
+                                        updated simultaneously. Default: 10.
+  Image selection (by default latest image on default channel):
+    -i ARG, --image=ARG                 Specifies which image to use for the
+                                        instances. Use "latest" (the default)
+                                        for the latest available on
+                                        updates.joyent.com, "current" for the
+                                        latest image already in the datacenter
+                                        (if any), or an image UUID or version.
+    -C ARG, --channel=ARG               The updates.joyent.com channel from
+                                        which to fetch the image. See `sdcadm
+                                        channel get` for the default channel.
+
+The "firewall-logger-agent" service generates specific Triton log files
+for the configured firewall rules.
+```
+
+#### Create the service and setup the agent:
+
+```
+sdcadm post-setup firewall-logger-agent
+
+This will make the following changes:
+    create "firewall-logger-agent" service in SAPI
+    download image e9c42432-016a-452f-a0c8-639033a4c510 (firewall-logger-agent@1.0.0)
+        from updates server using channel "dev"
+    create "firewall-logger-agent" service instance on "1" servers
+
+Would you like to continue? [y/N] y
+
+Importing image e9c42432-016a-452f-a0c8-639033a4c510 (firewall-logger-agent@1.0.0)
+Downloading image e9c42432-016a-452f-a0c8-639033a4c510
+    (firewall-logger-agent@1.0.0)
+Imported image e9c42432-016a-452f-a0c8-639033a4c510
+    (firewall-logger-agent@1.0.0)
+Creating "firewall-logger-agent" service
+...firewall-logger-agent [====================================>] 100%        1
+Successfully installed "firewall-logger-agent" on all servers.
+Completed successfully (elapsed 18s).
+```
+
+### Setup logarchiver using sdcadm: 
+
+#### Command usage options:
+
+```
+sdcadm post-setup logarchiver
+
+Create the "logarchiver" service and a first instance.
+
+Usage:
+     sdcadm post-setup logarchiver
+
+Options:
+    -h, --help                  Show this help.
+    -y, --yes                   Answer yes to all confirmations.
+    -n, --dry-run               Do a dry-run.
+    -s SERVER, --server=SERVER  Either hostname or uuid of the server on which
+                                to create the instance. (By default the headnode
+                                will be used.).
+
+  Image selection (by default latest image on default channel):
+    -i ARG, --image=ARG         Specifies which image to use for the first
+                                instance. Use "latest" (the default) for the
+                                latest available on updates.joyent.com,
+                                "current" for the latest image already in the
+                                datacenter (if any), or an image UUID or
+                                version.
+    -C ARG, --channel=ARG       The updates.joyent.com channel from which to
+                                fetch the image. See `sdcadm channel get` for
+                                the default channel.
+
+The "logarchiver" service uploads specific Triton log files to a configured Manta object store.
+```
+
+#### Create the service and setup the agent:
+
+```
+[root@headnode (coal) ~]# sdcadm post-setup logarchiver
+
+This will make the following changes:
+    create "logarchiver" service in SAPI
+    download image a1b75ba0-336b-46f0-a9fb-3260947b2114 (logarchiver@master-20190507T165334Z-gb5754db)
+        from updates server using channel "dev"
+    create "logarchiver" service instance on server "564d2b36-7e25-7d79-e3c2-7ceb79d8abd6"
+
+Would you like to continue? [y/N] y
+
+Importing image a1b75ba0-336b-46f0-a9fb-3260947b2114 (logarchiver@master-20190507T165334Z-gb5754db)
+Downloading image a1b75ba0-336b-46f0-a9fb-3260947b2114
+    (logarchiver@master-20190507T165334Z-gb5754db)
+Imported image a1b75ba0-336b-46f0-a9fb-3260947b2114
+    (logarchiver@master-20190507T165334Z-gb5754db)
+Creating "logarchiver" service
+Creating "logarchiver" instance on server 564d2b36-7e25-7d79-e3c2-7ceb79d8abd6
+Created VM eb394c52-916e-4b95-aa53-3a7b6452824d (logarchiver0)
+Completed successfully (elapsed 109s).
+```
