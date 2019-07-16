@@ -161,9 +161,9 @@ burdon and potential for misconfiguration.
 
 ## Muskie Limit
 
-As described in the 'Mechansim' section, within Muskie there is a limit
+As described in the 'Mechanism' section, within Muskie there is a limit
 (MUSKIE_MAX_UTILIZATION_PCT) as to how much space will be used in each storage
-zone. This limit is currently set to 95%, but there is some relevant
+zone. This limit is currently set to 96%, but there is some relevant
 history behind this which we'll briefly summarize.
 
 In the past, we had the limit set to 93%. The investigation on
@@ -172,44 +172,40 @@ identified that ZFS performed well up to the 96% - 96.67% full level. Based
 upon that investigation, we raised the limit to 95%. However, after doing
 that, we hit
 [OS-7151](https://jira.joyent.us/browse/OS-7151)
-where we see metaslabs being loaded and unloaded at
-high frequency. This in turn leads to long spa sync and zil commit times,
-which in turn leads to bad latency hiccups for object writes. In addition,
+where we saw metaslabs being loaded and unloaded at
+high frequency. This in turn led to long spa sync and zil commit times,
+which in turn led to bad latency hiccups for object writes. In addition,
 we observed other zil commit latency issues
 ([OS-7314](https://jira.joyent.us/browse/OS-7314)), but those have since
-been fixed in the upstream ZFS code (although not yet deployed in Manta
-production).
+been fixed in the upstream ZFS code.
 
-As a short-term fix for this problem, we're currently setting
-'metaslab_debug_unload' to prevent metaslabs from unloading. This is a
-temporary workaround until we have a production fix for OS-7151 deployed.
+As a short-term fix for this problem, had set the ZFS tunable
+'metaslab_debug_unload' to prevent metaslabs from unloading. This was a
+temporary workaround until we had a production fix for OS-7151 deployed.
 
-After attempting, and failing, to reproduce OS-7151 in the lab, we have
-determined that this issues is sensitive the fragmentation profile on the
-machine. That is, the 'zpool list' command will show the overall fragementation
-of the metaslabs, but this by itself is not useful. Some metaslabs can be
-very highly fragmented while others are not. OS-7151 seems to occur when
-**all** of the metaslabs are fragmented in a similar way. So far we haven't been
-able to recreate this scenario, but some of the production machines are in
-this state. In the lab, we have have been able to run the system up to 99%
-full with no observed latency issues in either spa sync or zil commit times.
+While attempting to reproduce OS-7151 in the lab, we determined that the issue
+is sensitive the fragmentation profile on the machine. That is, the 'zpool list'
+command will show the overall fragementation of the metaslabs, but this by
+itself is not useful. Some metaslabs can be very highly fragmented while others
+are not. OS-7151 seems to occur when **all** of the metaslabs are fragmented in
+a similar way. So far we haven't been able to recreate this scenario, but some
+of the production machines are in this state. In the lab, we have have been able
+to run the system up to 99% full with no observed latency issues in either spa
+sync or zil commit times.
 
 Thus, the investigation from MANTA-3571 is not helpful as a guideline for
-setting the maximum capacity across production. For now, using 95% is working
-well with the 'metaslab_debug_unload' workaround (which is only necessary
-for those nodes with problematic fragmentation). We're also testing a
-proposed fix for OS-7151 on one of the nodes with the problematic fragmentation
-and it is working well so far.
+setting the maximum capacity across production. For now, using 96% is working
+well with the fix for OS-7151.
 
-There is one additional factor to be aware of with the Muskie limit. The way
-Muskie works, it rounds up its usage calculation. That is, with a
-setting of 95%, Muskie will actually only use slightly over 94% of the
-available storage in the zone.
-
-Thus, if our intended target utilization of the total space on the storage zone
-is 95%, then we must actually set the Muskie limit to 96%. Note that even with
-this setting, we won't go over 95% of the total space on the server since the
-quota has already been subtracted from the total available space to the zone.
+There are a couple nuances with how storage capacity is calculated by Minnow
+and how Muskie chooses storage nodes that receive writes. Minnow rounds up the
+usage numbers it receives from `statvfs`. For example, if Minnow calculates
+94.1% of storage capacity in use, it will be reported as 95%. However, Muskie
+accomodates allocates to storage nodes where capacity is less than _or equal_
+to MUSKIE_MAX_UTILIZATION_PCT. So although Minnow is reporting 95% capacity used
+(after rounding up from 94.1%), Muskie will still allocate to it since 95% is
+less than or equal to MUSKIE_MAX_UTILIZATION_PCT (95%). Only when Minnow reports
+96% usage will Muskie stop allocating to the storage node.
 
 ### Setting the Muskie Limit
 
@@ -229,21 +225,15 @@ changes across a region.
 
 ## The Future of the Muskie Capacity Limit
 
-The investigation for OS-7151 has shown that our ZFS performance was dependent
-on the zpool fragmentation much more than on how full the dataset was. The
-key point here is that fragmentation is for the entire zpool, not any specific
-dataset.
-
-By setting a muskie limit of 95%, we are being fairly conservative and
-leaving a lot of usable storage on the table (even with the quota abosrbed
-into the round up behavior).
-
 During testing in the lab, we have run a zpool up to 99% full with no
 noticeable degradation in spa sync and zil commit latency (but remember that
 the fragmentation profile is important).
 
+After integrating a fix for OS-7151 we were able to increase capacity usage
+to 96% without noticing any ill effects.
+
 We should develop a plan to gradually roll out increases of the muskie limit,
-beyond 95%, into production. Ideally we can do this incrementally, on a few
+beyond 96%, into production. Ideally we can do this incrementally, on a few
 storage nodes at a time, then observe performance there, and roll back if
 we encounter new ZFS problems, before we deploy the updated limit to the entire
 fleet.
