@@ -1,7 +1,7 @@
 ---
 authors: Brian Bennett <brian.bennett@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+0172%22
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+172%22
 ---
 
 <!--
