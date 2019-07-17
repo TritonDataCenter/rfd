@@ -215,6 +215,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 169 Encrypted kernel crash dump](./rfd/0169/README.md) |
 | predraft | [RFD 170 Manta Picker Component](./rfd/0170/README.md) |
 | predraft | [RFD 171 A Proposal for Manta SnapLinks](./rfd/0171/README.md) |
+| predraft | [RFD 172 CNS Aggregation](./rfd/0172/README.md) |
 
 ## Contents of an RFD
 
