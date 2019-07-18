@@ -323,7 +323,6 @@ x-server-name: $zonename
 #### Create or overwrite object (PUT /:login/buckets/:bucket/objects/:object)
 
 The following HTTP conditional headers are supported:
-* `If-Modified-Since`
 * `If-Unmodified-Since`
 * `If-Match`
 * `If-None-Match`
@@ -398,7 +397,6 @@ x-server-name: $zonename
 ### Delete object (DELETE /:login/buckets/:bucket/objects/:object)
 
 The following HTTP conditional headers are supported:
-* `If-Modified-Since`
 * `If-Unmodified-Since`
 * `If-Match`
 * `If-None-Match`
