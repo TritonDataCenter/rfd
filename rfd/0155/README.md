@@ -41,33 +41,31 @@ We use a RESTful API design. For now, this includes the ability to create, get,
 delete, and list buckets as well as objects in buckets. Eventually this API
 will need to expand to include the ability to do multi-part uploads.
 
-## Headers
+## Versioning
 
-These are headers we will use on every request.
+TBD
 
+## Authentication
 
-#### Authentication
+Authentication will be handled in the same manner as it is currently with Manta
+as described [here](https://apidocs.joyent.com/manta/api.html#authentication).
 
-`Authorization` -- Existing RBAC mechanisms will be used to authenticate
-requests.
+## Common Request Headers
 
-#### Versioning
+These are request headers that are used with every request.
 
-Semantic versioning. Current: `0.0.0`
+* Authorization
+* Host
 
-#### Date
+## Common Response Headers
 
-RFC 1123.
+These are response headers that are present in all responses.
 
-#### Host
-
-`*.manta.joyent.com`
-
-#### Content-Length
-
-Ensure that we handle zero-byte objects. Zero-byte objects with a trailing
-slash may be treated as folders later.
-
+* Server
+* Date
+* x-request-id
+* x-response-time
+* x-server-name
 
 ## Object names
 
@@ -79,12 +77,10 @@ object even though the buckets system uses a flat namespace. Care must be taken,
 however, to properly URL encode all object names to avoid problems when
 interacting with the server.
 
-
 ## Routes
 
 We will add the following routes to Muskie to support Manta Buckets. See `MANTA-3898`
 for more information.
-
 
 ### Buckets
 
@@ -92,6 +88,14 @@ for more information.
 
 Returns the HTTP methods allowed for this resourcein the `Allow` response header
 value. No response body is returned.
+
+Request headers
+
+* N/A
+
+Response headers
+
+* Allow
 
 Sample Request
 ```
@@ -123,6 +127,14 @@ represent a Manta bucket. A successful request should return an HTTP status
 code of 200, as well as records containing a `name`, a `type` (of "bucket", as
 stated previously), and an `mtime`.
 
+Request headers
+
+* N/A
+
+Response headers
+
+* N/A
+
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets -X GET
@@ -130,7 +142,7 @@ $ manta /$MANTA_USER/buckets -X GET
 GET /$MANTA_USER/buckets HTTP/1.1
 Host: *.manta.joyent.com
 Accept: */*
-date: Tue, 18 Dec 2018 20:38:18 GMT
+Date: Tue, 18 Dec 2018 20:38:18 GMT
 Authorization: $Authorization
 ```
 
@@ -152,6 +164,14 @@ Transfer-Encoding: chunked
 
 Ping a bucket as specified in the HTTP Request-URI. A successful response should
 return an HTTP status code of 200, and no response body.
+
+Request headers
+
+* N/A
+
+Response headers
+
+* N/A
 
 Sample Request
 ```
@@ -179,22 +199,27 @@ x-server-name: $zonename
 
 Create a bucket if it does not already exist. Your private namespace
 begins with `:/login/buckets`. You can create buckets in that namespace. To
-create a bucket, set the HTTP Request-URI to the buckets path you want to make
-or update, and set the `Content-Type` header to `application/json; type=bucket`.
+create a bucket, set the HTTP Request-URI to the buckets path you want to make.
 There is no request body. An HTTP status code of 204 is returned on
 success and a 409 is returned in the event the bucket already exists.
+
+Request headers
+
+* N/A
+
+Response headers
+
+* N/A
 
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/newbucket \
-    -X PUT \
-    -H "Content-Type: application/json; type=bucket"
+    -X PUT
 
 PUT /$MANTA_USER/buckets/newbucket HTTP/1.1
 Host: *.manta.joyent.com
 Accept: */*
-Content-Type: application/json; type=bucket
-date: Wed, 19 Dec 2018 21:38:00 GMT
+Date: Wed, 19 Dec 2018 21:38:00 GMT
 Authorization: $Authorization
 ```
 
@@ -215,6 +240,14 @@ Delete a bucket as specified in the HTTP Request-URI. A successful response will
 return an HTTP status code of 204, and no response data. If the bucket does not
 exist then an HTTP status code of 404 is returned. If the bucket is not empty
 the deletion is not performed and an HTTP status code of 409 is returned.
+
+Request headers
+
+* N/A
+
+Response headers
+
+* N/A
 
 Sample Request
 ```
@@ -258,6 +291,14 @@ a `name`, an `etag`, a `size`, a `type` (of "bucketobject", as stated
 previously), a `contentType` of "application/json; type=bucketobject", a `contentMD5`
 string, and an `mtime`.
 
+Request headers
+
+* N/A
+
+Response headers
+
+* `Transfer-Encoding`
+
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/mybucket/objects -X GET
@@ -288,11 +329,21 @@ Transfer-Encoding: chunked
 Ping a bucket object as specified in the HTTP Request-URI. A successful response
 should return an HTTP status code of 200, and no response body.
 
-The following HTTP conditional headers are supported:
+Request headers
+
 * `If-Modified-Since`
 * `If-Unmodified-Since`
 * `If-Match`
 * `If-None-Match`
+
+Response headers
+
+* `Durability-Level`
+* `Content-Type`
+* `Content-MD5`
+* `Content-Length`
+* `Etag`
+* `Last-Modified`
 
 Sample Request
 ```
@@ -309,10 +360,12 @@ Sample Response
 ```
 HTTP/1.1 200 OK
 Connection: close
+Etag: b3d3e058-4638-eeb9-b433-83393bc19a71
+Last-Modified: Fri, 19 Jul 2019 16:51:19 GMT
 Durability-Level: 2
 Content-Length: 18
 Content-MD5: UE8cRSdpJ/cMOc6ofHJFgw==
-Content-Type: application/json; type=bucketobject
+Content-Type: application/json
 Date: Mon, 01 Apr 2019 22:59:51 GMT
 Server: Manta
 x-request-id: dadb6460-54d1-11e9-8ff7-393f00357a3f
@@ -322,23 +375,34 @@ x-server-name: $zonename
 
 #### Create or overwrite object (PUT /:login/buckets/:bucket/objects/:object)
 
-The following HTTP conditional headers are supported:
+Request headers
+
+* `Content-MD5`
+* `Durability-Level`
 * `If-Unmodified-Since`
 * `If-Match`
 * `If-None-Match`
+
+Response headers
+
+* `Durability-Level`
+* `Computed-MD5`
+* `Content-Length`
+* `Etag`
+* `Last-Modified`
 
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/mybucket/objects/newobject.json \
     -X PUT \
-    -H "Content-Type: application/json; type=bucketobject" \
+    -H "Content-Type: application/json" \
     -d '{"example":"text"}'
 
 PUT /$MANTA_USER/buckets/mybucket/objects/newobject.json HTTP/1.1
 Host: *.manta.joyent.com
 Accept: */*
-Content-Type: application/json; type=bucketobject
-date: Wed, 19 Dec 2018 21:41:40 GMT
+Content-Type: application/json
+Date: Wed, 19 Dec 2018 21:41:40 GMT
 Authorization: $Authorization
 Content-Length: 18
 ```
@@ -359,11 +423,21 @@ x-server-name: $zonename
 
 ### Get object (GET /:login/buckets/:bucket/objects/:object)
 
-The following HTTP conditional headers are supported:
+Request headers
+
 * `If-Modified-Since`
 * `If-Unmodified-Since`
 * `If-Match`
 * `If-None-Match`
+
+Response headers
+
+* `Durability-Level`
+* `Content-Type`
+* `Content-MD5`
+* `Content-Length`
+* `Etag`
+* `Last-Modified`
 
 Sample Request
 ```
@@ -372,7 +446,7 @@ $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X GET
 GET /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
 Host: *.manta.joyent.com
 Accept: */*
-date: Wed, 19 Dec 2018 21:53:35 GMT
+Date: Wed, 19 Dec 2018 21:53:35 GMT
 Authorization: $Authorization
 ```
 
@@ -381,7 +455,9 @@ Sample Response
 HTTP/1.1 200 OK
 Connection: close
 Accept-Ranges: bytes
-Content-Type: application/json; type=bucketobject
+Etag: b3d3e058-4638-eeb9-b433-83393bc19a71
+Last-Modified: Fri, 19 Jul 2019 16:51:19 GMT
+Content-Type: application/json
 Content-MD5: UE8cRSdpJ/cMOc6ofHJFgw==
 Content-Length: 18
 Durability-Level: 2
@@ -425,17 +501,27 @@ x-server-name: $zonename
 
 ### Get object metadata (GET /:login/buckets/:bucket/objects/:object/metadata)
 
-The following HTTP conditional headers are supported:
+Request headers
+
 * `If-Modified-Since`
 * `If-Unmodified-Since`
 * `If-Match`
 * `If-None-Match`
 
+Response headers
+
+* `Durability-Level`
+* `Content-Type`
+* `Content-MD5`
+* `Content-Length`
+* `Etag`
+* `Last-Modified`
+
 Sample Request
 ```
 $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json/metadata -X GET
 
-GET /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
+GET /$MANTA_USER/buckets/mybucket/objects/myobject.json/metadata HTTP/1.1
 Host: *.manta.joyent.com
 Accept: */*
 date: Wed, 19 Dec 2018 21:53:35 GMT
@@ -447,6 +533,11 @@ Sample Response
 HTTP/1.1 200 OK
 Connection: close
 Accept-Ranges: bytes
+Etag: b3d3e058-4638-eeb9-b433-83393bc19a71
+Last-Modified: Fri, 19 Jul 2019 16:51:19 GMT
+Durability-Level: 2
+Content-Length: 18
+Content-MD5: UE8cRSdpJ/cMOc6ofHJFgw==
 Content-Type: application/json
 m-custom-header: myheadervalue
 Date: Wed, 19 Dec 2018 21:53:35 GMT
