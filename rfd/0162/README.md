@@ -96,6 +96,7 @@ __this probably belongs elsewhere in the document__
 
 The remora zone is responsible for managing each rebalancer job and coordinating the tasks for each remora agent.
 
+
 ## Remora Agent
 
 - Expose and API which is only consumed by the remora zone.
@@ -134,7 +135,7 @@ pub struct DownloadTask {
 ```
 `origin`, `owner`, and `object_id` can be substituted with a single URL string
 
-This can be seralized or deserialized to/from json as:
+This can be serialized or deserialized to/from json as:
 
 ```
 {
@@ -217,10 +218,9 @@ Returns details of a specific assignment
 
 ## CreateAssignment (POST /assignment)
 
-| Field   | Type   | Description     |
-| ------- | -------| --------------- |
-| tasks   | Array  | Array of tasks  |
+### Input
 
+Array of task objects.
 
 ### Example:
     POST /assignments
@@ -240,6 +240,47 @@ Returns details of a specific assignment
 
 Returns a uuid that identifies this assignment
 
+
+## Job Actions
+### Evacuate
+An evacuate job removes all objects from a given storage node and rebalances
+them on to other other storage nodes in the same region.  Since evacuate softly
+implies an issue with the evacuating shark the remora will prefer to use a copy 
+copy of the object being evacuated that does not reside on the evacuating
+server.  The basic flow is as follows:
+
+#### Initializing Phase
+1. Lock evacuating server read-only.
+1. Start sharkspotter pointed at evacuating server.
+1. Start picker to generate destination sharks.
+1. Remora Zone starts Assignment Processing thread and waits for Assignments to
+   be in the Assigned state.  This thread periodically queries the destination
+   shark in the Assignment (via the GetAssignment endpoint) looking for
+   Assignments that have moved from Assigned -> Completed state.
+
+#### Generation Phase
+1. Remora Zone takes input from sharkspotter and picker to generate Assignments.
+1. Assignments are posted to the destination shark via the CreateAssignment
+   endpoint, and put in the Assigned state.
+
+#### Post Processing Phase
+1. When the Assignment Processing thread receives a response from the remora
+   Agent's GetAssignment endpoint of a completed assignment it begins to update
+   the metadata of the successful objects.  (Note: A completed assignment may
+           include both successfully reblananced objects as well as objects that
+           failed rebalancing).
+2. Each failed task is handled on a case by case basis.
+    * A transient failure is logged
+    * The object is either put into another Task and Assignment, or tagged as a
+    persistent failure.
+
+
+#### Handling Failures
+* Not Enough Space on Destination Shark
+    * Response:  Find another destination shark
+* md5 Checksum Mismatch
+    * Likely means that the source shark has a bad copy of the file.
+    * Response:
 
 
 ## Deeper background and use-cases
