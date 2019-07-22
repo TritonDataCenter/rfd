@@ -1,5 +1,5 @@
 ---
-authors: David Pacheco <dap@joyent.com>
+authors: David Pacheco <dap@joyent.com>, Rui Loura <rui@joyent.com>
 state: predraft
 ---
 
@@ -34,20 +34,24 @@ This RFD describes a system for part (3): repairing objects having a copy that's
 
 For reasons described in more detail later, we propose a phased approach.
 
-### Milestone M1 Self-contained service, local state, centralized transfer
+### Milestone M1 Direct transfer between storage zones, local state
 
-The very first deliverable would be a new API and set of tools for managing **repair jobs**.  Each job describes a particular operation and a set of objects to operate on.  The following operations (use-cases) would be supported:
-
-- "Forget" one copy of an object (identified by storage node).  Creates a new copy and updates all metadata to remove the old node and add the new node.  The assumption is that the old storage node is being completely, permanently removed.  (See "Other considerations.")
-- "Move" one copy of an object (identified by storage node).  Similar to "forget" one copy, but the old copy is removed.
+The first deliverable is the capability to remove all objects from a given storage node.  This operation will be called "evacuate."
 
 This deliverable would include:
 
 - a new SAPI service and component with one main SMF service to implement object repair and rebalancing
 - Prometheus metrics exposed by the service
 - automatic pausing of jobs that have experienced too many transient errors
-- a CLI tool for listing jobs, creating jobs, observing job status, pausing jobs, resuming jobs; observing the status of individual repairs within a job; observing a summary of transient and permanent errors from a job, with example objects; viewing the progress of a job (i.e., how many objects it will process, how many are in-progress, how many have finished, how many are queued for retry due to a transient error, and so on). 
-- data transfers would happen to and from this new zone, rather than directly between storage zones
+- a CLI tool for:
+    * listing jobs
+    * creating jobs
+    * observing job status
+    * pausing jobs
+    * resuming jobs
+    * observing a summary of transient and permanent errors from a job, with example objects
+    * viewing the progress of a job (i.e., how many objects it will process, how many are in-progress, how many have finished, how many are queued for retry due to a transient error, and so on). 
+- data transfers would happen directly between storage zones
 - automatic tests for as much as possible
 - configurable throttles on usage of the metadata tier and storage tier
 
@@ -55,24 +59,12 @@ When a job is complete, all information about the job would be archived into Man
 
 This implementation would *not* handle the so-called "walking link" problem.  For safety, it would only operate on metadata with `single_path` set, from a whitelisted set of accounts, or when requested by an operator to override these checks.  (In practice, it would likely be sufficient to override the checks and scan muskie logs for snaplink creation if we're worried about that case.)
 
-This component could be deployed immediately to any Manta deployment to carry out safe object repair and rebalancing.
+This zone (remora zone) could be deployed anywhere in the Manta fleet.  It's not clear if it's better suited to a storage server or a metadata server.
 
-This zone could be deployed anywhere in the Manta fleet.  It's not clear if it's better suited to a storage server or a metadata server.
-
-
-### Milestone M2 Direct transfer between storage zones
-
-The only changes with this deliverable are:
-
-- We add a new component to be deployed with storage zones to support direct zone-to-zone transfer of objects.  This component might provide a single API operation to fetch an object from some other storage zone and upload the contents to the local mako.
-- The repair-and-rebalance service is modified to use this new component when present on a particular target storage node.
-
-To use the new behavior, we'd have to update effectively all storage zones to run the new component.
-
-It's an open question whether we would remove support for centralized transfer.  The sole advantage to that approach is avoiding having to update the storage zones.
+The direct zone to zone data transfer will require and update to the storage nodes to add a component (remora agent) to manage that transfer.
 
 
-### Milestone M3 Shared storage for repair jobs
+### Milestone M2 Shared storage for repair jobs
 
 This milestone:
 
@@ -88,13 +80,207 @@ Milestone M2 and M3 can be reversed if the priority makes sense.
 
 Other features we can add at any point after M1:
 
-- a storage server API for calculating the md5sum of an object, plus support for verifying that on source objects
+- Expose an endpoint on the remora agent to calculate and report the md5sum of a locally object
 - a proper solution (or better intermediate solutions) to the "walking link" problem
 - additional operations, including:
   - "Add Copy": increase the durability of an object
   - "Remove Copy": decrease the durability of an object
-  - "Audit": check whether the existing metadata meets desired constraints (e.g., both copies in different datacenters) and update them accordingly.  Potentially also validate the object's checksum.
+  - "Audit" or "Scrub": check whether the existing metadata meets desired constraints (e.g., both copies in different datacenters) and update them accordingly.  Potentially also validate the object's checksum.
   - an operation that could be used to indicate that a particular storage node's ID and/or datacenter was changed.  This would be a fairly special case to handle MANTA-3827 / OPS-4691.
+
+
+# Components
+__this probably belongs elsewhere in the document__
+
+## Remora Zone
+
+The remora zone is responsible for managing each rebalancer job and coordinating the tasks for each remora agent.
+
+
+## Remora Agent
+
+- Expose and API which is only consumed by the remora zone.
+- Excepts arrays of tasks in the form of assignments.
+- Task Types:
+    * Download:
+        * Check for object on disk and matching MD5 sum
+        * If object does not exist or there is an MD5 mismatch, download the object from the URL provided
+        * Uses a pull method to get objects from another storage node.
+        * Is thus idempotent
+    * Others: Future work
+
+
+### Tasks
+#### Download
+```
+pub struct Assignment {
+	id: String, // UUID of request
+    dest_shark: MantaObjectShark,
+    tasks: Vec<Task>,
+}
+
+pub enum Task {
+    Download(DownloadTask),
+    ... Future work ...
+}
+
+pub struct DownloadTask {
+    source: String, // Mako IP or DNS name from which to download file
+    owner: String,
+    object_id: String, // UUID of object 
+    md5_sum: String, // MD5 check sum of object
+    content_length: u64,
+}
+
+```
+`origin`, `owner`, and `object_id` can be substituted with a single URL string
+
+This can be serialized or deserialized to/from json as:
+
+```
+{
+    "action": "download",
+    "source": "1.stor.east.joyent.us",
+    "owner": "37fffb8f-5f29-4f67-b2b2-591f3f103eb0",
+    "object_id": "c7d5a531-832c-4095-b940-f920ccaa3257",
+    "md5_sum": ""
+}
+```
+
+### Agent Interface
+
+## ListAssignments
+
+Returns a list of assignments 
+
+### Inputs
+
+| Field  | Type    | Description                    |
+| ------ | ------- | ------------------------------ |
+| offset | Integer | Starting offset for pagination |
+| limit  | Integer | Maximum number of responses    | 
+
+### Example
+	GET /assignments
+	
+	[
+		{
+            "id": "bc7e140a-f1fe-49fd-8b70-26379fa04492",
+            "status": "running",
+            "error_count": 7
+            "tasks_remaining": 589795,
+            "tasks_completed": 98734382,
+		}
+		{
+            "id": "856e77b0-c0b2-4a6a-8c17-4ec1017360af",
+            "status": "complete",
+            "error_count": 5740 
+            "tasks_remaining": 0,
+            "tasks_completed": 8972630,
+		}
+	]
+
+## GetAssignment
+
+Returns details of a specific assignment
+
+### Example
+	GET /assignments/:id
+	
+    {
+        "id": "bc7e140a-f1fe-49fd-8b70-26379fa04492",
+        "status": "complete",
+        "successful_tasks": [{
+            "action": "download",
+            "source": "1.stor.east.joyent.us",
+            "owner": "37fffb8f-5f29-4f67-b2b2-591f3f103eb0",
+            "object_id": "c7d5a531-832c-4095-b940-f920ccaa3257",
+            "md5_sum": "GO4i6ZQq5SeWxYQlfkxUzQ==",
+            "content_length": 54, 
+        }, {
+            ...
+        }],
+        "failed_tasks": [{
+            "action": "download",
+            "source": "7.stor.east.joyent.us",
+            "owner": "76809b8f-5a20-4f76-b2b2-591f3f6fb709",
+            "object_id": "df4c1682-a77d-11e2-aafc-5354b5c883c7",
+            "md5_sum": "GO4i6ZQq5SeWxYQlfkxUzQ==",
+            "content_length": 109, 
+        }, {
+            ...
+
+        ]
+    }
+
+**we may consider returning only the objectid for successful and failed tasks as well as the error.**
+
+
+## CreateAssignment (POST /assignment)
+
+### Input
+
+Array of task objects.
+
+### Example:
+    POST /assignments
+        -d
+    [
+        {
+            "action": "download",
+            "source": "1.stor.east.joyent.us",
+            "owner": "37fffb8f-5f29-4f67-b2b2-591f3f103eb0",
+            "object_id": "c7d5a531-832c-4095-b940-f920ccaa3257",
+            "md5_sum": "GO4i6ZQq5SeWxYQlfkxUzQ==",
+            "content_length": 54, 
+        }, {
+            ...
+        }
+    ]
+
+Returns a uuid that identifies this assignment
+
+
+## Job Actions
+### Evacuate
+An evacuate job removes all objects from a given storage node and rebalances
+them on to other other storage nodes in the same region.  Since evacuate softly
+implies an issue with the evacuating shark the remora will prefer to use a copy 
+copy of the object being evacuated that does not reside on the evacuating
+server.  The basic flow is as follows:
+
+#### Initializing Phase
+1. Lock evacuating server read-only.
+1. Start sharkspotter pointed at evacuating server.
+1. Start picker to generate destination sharks.
+1. Remora Zone starts Assignment Processing thread and waits for Assignments to
+   be in the Assigned state.  This thread periodically queries the destination
+   shark in the Assignment (via the GetAssignment endpoint) looking for
+   Assignments that have moved from Assigned -> Completed state.
+
+#### Generation Phase
+1. Remora Zone takes input from sharkspotter and picker to generate Assignments.
+1. Assignments are posted to the destination shark via the CreateAssignment
+   endpoint, and put in the Assigned state.
+
+#### Post Processing Phase
+1. When the Assignment Processing thread receives a response from the remora
+   Agent's GetAssignment endpoint of a completed assignment it begins to update
+   the metadata of the successful objects.  (Note: A completed assignment may
+           include both successfully reblananced objects as well as objects that
+           failed rebalancing).
+2. Each failed task is handled on a case by case basis.
+    * A transient failure is logged
+    * The object is either put into another Task and Assignment, or tagged as a
+    persistent failure.
+
+
+#### Handling Failures
+* Not Enough Space on Destination Shark
+    * Response:  Find another destination shark
+* md5 Checksum Mismatch
+    * Likely means that the source shark has a bad copy of the file.
+    * Response:
 
 
 ## Deeper background and use-cases
@@ -178,7 +364,7 @@ Key points:
 * Metadata that refers to an old copy of an object must be updated (to remove that reference) before the old copy of the object is removed.
 * Metadata updates should be careful to avoid clobbering concurrent changes (e.g., using a conditional PUT-with-etag request).  Those changes may be made by a Manta client or another instance of this system (or any other system in Manta that may modify metadata).
 
-**Goal:** Operators should be able to specify objects for repair by **_objectid_**.  They may also like to be able to specify all objectids assigned to a particular server, but this is beyond the initial scope of this system.  The existing [sharkspotter tool](https://github.com/joyent/manta-sharkspotter) can be used to identify the objectids associated with a particular storage server.
+**Goal:** Operators should be able to specify objects for repair by **_objectid_** or all object from a particular server. 
 
 **Goal:** Operators should be able to group objects to be repaired into something like a _job_ so that the progress of the entire operation can be queried and managed as a unit.  For example, evacuating a particular storage node might represent a single job.  Operators shouldn't have to separately track the status of millions of objects that are all part of the same operation.  (As mentioned above, it _is_ currently expected that operators will have to enumerate the set of objects in a job explicitly.)  Jobs should support at least one tag that could be used to associate them with JIRA tickets for more information.
 
@@ -197,7 +383,6 @@ Key points:
 * A basic control to avoid overloading itself could include tunable limits of the the numbers of queued and running repairs.
 * This system will interact with both the metadata tier and storage tier.  Load on the metadata tier is critical to availability and end-user performance of Manta, so it's critical that this system provide a throttle on all of its metadata operations to avoid overloading the metadata tier.  Ideally, operators would be able to adjust a tunable to control what fraction of metadata tier resources are used by this system.
 
-**Goal:** We'd like to deliver a minimally functional implementation as soon as possible, using multiple phases to expand on the initial implementation.  We already have an urgent need for this system.  More on the minimally functional implementation later.
 
 **Goal:** The system's progress should not depend on any particular server being available, but operator intervention may be required to resume jobs that were being managed by a component that is offline.  If a component running a job goes offline, operators should be able to either bring the original component back online or resume the job from some other instance.  (Automatic resumption of jobs by other instances is explicitly out of scope of this RFD.)
 
@@ -243,7 +428,7 @@ This section includes a lot of information about the considerations that went in
 
 ### Should this system write new objects using the public API or modify internal metadata and storage directly?
 
-**Approach 1: write new objects through the external API.**  If we read any object successfully, we can write it back to Manta with the desired durability level, which should always create new copies.
+**Approach 1 (rejected): write new objects through the external API.**  If we read any object successfully, we can write it back to Manta with the desired durability level, which should always create new copies.
 
 Pros:
 
@@ -260,7 +445,7 @@ Cons:
 * Without using internal APIs, we cannot validate that the new copies were correctly written.  We're just relying on the normal data path to be working correctly.  Put differently, this approach does not also provide an on-demand audit ability.
 
 
-**Approach 2: implement a new system using private interfaces inside Manta.**  With this approach, the repair service would fetch individual copies from storage nodes, validate them, create copies on other storage nodes, and update metadata internally, ideally without modifying an object's mtime.
+**Approach 2(preferred): implement a new system using private interfaces inside Manta.**  With this approach, the repair service would fetch individual copies from storage nodes, validate them, create copies on other storage nodes, and update metadata internally, ideally without modifying an object's mtime.
 
 Pros:
 
