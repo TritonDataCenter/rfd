@@ -1,6 +1,6 @@
 ---
 authors: Jason King <jason.king@joyent.com>
-state: draft
+state: predraft
 ---
 
 # RFD 173 KBMAPI and kbmd
