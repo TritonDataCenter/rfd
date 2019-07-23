@@ -94,7 +94,10 @@ __this probably belongs elsewhere in the document__
 
 ## Remora Zone
 
-The remora zone is responsible for managing each rebalancer job and coordinating the tasks for each remora agent.
+The remora zone is responsible for:
+ * Managing each rebalancer job.
+ * Coordinating the assignments for each remora agent.
+ * Updating object metadata as necessary.
 
 
 ## Remora Agent
@@ -113,31 +116,6 @@ The remora zone is responsible for managing each rebalancer job and coordinating
 ### Tasks
 #### Download
 ```
-pub struct Assignment {
-	id: String, // UUID of request
-    dest_shark: MantaObjectShark,
-    tasks: Vec<Task>,
-}
-
-pub enum Task {
-    Download(DownloadTask),
-    ... Future work ...
-}
-
-pub struct DownloadTask {
-    source: String, // Mako IP or DNS name from which to download file
-    owner: String,
-    object_id: String, // UUID of object 
-    md5_sum: String, // MD5 check sum of object
-    content_length: u64,
-}
-
-```
-`origin`, `owner`, and `object_id` can be substituted with a single URL string
-
-This can be serialized or deserialized to/from json as:
-
-```
 {
     "action": "download",
     "source": "1.stor.east.joyent.us",
@@ -146,6 +124,7 @@ This can be serialized or deserialized to/from json as:
     "md5_sum": ""
 }
 ```
+`origin`, `owner`, and `object_id` can be substituted with a single URL string
 
 ### Agent Interface
 
