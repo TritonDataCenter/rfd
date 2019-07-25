@@ -1010,7 +1010,7 @@ Note: alternatively, an operator can manually run kbmctl to delete an entry.
 
 This is a command line tool that exists in the KBMAPI zone used to manage
 the KBMAPI data by an operator.  In earlier revisions, this was called
-`kbmctl`, but that could cause confusion with kbmd's `kbmctl`, so a different
+`kbmadm`, but that could cause confusion with kbmd's `kbmctl`, so a different
 name was chosen.
 
 ### kbmctl add-serials
