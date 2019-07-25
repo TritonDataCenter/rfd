@@ -1,5 +1,5 @@
 ---
-authors: Brittany Wald <brittany.wald@joyent.com>, Kelly McLaughlin <kelly.mclaughlin@joyent.com>
+authors: Brittany Wald <brittany.wald@joyent.com>, Kelly McLaughlin <kelly.mclaughlin@joyent.com>, Dave Eddy <dave.eddy@joyent.com>
 state: draft
 discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+155%22'
 ---
@@ -121,11 +121,21 @@ x-server-name: $zonename
 
 #### List buckets (GET /:login/buckets)
 
-List all buckets for an account's namespace. The `type` of each object in the `\n`
-separated JSON stream should be `bucket`, since each object returned should
-represent a Manta bucket. A successful request should return an HTTP status
-code of 200, as well as records containing a `name`, a `type` (of "bucket", as
-stated previously), and an `mtime`.
+List all buckets for an account's namespace.
+
+The `type` of each object in the `\n` separated JSON stream should be `bucket`
+or `group`, since each object returned should represent a Manta bucket or a
+group of buckets. A successful request should return an HTTP status code of
+200, as well as records containing a `name`, a `type` (of "bucket" or "group",
+as stated previously), and `mtime` for buckets.
+
+By default, a request will return up to a maximum of 1024 records (can be set
+with the `limit` query parameter outlined below).  If there are more records to
+be retrieved, the server will respond with the `Next-Marker` header set, and it
+is the job of the client to handle pagination and request the next set of
+results.  The client should continue requesting pages with the query parameter
+`marker` set to the value of the `Next-Marker` header from the previous
+response, until the server no longer returns a `Next-Marker` header.
 
 Request headers
 
@@ -133,7 +143,14 @@ Request headers
 
 Response headers
 
-* N/A
+* `Next-Marker` (optional)
+
+Query Parameters
+
+* `limit` (integer, optional) limit the number of results returned, defaults to `1024`
+* `prefix` (string, optional) string prefix names must match to be returned
+* `marker` (string, optional) the continuation marker for the next page of results
+* `delimiter` (character, optional) a character to use to group names with a common prefix
 
 Sample Request
 ```
@@ -148,16 +165,85 @@ Authorization: $Authorization
 
 Sample Response
 ```
+$ manta "/$MANTA_USER/buckets" -X GET -i
 HTTP/1.1 200 OK
-Date: Tue, 18 Dec 2018 20:38:18 GMT
+Connection: close
+Date: Wed, 24 Jul 2019 20:30:20 GMT
 Server: Manta
-x-request-id: da0b31b0-0304-11e9-a402-b30a36c2c748
-x-response-time: 27
-x-server-name: $zonename
+x-request-id: db299430-ae51-11e9-9ac3-9f05ab77498b
+x-response-time: 335
+x-server-name: 42d242a4-7fba-4d3b-ae3f-405982bd49da
 Transfer-Encoding: chunked
 
-{"name":"hello","type":"bucket","mtime":"2018-12-04T01:50:54.018Z"}
-{"name":"mybucket","type":"bucket","mtime":"2018-12-14T03:18:10.567Z"}
+{"name":"bucket-01","type":"bucket","mtime":"2019-06-26T18:35:33.792Z"}
+{"name":"bucket-02","type":"bucket","mtime":"2019-06-26T18:35:34.809Z"}
+{"name":"bucket-03","type":"bucket","mtime":"2019-06-26T18:35:35.726Z"}
+...
+```
+
+Prefix
+
+```
+$ manta "/$MANTA_USER/buckets?prefix=z" -X GET
+{"name":"z-bucket-01","type":"bucket","mtime":"2019-07-17T20:21:51.771Z"}
+{"name":"z-bucket-02","type":"bucket","mtime":"2019-07-17T20:21:55.742Z"}
+{"name":"z-bucket-03","type":"bucket","mtime":"2019-07-17T20:21:59.637Z"}
+{"name":"z-bucket-04","type":"bucket","mtime":"2019-07-17T20:22:03.033Z"}
+{"name":"z-bucket-05","type":"bucket","mtime":"2019-07-17T20:22:06.192Z"}
+```
+
+Limit
+
+```
+$ manta "/$MANTA_USER/buckets?prefix=z&limit=2" -X GET
+{"name":"z-bucket-01","type":"bucket","mtime":"2019-07-17T20:21:51.771Z"}
+{"name":"z-bucket-02","type":"bucket","mtime":"2019-07-17T20:21:55.742Z"}
+```
+
+Limit & Marker (pagination)
+
+Note: Some headers removed for brevity
+
+```
+$ manta "/$MANTA_USER/buckets?prefix=z&limit=2" -X GET -i
+HTTP/1.1 200 OK
+Next-Marker: z-bucket-02
+
+{"name":"z-bucket-01","type":"bucket","mtime":"2019-07-17T20:21:51.771Z"}
+{"name":"z-bucket-02","type":"bucket","mtime":"2019-07-17T20:21:55.742Z"}
+```
+
+```
+$ manta "/$MANTA_USER/buckets?prefix=z&limit=2&marker=z-bucket-02" -X GET -i
+HTTP/1.1 200 OK
+Next-Marker: z-bucket-04
+
+{"name":"z-bucket-03","type":"bucket","mtime":"2019-07-17T20:21:59.637Z"}
+{"name":"z-bucket-04","type":"bucket","mtime":"2019-07-17T20:22:03.033Z"}
+```
+
+```
+$ manta "/$MANTA_USER/buckets?prefix=z&limit=2&marker=z-bucket-04" -X GET -i
+HTTP/1.1 200 OK
+
+{"name":"z-bucket-05","type":"bucket","mtime":"2019-07-17T20:22:06.192Z"}
+```
+
+Delimiter
+
+```
+$ manta "/$MANTA_USER/buckets?prefix=z&delimiter=-" -X GET
+{"name":"z-","type":"group"}
+```
+
+```
+$ manta "/$MANTA_USER/buckets?delimiter=-" -X GET
+{"name":"bucket-","type":"group"}
+{"name":"full-","type":"group"}
+{"name":"one-","type":"group"}
+{"name":"slash-","type":"group"}
+{"name":"two-","type":"group"}
+{"name":"z-","type":"group"}
 ```
 
 #### Check bucket (HEAD /:login/buckets/:bucket)
@@ -278,18 +364,21 @@ x-server-name: $zonename
 
 List objects within a bucket.
 
-TBD: Sorting parameters may be specified in the format:
-`/:login/buckets?sorted=false` for unordered listing of bucket contents. `sorted=true`
-would list in lexicographical order. Listing paths under prefixes would use the
-format `:login/buckets?prefix={:filter}`.
+The `type` of each object in the `\n` separated JSON stream should be
+`bucketobject` or `group` since each object returned should represent a Manta
+bucket object or a group of objects. A successful request should return an HTTP
+status code of 200, as well as records containing a `name`, an `etag`, a
+`size`, a `type` (of "bucketobject" or "group", as stated previously), a
+`contentType` of "application/json; type=bucketobject", a `contentMD5` string,
+and an `mtime`.
 
-
-The `type` of each object in the `\n` separated JSON stream should be `bucketobject`
-since each object returned should represent a Manta bucket object. A successful
-request should return an HTTP status code of 200, as well as records containing
-a `name`, an `etag`, a `size`, a `type` (of "bucketobject", as stated
-previously), a `contentType` of "application/json; type=bucketobject", a `contentMD5`
-string, and an `mtime`.
+By default, a request will return up to a maximum of 1024 records (can be set
+with the `limit` query parameter outlined below).  If there are more records to
+be retrieved, the server will respond with the `Next-Marker` header set, and it
+is the job of the client to handle pagination and request the next set of
+results.  The client should continue requesting pages with the query parameter
+`marker` set to the value of the `Next-Marker` header from the previous
+response, until the server no longer returns a `Next-Marker` header.
 
 Request headers
 
@@ -297,31 +386,111 @@ Request headers
 
 Response headers
 
-* `Transfer-Encoding`
+* `Next-Marker` (optional)
+
+Query Parameters
+
+* `limit` (integer, optional) limit the number of results returned, defaults to `1024`
+* `prefix` (string, optional) string prefix  names must match to be returned
+* `marker` (string, optional) the continuation marker for the next page of results
+* `delimiter` (character, optional) a character to use to group names with a common prefix
 
 Sample Request
 ```
-$ manta /$MANTA_USER/buckets/mybucket/objects -X GET
+$ manta /$MANTA_USER/buckets/slash-bucket-objects -X GET
 
-GET /$MANTA_USER/buckets/mybucket/objects HTTP/1.1
+GET /$MANTA_USER/buckets HTTP/1.1
 Host: *.manta.joyent.com
 Accept: */*
-date: Wed, 19 Dec 2018 21:43:27 GMT
+Date: Tue, 18 Dec 2018 20:38:18 GMT
 Authorization: $Authorization
 ```
 
 Sample Response
 ```
+$ manta "/$MANTA_USER/buckets/slash-bucket/objects" -X GET -i
 HTTP/1.1 200 OK
-Date: Wed, 19 Dec 2018 21:43:28 GMT
+Connection: close
+Date: Wed, 24 Jul 2019 20:46:08 GMT
 Server: Manta
-x-request-id: da0b31b0-0304-11e9-a402-b30a36c2c748
-x-response-time: 27
-x-server-name: $zonename
+x-request-id: 10663390-ae54-11e9-9ac3-9f05ab77498b
+x-response-time: 144
+x-server-name: 42d242a4-7fba-4d3b-ae3f-405982bd49da
 Transfer-Encoding: chunked
 
-{"name":"myobject.json","etag":"6bf98a73-6cc7-4afb-9e3c-4ea0693b4cf1","size":18,"type":"bucketobject","contentType":"application/json; type=bucketobject","contentMD5":"UE8cRSdpJ/cMOc6ofHJFgw==","mtime":"2018-12-18T22:05:01.102Z"}
-{"name":"newobject.json","etag":"b56eb23c-90ce-47b3-9367-1f566d993d8e","size":18,"type":"bucketobject","contentType":"application/json; type=bucketobject","contentMD5":"UE8cRSdpJ/cMOc6ofHJFgw==","mtime":"2018-12-19T21:41:40.676Z"}
+{"name":"foo","type":"bucketobject","etag":"13916fe0-517a-cb0b-9656-abbdf1f425a9","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-24T20:47:31.699Z"}
+{"name":"thing/a","type":"bucketobject","etag":"62251003-649f-6da5-f0e6-ba31b639547e","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:43.635Z"}
+{"name":"thing/b","type":"bucketobject","etag":"e218e998-6a5c-4fe6-e7a0-9c6945555e20","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:48.582Z"}
+{"name":"thing/c","type":"bucketobject","etag":"5014f5e8-f377-c5d0-aec6-c6aec3668b2d","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:53.803Z"}
+{"name":"thing/d","type":"bucketobject","etag":"db4a7059-0749-69e1-8f71-d0c13f34b146","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:59.987Z"}
+{"name":"thing/e","type":"bucketobject","etag":"b4b8eaa3-af6c-48de-970f-ae4c873a9c0a","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:27:04.831Z"}
+```
+
+Prefix
+
+```
+$ manta "/$MANTA_USER/buckets/slash-bucket/objects?prefix=thing" -X GET
+{"name":"thing/a","type":"bucketobject","etag":"62251003-649f-6da5-f0e6-ba31b639547e","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:43.635Z"}
+{"name":"thing/b","type":"bucketobject","etag":"e218e998-6a5c-4fe6-e7a0-9c6945555e20","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:48.582Z"}
+{"name":"thing/c","type":"bucketobject","etag":"5014f5e8-f377-c5d0-aec6-c6aec3668b2d","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:53.803Z"}
+{"name":"thing/d","type":"bucketobject","etag":"db4a7059-0749-69e1-8f71-d0c13f34b146","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:59.987Z"}
+{"name":"thing/e","type":"bucketobject","etag":"b4b8eaa3-af6c-48de-970f-ae4c873a9c0a","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:27:04.831Z"}
+```
+
+Limit
+
+```
+$ manta "/$MANTA_USER/buckets/slash-bucket/objects?prefix=thing&limit=2" -X GET
+{"name":"thing/a","type":"bucketobject","etag":"62251003-649f-6da5-f0e6-ba31b639547e","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:43.635Z"}
+{"name":"thing/b","type":"bucketobject","etag":"e218e998-6a5c-4fe6-e7a0-9c6945555e20","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:48.582Z"}
+```
+
+Limit & Marker (pagination)
+
+Note: Some headers removed for brevity
+
+```
+$ manta "/$MANTA_USER/buckets/slash-bucket/objects?prefix=thing&limit=2" -X GET -i
+HTTP/1.1 200 OK
+Next-Marker: thing/b
+
+{"name":"thing/a","type":"bucketobject","etag":"62251003-649f-6da5-f0e6-ba31b639547e","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:43.635Z"}
+{"name":"thing/b","type":"bucketobject","etag":"e218e998-6a5c-4fe6-e7a0-9c6945555e20","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:48.582Z"}
+```
+
+```
+$ manta "/$MANTA_USER/buckets/slash-bucket/objects?prefix=thing&limit=2&marker=thing/b" -X GET -i
+HTTP/1.1 200 OK
+Next-Marker: thing/d
+
+{"name":"thing/c","type":"bucketobject","etag":"5014f5e8-f377-c5d0-aec6-c6aec3668b2d","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:53.803Z"}
+{"name":"thing/d","type":"bucketobject","etag":"db4a7059-0749-69e1-8f71-d0c13f34b146","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:26:59.987Z"}
+```
+
+```
+$ manta "/$MANTA_USER/buckets/slash-bucket/objects?prefix=thing&limit=2&marker=thing/d" -X GET -i
+HTTP/1.1 200 OK
+
+{"name":"thing/e","type":"bucketobject","etag":"b4b8eaa3-af6c-48de-970f-ae4c873a9c0a","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-22T18:27:04.831Z"}
+```
+
+Delimiter
+
+Note: `%2f` is `/` encoded
+
+```
+$ manta "/$MANTA_USER/buckets/slash-bucket/objects?delimiter=%2f" -X GET -i
+HTTP/1.1 200 OK
+Connection: close
+Date: Wed, 24 Jul 2019 20:51:36 GMT
+Server: Manta
+x-request-id: d3f8e1e0-ae54-11e9-9ac3-9f05ab77498b
+x-response-time: 129
+x-server-name: 42d242a4-7fba-4d3b-ae3f-405982bd49da
+Transfer-Encoding: chunked
+
+{"name":"foo","type":"bucketobject","etag":"13916fe0-517a-cb0b-9656-abbdf1f425a9","size":2,"contentType":"application/json; type=bucketobject","contentMD5":"SfaKXIST7CwL9ImCHCH8Ow==","mtime":"2019-07-24T20:47:31.699Z"}
+{"name":"thing/","type":"group"}
 ```
 
 #### Check object (HEAD /:login/buckets/:bucket/objects/:object)
