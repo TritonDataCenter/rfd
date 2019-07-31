@@ -188,7 +188,12 @@ The PIV token object itself is represented using JSON similar to:
 
 | recovery_tokens
 | Yes
-| An array of recovery tokens.  Used as an alternate authentication key when replacing a PIV token on a machine (usually due to loss or damange of the original PIV token). When the recovery configuration is updated, a new recovery token is generated and added to the list.  A history of previous tokens is kept to allow for propagation delays of new recovery configurations.
+| An array of recovery tokens. Used as an alternate authentication key when
+replacing a PIV token on a machine (usually due to loss or damange of the
+original PIV token). They also serve as proof to KBMAPI that a recovery
+operation was performed. When the recovery configuration is updated, a new
+recovery token is generated and added to the list. A history of previous
+tokens is kept to allow for propagation delays of new recovery configurations.
 
 | pubkeys
 | Yes
