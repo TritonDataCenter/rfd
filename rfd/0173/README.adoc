@@ -51,6 +51,68 @@ machine (kbmd) handles all the functions necessary for creating the encrypted
 zpool, unlocking the encrypted zpool during boot, as well as recovering from
 a lost of damanged PIV token.
 
+[[glossary]]
+## Glossary
+
+This work introduces several new concepts and related vocabulary to the Triton
+ecosystem.  To facilitate effective communication key terms are defined below.
+Most of the terms have in-depth descriptions later in this document.
+
+ebox:
+  A container (i.e. data structure) for encrypted data and one or more
+  sets of keys called _configurations_ that may be used to decrypt the encrypted
+  data.
+
+ebox template:
+  An ebox with no encrypted data that is used to describe the configuration
+  sections of an ebox.  A _recovery configuration_ is commonly held and/or
+  distributed in an ebox template.
+
+PIV token:
+  A hardware device, such as a smart card or YubiKey, that meets the Personal
+  Identity Verification standard set forth in [FIPS
+  201](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.201-2.pdf).
+
+primary token:
+  The PIV token that is typically physically attached to a computer, such as by
+  being inserted into a USB slot.  It is typically used in combination with a
+  PIN or password to access secrets stored in one or more eboxes.
+
+recovery:
+  The process by which the protected content of an ebox is accessed using a
+  _recovery configuration_.  This is a manual operation involving M challenges
+  and responses as a result of a primary token failure.
+
+recovery configuration:
+  Two integers, M and N (M <= N), and a set of N public keys, M of which may be
+  used to perform recovery in the even that a primary token is not available.
+  Each public key corresponds to a _recovery PIV token_.
+
+recovery PIV token:
+  A PIV token that is used during recovery
+
+recovery registry:
+  If a machine has many eboxes on it, a recovery registry may be used to keep
+  track of the location of all eboxes and to allow a single set of M
+  challenges and responses to perform recovery on all eboxes.  A recovery
+  registry is not present on a system that encrypts only one zpool (e.g. a
+  system that has no zone soft tokens).
+
+recovery token:
+  A 32-byte random number used by a compute node to authenticate the compute
+  node during recovery.  Do not confuse with _recovery PIV token_.
+
+wrapping key:
+  Each ZFS dataset is encrypted with one or more keys, depending on the size of
+  the dataset.  Those keys are protected by a wrapping key, which is the key
+  that is provided to `zfs load-key` and similar interfaces.  The wrapping key
+  may be changed with `zfs change-key`.
+
+YubiKey:
+  A cryptographic token produced by [Yubico](https://www.yubico.com/).  This
+  document is only concerned with those that implement the PIV standard and as
+  such are considered _PIV tokens_.
+
 [[kbmapi]]
 ## KBMAPI
 
