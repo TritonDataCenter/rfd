@@ -34,7 +34,7 @@ well as other parts of the Triton stack) will be addressed in a future RFD.
 To protect the contents of machines running Triton, we will utilize the
 new encryption support in ZFS.  During the initial setup of an encryption
 machine, a randomly-generated key is created and used to create the encrypted
-zpool.  An unintialized PIV token (which must be present for the encrypted
+zpool.  An uninitialized PIV token (which must be present for the encrypted
 setup to proceed) is also initialized during the setup process.  The PIV token
 initialization performs several things:
 
@@ -46,10 +46,10 @@ Information about each initialization PIV token (including the randomly
 generated PIN) is saved in a trusted datacenter service (KBMAPI).  The zpool
 key is then saved in an ECDH box.  This ECDH box requires the PIV token to
 "open" the box and provide the key.  For the PIV token to open the ECDH box,
-it must be given the PIN created during initalization.  A service on each
+it must be given the PIN created during initialization.  A service on each
 machine (kbmd) handles all the functions necessary for creating the encrypted
 zpool, unlocking the encrypted zpool during boot, as well as recovering from
-a lost of damanged PIV token.
+a lost of damaged PIV token.
 
 [[glossary]]
 ## Glossary
@@ -137,7 +137,7 @@ When tokens are deleted or reinitialized, the old token data should be kept in a
 KBMAPI-maintained history.  This history maintains the token data for an
 amount of time defined by the `KBMAPI_HISTORY_DURATION` SAPI variable.  The
 default shall be 15 days.  The purpose is to provide a time-limited backup
-against accidential token deletion.
+against accidental token deletion.
 
 ### Attestation
 
@@ -145,7 +145,7 @@ against accidential token deletion.
 
 Some tokens have extensions that allow for attestation -- that is a method
 to show that a given key was created by the device and was not imported onto
-the PIV token. For Yubikeys, this is done by creating a special x509 certificate
+the PIV token. For YubiKeys, this is done by creating a special x509 certificate
 as detailed {yubi-attest}[here].
 
 If an operator wishes to require attestation, they must set the
@@ -158,7 +158,7 @@ be used with KBMAPI to a known set of tokens.  To do so, an operator
 sets the SAPI parameter `KBMAPI_REQUIRE_TOKEN_PRELOAD` to `true`.  A command
 line tool (working name `kbmctl`) is then used by the operator to load the
 range of serial numbers into KBMAPI.  This is only supported for tokens that
-support attestation (e.g. Yubikeys).  In other words, enabling
+support attestation (e.g. YubiKeys).  In other words, enabling
 `KBMAPI_REQUIRE_TOKEN_PRELOAD` requires `KBMAPI_REQUIRE_ATTESTATION` to also
 be enabled (but not necessarily vice versa).
 
@@ -167,7 +167,7 @@ are non-standard PIV extensions.  As such, support for either feature will
 require kbmd / piv-tool and potentially kbmapi to support a particular device's
 implementation.  Similarly, enabling the feature requires the use of PIV tokens
 that implement the corresponding feature (attestation or a static serial number).
-The initial scope will only include support for Yubikey attestation and serial
+The initial scope will only include support for YubiKey attestation and serial
 numbers.
 
 In both cases, enforcement of the policy occurs during the provisioning
@@ -198,7 +198,7 @@ The PIV token object itself is represented using JSON similar to:
 [source,json]
 ----
 {
-    "model": "Yubico Yubikey 4",
+    "model": "Yubico YubiKey 4",
     "serial": 5213681,
     "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
     "guid": "97496DD1C8F053DE7450CD854D9C95B4",
@@ -251,7 +251,7 @@ The PIV token object itself is represented using JSON similar to:
 | recovery_tokens
 | Yes
 | An array of recovery tokens. Used as an alternate authentication key when
-replacing a PIV token on a machine (usually due to loss or damange of the
+replacing a PIV token on a machine (usually due to loss or damage of the
 original PIV token). They also serve as proof to KBMAPI that a recovery
 operation was performed. When the recovery configuration is updated, a new
 recovery token is generated and added to the list. A history of previous
@@ -307,7 +307,7 @@ The history bucket looks very similar to the token bucket:
 ----
 
 The major difference is that the index fields are not unique as well as the
-`active_range` index.  An accidentially deleted token that's restored might end
+`active_range` index.  An accidentally deleted token that's restored might end
 up with multiple history entries, and a CN which has had a token replacement
 will also have multiple history entries.
 
@@ -318,7 +318,7 @@ same as the token bucket:
 ----
 {
     "active_range": "[2019-01-01 00:00:00, 2019-03-01 05:06:07]",
-    "model": "Yubico Yubikey 4",
+    "model": "Yubico YubiKey 4",
     "serial": 5213681,
     "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
     "guid": "97496DD1C8F053DE7450CD854D9C95B4",
@@ -343,7 +343,7 @@ the `comment` property. The `active_range` property represents the (inclusive)
 start and end dates that the provisioned token was in use.
 
 It's permitted that the same provisioned token might have multiple entries in
-the history table.  An example would be a token accidentially deleted and
+the history table.  An example would be a token accidentally deleted and
 restored would have an entry for the deletion, and then a second entry when
 the token is retired (or reprovisioned).
 
@@ -436,7 +436,7 @@ all responses will have the following headers:
 
 | Header | Description
 
-| Date   | When the response wqas send (RFC 1123 format)
+| Date   | When the response was send (RFC 1123 format)
 
 | Api-Version | The exact version of the KBMAPI server that processed the request
 
@@ -537,7 +537,7 @@ Where `code` is one of:
 
 ## KBMAPI Endpoints
 
-These are the proposed endpoints to meet the above requrements.  They largely
+These are the proposed endpoints to meet the above requirements.  They largely
 document the behavior of the existing KBMAPI prototype (though in a few places
 describe intended behavior not yet present in the prototype).
 
@@ -669,7 +669,7 @@ Accept-Version: ~1
 Accept: application/json
 
 {
-    "model": "Yubico Yubikey 4",
+    "model": "Yubico YubiKey 4",
     "serial": 5213681,
     "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
     "guid": "97496DD1C8F053DE7450CD854D9C95B4",
@@ -728,7 +728,7 @@ Accept-Version: ~1
 Accept: application/json
 
 {
-    "model": "Yubico Yubikey 4",
+    "model": "Yubico YubiKey 4",
     "serial": 5213681,
     "cn_uuid": "99556402-3daf-cda2-ca0c-f93e48f4c5ad",
     "guid": "97496DD1C8F053DE7450CD854D9C95B4",
@@ -764,7 +764,7 @@ Response-Time: 23
 
 ### RecoverToken (POST /pivtokens/:guid/recover)
 
-When a token is no longer available (lost, damaged, accidentially reinitialized,
+When a token is no longer available (lost, damaged, accidentally reinitialized,
 etc.), a recovery must be performed.  This allows a new token to replace the
 unavailable token.  When a recovery is required, an operator initiates the
 recovery process on the CN.  This recovery process on the CN will decrypt the
@@ -800,7 +800,7 @@ Accept-Version: ~1
 Accept: application/json
 
 {
-    "model": "Yubico Yubikey 4",
+    "model": "Yubico YubiKey 4",
     "serial": 6324923,
     "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
     "guid": "75CA077A14C5E45037D7A0740D5602A5",
@@ -917,7 +917,7 @@ Response-Time: 55
 {
     [
         {
-            "model": "Yubico Yubikey 4",
+            "model": "Yubico YubiKey 4",
             "serial": 5213681,
             "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
             "guid": "97496DD1C8F053DE7450CD854D9C95B4"
@@ -928,7 +928,7 @@ Response-Time: 55
             }
         },
         {
-            "model": "Yubico Yubikey 5",
+            "model": "Yubico YubiKey 5",
             "serial": 12345123,
             "cn_uuid": "e9498ab2-d6d8-ca61-b908-fb9e2fea950a",
             "guid": "75CA077A14C5E45037D7A0740D5602A5",
@@ -973,7 +973,7 @@ Request-Id: de02d045-f8df-cf51-c424-a21a7984555b
 Response-Time: 55
 
 {
-   "model": "Yubico Yubikey 4",
+   "model": "Yubico YubiKey 4",
    "serial": 5213681,
    "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
    "guid": "97496DD1C8F053DE7450CD854D9C95B4"
@@ -1020,7 +1020,7 @@ Request-Id: 57e46450-ab5c-6c7e-93a5-d4e85cd0d6ef
 Response-Time: 1
 
 {
-    "model": "Yubico Yubikey 4",
+    "model": "Yubico YubiKey 4",
     "serial": 5213681,
     "cn_uuid": "15966912-8fad-41cd-bd82-abe6468354b5",
     "guid": "97496DD1C8F053DE7450CD854D9C95B4",
@@ -1040,7 +1040,7 @@ Response-Time: 1
 
 ### DeleteToken (DELETE /pivtokens/:guid)
 
-Deletes information about a pivtoken.  This would be called during the
+Deletes information about a PIV token.  This would be called during the
 decommission process of a CN.  The request is authenticated using the 9e
 key of the token.
 
@@ -1128,15 +1128,15 @@ Shows the history entries
 kbmd (read: kaboom-dee) has 3 big areas of responsibility:
 
 Firstly, it's responsible for the "recovery" process -- when a server
-has lost its primary Yubikey/PIV token, it is responsible for providing
+has lost its primary YubiKey/PIV token, it is responsible for providing
 the interface an administrator uses (either on the console or a pty) to
-recover encryption keys, set up a new Yubikey, and get the system back
+recover encryption keys, set up a new YubiKey, and get the system back
 on track. Since this logically requires it to be able to set up new
-Yubikeys from scratch, it's also involved in the initial setup process
+YubiKeys from scratch, it's also involved in the initial setup process
 to keep all the responsibility for that together.
 
 Secondly, it's responsible for the "unlock" process at boot --
-determining whether the primary Yubikey is available, getting the PIN
+determining whether the primary YubiKey is available, getting the PIN
 (from boot-time module or pool config for standalone, or spawning a
 client to talk to KBMAPI), and if those fail, deciding whether to enter
 "recovery".
@@ -1152,7 +1152,7 @@ The name "kbmd" reflects this -- "Key Backup and Management Daemon".
 not.)
 
 Encrypted boxes on the system fundamentally come in two forms -- there's
-the boxes associated with the zpool (one set for the primary Yubikey and
+the boxes associated with the zpool (one set for the primary YubiKey and
 one set for recovery), and then there are boxes for each of the keys
 stored by the RFD77 soft-token (recall that the soft-token individually
 encrypts its keys even when zpool encryption is enabled, as part of the
@@ -1173,9 +1173,9 @@ machine with N zones on it.
 So instead, the soft-token keys' backup comes in the form of a single
 large box (keyed only to the backup keys) which unlocks all of them.
 Every time we need to add or remove something from that box, we have to
-regenerate it from scratch using the individual boxes targetted to the
-primary Yubikey. So we keep a plaintext record next to it of the
-locations of all of the primary Yubikey boxes on disk. We call this
+regenerate it from scratch using the individual boxes targeted to the
+primary YubiKey. So we keep a plaintext record next to it of the
+locations of all of the primary YubiKey boxes on disk. We call this
 whole structure together the "recovery registry".
 
 This implies that the storage of these keys is somewhat managed by the
@@ -1205,7 +1205,7 @@ responses.  The behavior and format of the data sent across the door between
 kbmd and kbmadm is considered a private interface.  Mixing versions of kbmd
 and kbmadm is explicitly not supported -- they should always be updated in
 tandem.  Since initial delivery of both programs is targeted to be a part
-of the platform image, this shouldn't impose any additional maintence burden.
+of the platform image, this shouldn't impose any additional maintenance burden.
 
 `kbmadm create-zpool args...`
 
