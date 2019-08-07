@@ -397,9 +397,9 @@ Query Parameters
 
 Sample Request
 ```
-$ manta /$MANTA_USER/buckets/slash-bucket-objects -X GET
+$ manta /$MANTA_USER/buckets/slash-bucket/objects -X GET
 
-GET /$MANTA_USER/buckets HTTP/1.1
+GET /$MANTA_USER/buckets/slash-bucket/objects HTTP/1.1
 Host: *.manta.joyent.com
 Accept: */*
 Date: Tue, 18 Dec 2018 20:38:18 GMT
