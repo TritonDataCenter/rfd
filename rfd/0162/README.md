@@ -50,7 +50,7 @@ This deliverable would include:
     * pausing jobs
     * resuming jobs
     * observing a summary of transient and permanent errors from a job, with example objects
-    * viewing the progress of a job (i.e., how many objects it will process, how many are in-progress, how many have finished, how many are queued for retry due to a transient error, and so on). 
+    * viewing the progress of a job (i.e., how many are in-progress, how many have finished, how many are queued for retry due to a transient error, and so on). 
 - data transfers would happen directly between storage zones
 - automatic tests for as much as possible
 - configurable throttles on usage of the metadata tier and storage tier
@@ -98,6 +98,63 @@ The remora zone is responsible for:
  * Managing each rebalancer job.
  * Coordinating the assignments for each remora agent.
  * Updating object metadata as necessary.
+
+
+### Evacuate Job Threads
+#### Picker Thread
+The picker thread is responsible for maintaining an up to date snapshot of the
+status of the storage nodes in the region.  The final approach here will depend
+on the outcome of RFD 170, but as a last resort this thread can query the
+`manta_storage` bucket on the shard 1 moray directly.  There are some risks
+associated with this approach, specifically
+[MANTA-4091](https://jira.joyent.us/browse/MANTA-4091)
+
+#### Assignment Manager Thread
+* Get a snapshot from the picker thread
+* For each storage node in the snapshot:
+    * Determine if the storage node is busy servicing another assignment
+    * Create an assignment template  
+    * Send template to Assignment Generator thread
+    * Mark storage node busy (or increment active assignement count)
+
+The assignment template consists of:
+* The shark host name
+* The available space for the assignment
+
+#### Assignment Generator Thread
+* Get assignment template from Assignment Manager thread
+* Get object metadata from Sharkspotter thread.
+    * Determine if object can be rebalanced to shark in assignment template.  In
+    making this determination we need to consider both size vs free space as the
+    possibility that this object already resides on the destination storage
+    node.
+    * Choose a source storage node for this object to be copied from.  For
+    Evacuate jobs this should default to the node that is not being evacauted.
+    * If suitable, generate a download task and add that task to the list of
+    tasks for the assignment being generated.
+    * Continue to get objects from Sharkspotter thread and add them to the
+    assignment until the assignment is full based on either max number of tasks
+    or available space.
+* Regardless of the suitability of the object for current assignment the object
+metadata should be written to persistent storage and annotated with the
+appropriate state (Skipped, Processing, etc)
+* Sends fully generated assignment to Post thread
+
+(TODO: add list of states and meaning of each)
+    
+#### Sharkspotter Thread
+* Runs rust-sharkspotter with the evacuating shark as an argument 
+* Sends each object's metadata to the Assignment Generator thread
+
+#### Post Thread
+* Posts each assignment to the rebalancer agent running on the destination
+storage node.
+
+#### Metadata Update Thread
+* Periodically queries rebalancer agents on storage nodes for outstanding
+assignments.
+* Upon receiving a completed assignment in response to a query updates the
+metadata of each object.
 
 
 ## Remora Agent
@@ -232,17 +289,15 @@ server.  The basic flow is as follows:
 1. Lock evacuating server read-only.
 1. Start sharkspotter pointed at evacuating server.
 1. Start picker to generate destination sharks.
-1. Remora Zone starts Assignment Processing thread and waits for Assignments to
-   be in the Assigned state.  This thread periodically queries the destination
-   shark in the Assignment (via the GetAssignment endpoint) looking for
-   Assignments that have moved from Assigned -> Completed state.
+1. Start Assignment manager and generation threads.
+1. Start Post and Metadata Update threads.
 
 #### Generation Phase
 1. Remora Zone takes input from sharkspotter and picker to generate Assignments.
 1. Assignments are posted to the destination shark via the CreateAssignment
    endpoint, and put in the Assigned state.
 
-#### Post Processing Phase
+#### Metadata Updating Phase
 1. When the Assignment Processing thread receives a response from the remora
    Agent's GetAssignment endpoint of a completed assignment it begins to update
    the metadata of the successful objects.  (Note: A completed assignment may
@@ -261,6 +316,9 @@ server.  The basic flow is as follows:
     * Likely means that the source shark has a bad copy of the file.
     * Response:
 
+
+#### Assignment States
+__TODO__
 
 ## Deeper background and use-cases
 
