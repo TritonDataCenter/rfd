@@ -103,7 +103,6 @@ $ manta /$MANTA_USER/buckets -X OPTIONS
 
 OPTIONS /$MANTA_USER/buckets HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 date: Tue, 18 Dec 2018 20:38:18 GMT
 Authorization: $Authorization
 ```
@@ -158,7 +157,6 @@ $ manta /$MANTA_USER/buckets -X GET
 
 GET /$MANTA_USER/buckets HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 Date: Tue, 18 Dec 2018 20:38:18 GMT
 Authorization: $Authorization
 ```
@@ -265,7 +263,6 @@ $ manta /$MANTA_USER/buckets/mybucket -X HEAD -vvv
 
 HEAD /$MANTA_USER/buckets/mybucket HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 date: Mon, 01 Apr 2019 22:50:10 GMT
 Authorization: $Authorization
 ```
@@ -304,7 +301,6 @@ $ manta /$MANTA_USER/buckets/newbucket \
 
 PUT /$MANTA_USER/buckets/newbucket HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 Date: Wed, 19 Dec 2018 21:38:00 GMT
 Authorization: $Authorization
 ```
@@ -341,7 +337,6 @@ $ manta /$MANTA_USER/buckets/newbucket -X DELETE
 
 DELETE /$MANTA_USER/buckets/newbucket HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 date: Wed, 19 Dec 2018 21:39:56 GMT
 Authorization: $Authorization
 ```
@@ -401,7 +396,6 @@ $ manta /$MANTA_USER/buckets/slash-bucket/objects -X GET
 
 GET /$MANTA_USER/buckets/slash-bucket/objects HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 Date: Tue, 18 Dec 2018 20:38:18 GMT
 Authorization: $Authorization
 ```
@@ -520,7 +514,6 @@ $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X HEAD -vvv
 
 HEAD /$MANTA_USER//buckets/mybucket/objects/myobject.json HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 date: Mon, 01 Apr 2019 22:59:50 GMT
 Authorization: $Authorization
 ```
@@ -569,7 +562,6 @@ $ manta /$MANTA_USER/buckets/mybucket/objects/newobject.json \
 
 PUT /$MANTA_USER/buckets/mybucket/objects/newobject.json HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 Content-Type: application/json
 Date: Wed, 19 Dec 2018 21:41:40 GMT
 Authorization: $Authorization
@@ -614,7 +606,6 @@ $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X GET
 
 GET /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 Date: Wed, 19 Dec 2018 21:53:35 GMT
 Authorization: $Authorization
 ```
@@ -652,7 +643,6 @@ $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json -X DELETE
 
 DELETE /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 date: Wed, 19 Dec 2018 21:47:39 GMT
 Authorization: $Authorization
 ```
@@ -692,7 +682,6 @@ $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json/metadata -X GET
 
 GET /$MANTA_USER/buckets/mybucket/objects/myobject.json/metadata HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 date: Wed, 19 Dec 2018 21:53:35 GMT
 Authorization: $Authorization
 ```
@@ -724,7 +713,6 @@ $ manta /$MANTA_USER/buckets/mybucket/objects/myobject.json/metadata -X PUT -H '
 
 PUT /$MANTA_USER/buckets/mybucket/objects/myobject.json HTTP/1.1
 Host: *.manta.joyent.com
-Accept: */*
 date: Wed, 19 Dec 2018 21:53:35 GMT
 m-custom-header: myupdatedheadervalue
 Authorization: $Authorization
