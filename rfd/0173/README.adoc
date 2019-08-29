@@ -1,6 +1,6 @@
-:author: Jason King
-:email: jason.king@joyent.com
-:state: predraft
+:author: Jason King, Pedro P. Candel, Mike Gerdts
+:email: jason.king@joyent.com, pedro@joyent.com, mgerdts@joyent.com
+:state: draft
 :revremark: State: {state}
 
 :showtitle:
@@ -20,7 +20,7 @@
 
 ## Introduction
 
-(../0077/README.adoc)[RFD77] provides a high level overview of how cryptography
+[RFD77](../0077/README.adoc) provides a high level overview of how cryptography
 will be used to provide authentication for Triton services as well as
 protecting the data residing on compute nodes.  This RFD is focused on the
 details of the mechanisms that will be used to protect data at rest (also known
@@ -38,9 +38,9 @@ zpool.  An uninitialized PIV token (which must be present for the encrypted
 setup to proceed) is also initialized during the setup process.  The PIV token
 initialization performs several things:
 
- 1. Several private keys are created by the token (which it will not reveal).
- 2. A randomly generated secret PIN is set on the token.  This PIN is required
-by the token before certain keys generated in step 1 can be used.
+ 1. Several private keys are created by the pivtoken (which it will not reveal).
+ 2. A randomly generated secret PIN is set on the pivtoken.  This PIN is required
+by the pivtoken before certain keys generated in step 1 can be used.
 
 Information about each initialization PIV token (including the randomly
 generated PIN) is saved in a trusted datacenter service (KBMAPI).  The zpool
@@ -117,7 +117,7 @@ YubiKey:
 ## KBMAPI
 
 As mentioned in <<overview>>, a trusted node service will be needed in a
-datacenter to store the pins and recovery data for all of the tokens in the
+datacenter to store the pins and recovery data for all of the pivtokens in the
 datacenter.  This service is the Key Backup and Management API (KBMAPI).
 
 KBMAPI will be a fairly simple and minimal REST service.  API endpoints
@@ -125,7 +125,7 @@ provide the means for adding new PIV tokens, removing PIV tokens,
 recovering PIV tokens (i.e. replacing a PIV token), creating new recovery
 tokens for a PIV token, and providing the PIN of a PIV token.
 
-When a token is added, the KBMAPI service generates a recovery
+When a pivtoken is added, the KBMAPI service generates a recovery
 token (a 32 byte blob of random data) that will be stored on the CN.  The
 recovery token is limited to 32 bytes due to limitations in the Shamir secret
 sharing code used during recovery.  As described in XXX, normally the PIV
@@ -133,17 +133,17 @@ token's 9E key is used to authenticate requests.  The recovery token acts as
 a second authentication token used only when replacing a PIV token.
 
 [[kbmapi-history]]
-When tokens are deleted or reinitialized, the old token data should be kept in a
-KBMAPI-maintained history.  This history maintains the token data for an
+When pivtokens are deleted or reinitialized, the old pivtoken data should be kept in a
+KBMAPI-maintained history.  This history maintains the pivtoken data for an
 amount of time defined by the `KBMAPI_HISTORY_DURATION` SAPI variable.  The
 default shall be 15 days.  The purpose is to provide a time-limited backup
-against accidental token deletion.
+against accidental pivtoken deletion.
 
 ### Attestation
 
 :yubi-attest: https://developers.yubico.com/PIV/Introduction/PIV_attestation.html
 
-Some tokens have extensions that allow for attestation -- that is a method
+Some pivtokens have extensions that allow for attestation -- that is a method
 to show that a given key was created by the device and was not imported onto
 the PIV token. For YubiKeys, this is done by creating a special x509 certificate
 as detailed {yubi-attest}[here].
@@ -153,11 +153,11 @@ If an operator wishes to require attestation, they must set the
 `KBMAPI_ATTESTATION_CA` SAPI parameter must be set to the CA certificate
 used for attestation.
 
-Additionally, an operator may wish to limit the tokens that are allowed to
-be used with KBMAPI to a known set of tokens.  To do so, an operator
+Additionally, an operator may wish to limit the pivtokens that are allowed to
+be used with KBMAPI to a known set of pivtokens.  To do so, an operator
 sets the SAPI parameter `KBMAPI_REQUIRE_TOKEN_PRELOAD` to `true`.  A command
 line tool (working name `kbmctl`) is then used by the operator to load the
-range of serial numbers into KBMAPI.  This is only supported for tokens that
+range of serial numbers into KBMAPI.  This is only supported for pivtokens that
 support attestation (e.g. YubiKeys).  In other words, enabling
 `KBMAPI_REQUIRE_TOKEN_PRELOAD` requires `KBMAPI_REQUIRE_ATTESTATION` to also
 be enabled (but not necessarily vice versa).
@@ -171,8 +171,8 @@ The initial scope will only include support for YubiKey attestation and serial
 numbers.
 
 In both cases, enforcement of the policy occurs during the provisioning
-process (i.e. at the time of a CreateToken call).  Changes to either policy
-do _not_ affect existing tokens in KBMAPI.
+process (i.e. at the time of a CreatePivtoken call).  Changes to either policy
+do _not_ affect existing pivtokens in KBMAPI.
 
 ### PIV Token object
 
@@ -230,23 +230,23 @@ The PIV token object itself is represented using JSON similar to:
 
 | model
 | No
-| The model of the token.
+| The model of the pivtoken.
 
 | serial
 | No
-| The serial number of the token (if available).
+| The serial number of the pivtoken (if available).
 
 | cn_uuid
 | Yes
-| The UUID of the compute node that contains this token
+| The UUID of the compute node that contains this pivtoken
 
 | guid
 | Yes
-| The GUID of the provisioned token.
+| The GUID of the provisioned pivtoken.
 
 | pin
 | Yes
-| The pin of the provisioned token.
+| The pin of the provisioned pivtoken.
 
 | recovery_tokens
 | Yes
@@ -259,20 +259,20 @@ tokens is kept to allow for propagation delays of new recovery configurations.
 
 | pubkeys
 | Yes
-| A JSON object containing the _public_ keys of the token
+| A JSON object containing the _public_ keys of the pivtoken
 
 | pubkeys.9a
 | Yes
-| The public key used for authentication after the token has been unlocked.
+| The public key used for authentication after the pivtoken has been unlocked.
 
 | pubkeys.9d
 | Yes
-| The public key used for encryption after the token has been unlocked.
+| The public key used for encryption after the pivtoken has been unlocked.
 
 | pubkeys.9e
 | Yes
-| The public key used for authenticating the token itself without a pin (e.g.
-used when requesting the pin of a token).
+| The public key used for authenticating the pivtoken itself without a pin (e.g.
+used when requesting the pin of a pivtoken).
 
 | attestation
 | No
@@ -280,16 +280,16 @@ used when requesting the pin of a token).
 
 |===
 
-Note that when provisioning a token, if any of the optional fields are known,
+Note that when provisioning a pivtoken, if any of the optional fields are known,
 (e.g. `attestation` or `serial`) they should be supplied during provisioning.
 
-### Token History
+### Pivtoken History
 
-As a failsafe measure, when a token is deleted, the entry from the token
+As a failsafe measure, when a pivtoken is deleted, the entry from the pivtoken
 bucket is saved into a history bucket.  This bucket retains up to
-`KBMAPI_HISTORY_DURATION` days of token data (see <<kbmapi-history>>).
+`KBMAPI_HISTORY_DURATION` days of pivtoken data (see <<kbmapi-history>>).
 
-The history bucket looks very similar to the token bucket:
+The history bucket looks very similar to the pivtoken bucket:
 
 [source,json]
 ----
@@ -307,12 +307,12 @@ The history bucket looks very similar to the token bucket:
 ----
 
 The major difference is that the index fields are not unique as well as the
-`active_range` index.  An accidentally deleted token that's restored might end
-up with multiple history entries, and a CN which has had a token replacement
+`active_range` index.  An accidentally deleted pivtoken that's restored might end
+up with multiple history entries, and a CN which has had a pivtoken replacement
 will also have multiple history entries.
 
 The moray entry in the history bucket also looks similar, but not quite the
-same as the token bucket:
+same as the pivtoken bucket:
 
 [source,json]
 ----
@@ -346,29 +346,29 @@ same as the token bucket:
 
 The major difference is the addition of the `active_range` property as well as
 the `comment` property. The `active_range` property represents the (inclusive)
-start and end dates that the provisioned token was in use.
+start and end dates that the provisioned pivtoken was in use.
 
-It's permitted that the same provisioned token might have multiple entries in
-the history table.  An example would be a token accidentally deleted and
+It's permitted that the same provisioned pivtoken might have multiple entries in
+the history table.  An example would be a pivtoken accidentally deleted and
 restored would have an entry for the deletion, and then a second entry when
-the token is retired (or reprovisioned).
+the pivtoken is retired (or reprovisioned).
 
 The `comment` field is an optional field that contains free form text.  It is
 intended to note the reason for the deletion.
 
-To protect the token data in Moray, we will rely on the headnode disk
+To protect the pivtoken data in Moray, we will rely on the headnode disk
 encryption.
 
-**QUESTION**: Even though the HN token will not use the GetTokenPin
+**QUESTION**: Even though the HN pivtoken will not use the GetPivtokenPin
 API call to obtain its pin, should we still go ahead and store the data for
-the HN token in KBMAPI?  We cannot do it when we initialize the HN PIV token
+the HN pivtoken in KBMAPI?  We cannot do it when we initialize the HN PIV token
 because we are running the HN setup (this there is no KBMAPI up and running),
 and we must use a different method to provide the PIN for a PIV token on a
 headnode.
 
-### Preloading Tokens
+### Preloading Pivtokens
 
-To support an operator preloading unprovisioned tokens, we track ranges of
+To support an operator preloading unprovisioned pivtokens, we track ranges of
 serial numbers that are allowed to be provisioned.  We use a separate
 moray bucket for tracking these ranges of serial numbers:
 
@@ -410,7 +410,7 @@ The entries look similar to:
 | Set to true if this range is allowed, or false is this range is blacklisted.
 
 | ca_dn
-| The distinguished name (DN) of the attestation CA for this token.  Used to
+| The distinguished name (DN) of the attestation CA for this pivtoken.  Used to
 disambiguate any potential duplicate serial numbers between vendors.
 
 | comment
@@ -422,7 +422,7 @@ The `kbmctl` command is used to manage this data.
 
 ### Audit Trail
 
-Given the critical nature of the token data, we want to provide an audit
+Given the critical nature of the pivtoken data, we want to provide an audit
 trail of activity.  While there is discussion of creating an AuditAPI at
 some point in the future, it currently does not look like it would be available
 to meet the current deadlines.  Once available, we should look at the effort
@@ -554,11 +554,11 @@ be '1.0'.
 XXX: This is largely based on the behavior of CloudAPI.  Check what the
 behavior of CloudAPI is if no version is supplied.
 
-#### CreateToken (POST /pivtokens)
+#### CreatePivtoken (POST /pivtokens)
 
 Add a new initialized PIV token.  Included in the request should be an
 `Authorization` header with a method of 'Signature' with the date header
-signed using the token's `9e` key.  The payload is a JSON object with the
+signed using the pivtoken's `9e` key.  The payload is a JSON object with the
 following fields:
 
 [options="header"]
@@ -568,39 +568,39 @@ following fields:
 
 | guid
 | Yes
-| The GUID of the provisioned token
+| The GUID of the provisioned pivtoken
 
 | cn_uuid
 | Yes
-| The UUID if the CN that contains this token
+| The UUID if the CN that contains this pivtoken
 
 | pin
 | Yes
-| The pin for the token generated during provisioning
+| The pin for the pivtoken generated during provisioning
 
 | model
 | No
-| The model of the token (if known)
+| The model of the pivtoken (if known)
 
 | serial
 | No
-| The serial number of the token (if known)
+| The serial number of the pivtoken (if known)
 
 | pubkeys
 | Yes
-| The public keys of the token generated during provisioning
+| The public keys of the pivtoken generated during provisioning
 
 | pubkeys.9a
 | Yes
-| The `9a` public key of the token
+| The `9a` public key of the pivtoken
 
 | pubkeys.9d
 | Yes
-| The `9d` public key of the token
+| The `9d` public key of the pivtoken
 
 | pubkeys.9e
 | Yes
-| The `9e` public key of the token
+| The `9e` public key of the pivtoken
 
 | attestation
 | No
@@ -622,7 +622,7 @@ error is returned.
 
 If the `guid` or `cn_uuid` fields contain a value already in use in the
 `tokens` bucket, a new entry is _not_ created.  Instead, the `9e` public key
-from the request is compared to the `9e` key in the stored token data.  If
+from the request is compared to the `9e` key in the stored pivtoken data.  If
 the keys match, and the signature check succeeds, then the `recovery_token`
 value of the existing entry is returned and a 200 response is returned. This
 allows the CN to retry a request in the event the response was lost.
@@ -631,8 +631,8 @@ If the `9e` key in the request does not match the `9e` key for the existing
 token in the `tokens` bucket, but either (or both) the `guid` or `cn_uuid`
 fields match an existing entry, a 409 Conflict + NotAuthorized error
 is returned.  In such an instance, an operator must manually verify if the
-information in the token bucket is out of date and manually delete it before
-the token provisioning can proceed.
+information in the pivtoken bucket is out of date and manually delete it before
+the pivtoken provisioning can proceed.
 
 If an operator has hardware with duplicate UUIDs, they must contact
 their hardware vendor to resolve the situation prior to attempting to provision
@@ -650,10 +650,10 @@ with the pubkeys supplied in the request.  If they do not agree, or if
 409 Conflict + InvalidArgument error is returned.
 
 If `KBMAPI_REQUIRE_TOKEN_PRELOAD` is `true`, the serial number of
-the token as well as the attestation certificates of the token in question
-must be present in the CreateToken request.  KBMAPI performs a search for
+the pivtoken as well as the attestation certificates of the pivtoken in question
+must be present in the CreatePivtoken request.  KBMAPI performs a search for
 a range of allowed serial numbers in the `token_serial` bucket whose
-attestation CA DN matches the attestation CA of the token in the request.
+attestation CA DN matches the attestation CA of the pivtoken in the request.
 If the serial number is not part of an allowed range, a
 409 Conflict + InvalidArgument error is returned.
 
@@ -715,7 +715,7 @@ Response-Time: 42
 In order to make the request/response retry-able w/o generating and saving a new
 `recovery_token` each time (to prevent a single recovery configuration update
 from creating multiple `recovery_tokens` due to network/retry issues), any
-requests made after the initial token creation to the same `Location` (i.e.
+requests made after the initial pivtoken creation to the same `Location` (i.e.
 `POST /pivtokens/:guid`) will result into the same pivtoken object being
 retrieved.
 
@@ -733,15 +733,15 @@ On all of these cases, the status code will be `200 Ok` instead of the
 `201 Created` used for the initial pivtoken creation.
 
 
-### UpdateToken (PUT /pivtokens/:guid)
+### UpdatePivtoken (PUT /pivtokens/:guid)
 
-Update the current fields of a token.  Currently, the only field that can be
+Update the current fields of a pivtoken.  Currently, the only field that can be
 altered is the `cn_uuid` field (e.g. during a chassis swap).  If the new
-`cn_uuid` field is already associated with an assigned token, or if any of
+`cn_uuid` field is already associated with an assigned pivtoken, or if any of
 the remaining fields differ, the update fails.
 
-This request is authenticated by signing the Date header with the token's 9e
-key (same as CreateToken).  This however does not return the recovery token
+This request is authenticated by signing the Date header with the pivtoken's 9e
+key (same as CreatePivtoken).  This however does not return the recovery token
 in it's response.
 
 Example request:
@@ -789,47 +789,47 @@ Response-Time: 23
 
 ----
 
-### RecoverToken (POST /pivtokens/:guid/recover)
+### ReplacePivtoken (POST /pivtokens/:guid/replace)
 
-When a token is no longer available (lost, damaged, accidentally reinitialized,
-etc.), a recovery must be performed.  This allows a new token to replace the
-unavailable token.  When a recovery is required, an operator initiates the
+When a pivtoken is no longer available (lost, damaged, accidentally reinitialized,
+etc.), a recovery must be performed.  This allows a new pivtoken to replace the
+unavailable pivtoken.  When a recovery is required, an operator initiates the
 recovery process on the CN.  This recovery process on the CN will decrypt the
-current `recovery_token` value for the lost token that was created during the
-lost token's CreateToken request or a subsequent `CreateToken` request.
+current `recovery_token` value for the lost pivtoken that was created during the
+lost pivtoken's CreatePivtoken request or a subsequent `CreatePivtoken` request.
 For some TBD amount of time, earlier `recovery_token` values may also be allowed
 to account for propagation delays when updating recovery configurations using
 changefeed. KBMAPI may also optionally periodically purge members of
-a token's `recovery_tokens` array that are sufficiently old to no longer
+a pivtoken's `recovery_tokens` array that are sufficiently old to no longer
 be considered valid (even when accounting for propagation delays).
 
-The CN submits a RecoverToken request to replace the unavailable token
-with a new token.  The `:guid` parameter is the guid of the unavailable token.
-The data included in the request is identical to that of a CreateToken request.
-The major difference is that instead of using a token's 9e key to sign the date
+The CN submits a RecoverPivtoken request to replace the unavailable pivtoken
+with a new pivtoken.  The `:guid` parameter is the guid of the unavailable pivtoken.
+The data included in the request is identical to that of a CreatePivtoken request.
+The major difference is that instead of using a pivtoken's 9e key to sign the date
 field, the decrypted `recovery_token` value is used as the signing key (in
 conjunction with some HMAC mechanism).
 
 Instead of HTTP Signature auth using the SSH key, HMAC signature using the
 `recovery_token` as value will be used.
 
-If the lost token does not exists in KBMAPI we should reject the request with
+If the lost pivtoken does not exists in KBMAPI we should reject the request with
 a `404 Not Found` response.
 
 If the request fails the authentication requests, a `401 Unauthorized` error
 is returned.
 
-If all the checks succeed, the information from the old token (`:guid`) is
-moved to a history entry for that token. Any subsequent requests to
+If all the checks succeed, the information from the old pivtoken (`:guid`) is
+moved to a history entry for that pivtoken. Any subsequent requests to
 `/pivtokens/:guid` should either return a `404 Not found` reply or, in case
-we add some kind of `replaced_by: :new_guid` attribute to the archived token,
+we add some kind of `replaced_by: :new_guid` attribute to the archived pivtoken,
 we could also return `301 Moved Permanently` with the new pivtoken location.
 
-The newly created token will then be returned, together with the proper
+The newly created pivtoken will then be returned, together with the proper
 `Location` header (`/pivtokens/:new_guid`). In case of network/retry issues,
 additional attempts to retrieve the new pivtoken information should be made
-through `CreateToken` end-point for the new token, and these requests should
-be signed by the new token 9e key, instead of using HMAC with the old token
+through `CreatePivtoken` end-point for the new pivtoken, and these requests should
+be signed by the new pivtoken 9e key, instead of using HMAC with the old pivtoken
 `recovery_token`.
 
 
@@ -894,55 +894,12 @@ Response-Time: 42
 
 ----
 
-Note that the location contains the guid of the _new_ token.
+Note that the location contains the guid of the _new_ pivtoken.
 
-### CreateRecoveryToken (GET /pivtokens/:guid/recover)
-
-Create a new recovery token for the given PIV token.  The request should be
-authenticated by the PIV token.  When a new recovery configuration is propagated
-to CNs via the gossip protocol, a new ebox is created which includes a new
-recovery token.  The request _must_ be authenticated using the 9e key.  If
-authentication fails, a 401 Unauthorized error + NotAuthorized code is returned.
-
-Example request:
-
-----
-GET /pivtokens/75CA077A14C5E45037D7A0740D5602A5/recover
-Host: kbmapi.mytriton.example.com
-Date: Fri, 5 Jun 2019 11:24:00 GMT
-Authorization: Signature <Base64(rsa(sha256($Date)))>
-Accept-Version: ~1
-Accept: application/json
-----
-
-Example reply:
-
-----
-HTTP/1.1 201 Created
-Location: /pivtokens/75CA077A14C5E45037D7A0740D5602A5/recover
-Content-Type: application/json
-Content-Length: 12345
-Content-MD5: s5RFP2dBDXlf5X1drujDvg==
-Date: Fri, 5 Jun 2019 11:24:24 GMT
-Server: Joyent KBMAPI 1.0
-Api-Version: 1.0
-Request-Id: bd73cff7-325f-64d8-cb0f-8c2ca8ecbd7d
-Response-Time: 16
-
-{
-    "recovery_token": "QmUgc3VyZSB0byBkcmluayB5b3VyIG92YWx0aW5l"
-}
-----
-
-XXX: Is 201 the best thing to return here?  Should we consider some mechanism
-in the request/response to make this retry-able w/o generating and saving a new
-token each time (to prevent a single recovery configuration update from
-creating multiple recovery tokens due to network/retry issues).
-
-#### ListTokens (GET /pivtokens)
+#### ListPivtokens (GET /pivtokens)
 
 Gets all provisioned pivtokens.  The main requirement here is no
-sensitive information of a token is returned in the output.
+sensitive information of a pivtoken is returned in the output.
 
 Filtering by at least the `cn_uuid` as well as windowing functions should be
 supported.
@@ -1000,9 +957,9 @@ Response-Time: 55
 }
 ----
 
-### GetToken (GET /pivtokens/:guid)
+### GetPivtoken (GET /pivtokens/:guid)
 
-Gets the public info for a specific token.  Only the public fields are
+Gets the public info for a specific pivtoken.  Only the public fields are
 returned.
 
 Example request:
@@ -1042,16 +999,16 @@ Response-Time: 55
 }
 ----
 
-### GetTokenPin (GET /pivtokens/:guid/pin)
+### GetPivtokenPin (GET /pivtokens/:guid/pin)
 
-Like GetToken, except it also includes the `pin`.  The `recovery_token` field
+Like GetPivtoken, except it also includes the `pin`.  The `recovery_token` field
 is *not* returned.  This request must be authenticated using the 9E key of the
 token specified by `:guid` to be successful.  An `Authorization` header should
 be included in the request, the value being the signature of the `Date` header
 (very similar to how CloudAPI authenticates users);
 
 This call is used by the CN during boot to enable it to unlock the other
-keys on the token.
+keys on the pivtoken.
 
 An example request:
 
@@ -1095,11 +1052,11 @@ Response-Time: 1
 }
 ----
 
-### DeleteToken (DELETE /pivtokens/:guid)
+### DeletePivtoken (DELETE /pivtokens/:guid)
 
 Deletes information about a PIV token.  This would be called during the
 decommission process of a CN.  The request is authenticated using the 9e
-key of the token.
+key of the pivtoken.
 
 Sample request:
 
@@ -1137,39 +1094,39 @@ the KBMAPI data by an operator.  In earlier revisions, this was called
 `kbmadm`, but that could cause confusion with kbmd's `kbmctl`, so a different
 name was chosen.
 
-### kbmctl add-serials
+### kbmctl serials add
 
-Usage: `kbmctl add-serials -d CA_dn start [end]`
+Usage: `kbmctl serials add -d CA_dn start [end]`
 
 Adds the range [`start`, `end`] (i.e. inclusive) that use `CA_dn` as their
-attestation CA to the list of tokens that can be provisioned. If `end` is
+attestation CA to the list of pivtokens that can be provisioned. If `end` is
 omitted, the range is treated as [`start`, `start`] (i.e. a single entry).
 
-### kbmctl delete-serials
+### kbmctl serials delete
 
-Usage: `kbmctl delete-serials -d CA_dn start [end]`
+Usage: `kbmctl serials delete -d CA_dn start [end]`
 
 Removes the serial number range [`start`, `end`] which use `CA_dn` as their
-attestation CA to the list of tokens that can be provisioned.  If `end` is
+attestation CA to the list of pivtokens that can be provisioned.  If `end` is
 omitted the range is treated as [`start`, `start`] (i.e. a single entry).
 
-### kbmctl delete-token
+### kbmctl pivtoken delete
 
-Usage: `kbmctl delete-token guid`
+Usage: `kbmctl pivtoken delete guid`
 
-Deletes the token with the given guid
+Deletes the pivtoken with the given guid
 
 ### kbmctl restore
 
 Usage: `kbmctl restore [-f] [-c cn_uuid] guid [timestamp]`
 
-Restores the data for the token with the given uuid from the history table.
+Restores the data for the pivtoken with the given uuid from the history table.
 If multiple entries for the same GUID are present, `timestamp` must be
 supplied to identify the entry to restore (the entry whose active range
-contains timestamp is chosen).  Optionally, restore the token to the given
+contains timestamp is chosen).  Optionally, restore the pivtoken to the given
 CN (if different from the history entry).
 
-If the given CN already has a provisioned token assigned to it, this fails
+If the given CN already has a provisioned pivtoken assigned to it, this fails
 unless the -f flag is provided.
 
 ### kbmctl history
@@ -1177,6 +1134,7 @@ unless the -f flag is provided.
 Shows the history entries
 
 **XXX**: Add more detail.
+
 
 ## kbmd
 
@@ -1220,8 +1178,8 @@ The boxes themselves are stored as a zfs property (`rfd77:config`).  The
 currently size limitations of zfs properties should allow for a single
 property to store approximately 8 boxes worth of data.
 
-The soft-token keys have to be boxed individually to the primary token
-(so that the primary token can't unlock all of them in a single
+The soft-token keys have to be boxed individually to the primary pivtoken
+(so that the primary pivtoken can't unlock all of them in a single
 operation), but they do not have to be boxed individually to the backup
 keys. In fact, it would be pretty inconvenient if they were, because we
 would have to do the challenge-response process at least N times for a
