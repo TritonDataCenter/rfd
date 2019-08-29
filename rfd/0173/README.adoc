@@ -1135,6 +1135,55 @@ Shows the history entries
 
 **XXX**: Add more detail.
 
+### kbmctl recovery <add|list|activate|cancel|remove>
+
+#### kbmctl recovery add
+
+- How is the recovery configuration provided?
+
+        kbmctl recovery add -f <ebox-template>
+
+Where template is generated with pivy box.
+
+- Interactive mode could exist that invokes pivy box, but not required.
+- Makes a call to KBMAPI
+- No special authentication, beyond having access to admin network.
+
+        kbmctl recovery add -n 10 - do 10 at time
+
+#### kbmctl recovery list
+
+See which configurations are in use
+
+        $ kbmctl recovery list
+        HASH    INUSE  STATE
+        abcdef  7      old
+        123456  1      active
+        abc123  0      stage
+
+See who is using those that are in use
+
+         $ kbmctl recovery list 123456
+         CN
+         uuid1 or hostname...
+
+Obvious KMBAPI endpoints
+
+#### kbmctl recovery activate
+
+- will fail if not forced when not all compute nodes are on the active config or the stage configuration
+
+        kbmctl recovery activate [-f]
+
+- Does pushing out all very quickly cause a cn-agent -> cnapi storm that hurts cnapi or moray?
+
+#### kbmctl recovery cancel
+
+- between add and activate
+
+#### kbmctl recovery remove
+
+- removing an unused recovery config
 
 ## kbmd
 
