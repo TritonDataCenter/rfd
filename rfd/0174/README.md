@@ -91,7 +91,7 @@ to pay for that.
 Using a distributed storage solution does have drawbacks. The configuration
 is more complex, has more failure modes, and is harder to troubleshoot when
 something goes wrong. These issues are discussed in this RFD.
- 
+
 ## Hardware and Network Configuration
 
 For the sake of discussion, assume we're going to deploy a 17+3 configuration.
@@ -99,104 +99,108 @@ That is, one raidz3 with 20 disks. We could consider other configurations
 with similar parity disk overhead.
 
 We will have one machine which assumes the active role (it has the manta data
-zpool imported and is providing the mako `storage` zone service), and one
+zpool imported and is providing the `mako` storage zone service), and one
 machine in the passive role (it has iscsi configured to see all 20 disks, but
-does not have the zpool imported and the mako `storage` zone is not booted
+does not have the zpool imported and the `mako` storage zone is not booted
 until the active machine fails). The active and passive machines will only
-have two local disks for their local mirrored `zones` zpool. We need to
+have 2 local disks for their local mirrored "zones" zpool. We need to
 determine if these machines are a new HW configuration or repurposed from one
 of our existing HW configurations.
 
-It is important to note that the active/passive storage zpool cannot be
-configured with a slog, since there is no good solution for preventing data
-loss from the slog in the event of a failover.
+It is important to note that the active/passive `mako` storage zpool might not
+be configured with a slog. We need to test if running a mirrored slog over
+iscsi provides enough of a performance win. If so, we can partition the SSDs
+and have multiple `makos` sharing the slogs on the remote server, since we don't
+really need a full dedicated device. In this case, we can repurpose the slogs
+from our existing shrimps. The rest of the RFD assumes no slog, so some of
+the numbers will change if we determine a slog over iscsi is useful.
 
 We will have 20 machines acting as iscsi targets. These 20 machines provide
-the disk storage for the active/passive machines. We can repurpose our
-existing shrimp HW for this role.
+the disk storage for the active/passive `mako` machines. We can repurpose our
+existing shrimp HW for this role. All 20 iscsi target machines should have
+disks of the same size.
 
 For proper durability, each iscsi target can only present one disk (physical
-or virtual) to each of the active/passive servers. Thus, to make efficient
-use of the target machines we need to define a storage group. This is a
-set of machines with multiple active/passive servers making use of each target.
-For a 20-wide configuration, each target machine will expose 20
-physical/virtual disks, so we would then have 20 active and 20
-passive machines sharing the 20 iscsi target servers in the storage group. If
-a different raidz3 width is chosen, then that impacts the total number of
-servers in the storage group.
+or virtual) to each of the active/passive servers. Because the repurposed
+shrimps can have 34 usable disks (2 are set aside for the system's "zones"
+pool), we can support up to 34 active/passive `makos`.
 
-All 20 iscsi target machines should have disks of the same size.
+To summarize, the raidz3 width used by the `makos` defines how many iscsi
+target machines we need, and the number of available data disks in the iscsi
+target machines determines how many active/passive `mako` servers we can
+provision to use the iscsi target machines.
+
+We'll call this collection of machines a storage group. This is the full
+set of machines with multiple active/passive `mako` servers making use of
+the disks on each iscsi target machine.
+
+Within the storage group, we'll want to isolate all of the local network
+traffic (iscsi, heartbeats, etc.) onto at least its own vlan, and more likely
+onto a dedicated switch. It is possible that running 34 `makos` and all of
+the associated network traffic will be too much network load within the
+storage group. In that case, we'll have to support fewer `makos` in the
+group and we could remove some of the data disks from the iscsi target
+machines to re-use them elsewhere.
 
 An additional point of comparison with our current manta storage tier is that
 the basic building block is 2 shrimps in 2 different AZs (because we store 2
 copies of an object). In this new approach, the basic building block is the
-storage group with 20 iscsi targets (or whatever raidz3 width is chosen
-instead), 20 active and 20 passive servers. All 60 of these machines should be
-close together on the same network. The existing shrimps can be repurposed for
-this new iscsi target role, but the active/passive servers only need two
-physical disks, so we might want a different HW unit for that role.
+storage group with 20 iscsi target machines, up to 34 active and 34 passive
+servers.  All 88 of these machines will be close together on the same network.
 
 There are two alternatives for how the iscsi target presents disks; either
-as raw disks, or as zvols. Both need to be tested and investigated before
-a final decision is made.
+as raw disks, or as zvols. Both are described here, but there are known
+issues and concerns with the zvol case, so we won't be using that option.
 
-Here is an [overview diagram](./storage_rfd.jpg) of these various components
-for the raw disk case. The zvol case is similar, except is presenting virtual
-disks vs. physical disks.
+Here is an [overview diagram](./storage_rfd.jpg) of these various components.
 
 ### Raw Disks
 
-If each iscsi target machine only presented one raw disk, then the rest of
-that box is wasted, so as described above, the target machine would provide 20
-disks to 20 different active servers and 20 passive servers for a total of
-60 machines in the storage group.
+Each iscsi target machine provides all of its data disks (up to 34 when using
+the existing shrimps) to the appropriate number of active/passive `mako`
+servers. There are 2 disks in each iscsi target machine that are reserved
+for a mirrored "zones" zpool for use by that machine.
 
-If we want each iscsi target disk to map directly to a physical disk, then
-our current shrimps (repurposed as iscsi target boxes) have 36 disks, 34 of
-which could be used for iscsi target storage, leaving 2 which would be mirrored
-system disks (the 'zones' zpool). Having 34 disks is a bad number in a 20-wide
-configuration, so one option is to remove 14 disks and use them elsewhere.
+It seems likely that the "dense shrimp" model is not a good fit for an iscsi
+target in this proposed distributed storage world. The dense shrimp has so
+much local disk and it seems probable that 60 busy `makos` could saturate the
+storage group network.
 
 ### ZVOLS
 
-An alternative on the iscsi target machine is to use zvols instead of raw disks.
-In this case, instead of using two mirrored disks for the system's zpool, we
-would continue to make the single "zones" zpool. We would use a new
+[NOTE: this option is hypothetical and not being pursued]
+
+An alternative on the iscsi target machine would be to use zvols instead of raw
+disks. In this case, instead of using two mirrored disks for the system's zpool,
+we would continue to make the single "zones" zpool. We would use a new
 raidz1 (11+1) * 3 layout to minimize disk overhead. It is hard to compare the
 exact disk efficiency to the raw disk case since we have 36 disks as shared
-storage, but we also have the zpool overhead to consider.  We'll have to do
+storage, but we also have the zpool overhead to consider.  We would have to do
 more measurements to determine the actual efficiency on the iscsi target in
-this configuration. In this configuration the target would offer 20 zvols
-instead of 20 raw disks. Aside from potential performance questions, this
-configuration has another potential drawback. We don't want to provide zvols
-that are too large, since that has a direct impact on resilver times in the
-zpool that is built on top of these zvols.
+this configuration. In this configuration the target would offer the
+appropriate number of zvols to support all of the associated `makos`.
 
-To be clear in this case, there are now two different zpools at two different
-layers (aside from the mirrored system disk "zones" zpools on the storage
-servers). There is the 20 virtual disk zpool used by the active/passive
-storage servers, and there is the 36 physical disk zpool used by the
-iscsi target machines to host the local "zones" zpool which holds the 20
-zvols.
+As mentioned, there are a variety of issues and concerns with this
+configuration.
 
-Our current 36-disk shrimps have zpools ranging in size from 360TB to 240TB
-(depending on which size disks were used when the shrimp was installed).
-This results in usable zfs dataset space of 265TB to 221 TB (265TB seems low
-and needs investigation for improvement). If we assume normal system overhead
-is already accounted for in the current configuration, this results in zvol
-virtual disks of 13.25TB to 11TB, which is similar in size to currently
-shipping hard disks that might be exposed raw (i.e. 265/20).
+There are potential performance questions of running a zpool (on the `makos`)
+over another zpool on the iscsi target machine. In the past, serious write
+amplification has been observed.
 
-No matter what, it seems clear that the "dense shrimp" model is not a good
-fit for an iscsi target in this proposed distributed storage world. The
-dense shrimp has so much storage that the 20 zvols would be very large and
-incur very long resilver times after a failure.
+There have been hangs reported in this configuration.
+
+Another potential drawback is that we don't want to provide zvols that are too
+large, since that has a direct impact on resilver times in the zpool that is
+built on top of these zvols.
 
 ### Network
 
 We want to isolate all of the iscsi traffic to at least its own vlan, and
 perhaps even onto a dedicated switch. Using a dedicated switch will help
 reduce or eliminate network partitions, which simplifies failure analysis.
+
+We need to determine how well our NICs and network stack performs with all
+of the iscsi traffic.
 
 TBD anything else here?
 
@@ -262,28 +266,29 @@ We have described the configuration and behavior for SmartOS in the role
 of an HA storage server or iscsi target, but we also need to determine how this
 configuration is initially installed and setup. This process is TBD.
 
-## Mako `storage` Zone Manta Visibility
+## Mako Storage Zone Manta Visibility
 
-The active/passive servers will each have a a mako `storage` zone configured.
+The active/passive servers will each have a `mako` storage zone configured.
 These will be identical zone installations since either machine can provide the
-identical storage service to the rest of Manta. The mako `storage` zone will
+identical storage service to the rest of Manta. The `mako` storage zone will
 only be booted and running on the active server.
 
-There are a bunch of open questions on how the active/passive mako visibility
+There are a bunch of open questions on how the active/passive `mako` visibility
 will be exposed to the rest of Manta when we have a failover. We're targeting
 one minute for a passive to become the active. This includes the time for
-the heartbeater timeout, importing the zpool, booting the mako zone, etc.
+the heartbeater timeout, importing the zpool, booting the `mako` zone, etc.
 so we'd ideally like the network flip to be completed within around 30
 seconds, if possible.
 
-- If the active/passive mako zones share the same IP, when we have a flip,
+- If the active/passive `mako` zones share the same IP, when we have a flip,
   how quickly will this propagate through the routing tables? Is there anything
   we could actively do to make it faster? Is having the same IP all that is
-  necessary?
+  necessary? Is the gratuitous arp that gets emitted when the new `mako` zone
+  boots adequate?
 - Is there some way to configure DNS so that records have a short TTL and we
   quickly flip?
 - Is there some other approach, perhaps using cueball or other upstack
-  services which we can use to quickly flip the mako over when the passive
+  services which we can use to quickly flip the `mako` over when the passive
   machine becomes the active machine?
 
 ## HA and Failures
@@ -305,7 +310,7 @@ server takes advantage of the `mmp` capability in ZFS to attempt to become
 the active server.
 
 We need further testing before we have a final value, but we have a target
-of one minute for an active/passive flip before the mako storage service
+of one minute for an active/passive flip before the `mako` storage service
 instance is once again available.
 
 If the active server loses its network connection, it will no longer be able
@@ -378,9 +383,23 @@ This section needs more details, but here is a rough list.
 - iscsi target disk failure
 - storage group switch failure
 
+### Load Testing
+
+This section needs more details, but here is a rough list.
+
+- Need to estimate the expected read/write load.
+- How much network traffic on iscsi vlan/switch in a full 88 node config?
+- How well do our NICs and network stack handle the expected maximum iscsi
+  load from all 34 `makos`.
+- How well do the iscsi targets handle the load for at the disk level?
+- How well do the iscsi targets handle the load when all 34 active nodes are
+  doing heavy I/O?
+- Is the active node seeing unacceptable load because of the iscsi initiator?
+
 ### Performance Testing
 
-TBD but minimum raw disk vs. zvol configs
+TBD but related to load testing. Probably want to see how hard we can push
+1 `mako` (i.e. not the expected load, but what is the max?).
 
 ## Open Issues
 
