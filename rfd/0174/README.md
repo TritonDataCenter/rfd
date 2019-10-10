@@ -120,15 +120,27 @@ the disk storage for the active/passive `mako` machines. We can repurpose our
 existing shrimp HW for this role. All 20 iscsi target machines should have
 disks of the same size.
 
-For proper durability, each iscsi target can only present one disk (physical
-or virtual) to each of the active/passive servers. Because the repurposed
-shrimps can have 34 usable disks (2 are set aside for the system's "zones"
-pool), we can support up to 34 active/passive `makos`.
+For proper durability, each iscsi target can only present one disk to each
+top-level vdev in the zpool of the active/passive servers. Because the
+repurposed shrimps can have 34 usable disks (2 are set aside for the system's
+"zones" pool), we can support a maximum of 34 active/passive `makos`.
+A better alternative with 34 available disks is to have 17 active/passive
+`makos` with a zpool built with two 20-wide raidz3 top-level vdevs. This
+allows each `mako` to have a larger zpool with the same durability. If
+an iscsi target fails, there will be two disks that are unavailable, but
+they will be in different raidz3 vdevs.
 
-To summarize, the raidz3 width used by the `makos` defines how many iscsi
+Given different configurations for the iscsi target machine or different
+raidz choices, a variety of valid options for the `mako` zpool configuration
+are possible.
+
+To summarize, the raidz width used by the `makos` defines how many iscsi
 target machines we need, and the number of available data disks in the iscsi
-target machines determines how many active/passive `mako` servers we can
-provision to use the iscsi target machines.
+target machines determines the maximum number of active/passive `mako` servers
+we can provision to use the iscsi target machines. We can configure fewer
+`mako` servers with multiple top-level vdevs, as long as disks from a
+single iscsi target are configured into different top-level vdevs in the
+zpool.
 
 We'll call this collection of machines a storage group. This is the full
 set of machines with multiple active/passive `mako` servers making use of
@@ -161,10 +173,11 @@ the existing shrimps) to the appropriate number of active/passive `mako`
 servers. There are 2 disks in each iscsi target machine that are reserved
 for a mirrored "zones" zpool for use by that machine.
 
-It seems likely that the "dense shrimp" model is not a good fit for an iscsi
-target in this proposed distributed storage world. The dense shrimp has so
-much local disk and it seems probable that 60 busy `makos` could saturate the
-storage group network.
+For the "dense shrimp" model a 62 disk configuration provides more options
+than a 60 disk configuration, since we need 2 disks for system's "zones" zpool.
+Since the iscsi target has no use for a slog, we might be able to do this.
+We could then use 20 dense shrimps to provide 3 raidz3 top-level vdevs
+to 20 `mako` zpools.
 
 ### ZVOLS
 
@@ -323,18 +336,18 @@ that storage server would be unavailable.
 
 ### iscsi Target Machine Failure
 
-When one of the iscsi target machines goes down, all 34 active `mako` servers
+When one of the iscsi target machines goes down, all 17 active `mako` servers
 will see a disk fail in their zpool, but because they are a raidz3, there
 would have to be more than three iscsi target machines down before there was
 a loss of data and availability.
 
-When the failed iscsi target machine comes back up, all 34 `mako` zpools will
+When the failed iscsi target machine comes back up, all 17 `mako` zpools will
 be resilvering against disks in that box.
 
 ### iscsi Target Disk Failure
 
 This will be just like a normal disk failure in the `mako's` zpool, but only
-one of the 34 `mako` servers would be impacted. Once the disk was replaced,
+one of the 17 `mako` servers would be impacted. Once the disk was replaced,
 the single impacted `mako` zpool would resilver.
 
 ## Maintenance procedures
@@ -383,9 +396,9 @@ This section needs more details, but here is a rough list.
 - Need to estimate the expected read/write load.
 - How much network traffic on iscsi vlan/switch in a full 88 node config?
 - How well do our NICs and network stack handle the expected maximum iscsi
-  load from all 34 `makos`.
+  load from all 17 `makos`.
 - How well do the iscsi targets handle the load for at the disk level?
-- How well do the iscsi targets handle the load when all 34 active nodes are
+- How well do the iscsi targets handle the load when all 17 active nodes are
   doing heavy I/O?
 - Is the active node seeing unacceptable load because of the iscsi initiator?
 
