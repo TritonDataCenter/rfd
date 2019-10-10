@@ -157,8 +157,8 @@ machines to re-use them elsewhere.
 An additional point of comparison with our current manta storage tier is that
 the basic building block is 2 shrimps in 2 different AZs (because we store 2
 copies of an object). In this new approach, the basic building block is the
-storage group with 20 iscsi target machines, up to 34 active and 34 passive
-servers.  All 88 of these machines will be close together on the same network.
+storage group with 20 iscsi target machines, up to 17 active and 17 passive
+servers.  All 54 of these machines will be close together on the same network.
 
 There are two alternatives for how the iscsi target presents disks; either
 as raw disks, or as zvols. Both are described here, but there are known
@@ -394,7 +394,7 @@ This section needs more details, but here is a rough list.
 This section needs more details, but here is a rough list.
 
 - Need to estimate the expected read/write load.
-- How much network traffic on iscsi vlan/switch in a full 88 node config?
+- How much network traffic on iscsi vlan/switch in a full 54 node config?
 - How well do our NICs and network stack handle the expected maximum iscsi
   load from all 17 `makos`.
 - How well do the iscsi targets handle the load for at the disk level?
