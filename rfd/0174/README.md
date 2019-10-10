@@ -249,7 +249,7 @@ the iscsi targets and prepares to become either the active or passive server.
 ```
 1. Run `zpool import` on the data zpool residing on the iscsi targets.
 2a. If the import succeeds, the machine becomes the active server. It starts
-    the heartbeat responder and boots the storage zone.
+    the heartbeat responder and boots the `mako` storage zone.
 2b. If the import fails because the zpool is already active on the other host,
     the machine becomes the passive server. The service starts the heartbeater
     using the IP address from the `/zones/stg/twin` file and blocks until the
@@ -323,34 +323,26 @@ that storage server would be unavailable.
 
 ### iscsi Target Machine Failure
 
-When one of the iscsi target machines goes down, all 20 active servers
+When one of the iscsi target machines goes down, all 34 active `mako` servers
 will see a disk fail in their zpool, but because they are a raidz3, there
 would have to be more than three iscsi target machines down before there was
 a loss of data and availability.
 
-When the failed iscsi target machine comes back up, all 20 zpools will be
-resilvering against disks in that box.
+When the failed iscsi target machine comes back up, all 34 `mako` zpools will
+be resilvering against disks in that box.
 
 ### iscsi Target Disk Failure
 
-The impact of failure of a disk in an iscsi target machine will depend on
-which configuration is used for the target machine; raw disks or zvols.
-
-For raw disks, this will be just like a normal disk failure in the storage
-server zpool, but only one of the 20 storage servers would be impacted. Once
-the disk was replaced, the impacted storage server would resilver.
-
-For zvols, we would have a zpool with one disk of redundancy, so loss of a disk
-would not cause an impact. If a second disk in the same raidz1 was lost, the
-entire zpool would have data loss and the system would have to be reconstructed.
-The storage server zpools on all 20 active servers would still be fine since
-they would each see this as the loss of one disk.
+This will be just like a normal disk failure in the `mako's` zpool, but only
+one of the 34 `mako` servers would be impacted. Once the disk was replaced,
+the single impacted `mako` zpool would resilver.
 
 ## Maintenance procedures
 
 ### Active Server Maintenance
 
-TBD (force flip first)
+TBD (force flip first by exporting the zpool and stopping the heartbeat
+responder)
 
 ### Passive Server Maintenance
 
@@ -358,11 +350,12 @@ No special action required.
 
 ### iscsi Target Machine Maintenance
 
-TBD, but storage server resilvering should handle most cases.
+TBD, but `mako` zpool resilvering should handle most cases.
 
 ### Switch Maintenance
 
-TBD, but entire storage group might be unavailable
+TBD, but entire storage group might be unavailable unless we have an HA
+switch configuration
 
 ## Troubleshooting procedures
 
@@ -376,9 +369,9 @@ This section needs more details, but here is a rough list.
 
 - active server failure and failover
 - active stops responding to HB, passive takes over (imports zpool), active
-  comes back to life (i.e. zpool was still imported) what happens?
-- network partition (can we only lose access to iscsi disks or only HB access
-  without losing all network access? how?)
+  comes back to life (i.e. zpool is still imported) what happens?
+- network partition (is it possible to only lose access to iscsi disks or only
+  HB access without losing all storage group network access? how?)
 - iscsi target node failure
 - iscsi target disk failure
 - storage group switch failure
