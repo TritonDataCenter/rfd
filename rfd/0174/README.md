@@ -148,7 +148,7 @@ the disks on each iscsi target machine.
 
 Within the storage group, we'll want to isolate all of the local network
 traffic (iscsi, heartbeats, etc.) onto at least its own vlan, and more likely
-onto a dedicated switch. It is possible that running 34 `makos` and all of
+onto a dedicated switch. It is possible that running 17 `makos` and all of
 the associated network traffic will be too much network load within the
 storage group. In that case, we'll have to support fewer `makos` in the
 group and we could remove some of the data disks from the iscsi target
@@ -326,13 +326,25 @@ We need further testing before we have a final value, but we have a target
 of one minute for an active/passive flip before the `mako` storage service
 instance is once again available.
 
-If the active server loses its network connection, it will no longer be able
-to ack heartbeats, but it will also lose access to the iscsi target disks,
-so it should be possible for the passive machine to import the zpool.
+If the active server loses its internal storage group network connection, it
+will no longer be able to ack heartbeats, but it will also lose access to the
+iscsi target disks. The `mmp` feature in ZFS will suspend the zpool if the
+active server cannot write the txg within the `mmp` timeout. At this point
+the only option is to reboot the server since we cannot export the zpool (or
+do any other writes). We probably want to configure ZFS so it just panics the
+system in this case. This will also reduce the possibility of an errant write
+operation from within the iscsi or network stack if whatever issue was
+preventing the writes were to suddenly clear.
+
+If the active server stops responding to heartbeats the `mmp` capability
+in ZFS makes it possible for the passive machine to forcefully import the
+zpool because the `mmp` timeout has been exceeded. The passive machine
+cannot forcefully import the zpool when the `mmp` status shows the zpool
+is live on another host.
 
 If the passive server fails for any reason, there is no impact unless the
 active server fails at the same time. At this point, all of the objects on
-that storage server would be unavailable.
+that `mako` would be unavailable.
 
 ### iscsi Target Machine Failure
 
@@ -342,7 +354,8 @@ would have to be more than three iscsi target machines down before there was
 a loss of data and availability.
 
 When the failed iscsi target machine comes back up, all 17 `mako` zpools will
-be resilvering against disks in that box.
+be resilvering against disks in that box. This might be a performance concern
+and is called out in the testing section.
 
 ### iscsi Target Disk Failure
 
@@ -354,8 +367,10 @@ the single impacted `mako` zpool would resilver.
 
 ### Active Server Maintenance
 
-TBD (force flip first by exporting the zpool and stopping the heartbeat
-responder)
+Force a flip before doing maintenance by exporting the zpool and stopping
+the heartbeat responder.
+
+TBD maybe some other action to flip muskie requests to new active?
 
 ### Passive Server Maintenance
 
@@ -364,6 +379,11 @@ No special action required.
 ### iscsi Target Machine Maintenance
 
 TBD, but `mako` zpool resilvering should handle most cases.
+- when we have to do maintenance on all of the iscsi targets (e.g. new PI
+  reboot), we need to do them one at a time, wait for all of the `makos` to
+  finish resilvering the disks on that machine, then move on to the next
+  iscsi target. This entire sequence will need to be monitored and coordinated
+  within the storage group.
 
 ### Switch Maintenance
 
@@ -372,7 +392,13 @@ switch configuration
 
 ## Troubleshooting procedures
 
-TBD
+TBD section needs more
+
+- With ZFS sitting on top of iscsi we lose FMA in both directions (faults,
+  blinkenlights etc). Do we need a transport between the iscsi targets and
+  the `makos`? Is this a new project to extend the capabilities here? There is
+  a lot of iscsi work in the Nexenta illumos-gate clone. We should upstream
+  all of that and it may also contain some improvements that could help here.
 
 ## Testing
 
@@ -382,10 +408,17 @@ This section needs more details, but here is a rough list.
 
 - active server failure and failover
 - active stops responding to HB, passive takes over (imports zpool), active
-  comes back to life (i.e. zpool is still imported) what happens?
+  should panic/reboot.
+- Force a scenario where iscsi stops working but heartbeater still works,
+  should be the same result as previous test
+- Kill the heartbeat responder so passive thinks the active died. The passive
+  should not be able to takeover.
 - network partition (is it possible to only lose access to iscsi disks or only
   HB access without losing all storage group network access? how?)
 - iscsi target node failure
+- when iscsi target fails and reboots, all 17 makos will be resilvering
+  against disks in the box. Are there any load or other performance problems
+  in this scenario?
 - iscsi target disk failure
 - storage group switch failure
 
