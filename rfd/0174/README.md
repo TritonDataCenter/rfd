@@ -148,12 +148,15 @@ are possible. We can configure fewer `mako` servers with multiple top-level
 vdevs, as long as disks from a single iscsi target are configured into
 different top-level vdevs in the `mako` zpool.
 
-### Two 20-wide raidz3 vdevs Per Target
+### Two 20-wide Raidz3 Vdevs Per Mako
 
-A better alternative with 34 available disks per iscsi target is to have 17
-active `makos` using a zpool built with two 20-wide raidz3 top-level vdevs. We
-still have 20 iscsi target machines for a total of 54 machines in the storage
-group. This allows each `mako` to have a larger zpool with the same durability.
+A better alternative with 34 available disks per iscsi target is to have
+two top-level vdevs per `mako`, giving a total of 17 active `makos`.
+We would still have 20 iscsi target machines. This gives each `mako` a zpool
+built with two 20-wide raidz3 top-level vdevs and a total of 54 machines in
+the storage group. This allows each `mako` to have a larger zpool with the
+same durability.
+
 If an iscsi target fails, there will be two disks that are unavailable, but
 they will be in different top-level raidz3 vdevs. In this configuration, each
 `mako` has two 20-wide raid3 vdevs. This configuration is 85% efficient (34
@@ -167,7 +170,7 @@ stripe width.
 
 Here is an [overview diagram](./storage_rfd.jpg) of these various components.
 
-### Three 11-wide raidz2 vdevs Per Target
+### Three 11-wide Raidz2 Vdevs Per Mako
 
 This is essentially our current shrimp setup, updated to be a distributed HA
 configuration. We already have actual ZFS zpool efficiency data for this
