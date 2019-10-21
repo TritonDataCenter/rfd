@@ -1,6 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>
 state: draft
+discussion: https://github.com/joyent/rfd/issues?q="RFD+17"
 ---
 
 <!--
