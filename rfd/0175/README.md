@@ -1,6 +1,6 @@
 ---
 authors: John Levon <john.levon@joyent.com>
-state: pre-draft
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+175%22
 ---
 
@@ -44,20 +44,19 @@ when it comes to reviewing larger changes. In particular, the diff browser
 insists on every file's diff being on the same page, making it close to
 impossible to keep track of a large review, or newly introduced large files. The
 canonical example I've been using is
-[KPTI](http://cr.illumos.org/~webrev/jlevon/kpti/).
+[KPTI](https://github.com/illumos/illumos-gate/commit/74ecdb5171c9f3673b9393b1a3dc6f3a65e93895#diff-9ddb7d82a1170d4cf11ae141b03511b6).
 
-It's common to pull down the PR to a local checkout for reviewing such things,
-but this is still unpleasant when trying to comment on the actual diffs in the
-PR.
+It's common to pull down the PR to a local checkout for large reviews, but this
+is still unpleasant when trying to comment on the actual diffs in the PR.
 
-This is likely to be much less of an issue outside of illumos-joyent (although
-smartos-live can have some pretty sizable changes too).
+This is likely to be much less of an issue outside of illumos-joyent: large changes
+are much rarer, although they can happen in the case of smartos-live.
 
 The specific proposal here is to use github PRs for all of these repositories,
 despite the drawbacks. For significant changes that prove difficult to review
 via github, reviewers can request a webrev. In this case, review comments should
 be added to the PR on the comment thread - it's not necessary to add them in
-place in the diffs, as that would defeat the point. If feasible though,
+place in the PR's diffs, as that would defeat the point. If feasible though,
 reviews should be done in github.
 
 ### Commit format
@@ -71,15 +70,15 @@ Approved by: Jill Approver <jill.approver@joyent.com>
 ```
 
 While this might be changing in other repositories, at this point, we are
-planning to keep this format for the platform repositories. Bugs will still be
-filed and managed in JIRA. And in particular, we would like to keep the
-requirement of one code review AND one integration approval before a PR can be
-merged. The hope is that this is managed by labels on the PR.
+planning to keep this format for the platform repositories.
 
-No changes are planned to what these reviews currently mean.
+No changes are planned to what these annotations currently mean. Bugs will still be
+filed and managed in JIRA. We would like to keep the requirement of one code review
+AND one integration approval before a PR can be merged.
 
-Tooling is being worked on to automate this commit message format at merge time,
-in a similar fashion to how [grr](https://github.com/joyent/grr) worked.
+The hope is that this is managed by labels on the PR. Tooling is being worked on
+to automate this commit message format at merge time, in a similar fashion to how
+[grr](https://github.com/joyent/grr) worked.
 
 ## Upstream first of illumos changes
 
@@ -95,7 +94,7 @@ changes would be merged *back* up to illumos-joyent as part of the daily merge.
 This is clearly not working very well, as can be seen by [comparing our
 trees](https://us-east.manta.joyent.com/Joyent_Dev/public/webrevs/platform-upstream-webrev/index.html).
 It involves an unpleasant amount of busy-work resolving conflicts in both
-directions. It is of little surprise that we are so badly divergent even in
+directions. It is of little surprise that we are so badly divergent, even in
 areas that don't in any way need to be.
 
 Instead, we're going to switch over to an "upstream first" policy: that is, the
@@ -110,12 +109,23 @@ the two trees. Platform engineers will have to be directly involved in the
 upstream review process rather than the Joyent-only one, and that might involve
 some adjustments.
 
-Some changes, such as those to lx and to some degree significant networking
-chanegs, don't really make sense to upstream directly. "Upstream first" should
-be considered a default attitude, not a hard-and-fast policy; use judgement.
+Some changes, such as those to lx and to various parts of the networking stack,
+don't really make sense to upstream: either our divergence is already too significant
+to cherry pick meaningfully, or - rarely - it really is a SmartOS specific change.
+"Upstream first" should be considered a default attitude, not a hard-and-fast
+policy; use judgement.
 
 Note that illumos-gate are experimenting with a Gerrit server: this would be a
 nice way to avoid the issues with github PRs identified above.
+
+Platform-related JIRA bugs that correspond to changes that *aren't* going upstream
+first like this should use the following labels:
+
+1. no-upstream - this is never suitable for upstreaming into illumos-gate
+1. upstream - this should be upstreamed at some point
+1. upstreamed - this has been upstreamed
+
+### Testing process
 
 Testing is a potentially thorny issue: without significant illumos-gate testing
 resources, Joyent engineers are somewhat limited in what can be tested directly
@@ -136,10 +146,9 @@ changes) can be dealt with by a PR against illumos-joyent at the time of the
 daily merge.
 
 Of course, this is only a suggested workflow - it might make sense to do the
-whole thing against illumos-gate. The crucial part being that *if needed* we do
-suitable testing on the changes as applied to the product.
+whole thing against illumos-gate. The crucial part being that we do suitable product
+testing as needed.
 
-The illumos bug should contain all the relevant testing notes etc. If necessary,
-a separate JIRA could be filed for any Joyent-private details, but in general
-it's presumed that Joyent specifics will not be a concern on the illumos bug
-tracker.
+The illumos bug should contain all the relevant testing notes etc - this might
+include SmartOS Specifics, and hat seems fine. If necessary, a separate JIRA
+could be filed for any Joyent-private details.
