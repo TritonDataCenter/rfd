@@ -218,7 +218,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 172 CNS Aggregation](./rfd/0172/README.md) |
 | predraft | [RFD 173 KBMAPI and kbmd](./rfd/0173/README.adoc) |
 | draft | [RFD 174 Improving Manta Storage Unit Cost](./rfd/0174/README.md) |
-| predraft | [RFD 175 SmartOS integration process changes](./rfd/0175/README.md) |
+| draft | [RFD 175 SmartOS integration process changes](./rfd/0175/README.md) |
 
 ## Contents of an RFD
 
