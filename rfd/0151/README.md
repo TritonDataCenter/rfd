@@ -33,7 +33,7 @@ own ides well enough to persuade others, but also be able to understand and
 be persuaded by the ideas of others -- and be able to implement all of these
 on their own.  They must be able to build castles of imagination, and yet
 still understand the constraints of a grimy reality: they must be arrogant
-enough to see the world as it isn't, but humble enough to accpet the world as
+enough to see the world as it isn't, but humble enough to accept the world as
 it is.  Each of these is a *balance*, and for each, long-practicing software
 engineers will cite colleagues who have been ineffective because they have
 erred too greatly on one side or another.
