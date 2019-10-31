@@ -1,7 +1,7 @@
 ---
 authors: John Levon <john.levon@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+175%22
+discussion: https://github.com/joyent/rfd/issues/143
 ---
 
 <!--
@@ -141,14 +141,14 @@ integration process. This would typically involve some basic re-confirmation
 that the changes still work as expected, but this should of course be
 shrink-to-fit.
 1. the changes are integrated into illumos-gate
-1. any necessary "glue" for merging them into illumos-joyent (such as manifest
-changes) can be dealt with by a PR against illumos-joyent at the time of the
-daily merge.
+1. any necessary "glue" for merging them into illumos-joyent (such as adjusting
+for a changed API in code that is only in illumos-joyent) can be dealt with by
+a PR against illumos-joyent at the time of the daily merge.
 
 Of course, this is only a suggested workflow - it might make sense to do the
 whole thing against illumos-gate. The crucial part being that we do suitable product
 testing as needed.
 
 The illumos bug should contain all the relevant testing notes etc - this might
-include SmartOS Specifics, and hat seems fine. If necessary, a separate JIRA
+include SmartOS Specifics, and that seems fine. If necessary, a separate JIRA
 could be filed for any Joyent-private details.
