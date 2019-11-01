@@ -61,23 +61,33 @@ reviews should be done in github.
 
 ### Commit format
 
-Currently our commit messages look like this:
+After we make this change, commit messages look like this:
 
 ```
 OS-99999 Really kill Perl
+
+OS-100000 Also Python
 Reviewed by: Jack Reviewer <jack.reviewer@joyent.com>
 Approved by: Jill Approver <jill.approver@joyent.com>
 ```
 
-While this might be changing in other repositories, at this point, we are
-planning to keep this format for the platform repositories.
+As previously, no free-form text is allowed or expected: prose should be in the ticket,
+perhaps in the "Description" so it's clearly visible.
+
+Note the addition of the git-style blank line: this change is for multiple reasons, but
+the most relevant is that you cannot avoid adding this using the github user interface.
+We don't want to *require* use of additional tooling.
+
+Any additional tickets should go on the third line next to the tags. Commits should not
+needlessly group unrelated tickets together.
 
 No changes are planned to what these annotations currently mean. Bugs will still be
 filed and managed in JIRA. We would like to keep the requirement of one code review
 AND one integration approval before a PR can be merged.
 
-The hope is that this is managed by labels on the PR. Tooling is being worked on
-to automate this commit message format at merge time, in a similar fashion to how
+The hope is that this is managed by labels on the PR, and merge will be blocked until
+at least one of each label is seen. Tooling is being worked on to automate this commit
+message format at merge time, in a similar fashion to how
 [grr](https://github.com/joyent/grr) worked.
 
 The process will look something like this for repositories other than illumos-joyent:
