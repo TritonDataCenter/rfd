@@ -80,6 +80,18 @@ The hope is that this is managed by labels on the PR. Tooling is being worked on
 to automate this commit message format at merge time, in a similar fashion to how
 [grr](https://github.com/joyent/grr) worked.
 
+The process will look something like this for repositories other than illumos-joyent:
+
+1. develop your changes on a branch
+1. file JIRA bug(s) as before with more details on the changes
+1. open a PR against master, pointing to JIRA as needed.
+1. request reviewers, wait for code review (as represented by a label)
+1. iterate as needed
+1. add testing notes on any final version
+1. wait for integration approval (as represented by a label)
+1. squash and merge your change, with the commit message in the form above
+1. close the JIRA(s) as Fixed
+
 ## Upstream first of illumos changes
 
 One major change we'd like to experiment with concerns changes to illumos-joyent
