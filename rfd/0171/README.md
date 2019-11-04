@@ -1,6 +1,6 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
-state: predraft
+state: abandoned
 discussion: https://github.com/joyent/rfd/issues/135
 ---
 
@@ -16,6 +16,10 @@ discussion: https://github.com/joyent/rfd/issues/135
 
 
 # RFD 171 A Proposal for Manta SnapLinks
+
+## Abandonment
+
+This proposal has been abandoned and only remains here for historical reasons.
 
 ## Summary
 
