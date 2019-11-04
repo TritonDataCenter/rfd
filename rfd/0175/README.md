@@ -64,7 +64,7 @@ reviews should be done in github.
 After we make this change, commit messages look like this:
 
 ```
-OS-99999 Really kill Perl
+OS-99999 Really kill Perl (#223)
 
 OS-100000 Also Python
 Reviewed by: Jack Reviewer <jack.reviewer@joyent.com>
@@ -78,17 +78,20 @@ Note the addition of the git-style blank line: this change is for multiple reaso
 the most relevant is that you cannot avoid adding this using the github user interface.
 We don't want to *require* use of additional tooling.
 
+The oneline also includes the pull request number (#223), as this is automatically added
+by github, and it seems useful to have a direct link to the PR.
+
 Any additional tickets should go on the third line next to the tags. Commits should not
 needlessly group unrelated tickets together.
 
 No changes are planned to what these annotations currently mean. Bugs will still be
-filed and managed in JIRA. We would like to keep the requirement of one code review
-AND one integration approval before a PR can be merged.
+filed and managed in JIRA. There is still an ongoing requirement of one code review
+AND one integration approval before a PR can be merged to the master branch.
 
-The hope is that this is managed by labels on the PR, and merge will be blocked until
-at least one of each label is seen. Tooling is being worked on to automate this commit
-message format at merge time, in a similar fashion to how
-[grr](https://github.com/joyent/grr) worked.
+Intergration approval is managed by a label on the PR, and merge will be blocked until
+one is added along with at least one "approval" (code review).
+Tooling is being worked on to automate this commit message format at merge time, in a
+similar fashion to how [grr](https://github.com/joyent/grr) worked.
 
 The process will look something like this for repositories other than illumos-joyent:
 
