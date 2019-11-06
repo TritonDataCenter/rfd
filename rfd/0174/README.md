@@ -198,8 +198,53 @@ there are only 33 machines in the storage group so the network performance will
 be better, and the overall ZFS performance will be better due to the narrower
 raidz width.
 
-For reusing our current shrimp hardware, this is probably our best configuration
-tradeoff which balances storage efficiency and performance.
+This configuration re-uses the existing shrimp HW in an efficient way, but
+it requires additional machines to run the `mako` service, and it requires
+multiple racks to build a storage group.
+
+### Three 10-wide Raidz2 Vdevs Per Mako
+
+For re-using our current shrimp hardware, this is probably our best
+configuration tradeoff.
+
+In this configuration, we would continue to run the `mako` service on
+each shrimp, as we do today. We would build a storage group out of 10 shrimps
+in a single rack . Each `mako` would be configured with three 10-wide raidz
+top-level vdevs. This only uses a total of 32 disks out of the 35 in each
+shrimp, so we could return 3 disks/shrimp back to inventory.
+
+Each `mako` would be configured with 3 local disks in 3 different top-level
+vdevs and use iscsi to access the remote disks in the other shrimps to
+construct the complete 3x10 raidz2 zpool.
+
+The `makos` would be paired up so they monitor the other `mako` in a pair.
+Each machine is both its own active `mako` and a passive machine for the
+other. This means that if a shrimp goes down, the other shrimp will have
+to perform as two active `makos`. We would have to determine if there is
+enough performance on the shrimps to run in this way, although it would only
+be a temporary situation and we would want to actively revert back to normal
+as soon as the other shrimp recovered.
+
+As discussed earlier, if a shrimp goes down, all three top-level vdevs in each
+`mako` in the rack would have one disk faulted. The storage group can have
+two shrimps down without any data loss, however if both shrimps in an
+availability pair are down, then data would be unavailable. This is no
+different than any other active/passive configuration if both machines are down.
+
+In this configuration there are 24 data disks, 6 parity disks, and 2 system
+disks (since we don't have separate `mako` machines), so the storage efficiency
+for this configuration is 75%. This is better than the three 11-wide raidz2
+vdevs per `mako`, but not as efficient as the two 20-wide raidz3 case.
+
+The benefits of this configuration is that it uses our existing shrimp HW
+with no additional HW needed. It also limits the storage group to a single
+rack and it limits the network failure domain to the network built on the ToR
+for that rack. Because there are only 10 machines in the storage group, the
+network performance will be better and the overall ZFS performance will be
+better due to the narrower raidz width.
+
+Overall, failures in this configuration are easier to reason about and the
+cost for this configuration with our existing HW is the best.
 
 ### Raw Disks
 
@@ -256,7 +301,8 @@ onto a dedicated switch. It is possible that running a high number of
 active `makos`, and all of the associated network traffic will be too much
 network load within the storage group. In that case, we'll have to support
 fewer `makos` in the group which has implications for overall efficency within
-the group.
+the group, although our current switches should be able to handle the
+proposed 10 shrimp single rack storage group.
 
 Using a dedicated switch will help reduce or eliminate network partitions,
 which simplifies failure analysis.
