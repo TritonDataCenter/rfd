@@ -52,8 +52,8 @@ is still unpleasant when trying to comment on the actual diffs in the PR.
 This is likely to be much less of an issue outside of illumos-joyent: large changes
 are much rarer, although they can happen in the case of smartos-live.
 
-The specific proposal here is to use github PRs for all of these repositories,
-despite the drawbacks. For significant changes that prove difficult to review
+We use github PRs for all of these repositories, despite the drawbacks.
+For significant changes that prove difficult to review
 via github, reviewers can request a webrev. In this case, review comments should
 be added to the PR on the comment thread - it's not necessary to add them in
 place in the PR's diffs, as that would defeat the point. If feasible though,
@@ -61,7 +61,7 @@ reviews should be done in github.
 
 ### Commit format
 
-After we make this change, commit messages look like this:
+Commit messages should look like this:
 
 ```
 OS-99999 Really kill Perl (#223)
@@ -88,20 +88,25 @@ No changes are planned to what these annotations currently mean. Bugs will still
 filed and managed in JIRA. There is still an ongoing requirement of one code review
 AND one integration approval before a PR can be merged to the master branch.
 
-Intergration approval is managed by a label on the PR, and merge will be blocked until
-one is added along with at least one "approval" (code review).
-Tooling is being worked on to automate this commit message format at merge time, in a
-similar fashion to how [grr](https://github.com/joyent/grr) worked.
+Code review corresponds to the reviewer approving the PR. For integration approval,
+a reviewer must also add the "integration-approval" label to the PR.
 
-The process will look something like this for repositories other than illumos-joyent:
+Never rebase a PR: this will necessitate a force-push to your PR branch, which means all
+the previous changes get deleted, alongside all review comments.
+
+There is a CLI utility [joyent/prr](https://github.com/joyent/prr) that can help automate
+the final squash and merge, collecting the necessary ticket IDs and attributions from the
+PR and building a suitable commit message.
+
+The process will look something like this for repositories other than illumos-gate:
 
 1. develop your changes on a branch
 1. file JIRA bug(s) as before with more details on the changes
-1. open a PR against master, pointing to JIRA as needed.
-1. request reviewers, wait for code review (as represented by a label)
+1. open a PR against master after pushing your branch, pointing to JIRA as needed.
+1. request reviewers, wait for code review 
 1. iterate as needed
-1. add testing notes on any final version
-1. wait for integration approval (as represented by a label)
+1. add testing notes on any final version to the JIRA
+1. wait for integration approval (as represented by the label)
 1. squash and merge your change, with the commit message in the form above
 1. close the JIRA(s) as Fixed
 
