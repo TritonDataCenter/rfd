@@ -108,3 +108,18 @@ When `zpool add` or `zpool replace` happens, zfs already will rewrite boot
 blocks under certain circumstances.  Those circumstances will need to change and
 perhaps there will need to be changes in what is written to the various boot
 areas.
+
+### EFI system partition
+
+This scheme implies that in the face of EFI boot, at least a subset of the disks
+will need to have an EFI system partition (ESP).  An EFI system partition is not
+currently present in any pool because we don't expect to boot from it.  We would
+to change the way that disks are partitioned to include a small ESP on each disk
+and ensure that ZFS does not disable write caching due to the disk being
+partitioned.
+
+It may be that we want to always create an ESP, even when not using EFI.  In
+this case, the MBR would load a boot loader from the FAT file system in the ESP
+and the ZFS boot area would not be used.  If the system switches from BIOS to
+EFI (perhaps via chassis swap), an EFI boot program in the ESP could just do the
+right thing.
