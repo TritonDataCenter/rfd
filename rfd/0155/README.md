@@ -15,6 +15,8 @@ discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+155%22'
 
 # RFD 155 Manta Buckets API
 
-Documentation for the Manta Buckets API has been made official:
+the buckets API was originally tracked in this RFD (see revision history) as we
+were going through design review. The initial design is now official. Further
+changes are made here:
 
     https://github.com/joyent/manta-buckets-api/blob/master/docs/index.md
