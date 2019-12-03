@@ -1,6 +1,6 @@
 ---
 authors: John Levon <john.levon@joyent.com>
-state: draft
+state: publish
 discussion: https://github.com/joyent/rfd/issues/143
 ---
 
@@ -90,6 +90,10 @@ AND one integration approval before a PR can be merged to the master branch.
 
 Code review corresponds to the reviewer approving the PR. For integration approval,
 a reviewer must also add the "integration-approval" label to the PR.
+
+You may find that the merge button is disabled as you need to update to the current master
+`HEAD`: in this case you can either do a merge from master yourself and push to the PR
+branch, or use the handy "update branch" button in the `github` PR directly.
 
 Never rebase a PR: this will necessitate a force-push to your PR branch, which means all
 the previous changes get deleted, alongside all review comments.
