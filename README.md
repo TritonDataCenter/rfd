@@ -88,7 +88,7 @@ formal writing that it has come to represent.)
 | draft    | [RFD 42 Provide global zone pkgsrc package set](./rfd/0042/README.md) |
 | publish  | [RFD 43 Rack Aware Network Pools](./rfd/0043/README.md) |
 | predraft | [RFD 44 Create VMs with Delegated Datasets](./rfd/0044/README.md) |
-| draft    | [RFD 45 Tooling for code reviews and code standards](./rfd/0045/README.md) |
+| abandoned | ~~[RFD 45 Tooling for code reviews and code standards](./rfd/0045/README.md)~~ |
 | publish  | [RFD 46 Origin images for Triton and Manta core images](./rfd/0046/README.md) |
 | publish  | [RFD 47 Retention policy for Joyent engineering data in Manta](./rfd/0047/README.md) |
 | predraft | [RFD 48 Triton A&A Overhaul (AUTHAPI)](./rfd/0048/README.md) |

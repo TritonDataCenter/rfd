@@ -1,6 +1,6 @@
 ---
 authors: Dave Pacheco <dap@joyent.com>
-state: draft
+state: abandoned
 ---
 
 <!--
@@ -14,6 +14,10 @@ state: draft
 -->
 
 # RFD 45 Tooling for code reviews and code standards
+
+**Status: This has been abandoned as it mostly describes usage of Gerrit.
+Joyent engineering has since moved away from Gerrit to using GitHub PRs for
+code review.**
 
 As we look to scale contributions for Triton, Manta, and other Joyent software
 from both new hires and the broader community, we're proposing to formalize the
