@@ -32,7 +32,7 @@ the existing guide, as follows:
 
 1. General Principles (edited from the existing eng guide)
    1. FCS Quality All the Time
-   2. Engineering tools and processes (git/GitHub, JIRA, Gerrit)
+   2. Engineering tools and processes (git/GitHub, JIRA)
    3. Repository guidelines (language, naming, copyright, style, lint, testing,
       docs, build system, etc.)
    4. Tickets and commit messages
@@ -124,10 +124,7 @@ messages for recent changes to the project.**
 
 #### Change management
 
-All changes must be reviewed and approved through the
-[cr.joyent.us](https://cr.joyent.us/) Gerrit instance.  The [cr.joyent.us user
-guide](https://github.com/joyent/joyent-gerrit/blob/master/docs/user/README.md)
-describes the workflow and approval criteria in more detail.
+All changes must be reviewed and approved through a GitHub pull request (PR).
 
 
 ### Repository guidelines
@@ -379,10 +376,6 @@ and there are no blank lines.  With JIRA tickets, it would look like this:
     MANTA-3335 Muskie doesn't return after invoking callback with NotEnoughSpaceError
     Reviewed by: Jordan Hendricks <jordan.hendricks@joyent.com>
     Approved by: Jordan Hendricks <jordan.hendricks@joyent.com>
-
-The [cr-update-reviewers](https://github.com/davepacheco/cr-update-reviewers)
-tool can help format the reviewer and approver lines based on the state in
-Gerrit.
 
 A given ticket **must not** be reused for multiple commits to the same
 repository except in rare cases for very minor fixes immediately after the

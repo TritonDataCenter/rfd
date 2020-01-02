@@ -20,7 +20,6 @@ As of 2018-03 Joyent maintains well over 500 repositories.  The vast majority of
  * For a library we maintain, are all Joyent projects above version x.y.z? For a 3rd party library, how many unique version of it are we using?
  * Which repositories should be branched/tagged for a release?
  * Which repositories should be indexed by Hound or another tool?
- * Are all of the right repositories in Gerrit?
  * Audit GitHub permissions or some other policy.
  * What are all of the open GitHub issues on active projects that been linked to an internal ticket that is now closed?
  * When testing a change to a 3rd party library we use, a reasonable path for computers to do all of the `package.json` mangling to build all of the Triton services with the patched library.
@@ -282,10 +281,6 @@ Archiving provides a clear UI banner to humans and is a machine readable field i
             "enable": true,
             "template": "https://github.com/joyent/{{reponame}}.git"
         },
-        "cr": {
-            "enable": false,
-            "template": "ssh://{{username}}@cr.joyent.us/joyent/{{reponame}}.git"
-        },
         "trentm": {
             "enable": true,
             "template": "https://github.com/trentm/{{reponame}}.git"
@@ -294,11 +289,9 @@ Archiving provides a clear UI banner to humans and is a machine readable field i
 
     "default": {
         "labels": {
-            "public": true,
-            "status": "active",
-            "gerritPrefix": "joyent/"
+            "public": true
         },
-        "remotes": ["joyent", "cr"]
+        "remotes": ["joyent"]
     },
 
     "repositories": {
