@@ -1,6 +1,6 @@
 ---
-authors: rui@joyent.com
-state: predraft
+authors: rui@joyent.com,rob.johnston@joyent.com
+state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+170%22
 ---
 
@@ -11,7 +11,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+170%22
 -->
 
 <!--
-    Copyright 2019 Joyent, Inc.
+    Copyright 2020 Joyent, Inc.
 -->
 
 # RFD 170 Manta Picker Component
@@ -20,81 +20,62 @@ This RFD describes the Manta Picker component.
 
 ## Introduction
 
-Currently the "picker" is part of the `manta-muskie` (webapi) component.  It is
-responsible for selecting the list of destination storage nodes for new objects 
-on a PUT request.  It functions by querying the `manta_storage` bucket on shard
-1 at a default interval of 30s.  Recently, we have found that picker can
-overload the shard 1 Moray instance [MANTA-4091].  The new rebalancer project,
-[RFD 162], will also require use of the picker.  For these two main reasons this
-RFD proposes to split picker out of muskie into its own component.
+In mantav1, the "picker" is part of the `manta-muskie` (webapi) component.  It is responsible for selecting the list of destination storage nodes for new objects on a PUT request.  It functions by querying the `manta_storage` bucket on shard 1 at a default interval of 30s.  Recently, we have found that picker can
+overload the shard 1 Moray instance [MANTA-4091].
 
-## Approach and Requirements
+The new Rebalancer project introduces yet another consumer of the data in the ```manta_storage``` bucket.  For mantav2, in order to avoid hot-shard issues that would be caused by all of the rebalancer and muskie service instances hitting shard 1 to get storage utilization data, the picker functionality has been split out into a separate service (manta-picker).  This new service provides an interface for retrieving a cached view of the contents of the manta_storage bucket via the /poll REST endpoint.  The Rebalancer will be designed to leverage the manta-picker and the mantav2 equivalent of muskie (buckets-api) will be modified to use the manta-picker service [MANTA-4821].
 
-The general approach for this work will be to copy the current picker
-implementation into its own Manta component, and expose two REST API endpoints:
-`poll` and `choose`.  The methods by which the picker queries the
-`manta_storage` table and by which it chooses the destination sharks will not be
-changed.  
 
-- Picker components should report their availablity to DNS via registrar.
+
+## Requirements
+
+- Picker instances should report their availability to DNS via registrar.
 - Multiple picker zones can be deployed for scalability.
 - Picker tunables should be added to SAPI, and controlled there. 
 
 
+
 ## Interfaces
 
-### Poll
-Returns a list of storage nodes found in `manta_storage`
+### GetSharks (GET /poll)
+Returns a list of storage nodes found in the `manta_storage` bucket, sorted by the ```manta_storage_id``` field.  Because the list of makos can be quite large, this endpoint enforces pagination to limit the response size.
+
+```poll``` will implement a cursor-based pagination scheme using the mako's ```manta_storage_id``` as the cursor value.`
 
 #### Inputs
-| Field        | Type    | Description                                      |
-| ------------ | ------- | ------------------------------------------------ |
-| force_update | Boolean | Force Picker to update its view of storage nodes |
+| Field    | Type   | Description                                                  |
+| -------- | ------ | ------------------------------------------------------------ |
+| after_id | String | return results for mako with a storage id greater than "after_id" (default="0") |
+| only_id  | String | return result for only the mako specified by the storage id "only_id" |
+| limit    | Number | max number of results to return (default/max = 500)          |
 
 #### Example
-    GET /poll
-	{
-      "ruidc": [
-		{
-		  "availableMB": 196233,
-		  "percentUsed": 14,
-		  "filesystem": "/manta",
-		  "datacenter": "ruidc",
-		  "manta_storage_id": "1.stor.east.joyent.us"
-		},
 
-        ...
+Get up to the first 100 results:
 
-	  ],
-      "robdc": [
-		{
-		  "availableMB": 196233,
-		  "percentUsed": 17,
-		  "filesystem": "/manta",
-		  "datacenter": "robdc",
-		  "manta_storage_id": "2.stor.east.joyent.us"
-		},
+    /poll?limit=100
 
-        ...
+Get up to the next 100 results:
 
-	  ]
-	}
+```/poll?limit=100&after_id=<last_id>```
 
+### FlushCache (POST /flush)
 
-### Choose
+Forces the picker's cached view of the manta_storage bucket to be immediately invalidated and refreshed.  The only intended consumer of this API is the Rebalancer, which will call this API after marking a storage node as read-only, prior to evacuating the objects on it.
 
-__TODO__
+This interfaces takes no input parameters.
 
 ## Assumptions and Risks
 
 - A given Manta deployment requires significantly less than M picker components
 where M is the total number of muskie processes (M = Muskie zones * Muskie SMF
 instances).
-- The Picker's intermittent updates will provide a sufficently current view for
+- The Picker's intermittent updates will provide a sufficiently current view for
 use with the Rebalancer's selection of a destination storage node. 
 
 
 
 
 [MANTA-4091]: https://jira.joyent.us/browse/MANTA-4091
+[MANTA-4821]: https://jira.joyent.us/browse/MANTA-4821
 [RFD 162]: https://github.com/joyent/rfd/blob/master/rfd/0162/README.md
