@@ -91,6 +91,10 @@ AND one integration approval before a PR can be merged to the master branch.
 Code review corresponds to the reviewer approving the PR. For integration approval,
 a reviewer must also add the "integration-approval" label to the PR.
 
+If the branch is updated (e.g. to pull in the latest upstream code) after
+the "integration-approval" label is added, the label must be manually removed
+and the approver must re-add the label.
+
 You may find that the merge button is disabled as you need to update to the current master
 `HEAD`: in this case you can either do a merge from master yourself and push to the PR
 branch, or use the handy "update branch" button in the `github` PR directly.
