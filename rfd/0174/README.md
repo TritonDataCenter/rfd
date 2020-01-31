@@ -217,19 +217,26 @@ Each `mako` would be configured with 3 local disks in 3 different top-level
 vdevs and use iscsi to access the remote disks in the other shrimps to
 construct the complete 3x10 raidz2 zpool.
 
-The `makos` would be paired up so they monitor the other `mako` in a pair.
-Each machine is both its own active `mako` and a passive machine for the
-other. This means that if a shrimp goes down, the other shrimp will have
-to perform as two active `makos`. We would have to determine if there is
-enough performance on the shrimps to run in this way, although it would only
-be a temporary situation and we would want to actively revert back to normal
-as soon as the other shrimp recovered.
+The `makos` would be "chained" together so they monitor the previous `mako` in
+the chain. Each machine is both its own active `mako` and a passive machine for the previous machine in the chain. This means that if a shrimp goes down, the
+next shrimp will have to perform as two active `makos`. To be specific, node1
+is the pasive machine for node0, node2 is the passive machine for node1, and so
+on, until we wrap around to node0 which is the passive machine for node9. Using
+this chain means that if two machines in the rack are down, then at worst
+only one storage server is unavailable.
+
+We would have to determine if there is enough performance on the shrimps to run
+two active makos, although it would only be a temporary situation and we would
+want to actively revert back to normal as soon as the other shrimp recovered.
 
 As discussed earlier, if a shrimp goes down, all three top-level vdevs in each
 `mako` in the rack would have one disk faulted. The storage group can have
-two shrimps down without any data loss, however if both shrimps in an
-availability pair are down, then data would be unavailable. This is no
-different than any other active/passive configuration if both machines are down.
+two shrimps down without any data loss, however if two consecutive shrimps in
+the availability chain are down, then data in the zpool on the first shrimp
+would be unavailable. If two non-consecutive shrimps in the availability chain
+are down, then all data is still available. This is similar to other
+active/passive configurations, except we can withstand two machines being
+down, with no loss of availablity, in more cases.
 
 In this configuration there are 24 data disks, 6 parity disks, and 2 system
 disks (since we don't have separate `mako` machines), so the storage efficiency
