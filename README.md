@@ -220,10 +220,10 @@ formal writing that it has come to represent.)
 | draft | [RFD 174 Improving Manta Storage Unit Cost](./rfd/0174/README.md) |
 | publish | [RFD 175 SmartOS integration process changes](./rfd/0175/README.md) |
 | predraft | [RFD 176 SmartOS boot from ZFS pool](./rfd/0176/README.md) |
-| predraft | [RFD 177 Linux Compute Nodes Umbrella](./rfd/0177/README.md) |
-| predraft | [RFD 178 Linux Platform Image](./rfd/0177/README.md) |
-| predraft | [RFD 179 Linux Compute Node Networking](./rfd/0178/README.md) |
-| predraft | [RFD 180 Linux Compute Node Containers](./rfd/0179/README.md) |
+| predraft | [RFD 177 Linux Compute Node Umbrella](./rfd/0177/README.md) |
+| predraft | [RFD 178 Linux Platform Image](./rfd/0178/README.md) |
+| predraft | [RFD 179 Linux Compute Node Networking](./rfd/0179/README.md) |
+| predraft | [RFD 180 Linux Compute Node Containers](./rfd/0180/README.md) |
 
 ## Contents of an RFD
 

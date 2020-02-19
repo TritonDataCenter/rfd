@@ -14,7 +14,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+177%22
     Copyright 2020 Joyent, Inc
 -->
 
-# RFD 177  Linux Compute Node Umbrella
+# RFD 177 Linux Compute Node Umbrella
 
 Joyent is exploring the introduction of Linux Compute Nodes.  This RFD serves as
 an umbrella for various RFDs that are related to this effort.

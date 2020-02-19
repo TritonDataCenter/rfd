@@ -218,7 +218,7 @@ will be mapped as follows:
 | kernel\_version   | No  | *Not implemented*                                 |
 | last\_modified    | Yes | `metadata.json`: `private.last_modifed`           |
 | locality          | No  |                                                   |
-| maintain\_resolvers No  | *Not implemented initially*                       |
+| maintain\_resolvers | No | *Not implemented initially*                      |
 | max\_locked\_memory | Yes | *Not supported*                                 |
 | max\_lwps         | Yes | dbus `org.freedesktop.systemd1.Unit` `TasksMax`   |
 | max\_physical\_memory | Yes | dbus `org.freedesktop.systemd1.Unit` `MemoryHigh` |
