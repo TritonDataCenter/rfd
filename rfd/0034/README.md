@@ -249,7 +249,7 @@ The following endpoints will be available for customers:
 
 - MigrateMachine (POST /:login/machines/migrate?action=automatic&affinity=AFF)
   Starts a full "automatic" migration. Affinity rules can be added - see the
-  [provisioning](#provisining) section for details.
+  [provisioning](#provisioning) section for details.
 
   This should call VMAPI (POST /vms/:id?action=migrate&migration_action=begin&migration_automatic=true&affinity=AFF),
   which on success will return a 202 code and a JSON object containing the
@@ -270,7 +270,7 @@ The following endpoints will be available for customers:
 
 - BeginMigrateMachine (POST /:login/machines/migrate?action=begin&affinity=AFF)
   Starts an on-demand migration (i.e. just the "begin" phase) for an instance.
-  Affinity rules can be added - see the [provisioning](#provisining) section for
+  Affinity rules can be added - see the [provisioning](#provisioning) section for
   details.
 
   This should call VMAPI (POST /vms/:id?action=migrate&migration_action=begin&affinity=AFF),
@@ -301,7 +301,7 @@ The following endpoints will be available for customers:
 
 - ScheduleMigrateMachine (POST /:login/machines/migrate?action=schedule&affinity=AFF)
   Schedule a migration of this instance. Affinity rules can be added - see the
-  [provisioning](#provisining) section for details.
+  [provisioning](#provisioning) section for details.
 
   This should call VMAPI (POST /vms/:id?action=migrate&migration_action=schedule&affinity=AFF),
   which on success will return a 200 code and a JSON migration object.
