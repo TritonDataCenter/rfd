@@ -64,9 +64,15 @@ use of systemd. In particular:
 
 - Agents and any other daemons will be managed as systemd services.
 - [systemd-networkd](https://www.freedesktop.org/software/systemd/man/systemd-networkd.html)
-  will be used for network configuration.
+  will be used for host network configuration.
 - [systemd-nspawn](https://www.freedesktop.org/software/systemd/man/systemd-nspawn.html)
   will be used for container configuration and execution.
+
+Persistent configuration will be stored in a Triton-centric form.  As a CN boots
+and as changes are pushed to the CN, the Triton-centric form will be transformed
+into a transient native configuration and then made active.  This will allow
+implementation details to evolve over time without requiring complex
+configuration migrations.
 
 The initial work is being done with Debian 10 in the
 [linux-live](https://github.com/joyent/linux-live/tree/linuxcn) repository.

@@ -93,6 +93,11 @@ for most aspects of container management.  Notable exceptions include:
 As much as possible, native tools will be usable to observe and control
 machines.
 
+To allow for evolution of the platform, configuration will be maintained in a
+Triton-centric form and transformed into the form appropriate for the platform
+image at CN boot time and as machines are added/removed/changed through the
+course of normal operation.
+
 ### Storage layout
 
 The following files and directories are required for a machine.
@@ -101,21 +106,37 @@ The following files and directories are required for a machine.
   - `/root`: a subdirectory containing the container's root file system.
   - `/config`: a subdirectory containing instance metadata, typically as json
     files.
-- `/etc/systemd/nspawn/<uuid>.nspawn`: The machine's
+- `/run/systemd/nspawn/<uuid>.nspawn`: The machine's
   [systemd.nspawn(5)](https://www.freedesktop.org/software/systemd/man/systemd.nspawn.html)
   configuration file.
 - `/var/lib/machines/<uuid>`: a symbolic link to `/<pool>/<uuid>/root` that
   exists for compatibility with `machinectl` and `systemd-nspawn@.service`.
 
-To support persistence across reboots, the following datasets are required:
+To support persistence of image and machine configuration across reboots,
+`/var/triton`, will contain the
+following:
 
-- `<systempool>/system/etc/systemd/nspawn` mounted at `/etc/systemd/nspawn`
-- `<systempool>/system/var/lib/machines` mounted at `/var/lib/machines`
+- `/var/triton/` mounted from `<systempool>/system/var/triton`
+  - `imgadm/` - the same as `/var/imgadm` on SmartOS.  A compatibility symbolic
+    link will exist in the PI.
+    - `imgadm.conf`
+    - `images/`
+      - `<uuid>`.json - Image manifest for a particular image
+      - ...
+  - `vmadm/` - similar structure to `imgadm/`, analogous to `/etc/zones` on
+    SmartOS.
+    - `vmadm.conf` - any required configuration.  Perhaps only includes a
+      configuration version initially.
+    - `machines/`
+      - `<uuid>`.json - Payload for a particular machine.  The content that is
+        authoritatively stored in `/<pool>/<uuid>/config/*.json` is not included
+        in this file.
+      - ...
 
 ### nspawn configuration
 
 The systemd-nspawn configuration is stored
-as`/etc/systemd/nspawn/<uuid>.nspawn`.  There are alternative locations for this
+as`/run/systemd/nspawn/<uuid>.nspawn`.  There are alternative locations for this
 configuration file and alternative means for configuring per-instance nspawn
 parameters.  This location was chosen for the following reasons:
 
@@ -126,12 +147,12 @@ parameters.  This location was chosen for the following reasons:
 - `/run/systemd/nspawn/<uuid>.nspawn` is unsuitable because it would not persist
   across reboots.
 - A per-machine systemd unit file, stored at
-  `/etc/systemd/system/systemd-nspawn@<uuid>.service` could be created with all
+  `/run/systemd/system/systemd-nspawn@<uuid>.service` could be created with all
   the required command line options.  To get systemd to recognize this file,
   `systemdctl daemon-reload` would need to be invoked.  This seems like a
   heavy-weight operation.
 
-The typical `/etc/systemd/nspawn/<uuid>.nspawn` file will look like:
+The typical `/run/systemd/nspawn/<uuid>.nspawn` file will look like:
 
 ```
 [Exec]
@@ -155,7 +176,7 @@ newval=$(( 1024 * 1024 * 1024 ))
 
 # Set to false to update
 # /etc/systemd/system.control/systemd-nspawn@$uuid.service.d/50-$prop.conf
-runtime_only=false
+runtime_only=true
 
 busctl call org.freedesktop.systemd1 \
     /org/freedesktop/systemd1/unit/systemd_2dnspawn_$uuid_mangled \
@@ -177,77 +198,119 @@ Prototyping will start with dbus-next.
 
 ### Implementation Strategy
 
+#### node-vmadm
+
+The linux implementation of node-vmadm will have at least the following machine
+states:
+
+- **configured**: The machine payload, `/var/triton/vmadm/machines/<uuid>.json`,
+  exists and the machine's dataset exists.
+- **installed**: The machine payload has been transformed into native
+  configuration.
+- **running**: The init process in the container is running.
+
+
+The state transitions happen via `configure`, `unconfigure`, `install`,
+`uninstall`, `start`, and `stop` primitive functions, some of which are not
+exported.
+
+                           +------------+
+                           |  no state  |
+                           +------------+
+                                |  ^
+                    configure() |  | unconfigure()
+                                V  |
+                           +------------+
+                           | configured |
+                           +------------+
+                                |  ^
+                      install() |  | uninstall()
+                                V  |
+                           +------------+
+                           | installed  |
+                           +------------+
+                                |  ^
+                        start() |  | stop()
+                                V  |
+                           +------------+
+                           |  running   |
+                           +------------+
+
+Higher level functions are composed of primitive functions.  For example:
+
+- [`create()`](https://github.com/joyent/node-vmadm/#createopts-callback)
+  invokes `configure()` and `install()`.
+- [`delete()`](https://github.com/joyent/node-vmadm/#deleteopts-callback)
+  may invoke `stop()`, `uninstall()`, and `unconfigure()`.
+- [`reboot()`](https://github.com/joyent/node-vmadm/#rebootopts-callback)
+  invokes `stop()` and `start()`.
+
+Unlike with SmartOS, `vmadm.install()` will be called on each boot by a systemd
+generator.  Its job is to ensure that the Triton configuration has been
+transformed into Linux native configuration.
+
+`node-vmadm` will gain a `vmadm` command that mimics the command of the same
+name found on SmartOS.
+
 #### VMAPI mapping
 
-[VMAPI properties](https://github.com/joyent/sdc-vmapi/blob/master/lib/common/vm-common.js#L115)
-will be mapped as follows:
+With a few exceptions, the [VMAPI properties](https://github.com/joyent/sdc-vmapi/blob/master/lib/common/vm-common.js#L115)
+will be stored in `/var/triton/vmadm/machines/<uuid>.json`.  The exceptions are:
 
-| Property    | Required  | Maps To                                           |
-|-------------|-----------|---------------------------------------------------|
-| alias             | Yes | `metadata.json`: `sdc.alias`                      |
-| autoboot          | Yes | `metadata.json`: `sdc.autoboot`                   |
-| billing\_uuid     | Yes | `metadata.json`: `private.billing_id`             |
-| boot\_timestamp   | No  | dbus `org.freedesktop.machine1.Machine` `Timestamp` |
-| bootrom           | No  | *Not implemented for containers*                  |
-| brand             | Yes | `metadata.json`: `private.brand`                  |
-| cpu\_cap          | Yes | dbus `org.freedesktop.systemd1.Unit` `CPUQuota`   |
-| cpu\_shares       | Yes | dbus `org.freedesktop.systemd1.Unit` `CPUWeight`  |
-| cpu\_type         | No  | *Not implemented for containers*                  |
-| create\_timestamp | Yes | `metadata.json`: `private.create_timestamp`       |
-| datasets          | Yes | *Not implemented initially*                       |
-| delegate\_dataset | No  | *Not implemented initially*                       |
-| destroyed         | Yes | *Not maintained on CN*                            |
-| docker            | No  | *Not implemented initially*                       |
-| disk\_driver      | No  | *Not implemented for containers*                  |
-| dns\_domain       | No  | `metadata.json`: `sdc:dns_domain`                 |
-| do\_not\_inventory | No | `metadata.json`: `private.do_not_inventory`       |
-| exit\_status      | No  | *Not implemented initially*                       |
-| exit\_timestamp   | No  | *Not implemented initially*                       |
-| filesystems       | No  | *Not implemented initially*                       |
-| firewall\_enabled | No  | *Not implemented initially*                       |
-| firewall\_rules   | No  | *Not implemented initially*                       |
-| firewall\_rules   | No  | *Not implemented initially*                       |
-| free\_space       | No  | *Not implemented for containers*                  |
-| fs\_allowed       | No  | *Not implemented initially*                       |
-| hostname          | No  | nspawn: Exec.Hostname                             |
-| image\_uuid       | No  | `metadata.json`: `private.image_uuid`             |
-| indestructible\_delegated | No  | *Not implemented initially*               |
-| indestructible\_zoneroot  | No  | *Not implemented initially*               |
-| init\_name        | No  | *Not implemented initially*                       |
-| internal\_metadata| Yes | `metadata.json`: `internal_metadata`              |
-| kernel\_version   | No  | *Not implemented*                                 |
-| last\_modified    | Yes | `metadata.json`: `private.last_modifed`           |
-| locality          | No  |                                                   |
-| maintain\_resolvers | No | *Not implemented initially*                      |
-| max\_locked\_memory | Yes | *Not supported*                                 |
-| max\_lwps         | Yes | dbus `org.freedesktop.systemd1.Unit` `TasksMax`   |
-| max\_physical\_memory | Yes | dbus `org.freedesktop.systemd1.Unit` `MemoryHigh` |
-| max\_swap         | Yes | dbus `org.freedesktop.systemd1.Unit` `MemomorySwapMax`, but keep in mind that this is swap space usage, not memory reservation |
-| networks          |     | `metadata.json`: `sdc.networks`                   |
-| nics              |     | `metadata.json`: `sdc.nics`                       |
-| owner\_uuid       | yes | `metadata.json`: `sdc.owner_uuid`                 |
-| package\_name     | No  | *Obsolete, not implemented*                       |
-| package\_version  | No  | *Obsolete, not implemented*                       |
-| pid               |     | TBD                                               |
-| platform\_buildstamp | Yes | Dynamic, from sysinfo or `/etc/os-release`     |
-| quota             | Yes | zfs property, same as SmartOS                     |
-| ram               | Yes | *TBD: how is this different from max_physical_memory?* |
-| resolvers         | Yes | `metadata.json`: `sdc:resolvers`                  |
-| server\_uuid      | Yes | Dynamic, from sysinfo                             |
-| snapshots         | Yes | *Not implemented initially*                       |
-| state             | Yes | dbus `org/freedesktop/machine1/machine/<uuid>` `org.freedesktop.DBus.Properties` `State`    |
-| tags              | Yes | `tags.json` (same as SmartOS)                     |
-| uuid              | Yes | `/etc/systemd/nspawn/<uuid>.nspawn` (in path)     |
-| vcpus             | No  | *Not implemented for containers*                  |
-| volumes           | No  | *Not implemented initially*                       |
-| zfs\_data\_compression | No | zfs property, same as SmartOS                 |
-| zfs\_filesystem   | Yes | Derived from dbus RootDirectory?                  |
-| zfs\_io\_priority | No  | *Not implemented initially*                       |
-| zlog\_max\_size   | No  | *Not implemented initially*                       |
-| zone\_state       | No  | *Not implemented initially*                       |
-| zonepath          | No  | *Not implemented*                                 |
-| zpool             | No  | Roughly the same logic as zfs\_filesystem         |
+- `customer_metadata` is stored in `/<pool>/<uuid>/config/metadata.json` in the
+  `customer_metadata` key.
+- `internal_metadata` is stored in `/<pool>/<uuid>/config/metadata.json` in the
+  `internal_metadata` key.
+- `last_modified` is derived from the timestamp of the last modification.  If
+  there is no in-memory state that tracks this, then it will be the modification
+  time of the newest of `/var/triton/vmadm/machines/<uuid>.json` and
+  `/<pool>/<uuid>/config/*.json`.
+- `platform_buildstamp` comes from `TRITON_RELEASE` in `/etc/os-release`.
+- `routes` is stored in `/<pool>/<uuid>/config/routes.json`.
+- `server_uuid` comes from DMI (e.g. `/usr/sbin/dmidecode -s system-uuid`).
+- `snapshots` comes from listing snapshots on the appropriate dataset(s).
+- `state` is derived from the state of `systemd-nspawn@<uuid>.service` or
+  on-disk state if there is no such service.
+- `tags` is stored in `/<pool>/<uuid>/config/tags.json`.
+- `zfs_filesystem` is dynamically generated as `<zpool>/<uuid>`.
+- `zone_state` does not exist.
+- `zonepath` is `/<zfs_filesystem>`.
 
+Various [VMAPI properties](https://github.com/joyent/sdc-vmapi/blob/master/lib/common/vm-common.js#L115)
+map to run time state, as described below:
+
+| Property            | Maps To                                               |
+|---------------------|-------------------------------------------------------|
+| cpu\_cap            | dbus `org.freedesktop.systemd1.Unit` `CPUQuota`       |
+| cpu\_shares         | dbus `org.freedesktop.systemd1.Unit` `CPUWeight`      |
+| hostname            | nspawn: Exec.Hostname                                 |
+| init\_name          | nsapwn: Exec.Parameters
+| max\_locked\_memory | *Not supported*                                       |
+| max\_lwps           | dbus `org.freedesktop.systemd1.Unit` `TasksMax`       |
+| max\_physical\_memory | dbus `org.freedesktop.systemd1.Unit` `MemoryHigh`   |
+| max\_swap           | dbus `org.freedesktop.systemd1.Unit` `MemomorySwapMax`, but keep in mind that this is swap space usage, not memory reservation |
+| nics                | nspawn: Network.MACVLAN, plus scripting?              | 
+| pid                 | TBD                                                   |
+| quota               | zfs property, same as SmartOS                         |
+| ram                 | *TBD: how is this different from max_physical_memory?* |
+| snapshots           | *Not implemented initially*                           |
+| state               | dbus `org/freedesktop/machine1/machine/<uuid>` `org.freedesktop.DBus.Properties` `State` |
+| zfs\_data\_compression | zfs property, same as SmartOS                      |
+
+XXX Networking configuration is rather uncertain at this point.  There are some
+options:
+
+- Require cloud-init in each image
+- Add another container that configures networking using tools that are under
+  host control.  After that container comes up, start the desired container with
+  [JoinsNamespaceOf](https://www.freedesktop.org/software/systemd/man/systemd.unit.html#JoinsNamespaceOf=)
+  so that it has the network namespace configured via the controlled
+  environment.
+- Use
+  [ExecStartPost](https://www.freedesktop.org/software/systemd/man/systemd.service.html#ExecStartPre=)
+  to run `ip netns exec` commands to configure the network.  This seems likely
+  to race with things that are starting in the container, so it may require a
+  customized init that waits for network configuration to be complete.
 
 #### CN Agent
 
@@ -266,17 +329,17 @@ update that will require manipulation of datasets and files.
 The [create](https://github.com/joyent/node-vmadm#createopts-callback) function
 will:
 
-- Create `/usr/lib/machines/<uuid>` link.
+- Create `/var/triton/vmadm/machines/<uuid>` link.
 - Clone the image
 - Populate `/<pool>/<uuid>/config/*.json`
 - Set resource controls using dbus.
-- Create `/etc/systemd/nspawn/<uuid>.nspawn`, as described above.
+- Create `/run/systemd/nspawn/<uuid>.nspawn`, as described above.
 
 The order should be arranged such that if a `create` operation is interrupted it
 is possible to determine that the creation was not complete and to identify all
 of the components that are related to the instance.  The existence of the
 `/usr/lib/machines/<uuid>` link indicates the machine creation has begun.  The
-existence of `/etc/systemd/nspawn/<uuid>.nspawn` indicates that the creation has
+existence of `/run/systemd/nspawn/<uuid>.nspawn` indicates that the creation has
 completed.
 
 ##### delete(opts, callback)
