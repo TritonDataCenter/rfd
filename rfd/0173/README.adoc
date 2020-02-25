@@ -256,6 +256,8 @@ original PIV token). They also serve as proof to KBMAPI that a recovery
 operation was performed. When the recovery configuration is updated, a new
 recovery token is generated and added to the list. A history of previous
 tokens is kept to allow for propagation delays of new recovery configurations.
+The recovery token is a random binary value, displayed as well as sent over
+the wire as a base64 encoded string.
 
 | pubkeys
 | Yes
@@ -663,6 +665,7 @@ number generator suitable for cryptographic purposes.
 
 Once the entry is updated or created in moray, a successful response is
 returned (201) and the generated recovery token is included in the response.
+The recovery token is encoded as base64.
 
 Example request (with attestation)
 
@@ -811,7 +814,8 @@ field, the decrypted `recovery_token` value is used as the signing key (in
 conjunction with some HMAC mechanism).
 
 Instead of HTTP Signature auth using the SSH key, HMAC signature using the
-`recovery_token` as value will be used.
+`recovery_token` as value will be used. Note that the http signature method
+requires that the resulting signature value is base64 encoded.
 
 If the lost PIV token does not exists in KBMAPI we should reject the request with
 a `404 Not Found` response.
@@ -836,10 +840,10 @@ be signed by the new PIV token 9e key, instead of using HMAC with the old PIV to
 An example request:
 
 ----
-POST /pivtokens/97496DD1C8F053DE7450CD854D9C95B4/recover
+POST /pivtokens/97496DD1C8F053DE7450CD854D9C95B4/replace
 Host: kbmapi.mytriton.example.com
 Date: Thu, 13 Feb 2019 20:01:02 GMT
-Authorization: Signature <Base64(rsa(sha256($Date)))>
+Authorization: Signature keyId="xxxx",algorithm="hmac-sha512",headers="date",signature="<Base64(hmac-sha512($Date, $recovery_token))>"
 Accept-Version: ~1
 Accept: application/json
 
