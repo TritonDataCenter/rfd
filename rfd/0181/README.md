@@ -241,25 +241,26 @@ upstream.
 
 ## File layout
 
-In the process of going to Manta v2 we discussed changing the layout of files
-on storage nodes. In Manta v1 files are written in a single directory for each
-user. The Manta v2 proposal is to create more directories based on the object
-UUID. The intent of this is to make it easier to map objects to the metadata
-shard they are stored in. A secondary goal was to reduce the number of files
-stored in each directory.
+In the process of going to Manta v2 we discussed adding a new storage node
+file layout for objects created using the Buckets API. Objects created with the
+current directory-style API are written in a single directory for each user.
+The proposed file layout for objects created using the Buckets API would involve
+creating more directories based on the object UUID. The intent of this is to
+make it easier to map objects to the metadata shard they are stored in. A
+secondary goal was to reduce the number of files stored in each directory.
 
-With MinIO we can partially accomplish the first goal. MinIO places data files
-in a hierarchy that looks like this:
+With MinIO we can partially accomplish the first goal of the Buckets API file
+layout. MinIO places data files in a hierarchy that looks like this:
 
 ```
 /disk_path/bucket_name/object_name/[object_metadata, object_data]
 ```
 
-This is very similar to the Manta v1 approach except the bucket name is used in
-place of the owner UUID. We may consider modifying MinIO's layout or sending
-non-standard values for the `bucket_name` and `object_name` in requests from
-Muskie to MinIO to accomplish our layout goals. For example, we could send
-`bucketuuid_owneruuid` as the bucket name after creating this bucket using
+This is very similar to the directory-style API approach except the bucket name
+is used in place of the owner UUID. We may consider modifying MinIO's layout or
+sending non-standard values for the `bucket_name` and `object_name` in requests
+from Muskie to MinIO to accomplish our layout goals. For example, we could send
+`bucketuuid_owneruuid` as the bucket name after creating the bucket using
 the S3 API.
 
 ## Testing
