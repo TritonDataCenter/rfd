@@ -217,13 +217,14 @@ formal writing that it has come to represent.)
 | abandoned | ~~[RFD 171 A Proposal for Manta SnapLinks](./rfd/0171/README.md)~~ |
 | predraft | [RFD 172 CNS Aggregation](./rfd/0172/README.md) |
 | predraft | [RFD 173 KBMAPI and kbmd](./rfd/0173/README.adoc) |
-| draft | [RFD 174 Improving Manta Storage Unit Cost](./rfd/0174/README.md) |
+| draft | [RFD 174 Improving Manta Storage Unit Cost (iSCSI)](./rfd/0174/README.md) |
 | publish | [RFD 175 SmartOS integration process changes](./rfd/0175/README.md) |
 | predraft | [RFD 176 SmartOS boot from ZFS pool](./rfd/0176/README.md) |
 | predraft | [RFD 177 Linux Compute Node Umbrella](./rfd/0177/README.md) |
 | predraft | [RFD 178 Linux Platform Image](./rfd/0178/README.md) |
 | predraft | [RFD 179 Linux Compute Node Networking](./rfd/0179/README.md) |
 | predraft | [RFD 180 Linux Compute Node Containers](./rfd/0180/README.md) |
+| draft | [RFD 181 Improving Manta Storage Unit Cost (MinIO)](./rfd/0181/README.md) |
 
 ## Contents of an RFD
 

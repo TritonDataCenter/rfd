@@ -14,7 +14,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+174%22
     Copyright 2019 Joyent, Inc.
 -->
 
-# RFD 174 Improving Manta Storage Unit Cost
+# RFD 174 Improving Manta Storage Unit Cost (iSCSI)
 
 ## Problem
 
