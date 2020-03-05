@@ -249,19 +249,29 @@ creating more directories based on the object UUID. The intent of this is to
 make it easier to map objects to the metadata shard they are stored in. A
 secondary goal was to reduce the number of files stored in each directory.
 
-With MinIO we can partially accomplish the first goal of the Buckets API file
-layout. MinIO places data files in a hierarchy that looks like this:
+MinIO appears to support somewhat arbitrary file layouts.
 
+For example, a user can upload a file to the path `/bucket_name/object_name` and
+the on-disk layout looks like this:
 ```
 /disk_path/bucket_name/object_name/[object_metadata, object_data]
 ```
 
-This is very similar to the directory-style API approach except the bucket name
-is used in place of the owner UUID. We may consider modifying MinIO's layout or
-sending non-standard values for the `bucket_name` and `object_name` in requests
-from Muskie to MinIO to accomplish our layout goals. For example, we could send
-`bucketuuid_owneruuid` as the bucket name after creating the bucket using
-the S3 API.
+Or the user can specify an arbitrary depth of directories in which to nest
+the final object. For example, an upload to the path
+`/bucket_name/dir0/dir1/dir2/object_name` looks like this on disk:
+
+```
+/disk_path/bucket_name/dir0/dir1/dir2/object_name/[object_metadata, object_data]
+```
+
+Using this feature we could accomplish the file layout changes suggested in
+MANTA-4591 with minor modifications and no changes to MinIO:
+- The bucket uuid and owner uuids would be swapped (since MinIO always addresses
+  by bucket uuid first)
+- We would need to consider what to do with the `v2` portion of the path. One
+  option would be to add it after the bucket name, e.g.
+  `/disk_path/bucket_name/v2/owner_uuid/object_uuid_first_n_chars/[...]`
 
 ## Testing
 
