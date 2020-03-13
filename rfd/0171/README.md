@@ -112,7 +112,7 @@ There is discussion in [RFD
 and [RFD 143](https://github.com/joyent/rfd/blob/master/rfd/0143/README.md)
 about SnapLinks and workarounds proposed (some of which have been made) to deal
 with the fact that SnapLinks don't work well with the [old garbage collection
-system](https://github.com/joyent/manta/blob/master/docs/operator-guide.md#garbage-collection-auditing-and-metering)
+system](https://github.com/joyent/manta/blob/mantav1/docs/operator-guide.md#garbage-collection-auditing-and-metering)
 (that uses `manta_delete_log`). There's also discussion in [this
 document](https://github.com/joyent/manta-mola/blob/master/docs/gc-design-alternatives.md)
 of problems including ["The Walking Link

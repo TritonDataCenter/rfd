@@ -21,7 +21,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+172%22
 Triton Container Name Service (CNS) provides service discovery for applications through DNS names. Instances can be assigned [specialized tags][cns-tags] to have their IP address(es) returned when a particular DNS resource record is queried. This allows for "round-robin" DNS redundancy. Generally a friendly CNAME record points to the CNS service record. CNS, however works only in the context of a single datacenter. Best practices call for distributing services across multiple availability zones, and since there can only be one CNAME value for a DNS resource record, CNS cannot be used to provide service discovery across multiple availability zones. Manta is an example of one such application that has API endpoints in multiple datacenter. The Manta Operators Guide currently states that external DNS is managed manually.
 
 [cns-tags]: https://github.com/joyent/triton-cns/blob/master/docs/metadata.md#instance-tags-vmapi
-[manta-dns]: https://github.com/joyent/manta/blob/master/docs/operator-guide.md#external-service-discovery
+[manta-dns]: https://github.com/joyent/manta/blob/master/docs/operator-guide/architecture.md#external-service-discovery
 
 ## Proposed Solution
 
