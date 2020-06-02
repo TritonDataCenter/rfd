@@ -225,7 +225,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 179 Linux Compute Node Networking](./rfd/0179/README.md) |
 | predraft | [RFD 180 Linux Compute Node Containers](./rfd/0180/README.md) |
 | draft | [RFD 181 Improving Manta Storage Unit Cost (MinIO)](./rfd/0181/README.md) |
-| predraft | [RFD 182 Altering system pool detection in SmartOS/Triton](./rfd/0182/README.md) |
+| draft | [RFD 182 Altering system pool detection in SmartOS/Triton](./rfd/0182/README.md) |
 
 ## Contents of an RFD
 

@@ -1,6 +1,7 @@
 ---
 authors: Jason King <jason.king@joyent.com>
-state: predraft
+state: draft
+discussion: https://github.com/joyent/rfd/issues?q=%22RFD+182
 ---
 
 <!--
@@ -89,4 +90,6 @@ encrypted compute nodes.
 An additional possibility might be to allow the zpool GUID to be _optionally_
 specified in the boot parameters. When present, that value (and only that
 value) is used to locate the system pool. All pools (or the ones in the
-`zpools` boot parameter when precent) could still be imported.
+`zpools` boot parameter when precent) could still be imported. However it
+seems like the `zpools` boot parameter can handle the same functionality, so
+it seems unlikely an additional (even if optional) property is necessary.
