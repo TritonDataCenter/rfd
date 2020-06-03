@@ -58,15 +58,22 @@ multiple pools have the `smartdc:system_pool` property set, a warning will
 be written to the console to alert the operator.
 
 If no pool is found with the property, the service will fall back to looking
-for `.system_pool`.
+for `.system_pool`. Once found, the `filesystem/smartdc` service will set the
+`smartdc:system_pool` property for forward compatability. If the system pool
+is not found via searching for `.system_pool`, we error out as we do today.
+Note that we don't plan to create new zpools with the `.system_pool` file,
+but existing pool will continue to work with the described mechanism.
 
-For backwards compatibility, once the system pool has been set and imported,
-`touch /.system_pool` will be executed to allow for backwards compatability.
-Additionally, the `smartdc:system_pool` property will be set on the root dataset
-of the pool. At some indeterminate point in the future, the `.system_pool`
-logic can be removed (i.e. after a sufficient amount of time has passed that
-all customers are running on a PI version that includes the functionality
-described here).
+This design does mean that one cannot boot a SmartOS/Triton CN using a PI older
+than the PI version used to install the system. However, even if not explicitly
+stated, this is effectively the case today -- any instances where it does work
+are by accident than design. More specifically, when we create the zpool
+during setup (for either SmartOS or Triton), we've generally not disabled
+new zpool features. As a result, there is no guarantee an older PI will be
+able to import and use a zpool created on a new PI version. To be extra clear,
+this applies to _new_ installs. The aforementioned forward compatibility
+mechanism described should still allow _existing_ installs to revert back to
+earlier PIs as desired by the operator.
 
 With this, the factory reset check (which looks at `${SYS_POOL}/var`) can be
 proceed prior to unlocking of any encrypted zpools.
