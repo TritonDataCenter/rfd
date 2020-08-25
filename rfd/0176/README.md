@@ -144,6 +144,10 @@ pools, including:
   on a bootable pool.  This includes status-reporting, installation, and
   removal.
 
+With the commit of
+[OS-8198](https://github.com/joyent/smartos-live/commit/2c792f83ac6e31db6ee00655a084320e56ca518b),
+Phase I is complete.
+
 ### Phase II - USB-less Triton Compute Node
 
 Experiments have shown that Triton's booter zone CAN chainload from normal
