@@ -1,6 +1,5 @@
 ---
-authors: Mike Gerdts <mike.gerdts@joyent.com>, Dan McDonald
-<danmcd@joyent.com>
+authors: Mike Gerdts <mike.gerdts@joyent.com>, Dan McDonald <danmcd@joyent.com>
 state: draft
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+176%22
 ---
@@ -159,19 +158,31 @@ iPXE-off-disk boot.  One option is to directly install the iPXE binary in the
 ESP if the both pool has an ESP AND the compute node uses EFI boot.  The
 other option, which allows a pool to be bootable on either EFI or BIOS, is to
 have loader load off the ZFS boot pool like Standalone SmartOS, but then load
-iPXE instead of unix/SmartOS.
+iPXE instead of unix/SmartOS.  Because existing USB sticks allow a backup
+standalone boot, the latter option (loader off disk, then choice of iPXE or
+backup standalone boot) is less of a surprise.
 
 Both PXE to iPXE chainloading, AND on-disk iPXE have been tested on
 BIOS-bootable systems. iPXE in the ESP has been tested on an EFI-bootable
 VMware VM.  A modern platform image and iPXE must be used on ESP resident
 iPXE, due to bugs found during testing.
 
+Additionally, new Triton compute nodes should have their `zones` pool attempt
+to be ESP-ready if possible.
+
+The commit of
+[OS-8206](https://github.com/joyent/smartos-live/commit/d2f7462039e2375fb67b961992b8b69439da5681)
+addresses iPXE boot from disk specifically for Triton Compute Nodes.  The
+commit of
+[TRITON-2175](https://github.com/joyent/sdc-headnode/commit/6d6b7ae1a5ac0b655b0a6f05d7f3dd0a4a069d59)
+addresses the new-Compute-Nodes getting ESP-ready pools if possible.  With
+additional documentation, Phase II will be complete.
+
 ### Phase III -- USB-less Triton Head Node
 
 THIS is the tricky part, and requires Phase I to be finished at least.  This
 section MAY require a distinct RFD, and resolving that will keep this RFD in
-predraft state for now.
-
+draft state for now.
 
 ## Specific problems to solve
 
