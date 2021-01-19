@@ -162,13 +162,23 @@ iPXE instead of unix/SmartOS.  Because existing USB sticks allow a backup
 standalone boot, the latter option (loader off disk, then choice of iPXE or
 backup standalone boot) is less of a surprise.
 
-Both PXE to iPXE chainloading, AND on-disk iPXE have been tested on
-BIOS-bootable systems. iPXE in the ESP has been tested on an EFI-bootable
-VMware VM.  A modern platform image and iPXE must be used on ESP resident
-iPXE, due to bugs found during testing.
+Both PXE to iPXE chainloading, on-disk iPXE, and PXE to provider-iPXE to
+Joyent iPXE have been tested on BIOS-bootable (all three) and EFI-bootable
+systems (the first two). iPXE in the ESP has additionally been tested on an
+EFI-bootable VMware VM.  A modern platform image and iPXE must be used on ESP
+resident iPXE, due to bugs found during testing.
+
+Experience with bare-metal providers which provide "custom iPXE" suggests
+that a compute node may be best served by chainloading from the provider's
+iPXE to a Joyent Triton iPXE.  To avoid endless looping, the Joyent Triton
+iPXE may wish to skip network devices that speak with the provider's iPXE,
+so it can instead boot from the Triton `admin` network as compute nodes are
+supposed to do.
 
 Additionally, new Triton compute nodes should have their `zones` pool attempt
-to be ESP-ready if possible.
+to be ESP-ready if possible.  On a working network-boot system, however,
+bootable pools are not required, and if a system is known to work with
+network-booting from BIOS or EFI, the pool on that system can be arbitrary.
 
 The commit of
 [OS-8206](https://github.com/joyent/smartos-live/commit/d2f7462039e2375fb67b961992b8b69439da5681)
@@ -180,11 +190,55 @@ additional documentation, Phase II will be complete.
 
 ### Phase III -- USB-less Triton Head Node
 
-THIS is the tricky part, and requires Phase I to be finished at least.  This
-section MAY require a distinct RFD, and resolving that will keep this RFD in
-draft state for now.
+#### On Booting a Head Node from a ZFS Pool
 
-## Specific problems to solve
+After experience from Phases I and II, plus experimenting with a CoaL virtual
+machine, we arrived at a fundamental design point for a USB-less Triton head
+node:  **The bootable ZFS filesystem MUST serve as the head node's USB key**.
+
+The two interfaces all Triton components use to access USB key information
+are:
+
+- `sdc-usbkey`.  This command mounts, unmounts, reports status, updates
+  contents, and sets boot variables.
+- `/lib/sdc/usb-key.sh` This library provides mount and unmount of the Triton
+  USB Key.
+
+Those two interfaces can be altered to ALSO treat a Phase I bootable SmartOS
+pool as a "USB Key" for Triton's practical purposes.  The enablement of those
+interfaces is done through the setting of the boot parameter
+`triton_bootpool`, which is set to the pool that booted the Triton head node.
+
+#### On Installation and Transition
+
+The ability to boot a head node off of a pool is necessary, but not
+sufficient.  A head node either needs to be installed to boot from a ZFS
+pool, or it needs to be able to transition from a USB key boot into a ZFS
+pool boot.
+
+This project will deliver both iPXE and ISO (DVD, given the size) installers.
+Various Triton setup scripts will need to act differently in the face of an
+installer that does not run from a writeable USB key.  The `triton_installer`
+boot parameter will indicate if the installer is an ISO one, or an iPXE one.
+An ISO installer will have all of the necessary components on-ISO to install
+on the bootable pool's boot filesystem.  The iPXE installer cannot fit the
+full Triton contents into it boot archive.  Therefor it will require
+additional boot parameters to indicate a downloadable tarfile that contains
+the full contents of an ISO installer.  This means it must be reachable from
+the same network that serviced the iPXE boot.  Triton's installation sets up
+networking prior to actual installation, so such a download can occur at the
+appropriate time.
+
+An existing USB-key head node can transition into being a ZFS bootable head
+node by use of the Phase I `piadm`(1M) command.  `piadm` will be able to
+detect if such a transition can occur (by checking the Triton `gz-tools` are
+sufficiently updated). An existing `zones` pool can be used if it can be
+enabled to boot SmartOS.  Otherwise, a dedicate boot pool can be created
+using a more boot-friendly disk layout.  Invoking `piadm bootable -e
+$POOL` will perform the transition, and issue a warning to reboot
+immediately.
+
+## Specific additional problems to solve
 
 ### Disk add/replace
 
@@ -232,3 +286,17 @@ a system is BIOS bootable, most zones pools DO have the ability to boot via
 the MBR into a bootable today.  The Phase I `piadm`(1M) command can enable a
 pool to be bootable, even if it's only BIOS-bootable.  The same command can
 report on a pool's ability to boot with BIOS, or BIOS and EFI.
+
+### Bootable Pool as Triton's USB Key
+
+As mentioned in Phase III, the SmartOS bootable pool also doubles as the
+Triton head node USB key.  Per RFD 156, the USB key version reported will
+always be '2', as loader is required for this whole project anyway.  Unlike
+with USB keys, the filesystem will already be mounted in `/$BOOTPOOL/boot`.
+To simulate mounting a USB key, we use lofs(7FS) to mount `/$BOOTPOOL/boot`
+on to the standard USB key mount point.  Since unmount works regardless of
+filesystem type, we need not modify unmount code.
+
+Also, since ZFS is case-sensitive, we must insure that the proper
+capitialization of platform image names occurs (e.g. 20210114T211204Z,
+instead of 20210114t211204z).
