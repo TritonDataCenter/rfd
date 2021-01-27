@@ -238,6 +238,14 @@ using a more boot-friendly disk layout.  Invoking `piadm bootable -e
 $POOL` will perform the transition, and issue a warning to reboot
 immediately.
 
+The commits of TRITON-2188 both in:
+[smartos-live](https://github.com/joyent/smartos-live/commit/fe68f9f45c5f49e768bd91a9200de1c866e089f8),
+[sdc-headnode](https://github.com/joyent/sdc-headnode/commit/8ceeeea559ded0fb5c8c5963bd40bb07ff6e880d),
+and SmartOS followup
+[OS-8261](https://github.com/joyent/smartos-live/commit/7784b2913b53b7527db4611b4fe60ae3ca004cd1),
+addresses the pool-bootable Triton Head Node.  Additional documentation,
+along with the Phase II documentation, will complete Phase III.
+
 ## Specific additional problems to solve
 
 ### Disk add/replace
