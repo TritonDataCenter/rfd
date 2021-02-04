@@ -23,7 +23,7 @@ as expressed by [RFC 3](https://tools.ietf.org/html/rfc3):
 > without introductory or background explication, and explicit questions
 > without any attempted answers are all acceptable.  The minimum length for
 > a note is one sentence.
-
+>
 > These standards (or lack of them) are stated explicitly for two reasons.
 > First, there is a tendency to view a written statement as ipso facto
 > authoritative, and we hope to promote the exchange and discussion of
@@ -226,6 +226,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 180 Linux Compute Node Containers](./rfd/0180/README.md) |
 | draft | [RFD 181 Improving Manta Storage Unit Cost (MinIO)](./rfd/0181/README.md) |
 | draft | [RFD 182 Altering system pool detection in SmartOS/Triton](./rfd/0182/README.md) |
+| predraft | [RFD 183 Triton Volume Replication and Back up](./rfd/0183/README.md) |
 
 ## Contents of an RFD
 
@@ -256,63 +257,62 @@ simple synopsis of the document. (This title is not fixed; RFDs are numbered
 to allow the title to change.) In general, we recommend any initial RFD
 address and/or ask the following questions:
 
-##### Title
+### Title
 
 This is a simple synopsis of the document. Note, the title is not fixed.
 It may change as the RFD evolves.
 
-##### What problem is this solving?
+### What problem is this solving?
 
 The goal here is to describe the problems that we are trying to address
 that motivate the solution. The problem should not be described in terms
 of the solution.
 
-##### What are the principles and constraints on the design of the solution?
+### What are the principles and constraints on the design of the solution?
 
 You should use this section to describe the first principles or other
 important decisions that constrain the problem. For example, a
 constraint on the design may be that we should be able to do an
 operation without downtime.
 
-##### How will users interact with these features?
+### How will users interact with these features?
 
 Here, you should consider both operators, end users, and developers. You
 should consider not only how they'll verify that it's working correctly,
 but also how they'll verify if it's broken and what actions they should
 take from there.
 
-##### What repositories are being changed, if known?
+### What repositories are being changed, if known?
 
 If it's known, a list of what git repositories are being changed as a
 result of this would be quite useful.
 
-##### What public interfaces are changing?
+### What public interfaces are changing?
 
 What interfaces that users and operators are using and rely upon are
 changing? Note that when changing public interfaces we have to be extra
 careful to ensure that we don't break existing users and scripts.
 
-##### What private interfaces are changing?
+### What private interfaces are changing?
 
 What interfaces that are private to the system are changing? Changing
 these interfaces may impact the system, but should not impact operators
 and users directly.
 
-##### What is the upgrade impact?
+### What is the upgrade impact?
 
 For an existing install, what are the implications if anything is
 upgraded through the normal update mechanisms, e.g. platform reboot,
 sdcadm update, manta-adm update, etc. Are there any special steps that
 need to be taken or do certain updates need to happen together for this
 
-##### What is the security impact?
+### What is the security impact?
 
 What (untrusted) user input (including both data and code) will be used as part
 of the change?  Which components will interact with that input?  How will that
 input be validated and managed securely?  What new operations are exposed and
 which privileges will they require (both system privileges and Triton privileges)?
 How would an attacker use the proposed facilities to escalate their privileges?
-
 
 ## Mechanics of an RFD
 
@@ -329,7 +329,7 @@ in the file 0042.md. Note, that while we use four digits in the
 directories and numbering, when referring to an RFD, you do not need to
 use the leading zeros.
 
-```
+```bash
 $ mkdir -p rfd/0042
 $ cp prototypes/prototype.md rfd/0042/README.md
 $
@@ -351,7 +351,7 @@ metadata. The metadata format is based on the
 [python-markdown2](https://github.com/trentm/python-markdown2/wiki/metadata)
 metadata format. It'd look like:
 
-```
+```markdown
 ---
 authors: Han Solo <han.solo@shot.first.org>, Alexander Hamilton <ah@treasury.gov>
 state: draft
@@ -414,7 +414,7 @@ of RFD 169 while it remains in a pre-published state.").  Moreover, a
 `discussion` field should be added to the RFD metadata, with a URL that
 points to an issue query for the RFD number.  For example:
 
-```
+```markdown
 ---
 authors: Chewbacca <chewie77@falcon.org>
 state: draft
