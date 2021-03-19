@@ -1,6 +1,6 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>, Dan McDonald <danmcd@joyent.com>
-state: draft
+state: publish
 discussion: https://github.com/joyent/rfd/issues?q=%22RFD+176%22
 ---
 
@@ -185,8 +185,10 @@ The commit of
 addresses iPXE boot from disk specifically for Triton Compute Nodes.  The
 commit of
 [TRITON-2175](https://github.com/joyent/sdc-headnode/commit/6d6b7ae1a5ac0b655b0a6f05d7f3dd0a4a069d59)
-addresses the new-Compute-Nodes getting ESP-ready pools if possible.  With
-additional documentation, Phase II will be complete.
+addresses the new-Compute-Nodes getting ESP-ready pools if possible. With the
+documentation commit of
+[TRITON-2202](https://github.com/joyent/triton/commit/3f424b6dc37e130de79deaa30bd0d443b60f68b2)Phase
+II is now complete.
 
 ### Phase III -- USB-less Triton Head Node
 
@@ -243,8 +245,10 @@ The commits of TRITON-2188 both in:
 [sdc-headnode](https://github.com/joyent/sdc-headnode/commit/8ceeeea559ded0fb5c8c5963bd40bb07ff6e880d),
 and SmartOS followup
 [OS-8261](https://github.com/joyent/smartos-live/commit/7784b2913b53b7527db4611b4fe60ae3ca004cd1),
-addresses the pool-bootable Triton Head Node.  Additional documentation,
-along with the Phase II documentation, will complete Phase III.
+addresses the pool-bootable Triton Head Node.  With the documentation commit
+of
+[TRITON-2202](https://github.com/joyent/triton/commit/3f424b6dc37e130de79deaa30bd0d443b60f68b2)
+Phase III is now complete.
 
 ## Specific additional problems to solve
 
