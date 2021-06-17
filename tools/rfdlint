@@ -15,13 +15,13 @@
 #
 rfdlint_daycheck=45
 
-tmp=`mktemp`
-prog=`basename $0`
-script_dir=$(cd $(dirname $0) && pwd)
+tmp=$(mktemp)
+prog=$(basename "$0")
+script_dir=$(cd "$(dirname "$0")" && pwd)
 
 if [[ ! -f README.md || ! -d ./rfd ]]; then
-	echo $prog: must be run in root directory of rfd repository
-	exit 1
+        echo "$prog": must be run in root directory of rfd repository
+        exit 1
 fi
 
 #
@@ -29,95 +29,93 @@ fi
 # the links are properly formed and RFD numbers appropriately used in the
 # RFD table.
 #
-cat > $tmp <<EOF
+cat >"$tmp" <<EOF
 {
-	l++;
+        l++;
 
-	if (\$0 == "| state    | RFD |") {
-		if (rfdtable) {
-			printf("$prog: table found twice\n");
-			exit 1;
-		}
+        if (\$0 == "| state    | RFD |") {
+                if (rfdtable) {
+                        printf("$prog: table found twice\n");
+                        exit 1;
+                }
 
-		rfdtable = 1;
-		nextrfd = 0;
-		next;
-	}
+                rfdtable = 1;
+                nextrfd = 0;
+                next;
+        }
 
-	if (!rfdtable)
-		next;
+        if (!rfdtable)
+                next;
 
-	if (\$2 == "--------") {
-		if (nextrfd != 0) {
-			printf("$prog: header found twice\n");
-			exit 1;
-		}
+        if (\$2 == "--------") {
+                if (nextrfd != 0) {
+                        printf("$prog: header found twice\n");
+                        exit 1;
+                }
 
-		next;
-	}
+                next;
+        }
 
-	if (length(\$0) == 0) {
-		done = 1;
-		next;
-	}
+        if (length(\$0) == 0) {
+                done = 1;
+                next;
+        }
 
-	if (done) {
-		if (\$4 == "[RFD" && \$0 ~ "/rfd/") {
-			printf("$prog: RFD at line %d is not in table\n", l);
-			exit 1;
-		}
+        if (done) {
+                if (\$4 == "[RFD" && \$0 ~ "/rfd/") {
+                        printf("$prog: RFD at line %d is not in table\n", l);
+                        exit 1;
+                }
 
-		next;
-	}
+                next;
+        }
 
-	nextrfd++;
-	rfd = \$5;
-	state = \$2;
+        nextrfd++;
+        rfd = \$5;
+        state = \$2;
 
-	if (rfd != nextrfd) {
-		printf("$prog: at line %d, expected RFD %d found RFD %s\n",
-		    l, nextrfd, rfd);
-		exit 1;
-	}
+        if (rfd != nextrfd) {
+                printf("$prog: at line %d, expected RFD %d found RFD %s\n",
+                    l, nextrfd, rfd);
+                exit 1;
+        }
 
-	if (state != "publish" && state != "draft" && state != "predraft" &&
-	    state != "abandoned") {
-		printf("$prog: illegal state '%s' for RFD %s\n", \$2, rfd);
-		exit 1;
-	}
+        if (state != "publish" && state != "draft" && state != "predraft" &&
+            state != "abandoned") {
+                printf("$prog: illegal state '%s' for RFD %s\n", \$2, rfd);
+                exit 1;
+        }
 
-	if (state == "abandoned" && \$4 != "~~[RFD") {
-	    printf("$prog: abandoned RFD %s must use strikethrough markup\n",
-	        rfd);
-	    exit 1;
-	}
+        if (state == "abandoned" && \$4 != "~~[RFD") {
+            printf("$prog: abandoned RFD %s must use strikethrough markup\n",
+                rfd);
+            exit 1;
+        }
 
-	link = substr(\$0, index(\$0, "]") + 1, length(\$0));
+        link = substr(\$0, index(\$0, "]") + 1, length(\$0));
 
-	link = substr(link, 2, index(link, ")") - 2);
+        link = substr(link, 2, index(link, ")") - 2);
 
-	if (rfd < 10) {
-		prefix = "000";
-	} else if (rfd < 100) {
-		prefix = "00";
-	} else if (rfd < 1000) {
-		prefix = "0";
-	}
+        if (rfd < 10) {
+                prefix = "000";
+        } else if (rfd < 100) {
+                prefix = "00";
+        } else if (rfd < 1000) {
+                prefix = "0";
+        }
 
-	expected = "./rfd/" prefix rfd "/README"
+        expected = "./rfd/" prefix rfd "/README"
 
-	if (link != expected ".md" && link != expected ".adoc") {
-		printf("$prog: RFD %d has malformed link '%s'\n", rfd, link);
-		exit 1;
-	}
+        if (link != expected ".md" && link != expected ".adoc") {
+                printf("$prog: RFD %d has malformed link '%s'\n", rfd, link);
+                exit 1;
+        }
 }
 EOF
 
-cat README.md | awk -f $tmp
-rm $tmp
-
-if [[ $? -ne 0 ]]; then
-	exit 1
+awk -f "$tmp" README.md
+if ! rm "$tmp"; then
+        exit 1
 fi
 
 #
@@ -125,76 +123,76 @@ fi
 # and in a matching state and with sane metadata.
 #
 for f in rfd/[0-9][0-9][0-9][0-9]/README.{md,adoc}; do
-	line=`grep '^|' README.md | grep $f`;
+        line=$(grep '^|' README.md | grep "$f")
 
-	if [[ -z "$line" ]]; then
-		echo "$prog: did not find $f linked in RFD table in README.md"
-		exit 1
-	fi
+        if [[ -z "$line" ]]; then
+                echo "$prog: did not find $f linked in RFD table in README.md"
+                exit 1
+        fi
 
-	state=`echo $line | cut -d\| -f2 | awk '{ print $1 }'`
-	title=`echo $line | cut -d\| -f3 | cut -d\[ -f2 | cut -d\] -f1`
-	rfd=`echo $line | awk '{ print $5 }'`
+        state=$(echo "$line" | cut -d\| -f2 | awk '{ print $1 }')
+        title=$(echo "$line" | cut -d\| -f3 | cut -d\[ -f2 | cut -d\] -f1)
+        rfd=$(echo "$line" | awk '{ print $5 }')
 
-	if [[ `basename $f` == "README.adoc" ]]; then
-	    check=`cat $f | grep -w ^[=#] | head -1 | cut -c3-`
-	fi
-	if [[ `basename $f` == "README.md" ]]; then
-	    check=`cat $f | grep -w ^# | head -1 | cut -c3-`
-	fi
+        if [[ $(basename "$f") == "README.adoc" ]]; then
+                check=$(grep -w "^[=#]" "$f" | head -1 | cut -c3-)
+        fi
+        if [[ $(basename "$f") == "README.md" ]]; then
+                check=$(grep -w "^#" "$f" | head -1 | cut -c3-)
+        fi
 
-	if [[ "$title" != "$check" ]]; then
-		echo "$prog: mismatched title on RFD $rfd";
-		echo "$prog: in README.md: \"$title\""
-		echo "$prog: in $f: \"$check\""
-		exit 1
-	fi
+        if [[ "$title" != "$check" ]]; then
+                echo "$prog: mismatched title on RFD $rfd"
+                echo "$prog: in README.md: \"$title\""
+                echo "$prog: in $f: \"$check\""
+                exit 1
+        fi
 
-	if [[ `basename $f` == "README.adoc" ]]; then
-		continue
-	fi
+        if [[ $(basename "$f") == "README.adoc" ]]; then
+                continue
+        fi
 
-	if [[ `head -1 $f` != "---" ]]; then
-		echo "$prog: missing metadata in $f"
-		exit 1
-	fi
+        if [[ $(head -1 "$f") != "---" ]]; then
+                echo "$prog: missing metadata in $f"
+                exit 1
+        fi
 
-	check=`grep "^state: " $f | awk '{ print $2 }'`
+        check=$(grep "^state: " "$f" | awk '{ print $2 }')
 
-	if [[ "$state" != "$check" ]]; then
-		echo "$prog: mismatched state on RFD $rfd"
-		echo "$prog: in README.md: \"$state\""
-		echo "$prog: in $f: \"$check\""
-		exit 1
-	fi
+        if [[ "$state" != "$check" ]]; then
+                echo "$prog: mismatched state on RFD $rfd"
+                echo "$prog: in README.md: \"$state\""
+                echo "$prog: in $f: \"$check\""
+                exit 1
+        fi
 
-	authors=`grep "^authors: " $f | cut -d: -f2- | cut -c2-`
+        authors=$(grep "^authors: " "$f" | cut -d: -f2- | cut -c2-)
 
-	if [[ -z "$authors" ]]; then
-		echo "$prog: RFD $rfd is missing an 'authors' field"
-		exit 1
-	fi
+        if [[ -z "$authors" ]]; then
+                echo "$prog: RFD $rfd is missing an 'authors' field"
+                exit 1
+        fi
 
-	if [[ "$state" == "draft" ]]; then
-		#
-		# If this is not in a publish state and is less than 3 months
-		# old (or not under git control) and lacks a discussion field,
-		# we'll flag it.
-		#
-		origin=`git log --format=format:%ct $f | tail -1`
-		now=`date +%s`
+        if [[ "$state" == "draft" ]]; then
+                #
+                # If this is not in a publish state and is less than 3 months
+                # old (or not under git control) and lacks a discussion field,
+                # we'll flag it.
+                #
+                origin=$(git log --format=format:%ct "$f" | tail -1)
+                now=$(date +%s)
 
-		if [[ -z $origin ]]; then
-			origin=$now
-		fi
+                if [[ -z $origin ]]; then
+                        origin=$now
+                fi
 
-		seconds=`expr $now - $origin`
-		days=`expr $seconds / 86400`
+                ((seconds = now - origin))
+                ((days = seconds / 86400))
 
-		discussion=`grep "^discussion: " $f`
+                discussion=$(grep "^discussion: " "$f")
 
-		if [[ -z $discussion && $days -lt $rfdlint_daycheck ]]; then
-cat <<EOF
+                if [[ -z $discussion && $days -lt $rfdlint_daycheck ]]; then
+                        cat <<EOF
 $prog: RFD $rfd (in $state state, $days days old) lacks 'discussion' field
 $prog: if not already opened, add the following issue:
 
@@ -207,27 +205,26 @@ $prog: Then add to metadata section in ./$f:
     discussion: https://github.com/joyent/rfd/issues?q=%22RFD+$rfd%22
 
 EOF
-			exit 1
-		fi
-	fi
+                        exit 1
+                fi
+        fi
 
-	# Ensure the contents of an RFD's 'components' field (if present) are
-	# defined in the list of allowable components. These roughly correspond to
-	# the list of components for the TRITON and MANTA projects in JIRA.
-	components=$(grep "^components: " $f | cut -d: -f2- | cut -c2-)
-	components_file="${script_dir}/components"
-	must_exit=""
-	if [[ -n "$components" ]]; then
-		for component in $(echo $components | awk 'gsub(/,[[:space:]]*/,"\n")'); do
-			grep -Fxq "$component" "$components_file"
-			if [[ $? -ne 0 ]]; then
-				where="$(basename $script_dir)/$(basename $components_file)"
-				>&2 echo "$f: component '$component' not found in $where"
-				must_exit=1
-			fi
-		done
-		if [[ $must_exit -eq 1 ]]; then
-			exit 1;
-		fi
-	fi
+        # Ensure the contents of an RFD's 'components' field (if present) are
+        # defined in the list of allowable components. These roughly correspond to
+        # the list of components for the TRITON and MANTA projects in JIRA.
+        components=$(grep "^components: " "$f" | cut -d: -f2- | cut -c2-)
+        components_file="${script_dir}/components"
+        must_exit=""
+        if [[ -n "$components" ]]; then
+                for component in $(echo "$components" | awk 'gsub(/,[[:space:]]*/,"\n")'); do
+                        if ! grep -Fxq "$component" "$components_file"; then
+                                where="$(basename "$script_dir")/$(basename "$components_file")"
+                                echo >&2 "$f: component '$component' not found in $where"
+                                must_exit=1
+                        fi
+                done
+                if [[ $must_exit -eq 1 ]]; then
+                        exit 1
+                fi
+        fi
 done
