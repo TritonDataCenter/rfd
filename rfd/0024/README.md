@@ -68,7 +68,7 @@ that are due for EOL or reboot.
   exact instance UUIDs to provision near to or away from. The burden is on the user
   to keep track of UUIDs. Also when a provisioning request failed, CloudAPI does
   not return any error code to indicate if it was due to the locality constraint
-  or some other problems (more on this in [RFD 22](https://github.com/joyent/rfd/tree/master/rfd/0022)).
+  or some other problems (more on this in [RFD 22](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0022)).
 
 How much rack locality hints should play a role in DAPI is still subject to debate.
 The likelihood for a rack-level failure is largely dependent on the data center

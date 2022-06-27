@@ -37,5 +37,5 @@ from within the zone and if so: discuss consequences of doing so.
 
 ## Related Tickets
 
- * [joyent/smartos-live#641](https://github.com/joyent/smartos-live/issues/641)
+ * [joyent/smartos-live#641](https://github.com/TritonDataCenter/smartos-live/issues/641)
 

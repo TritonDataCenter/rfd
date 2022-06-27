@@ -1,7 +1,7 @@
 ---
 authors: Jan Wyszynski <jan.wyszynski@joyent.com>
 state: predraft
-dicussion: https://github.com/joyent/rfd/issues/52
+dicussion: https://github.com/TritonDataCenter/rfd/issues/52
 ---
 
 <!--

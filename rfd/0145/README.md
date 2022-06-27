@@ -1,7 +1,7 @@
 ---
 authors: Tim Foster <tim.foster@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q=RFD+145
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=RFD+145
 ---
 
 <!--
@@ -53,7 +53,7 @@ tools to aid developers in their daily develop/test/debug cycle. We are
 explicitly not addressing the platform image build process yet.
 
 Before this RFD, component images and agents were built using a tool called
-[Mountain Gorilla](https://github.com/joyent/mountain-gorilla/blob/master/README.md),
+[Mountain Gorilla](https://github.com/TritonDataCenter/mountain-gorilla/blob/master/README.md),
 which is effectively a series of build scripts that:
 
 - clones relevant git repositories
@@ -168,7 +168,7 @@ build local changes without first pushing those to a git TRY_BRANCH.
 MG's requirement to instantiate remote VMs to perform image assembly is
 cumbersome, and imposes a delay on the build.
 
-The ['buildymcbuildface'](https://github.com/joyent/buildymcbuildface)
+The ['buildymcbuildface'](https://github.com/TritonDataCenter/buildymcbuildface)
 prototype showed that it is possible to create images directly on the build
 machine, so the work covered by this RFD extends that prototype, and
 introduces `buildimage`.
@@ -197,8 +197,8 @@ assurance that the changes made to a given component are exactly equal to the
 sum of the git commits that were made to the Joyent source repositories that
 make up a component.
 
-The [Joyent Engineering Guide](https://github.com/joyent/eng/blob/master/docs/index.md#user-content-packagejson-and-git-submodules)
-and the draft [RFD 105](https://github.com/joyent/rfd/blob/master/rfd/0105/README.md)
+The [Joyent Engineering Guide](https://github.com/TritonDataCenter/eng/blob/master/docs/index.md#user-content-packagejson-and-git-submodules)
+and the draft [RFD 105](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0105/README.md)
 have some guidelines on the use of `package.json`, recommending exact
 (semver)[https://docs.npmjs.com/getting-started/semantic-versioning] versioning
 at the top-level (i.e. the component's immediate dependencies) for dependencies

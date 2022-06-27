@@ -25,7 +25,7 @@ created/stoped/started/actioned-on. There are two reasons that can be limiting:
 ## Discussion
 
 - https://devhub.joyent.com/jira/browse/PUBAPI-1117
-- https://github.com/joyent/node-triton/issues/50
+- https://github.com/TritonDataCenter/node-triton/issues/50
 - scrum@ chat on 2015-01-11
 
 A client-side-only solution isn't ideal because you are still time limited with

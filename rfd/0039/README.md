@@ -70,18 +70,18 @@ SDC7. One of these in particular was the change to having the ultimate source of
 truth be the reality that exists on a CN.
 
 With SDC7 the VM functionality was moved to
-[VMAPI](https://github.com/joyent/sdc-vmapi) which treats the data on the CNs as
+[VMAPI](https://github.com/TritonDataCenter/sdc-vmapi) which treats the data on the CNs as
 the ultimate source of truth and its own data about VMs as merely a cache. When
 state is changed on a CN through the APIs, the final state of the VM is reported
 back to VMAPI through the agents to the job and written to VMAPI's Moray bucket.
-The [vm-agent](https://github.com/joyent/sdc-vm-agent) that runs on each CN is
-[responsible for keeping VMAPI up-to-date in the face of manual actions](https://github.com/joyent/sdc-vm-agent/blob/release-20160609/lib/vm-agent.js#L11-L115)
+The [vm-agent](https://github.com/TritonDataCenter/sdc-vm-agent) that runs on each CN is
+[responsible for keeping VMAPI up-to-date in the face of manual actions](https://github.com/TritonDataCenter/sdc-vm-agent/blob/release-20160609/lib/vm-agent.js#L11-L115)
 on the CN which would otherwise be outside the view of the APIs.
 
 Along with the changes to the APIs to manage VMs through VMAPI and have the
 ultimate source of truth be the CN, new tools were developed to manage those VMs
 on the CNs directly. The primary one that's relevant here is
-[vmadm](https://github.com/joyent/smartos-live/blob/master/src/vm/man/vmadm.1m.md).
+[vmadm](https://github.com/TritonDataCenter/smartos-live/blob/master/src/vm/man/vmadm.1m.md).
 
 ### The problem
 
@@ -109,7 +109,7 @@ or `vmadm get`, all the required data to is queried directly from its source
 (e.g. dataset data comes from ZFS and zone config comes from the `/etc/zones`
 files). Loading this data can take in the range of hundreds of milliseconds, to
 multiple minutes on systems with high load or many VMs or
-[many zfs snapshots](https://github.com/joyent/smartos-live/pull/151). Because
+[many zfs snapshots](https://github.com/TritonDataCenter/smartos-live/pull/151). Because
 the rest of SDC relies on `vmadm` as the ultimate source of truth (which in turn
 relies on the OS itself) any slowdown here is seen all over the system,
 manifesting in long provision times, long VM modification or deletion times,
@@ -305,7 +305,7 @@ Implementation
 
 The `vminfod` project most recently lives in one repo.
 
-1. [smartos-live](https://github.com/joyent/smartos-live) - majority of the
+1. [smartos-live](https://github.com/TritonDataCenter/smartos-live) - majority of the
 code here
 
 ### History
@@ -322,26 +322,26 @@ in the global zone that extracts all of the necessary information from the syste
 to create a comprehensive list of VM objects.  The majority of this code lives
 in `/usr/vm/node_modules/vminfod` in the following files:
 
-- [client.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/client.js):
+- [client.js](https://github.com/TritonDataCenter/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/client.js):
 vminfod client library, this is used by VM.js and `vmadm`
-- [vminfo.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/vminfo.js):
+- [vminfo.js](https://github.com/TritonDataCenter/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/vminfo.js):
 majority of the code for the `vminfod` daemon
-- [zonewatcher.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/zonewatcher.js):
+- [zonewatcher.js](https://github.com/TritonDataCenter/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/zonewatcher.js):
 thin wrapper around `sysevent-stream.js` to watch for Zone sysevents
-- [zpoolwatcher.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/zpoolwatcher.js):
+- [zpoolwatcher.js](https://github.com/TritonDataCenter/smartos-live/blob/vminfod/src/vm/node_modules/vminfod/zpoolwatcher.js):
 thin wrapper around `sysevent-stream.js` to watch for ZFS sysevents
-- [diff.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/diff.js):
+- [diff.js](https://github.com/TritonDataCenter/smartos-live/blob/vminfod/src/vm/node_modules/diff.js):
 a generic JavaScript object diff'ing library, this is used by `vminfod` to
 figure out what events to fire when an object is updated
-- [fswatcher.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/fswatcher.js):
+- [fswatcher.js](https://github.com/TritonDataCenter/smartos-live/blob/vminfod/src/vm/node_modules/fswatcher.js):
 a JavaScript wrapper for `fswatcher.c` to watch files for modifications
-- [queue.js](https://github.com/joyent/smartos-live/blob/vminfod/src/vm/node_modules/queue.js)
+- [queue.js](https://github.com/TritonDataCenter/smartos-live/blob/vminfod/src/vm/node_modules/queue.js)
 a JavaScript queueing and serializing module for running tasks asynchronously
 
 ### VM properties
 
 VM properties loaded by `vminfod` are the same as those gathered from
-[vmload](https://github.com/joyent/smartos-live/tree/master/src/vm/node_modules/vmload)
+[vmload](https://github.com/TritonDataCenter/smartos-live/tree/master/src/vm/node_modules/vmload)
 with the current system.  `vminfod` instead uses a series of filesystem and sysevent
 watchers to call the `vmload` functions when appropriate to update the VM
 objects.
@@ -918,4 +918,4 @@ Miscellaneous notes:
    a backward compatible way. Consumers should be aware of this.
 
 <!-- Repo Links -->
-[heartbeater]: https://github.com/joyent/sdc-heartbeater-agent
+[heartbeater]: https://github.com/TritonDataCenter/sdc-heartbeater-agent

@@ -1,7 +1,7 @@
 ---
 authors: Cody Mello <cody.mello@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+100%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+100%22
 ---
 
 <!--
@@ -275,12 +275,12 @@ probably result in them not being fixed for a while.
 
 <!-- Github repos -->
 [vasync]: https://www.npmjs.com/package/vasync
-[node-eslint-plugin-joyent]: https://github.com/joyent/node-eslint-plugin-joyent/
-[eng.git/tools/jsl.node.conf]: https://github.com/joyent/eng/blob/master/tools/jsl.node.conf
+[node-eslint-plugin-joyent]: https://github.com/TritonDataCenter/node-eslint-plugin-joyent/
+[eng.git/tools/jsl.node.conf]: https://github.com/TritonDataCenter/eng/blob/master/tools/jsl.node.conf
 
 <!-- Github issues -->
 [javascriptlint#18]: https://github.com/davepacheco/javascriptlint/pull/18
-[node-eslint-plugin-joyent#2]: https://github.com/joyent/node-eslint-plugin-joyent/issues/2
+[node-eslint-plugin-joyent#2]: https://github.com/TritonDataCenter/node-eslint-plugin-joyent/issues/2
 [eslint#8320]: https://github.com/eslint/eslint/issues/8320
 
 <!-- External links -->

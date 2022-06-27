@@ -1,7 +1,7 @@
 ---
 authors: Bryan Cantrill <bryan@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+102%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+102%22
 ---
 
 <!--
@@ -18,7 +18,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+102%22
 
 ## Overview
 
-[Requests for Discussion](https://github.com/joyent/rfd) have allowed for
+[Requests for Discussion](https://github.com/TritonDataCenter/rfd) have allowed for
 technical thinking to be formally written down over a wide range of subjects.
 Their broad subject matter is not accidental: RFDs are intentionally informal
 in their subject and structure, with the belief that it is better to write

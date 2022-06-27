@@ -5,10 +5,10 @@ state: draft
 
 # RFD 12 Bedtime for node-smartdc
 
-[node-smartdc](https://github.com/joyent/node-smartdc) is Joyent's current
+[node-smartdc](https://github.com/TritonDataCenter/node-smartdc) is Joyent's current
 and venerable CLI for CloudAPI. It is pretty basic (UX-wise) and we want to
 replace it with the more useful and usable
-[node-triton](https://github.com/joyent/node-triton). That means we need full
+[node-triton](https://github.com/TritonDataCenter/node-triton). That means we need full
 coverage of CloudAPI (along with rosetta stone docs, and general user docs,
 etc.). This RFD is about nailing down the work to get there.
 
@@ -164,7 +164,7 @@ Notes:
   'Account Config'. Cloudapi rev to rename them? Endpoints can otherwise be the
   same.
 - RenameMachine: This is async and don't yet have a '-w,--wait' on it.
-  <https://github.com/joyent/node-triton/issues/146> for that.
+  <https://github.com/TritonDataCenter/node-triton/issues/146> for that.
 - UpdateMachineMetadata: '-a' for "add". *Is* this really about *adding*
   metadata keys? I.e. excluding a key doesn't delete it? But it *does* allow
   overwrite. Note that AddMachineTags does NOT allow overwrite. IOW, slight
@@ -179,7 +179,7 @@ Notes:
 ## RBAC
 
 Herein the plan and discussion for RBAC support. See
-<https://github.com/joyent/node-triton/issues/54> for implementation.
+<https://github.com/TritonDataCenter/node-triton/issues/54> for implementation.
 
     triton rbac ...
 

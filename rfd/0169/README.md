@@ -1,7 +1,7 @@
 ---
 authors: bryan@joyent.com
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+169%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+169%22
 ---
 
 <!--
@@ -41,7 +41,7 @@ causes fixed, increasing the robustness of the system.  So
 the overriding principle here is to keep the dump path as simple as
 possible; in the dump path, where there is a choice between performance and
 simplicity (and therefore, robustness), painful history has taught us to
-<a href="https://github.com/joyent/smartos-live/commit/aff9687fd077bca1157b7481d4a9da81e7dce498">choose
+<a href="https://github.com/TritonDataCenter/smartos-live/commit/aff9687fd077bca1157b7481d4a9da81e7dce498">choose
 the latter</a>.
 
 ## Encryption algorithm

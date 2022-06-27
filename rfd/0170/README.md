@@ -1,7 +1,7 @@
 ---
 authors: rui@joyent.com,rob.johnston@joyent.com
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+170%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+170%22
 ---
 
 <!--
@@ -78,4 +78,4 @@ use with the Rebalancer's selection of a destination storage node.
 
 [MANTA-4091]: https://jira.joyent.us/browse/MANTA-4091
 [MANTA-4821]: https://jira.joyent.us/browse/MANTA-4821
-[RFD 162]: https://github.com/joyent/rfd/blob/master/rfd/0162/README.md
+[RFD 162]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0162/README.md

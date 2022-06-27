@@ -1,7 +1,7 @@
 ---
 authors: Rui Loura <rui@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/98
+discussion: https://github.com/TritonDataCenter/rfd/issues/98
 ---
 
 <!--

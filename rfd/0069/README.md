@@ -36,7 +36,7 @@ name for the system which provides key/value access to the `customer_metadata`
 and (in some special cases) `internal_metadata` of a given Triton instance. It
 also provides access to certain instance properties from the instance's "VM
 object" as available via
-[vmadm](https://github.com/joyent/smartos-live/blob/master/src/vm/man/vmadm.1m.md).
+[vmadm](https://github.com/TritonDataCenter/smartos-live/blob/master/src/vm/man/vmadm.1m.md).
 The list of supported keys and their descriptions are detailed in the [Joyent
 Metadata Data Dictionary](https://eng.joyent.com/mdata/datadict.html).
 
@@ -50,12 +50,12 @@ serial tty device which shows up as a unix domain socket in the zoneroot and a
 serial device inside the KVM's guest OS. The metadata agent connects to the
 socket which is in `<zoneroot>/tmp/vm.ttyb` of the instance and starts a server
 which the guest can connect to via the second serial port using the
-[mdata-client](https://github.com/joyent/mdata-client) tools.
+[mdata-client](https://github.com/TritonDataCenter/mdata-client) tools.
 
 For joyent, joyent-minimal and lx branded zones, the metadata agent creates a
 unix domain socket inside the zone (more details on this process later as that's
 the mechanism that this RFD is proposing to change). A server is started on this
-socket and the [mdata-client](https://github.com/joyent/mdata-client) tools
+socket and the [mdata-client](https://github.com/TritonDataCenter/mdata-client) tools
 access this socket via the path `/.zonecontrol/metadata.sock` for joyent and
 joyent-minimal and `/native/.zonecontrol/metadata.sock` for lx zones.
 
@@ -86,8 +86,8 @@ debugging efforts and has itself been the source of a number of bugs.
 ## Problems specific to Manta's "marlin"
 
 One specific motivation for this RFD is a set of problems that Joyent's
-[Manta](https://github.com/joyent/manta) service has experienced while resetting
-[Marlin](https://github.com/joyent/manta-marlin) zones. Details of marlin will
+[Manta](https://github.com/TritonDataCenter/manta) service has experienced while resetting
+[Marlin](https://github.com/TritonDataCenter/manta-marlin) zones. Details of marlin will
 not be covered here except to the degree they're relevant to metadata which is
 specifically surrounding the "reset" process.
 

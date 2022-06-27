@@ -1,7 +1,7 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/124
+discussion: https://github.com/TritonDataCenter/rfd/issues/124
 ---
 
 <!--
@@ -566,7 +566,7 @@ TODO: Other Ideas:
 
 The AWS metrics are all based around buckets. In Manta there is ongoing work to
 support buckets ([RFD
-155](https://github.com/joyent/rfd/blob/master/rfd/0155/README.md)) but this
+155](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0155/README.md)) but this
 work is happening in parallel and therefore cannot yet rely on buckets.
 
 The proposal above attempts to support non-buckets in a way that will make it
@@ -629,7 +629,7 @@ For each of the request metrics we track, we'll want to keep at least:
 
 #### Existing Muskie Metrics
 
-Muskie [already has some of the data we need exposed via metrics](https://github.com/joyent/manta-muskie/blob/master/docs/internal/design.md#metrics)
+Muskie [already has some of the data we need exposed via metrics](https://github.com/TritonDataCenter/manta-muskie/blob/master/docs/internal/design.md#metrics)
 but:
 
  * need to add the owner's uuid to the labels (req.metadata.creator || req.metadata.owner)?
@@ -1560,23 +1560,23 @@ feels like a large problem for using these for this feature. In order to match
 AWS, we'd need reliable dumps and ideally multiple times per day if we want to
 be able to pull out average stored bytes and object counts per directory/bucket.
 
-[manta-mackerel](https://github.com/joyent/manta-mackerel) does its work using
+[manta-mackerel](https://github.com/TritonDataCenter/manta-mackerel) does its work using
 Manta jobs. When you specify `-j "storage"` you're telling it to run the
 `storage` job. The actual code lives in the files:
 
- * [storage-map.js](https://github.com/joyent/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/storage-map.js)
- * [storage-reduce1.js](https://github.com/joyent/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/storage-reduce1.js)
- * [sum-columns.js](https://github.com/joyent/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/sum-columns.js)
- * [storage-reduce3.js](https://github.com/joyent/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/storage-reduce3.js)
- * [deliver-usage.js](https://github.com/joyent/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/deliver-usage.js)
- * [concat](https://github.com/joyent/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/bin/concat)
+ * [storage-map.js](https://github.com/TritonDataCenter/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/storage-map.js)
+ * [storage-reduce1.js](https://github.com/TritonDataCenter/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/storage-reduce1.js)
+ * [sum-columns.js](https://github.com/TritonDataCenter/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/sum-columns.js)
+ * [storage-reduce3.js](https://github.com/TritonDataCenter/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/storage-reduce3.js)
+ * [deliver-usage.js](https://github.com/TritonDataCenter/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/lib/deliver-usage.js)
+ * [concat](https://github.com/TritonDataCenter/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/bin/concat)
 
 These get called by the [wrapper scripts in
-assets/bin](https://github.com/joyent/manta-mackerel/tree/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/bin)
+assets/bin](https://github.com/TritonDataCenter/manta-mackerel/tree/51192ba4f437d461841949ba71fff2e5e3c376bb/assets/bin)
 via the [job definition in the mackerel
-repo](https://github.com/joyent/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/etc/jobs.json#L3-L89).
+repo](https://github.com/TritonDataCenter/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/etc/jobs.json#L3-L89).
 The overall process [is described in the manta-mackerel
-docs](https://github.com/joyent/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/docs/index.md#storage-1)
+docs](https://github.com/TritonDataCenter/manta-mackerel/blob/51192ba4f437d461841949ba71fff2e5e3c376bb/docs/index.md#storage-1)
 but a summary is:
 
  * storage-map.js is run as the `map` phase of the job to pull out the `_value`

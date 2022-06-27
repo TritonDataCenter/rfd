@@ -1,7 +1,7 @@
 ---
 authors: Kelly McLaughlin <kelly.mclaughlin@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues/103
+discussion: https://github.com/TritonDataCenter/rfd/issues/103
 ---
 
 <!--
@@ -23,8 +23,8 @@ logging, but changing those is outside the scope of this RFD.
 
 The following list of services are the targets of this proposal:
 
-* [buckets-api](https://github.com/joyent/buckets-api)
-* [electric-boray](https://github.com/joyent/electric-boray)
+* [buckets-api](https://github.com/TritonDataCenter/buckets-api)
+* [electric-boray](https://github.com/TritonDataCenter/electric-boray)
 
 Older manta components may be updated at some point, but they are not the focus
 of this work at the current time.
@@ -87,7 +87,7 @@ This should work most of the time, but the reliance on timing could also
 fail. To avoid any issues with timing causing logs to not be uploaded in a
 timely manner it is proposed that we combine the steps necessary to rotate and
 upload the log files into a single script that can be invoked in the `logadm`
-configuration. The intetion is to add this script to the [manta-scripts](https://github.com/joyent/manta-scripts) repository.
+configuration. The intetion is to add this script to the [manta-scripts](https://github.com/TritonDataCenter/manta-scripts) repository.
 The script can do proper logging and error handling and avoid reliance on timing
 to properly complete the task.
 
@@ -156,7 +156,7 @@ Guide must be updated once the move to SMF logging is complete.
 Additionally any service-specific documents that reference the logging needs to be
 updated to reflect the change.
 
-For example, the muskie service has a [design document](https://github.com/joyent/manta-muskie/blob/afd0a3aae1c910298cbf05ef67035216884da92e/docs/internal/design.md) inside the manta-muskie
+For example, the muskie service has a [design document](https://github.com/TritonDataCenter/manta-muskie/blob/afd0a3aae1c910298cbf05ef67035216884da92e/docs/internal/design.md) inside the manta-muskie
 git repository contains a reference to the location of the log file.
 
 ### Service setup and configuration

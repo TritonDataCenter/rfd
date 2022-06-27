@@ -261,7 +261,7 @@ take the docker logger code and use that. This way:
 
 This now lives at:
 
- https://github.com/joyent/sdc-dockerlogger
+ https://github.com/TritonDataCenter/sdc-dockerlogger
 
 and does in fact work to write logs to syslog, fluentd and gelf targets.
 

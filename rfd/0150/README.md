@@ -1,7 +1,7 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>, Richard Kiene <richard.kiene@joyent.com>, Isaac Davis <isaac.davis@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=RFD+150
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=RFD+150
 ---
 
 # RFD 150 Operationalizing Prometheus, Thanos, and Grafana
@@ -112,12 +112,12 @@ TODO update milestones to include Thanos, subject to discussion.
 
 ### M0: plain bash setup scripts
 
-Currently <https://github.com/joyent/triton-prometheus/> provides
+Currently <https://github.com/TritonDataCenter/triton-prometheus/> provides
 "setup-prometheus-prod.sh" and "setup-grafana-prod.sh" scripts that will setup
 "prometheus0" and "grafana0" core(ish) Triton zones (based on LX) configured
 to scrape metrics for all core Triton VMs, including service-specific metrics
 from many of the APIs, and with preset dashboards for some Triton services,
-per <https://github.com/joyent/triton-grafana>.
+per <https://github.com/TritonDataCenter/triton-grafana>.
 
 If desired for expediency, these could be used to setup quick and disposable
 instances in production to explore Triton service metrics.
@@ -172,7 +172,7 @@ CMON using the `triton_sd_configs` option in the Prometheus configuration file -
 the Triton service as the admin account and the Manta service as the poseidon
 account. They thus depend on CMON and CNS being deployed. CMON will supply
 service metrics for core Triton zones (excluding "nat" zones) and Manta zones
-via the existing ["triton_core" cmon-agent collector](https://github.com/joyent/triton-cmon-agent/blob/master/lib/instrumenter/collectors-vm/triton_core.js).
+via the existing ["triton_core" cmon-agent collector](https://github.com/TritonDataCenter/triton-cmon-agent/blob/master/lib/instrumenter/collectors-vm/triton_core.js).
 
 CMON will require Prometheus to supply a certificate signed by the private key
 of the admin or poseidon account for Triton and Manta, respectively. The

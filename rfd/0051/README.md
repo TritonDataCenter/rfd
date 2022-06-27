@@ -8,7 +8,7 @@ state: draft
 ## Introduction
 
 With the adoption of
-[RFD 45](https://github.com/joyent/rfd/blob/master/rfd/0045/README.md)
+[RFD 45](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0045/README.md)
 and the expectation for code review across all of the SDC repositories, it is
 helpful for us to have a general consensus on how a code review should proceed.
 

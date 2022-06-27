@@ -173,7 +173,7 @@ especially adept.
 
 ## Previous work
 
-In [RFD 13](https://github.com/joyent/rfd/blob/master/rfd/0013/README.md), it
+In [RFD 13](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0013/README.md), it
 was proposed to make a number of changes to the Triton-specific parts of the
 existing RBAC scheme, particularly:
 

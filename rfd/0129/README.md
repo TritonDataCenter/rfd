@@ -1,7 +1,7 @@
 ---
 authors: Tim Kordas <tim.kordas@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/89
+discussion: https://github.com/TritonDataCenter/rfd/issues/89
 ---
 
 <!--
@@ -64,7 +64,7 @@ extract metrics from a large manta deployment to observe real
 production system behavior and use it to direct further experiments.
 
 We plan on publishing relevant tools and data to a github repository:
-https://github.com/joyent/manta-perf-testing
+https://github.com/TritonDataCenter/manta-perf-testing
 
 ## Hardware
 

@@ -1,7 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+104%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+104%22
 ---
 
 <!--
@@ -17,7 +17,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+104%22
 # RFD 104 Engineering Guide - General Principles
 
 Joyent Engineering has long maintained an [Engineering Best Practices
-Guide](https://github.com/joyent/eng/blob/master/docs/index.md) to help maintain
+Guide](https://github.com/TritonDataCenter/eng/blob/master/docs/index.md) to help maintain
 consistency and quality in our software.  As it's written today, this guide is a
 little outdated (not matching current practice), a little wordy, and a little
 confusingly organized.  Some sections are duplicated or overlapping, and many of
@@ -115,7 +115,7 @@ We use an internal JIRA instance for tracking issues with the operating system
 (SmartOS), Triton, Manta, and most other components that we build.
 
 Standalone repositories or those with the expectation of heavy community
-involvement (e.g., [node-manta](https://github.com/joyent/node-manta)) may use
+involvement (e.g., [node-manta](https://github.com/TritonDataCenter/node-manta)) may use
 GitHub issues instead.
 
 **If in doubt about where to file an issue for a project, look at the commit
@@ -167,7 +167,7 @@ See language-specific guides for additional guidelines.
 For Triton and Manta repositories, every source file (including documentation
 and Makefiles) **must** have the MPL 2.0 header and a copyright statement. These
 statements should match one of the [prototypes supplied by
-eng.git](https://github.com/joyent/eng/tree/master/prototypes).
+eng.git](https://github.com/TritonDataCenter/eng/tree/master/prototypes).
 
 The contents of the MPL 2.0 header must be:
 
@@ -329,13 +329,13 @@ that's implemented in the file. For example:
 For non-trivial subsystems, consider adding a Big Theory statement that
 describes what the component does, the external interface, and internal details.
 For a great example, check out
-[panic.c](https://github.com/joyent/illumos-joyent/blob/403b9b2581c0e421d5fd8a74975df28290e276e5/usr/src/uts/common/os/panic.c#L30-L122)
+[panic.c](https://github.com/TritonDataCenter/illumos-joyent/blob/403b9b2581c0e421d5fd8a74975df28290e276e5/usr/src/uts/common/os/panic.c#L30-L122)
 in the kernel.
 
 #### Design documents
 
 Design documents should generally either be
-[RFDs](https://github.com/joyent/rfd) or Markdown files inside the repository
+[RFDs](https://github.com/TritonDataCenter/rfd) or Markdown files inside the repository
 under "docs".
 
 
@@ -488,7 +488,7 @@ this means:
 * Programs should expose metrics about activity, including counters for
   operations, error cases, and the like.  Kang supports a limited form of this,
   but components are moving towards exposing the Prometheus API (e.g., via the
-  [node-artedi](https://github.com/joyent/node-artedi) module.
+  [node-artedi](https://github.com/TritonDataCenter/node-artedi) module.
 * It should be possible to understand excessive memory usage, particular in the
   case of memory leaks, even if they're not fatal.  Again, core files are a good
   vehicle for this.

@@ -245,7 +245,7 @@ two are well related.
   well for us.
 
   *However*, [current image manifest validation does not allow '+' in the
-  version](https://github.com/joyent/node-imgmanifest/blob/master/lib/imgmanifest.js#L32).
+  version](https://github.com/TritonDataCenter/node-imgmanifest/blob/master/lib/imgmanifest.js#L32).
   That is very unfortunate. I intend to change this so '+' is allow in the
   future. However, this is in 'imgadm' in the platform, so until either (a) the
   Triton supported `min_platform` is one that includes the imgadm allowing '+',
@@ -356,7 +356,7 @@ manta-marlin-64            14.4.2
 ```
 
 Most components use the
-[MG](https://github.com/joyent/mountain-gorilla/blob/master/docs/index.md#versioning)
+[MG](https://github.com/TritonDataCenter/mountain-gorilla/blob/master/docs/index.md#versioning)
 dictated buildstamp **$branch-$timestamp-g$gitsha** format:
 
 ```

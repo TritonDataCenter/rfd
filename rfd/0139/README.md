@@ -1,7 +1,7 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+139%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+139%22
 ---
 
 # RFD 139 Node.js test frameworks and Triton guidelines
@@ -305,8 +305,8 @@ is worth it. Use either `tap` or `@smaller/tap` accordingly.
 This section provides some guidelines/suggestions for `tap` CLI usage and
 node-tap library usage in tap files. (For guidelines on setting up setup testing
 in general in Joyent Triton repos, I defer to the hopefully coming
-<https://github.com/joyent/node-triton-package-boilerplate> for Node.js packages
-and <https://github.com/joyent/triton-service-boilerplate> repos.)
+<https://github.com/TritonDataCenter/node-triton-package-boilerplate> for Node.js packages
+and <https://github.com/TritonDataCenter/triton-service-boilerplate> repos.)
 
 ### Do **not** use the `TAP` envvar in your Makefile
 
@@ -377,7 +377,7 @@ test('affinity (triton create -a RULE ...)', testOpts, function (suite) {
 
 can allow one to set a skip or a test timeout in the one place, `testOpts` in
 the example above, if a test config says to skip this set of tests. For example,
-[this](https://github.com/joyent/node-triton/blob/master/test/integration/cli-affinity.test.js)
+[this](https://github.com/TritonDataCenter/node-triton/blob/master/test/integration/cli-affinity.test.js)
 is from the node-triton integration test suite:
 
 
@@ -431,7 +431,7 @@ This is a quick list of points against nodeunit from memory:
 - From Cody: Nodeunit does have a problem with when it decides to render the
   deepEqual results though. If the object changes after deepEqual is called,
   then it prints out the modified version.
-    https://github.com/joyent/smartos-live/blob/master/src/fw/tools/nodeunit.patch
+    https://github.com/TritonDataCenter/smartos-live/blob/master/src/fw/tools/nodeunit.patch
 - nodeunit asserts don't allow a final string argument to print
   context/description of the assert. That forces test output to be near useless
   for debuggin

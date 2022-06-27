@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+141%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+141%22
 ---
 
 <!--
@@ -36,28 +36,28 @@ section is present in this draft to facilitate discussion of later sections.
 
 The PI is built from components found in the following repositories:
 
-- [smartos-live](https://github.com/joyent/smartos-live/) is the topmost
+- [smartos-live](https://github.com/TritonDataCenter/smartos-live/) is the topmost
   repository containing the makefiles and utilities required to the PI.  It also
   delivers programs like `vmadm`, `vmadmd`, and the metadata server which
   provide stable interfaces used by cloud operators, Triton software, and the
   various containers and virtual machines that will run on a compute node.
-- [illumos-joyent](https://github.com/joyent/illumos-joyent/) is the SmartOS
+- [illumos-joyent](https://github.com/TritonDataCenter/illumos-joyent/) is the SmartOS
   fork of [illumos-gate](https://github.com/illumos/illumos-gate).  Former
   Solaris developers will recognize this as the OS/Net or ON consolidation.
-- [illumos-extra](https://github.com/joyent/illumos-extra/) contains various
+- [illumos-extra](https://github.com/TritonDataCenter/illumos-extra/) contains various
   open source components that are built using the tarball plus patches approach.
   Many of these components are built twice.  A bootstrap (strap) build is used
   to build a native version of a subset of the components so that they may be
   used for a cross-compile of illumos-joyent.  After illumos-joyent is built,
   a build of a different, yet overlapping, subset of illumos-extra is performed
   to build components that will be delivered in the PI.
-- [ur-agent](https://github.com/joyent/sdc-ur-agent/) provides the Ur agent,
+- [ur-agent](https://github.com/TritonDataCenter/sdc-ur-agent/) provides the Ur agent,
   which is used to connect a compute node to the head node
-- [kvm](https://github.com/joyent/illumos-kvm/) provides an illumos port of
+- [kvm](https://github.com/TritonDataCenter/illumos-kvm/) provides an illumos port of
   [KVM](https://www.linux-kvm.org/page/Main_Page).
-- [kvm-cmd](https://github.com/joyent/illumos-kvm-cmd) provides an illumos port
+- [kvm-cmd](https://github.com/TritonDataCenter/illumos-kvm-cmd) provides an illumos port
   of [QEMU](https://www.qemu.org/), which is used with KVM.
-- [mdata-client](https://github.com/joyent/mdata-client) provides tools used for
+- [mdata-client](https://github.com/TritonDataCenter/mdata-client) provides tools used for
   metadata retrieval and manipulation within guests.
 
 Every PI full PI build builds everything above.  This means that to perform a
@@ -137,7 +137,7 @@ gcc is likely to be an incompatible change.
 Each pkgsrc tree will be rooted at `/opt/smartos-cbe/<version>`.  The
 smartos-live `configure` script will ensure that the appropriate CBE tools
 version is present and up to date.  Each pkgsrc tree will correspond to a branch
-in [joyent/pkgsrc](https://github.com/joyent/pkgsrc/).  Each of the packages in
+in [joyent/pkgsrc](https://github.com/TritonDataCenter/pkgsrc/).  Each of the packages in
 the pkgsrc repo for a particular CBE will be built on the oldest PI supported.
 
 The smartos-live build process will set PATH

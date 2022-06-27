@@ -126,7 +126,7 @@ END: reused attributes
 Joyent is embracing of Go's contribution to distributed, enterprise,
 production-grade computing and celebrates the software engineering ethos held by
 many in the Go community because their beliefs are aligned with our
-https://github.com/joyent/rfd/tree/master/rfd/0104[General Principles].
+https://github.com/TritonDataCenter/rfd/tree/master/rfd/0104[General Principles].
 
 In this document we will define and articulate Joyent's evolving set of
 best-practices with regards to how to Go.
@@ -142,8 +142,8 @@ this is unintentional.  If an issue warrants additional discussion, please
 
 [[contributing]]To provide feedback, bug fixes, request clarification, or
 initiate a discussion, please open an
-https://github.com/joyent/rfd/issues/new[RFD issue] and reference
-https://github.com/joyent/rfd/tree/master/rfd/0106[`RFD 106`] along with the
+https://github.com/TritonDataCenter/rfd/issues/new[RFD issue] and reference
+https://github.com/TritonDataCenter/rfd/tree/master/rfd/0106[`RFD 106`] along with the
 necessary specifics.  For issues where there is a debate or discussion, this
 document will include a link back to the individual issues where a particular
 item was addressed or debated.
@@ -1160,7 +1160,7 @@ Naming is one of the hard things in software. The package semantics of Go help
 with this dilemma and minimize the blast-radius of poorly chosen names.  With
 tools like `{guru-1}` commonly in use, the practice of encoding extraneous type
 and package information into variable names is non-idiomatic and frowned upon.
-https://github.com/joyent/triton-go/pull/19#issuecomment-308860337[The burden
+https://github.com/TritonDataCenter/triton-go/pull/19#issuecomment-308860337[The burden
 for good naming and exported functions falls on library authors].
 
 [[repository-names]]
@@ -1185,9 +1185,9 @@ Repositories where the distinct possibility of a name conflict may arise should
 be prefixed with the primary language in order to create a unique namespace.
 Examples of this at Joyent include:
 
-* https://github.com/joyent/node-manta[`node-manta`]
-* https://github.com/joyent/python-manta[`python-manta`]
-* https://github.com/joyent/java-manta[`java-manta`]
+* https://github.com/TritonDataCenter/node-manta[`node-manta`]
+* https://github.com/TritonDataCenter/python-manta[`python-manta`]
+* https://github.com/TritonDataCenter/java-manta[`java-manta`]
 
 In a different example where a library also contains a binary, such as
 https://github.com/hashicorp/go-sockaddr[`go-sockaddr`].

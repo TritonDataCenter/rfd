@@ -1,7 +1,7 @@
 ---
 authors: Kelly McLaughlin <kelly.mclaughlin@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues/117
+discussion: https://github.com/TritonDataCenter/rfd/issues/117
 ---
 
 <!--
@@ -37,8 +37,8 @@ system.
 ## Metadata resizing today
 
 The current metadata resizing process is referred to as metadata resharding and is described
-as [RFD 103](https://github.com/joyent/rfd/blob/master/rfd/0103/README.md). The
-software created based on this RFD is housed in the [`manta-reshard`](https://github.com/joyent/manta-reshard)
+as [RFD 103](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0103/README.md). The
+software created based on this RFD is housed in the [`manta-reshard`](https://github.com/TritonDataCenter/manta-reshard)
 repository.
 
 ## Goals
@@ -147,7 +147,7 @@ storage and while it doe not have transaction support it does allow for atomic
 updates through its `WriteBatch` interface that should be suitable.
 
 Another aspect of this proposal involves determining how to rebalance the vnodes
-when pnodes are added or removed from the system. The [`node-fash`](https://github.com/joyent/node-fash) library has a
+when pnodes are added or removed from the system. The [`node-fash`](https://github.com/TritonDataCenter/node-fash) library has a
 `remapVnode` function, but the function requires a set of vnodes to assign to a
 new pnode be given as input. It lacks a balancing function to redistribute
 vnodes when the set of pnodes changes. This function would need to be

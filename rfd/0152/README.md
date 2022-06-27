@@ -1,7 +1,7 @@
 ---
 authors: Rui Loura <rui@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+0152%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+0152%22
 ---
 
 <!--
@@ -208,7 +208,7 @@ same type.
 * [RFD 43]
 * [RFD 117]
 
-[RFD 117]: https://github.com/joyent/rfd/blob/master/rfd/0117/README.md
+[RFD 117]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0117/README.md
 [RFC 3046]: https://tools.ietf.org/html/rfc3046
-[RFD 43]: https://github.com/joyent/rfd/blob/master/rfd/0043/README.md
-[sdc-scripts]: https://github.com/joyent/sdc-scripts
+[RFD 43]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0043/README.md
+[sdc-scripts]: https://github.com/TritonDataCenter/sdc-scripts

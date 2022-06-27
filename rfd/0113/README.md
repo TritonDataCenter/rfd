@@ -1,7 +1,7 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>, Todd Whiteman
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+113%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+113%22
 ---
 
 # RFD 113 x-account image transfer and x-DC image copying
@@ -62,7 +62,7 @@ shouldn't *have* to manage separate image identifiers for the image in each DC.
 
 ## Related discussions
 
-- [The discussion on GitHub](https://github.com/joyent/rfd/issues/71)
+- [The discussion on GitHub](https://github.com/TritonDataCenter/rfd/issues/71)
 - [Some internal discussion](https://devhub.joyent.com/jira/browse/SWSUP-903)
 - [RFD-113 labelled issues](https://devhub.joyent.com/jira/issues/?jql=labels%3DRFD-113).
 

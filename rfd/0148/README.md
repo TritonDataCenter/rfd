@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: abandoned
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+148%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+148%22
 ---
 
 <!--

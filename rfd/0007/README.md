@@ -57,7 +57,7 @@ Today, SmartOS ships a basic link layer discover protocol (LLDP) daemon
 openlldp. The `lldpneighbors` command is useful today for being consumed
 by an operator; however, it is not something which we can easily
 consume from other programs. As part of what's been discussed in [RFD
-6](https://github.com/joyent/rfd/tree/master/rfd/0006) we'd like to
+6](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0006) we'd like to
 start consuming this information in a more programmatic way and allowing
 it to help us get a sense of the data center or use it to better
 understand the impact of failures.
@@ -228,7 +228,7 @@ This project will deliver the following components:
 
 This work is expected to build upon part of the information that we
 discussed in [RFD
-6](https://github.com/joyent/rfd/tree/master/rfd/0006). It will be used
+6](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0006). It will be used
 as the foundation of the Ethernet RAS related sections and the
 combination of the datalink state and the LLDP information will be used
 to augment and form the base of a series of new datalink entries in the

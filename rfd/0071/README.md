@@ -343,12 +343,12 @@ The JVM implementation of client-side encryption relies on the encryption algori
 
 In the Oracle JDK, there is limited default support for strong encryption algorithms. To enable stronger encryption, you must download and install the [Java Cryptography Extension (JCE) Unlimited Strength Jurisdiction Policy Files](http://www.oracle.com/technetwork/java/javase/downloads/jce8-download-2133166.html). This isn't an issue with the OpenJDK. Also, strong encryption algorithms are supported using the [JCE API](https://en.wikipedia.org/wiki/Java_Cryptography_Extension) by [The Legion of the Bouncy Castle](http://www.bouncycastle.org/java.html) project.
 
-We will also support algorithms supplied by Bouncy Castle and the Java runtime via the [JCE API](http://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html). The Java Manta SDK currently bundles Bouncy Castle dependencies because they are used when doing [authentication via HTTP signed requests](https://github.com/joyent/java-http-signature).
+We will also support algorithms supplied by Bouncy Castle and the Java runtime via the [JCE API](http://docs.oracle.com/javase/8/docs/technotes/guides/security/crypto/CryptoSpec.html). The Java Manta SDK currently bundles Bouncy Castle dependencies because they are used when doing [authentication via HTTP signed requests](https://github.com/TritonDataCenter/java-http-signature).
 
 ### Configuration
 
 All settings related to client-side encryption will be defined as part of the Java Manta SDK's
-[ConfigContext](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/config/ConfigContext.java)
+[ConfigContext](https://github.com/TritonDataCenter/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/config/ConfigContext.java)
 interface. This allows for the Java Manta SDK to be easily integrated into other libraries'
 configuration systems. The following configuration settings will be added to the Java Manta SDK:
 
@@ -398,9 +398,9 @@ configuration systems. The following configuration settings will be added to the
 ### Headers
 
 The additional headers specifying in [HTTP Headers Used with Client-side Encryption](HTTP-Headers-Used-with-Client-side-Encryption) would be added as properties of the
-[`com.joyent.manta.http.MantaHttpHeaders`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/MantaHttpHeaders.java) class.
+[`com.joyent.manta.http.MantaHttpHeaders`](https://github.com/TritonDataCenter/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/MantaHttpHeaders.java) class.
 These properties would be set without intervention from the implementer of the SDK in
-the specific implementation of [`com.joyent.manta.http.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) by the uploading logic.
+the specific implementation of [`com.joyent.manta.http.HttpHelper`](https://github.com/TritonDataCenter/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) by the uploading logic.
 
 ### Thread-safety
 
@@ -420,15 +420,15 @@ Authenticating ciphertext and decrypting random sections of ciphertext can't be 
 
 When reading randomly from a remote object in ciphertext, the byte range of the plaintext object does not match the byte range of the cipher text object. Any implementation would need to provide a cipher-aware translation of byte-ranges. Moreover, some ciphers do not support random reads at all. In those cases, we want to throw an exception to inform the implementer that the operation is not possible.
 
-In the S3 SDK, range requests are supported by finding the cipher's lower and upper block bounds and adjusting the range accordingly. An example of this operation can be found in `com.amazonaws.services.s3.internal.crypto.S3CryptoModuleBase`. We will likewise need to do a similar operation. Furthermore, we will need to rewrite the range header when it is specified in [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) and client-side encryption is enabled.  
+In the S3 SDK, range requests are supported by finding the cipher's lower and upper block bounds and adjusting the range accordingly. An example of this operation can be found in `com.amazonaws.services.s3.internal.crypto.S3CryptoModuleBase`. We will likewise need to do a similar operation. Furthermore, we will need to rewrite the range header when it is specified in [`com.joyent.manta.client.HttpHelper`](https://github.com/TritonDataCenter/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) and client-side encryption is enabled.  
 
-#### Random Operation Support with [`MantaSeekableByteChannel`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java)
+#### Random Operation Support with [`MantaSeekableByteChannel`](https://github.com/TritonDataCenter/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java)
 
-We will need to refactor [`MantaSeekableByteChannel`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java) so that it uses the methods provided in [`com.joyent.manta.client.HttpHelper`](https://github.com/joyent/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) to do ranged `GET` operations so that we do not have to duplicate our ciphertext range translation code.  
+We will need to refactor [`MantaSeekableByteChannel`](https://github.com/TritonDataCenter/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/client/MantaSeekableByteChannel.java) so that it uses the methods provided in [`com.joyent.manta.client.HttpHelper`](https://github.com/TritonDataCenter/java-manta/blob/master/java-manta-client/src/main/java/com/joyent/manta/http/HttpHelper.java) to do ranged `GET` operations so that we do not have to duplicate our ciphertext range translation code.  
 
 ### Multipart Support
 
-See [RFD 65](https://github.com/joyent/rfd/blob/master/rfd/0065/README.md) for general information on multipart upload (MPU).
+See [RFD 65](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0065/README.md) for general information on multipart upload (MPU).
 
 The Manta MPU allows parts to be uploaded concurrently and in any order.  To avoid significant cryptographic complexity
 (requiring a block cipher mode of operation that can safely be used in parallel), the SDK constraints multipart uploads

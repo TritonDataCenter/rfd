@@ -10,14 +10,14 @@ Another option that's been discussed is to embed the Consul agent inside Contain
 
 **Related GitHub issues:**
 
-- [Drop support for non-Consul discovery backends](https://github.com/joyent/containerpilot/issues/251)
-- [Consul agent discovery backend](https://github.com/joyent/containerpilot/issues/246)
-- [Support for Zookeeper (stalled)](https://github.com/joyent/containerpilot/issues/142)
+- [Drop support for non-Consul discovery backends](https://github.com/TritonDataCenter/containerpilot/issues/251)
+- [Consul agent discovery backend](https://github.com/TritonDataCenter/containerpilot/issues/246)
+- [Support for Zookeeper (stalled)](https://github.com/TritonDataCenter/containerpilot/issues/142)
 
 Example of Consul-specific feature support:
 
-- [Node deregistration from Consul](https://github.com/joyent/containerpilot/issues/218)
-- [Support Consul EnableTagOverride](https://github.com/joyent/containerpilot/issues/243)
-- [Support Consul TaggedAddresses](https://github.com/joyent/containerpilot/issues/226)
-- [Consul client certs](https://github.com/joyent/containerpilot/issues/169)
-- [Consul availability timeout](https://github.com/joyent/containerpilot/issues/164)
+- [Node deregistration from Consul](https://github.com/TritonDataCenter/containerpilot/issues/218)
+- [Support Consul EnableTagOverride](https://github.com/TritonDataCenter/containerpilot/issues/243)
+- [Support Consul TaggedAddresses](https://github.com/TritonDataCenter/containerpilot/issues/226)
+- [Consul client certs](https://github.com/TritonDataCenter/containerpilot/issues/169)
+- [Consul availability timeout](https://github.com/TritonDataCenter/containerpilot/issues/164)

@@ -69,7 +69,7 @@ There are several points where a scheduling decision is made:
 
 The details of the algorithm are explained in the [Big Theory Statement for the
 Marlin
-agent](https://github.com/joyent/manta-marlin/blob/3203685ae50c9f8941e9c05c721f5c36b50e602e/agent/lib/agent/agent.js#L27-L183).
+agent](https://github.com/TritonDataCenter/manta-marlin/blob/3203685ae50c9f8941e9c05c721f5c36b50e602e/agent/lib/agent/agent.js#L27-L183).
 That explanation describes the competing design goals (maximizing resource
 utilization while maintaining fairness), how our approach achieves that, and
 several examples worked out to show how it works.

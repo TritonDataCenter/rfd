@@ -1,7 +1,7 @@
 ---
 authors: Kelly McLaughlin <kelly.mclaughlin@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues/130
+discussion: https://github.com/TritonDataCenter/rfd/issues/130
 ---
 
 <!--
@@ -31,7 +31,7 @@ used by a standard manta deployment.
 The manta buckets system is designed to be deployed in an existing manta
 system. The manta `webapi` tier has been built to serve both standard manta
 directory-based requests as well as manta buckets requests. From a
-[SAPI](https://github.com/joyent/sdc-sapi) point-of-view the buckets system
+[SAPI](https://github.com/TritonDataCenter/sdc-sapi) point-of-view the buckets system
 appears to fit under the umbrella of a `manta` application rather than being a
 completely separate application. Operating under this assumption there are a few necessary
 changes in order to support the addition of the buckets system into the manta
@@ -39,7 +39,7 @@ application.
 
 The first required change is to add a new shard type to manta. Shards are
 currently managed with the
-[`manta-shardadm`](https://github.com/joyent/sdc-manta/blob/master/cmd/manta-shardadm.js)
+[`manta-shardadm`](https://github.com/TritonDataCenter/sdc-manta/blob/master/cmd/manta-shardadm.js)
 script. Currently, there are three shard types: `index`, `storage`, and `job` (a.k.a
 `marlin`). The `index` shard type houses the object metadata for manta's
 directory-based storage option. It is not possible to reuse the `index` shard
@@ -51,7 +51,7 @@ is to use a new `buckets` shard type for the manta buckets metadata and change t
 `manta-shardadm` script to be aware of this new type.
 
 The next required change is to be able to generate a mapping of virtual nodes to
-the `buckets` shards. This is done for production manta deployments using the [`manta-create-topology.sh`](https://github.com/joyent/sdc-manta/blob/master/bin/manta-create-topology.sh)
+the `buckets` shards. This is done for production manta deployments using the [`manta-create-topology.sh`](https://github.com/TritonDataCenter/sdc-manta/blob/master/bin/manta-create-topology.sh)
 script. The proposal is to create a new program that provides the functionality
 of `manta-create-toplogy.sh` and also provides the ability generate the mapping
 of virtual nodes needed for `buckets` shards. The `manta-create-toplogy.sh`
@@ -89,7 +89,7 @@ the SAPI metadata for manta with the image UUID under the
 `BUCKETS_HASH_RING_IMAGE` key as well as a `BUCKETS_HASH_RING_DIGEST` key
 representing the SHA256 digest of the ring file. This information will be used
 by the manta buckets component
-[`electric-boray`](https://github.com/joyent/electric-boray).
+[`electric-boray`](https://github.com/TritonDataCenter/electric-boray).
 
 The composition of the image for a buckets deployment will be
 different from the images created for the normal manta system. Whereas

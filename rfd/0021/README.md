@@ -222,5 +222,5 @@ _latest_ version of the schema repo(s) at all times).
 <!-- Link -->
 
 [connected component]: https://en.wikipedia.org/wiki/Connected_component_(graph_theory)
-[RFD 58]: https://github.com/joyent/rfd/tree/master/rfd/0058
+[RFD 58]: https://github.com/TritonDataCenter/rfd/tree/master/rfd/0058
 [NAPI-327]: https://smartos.org/bugview/NAPI-327

@@ -42,11 +42,11 @@ affected.
 ## Background
 
 The jobs described above are all driven hourly or daily by the "ops" zone, which
-is built from the [manta-mola](https://github.com/joyent/manta-mola) repository,
+is built from the [manta-mola](https://github.com/TritonDataCenter/manta-mola) repository,
 with metering implemented by the
-[manta-mackerel](https://github.com/joyent/manta-mackerel) by reference.  The
+[manta-mackerel](https://github.com/TritonDataCenter/manta-mackerel) by reference.  The
 various jobs and their relationships are described in the [documentation in that
-repository](https://github.com/joyent/manta-mola/blob/6f3b46703d9c906ee76ae884755acd377c815b1f/docs/index.md).
+repository](https://github.com/TritonDataCenter/manta-mola/blob/6f3b46703d9c906ee76ae884755acd377c815b1f/docs/index.md).
 
 The jobs are much more interdependent than it might seem.  The daily process
 broadly works like this:
@@ -74,7 +74,7 @@ All of these jobs are driven by cron, and each job knows nothing about its
 logical dependencies.  As a result, correctness depends critically on all jobs
 completing on time.  The discrete jobs and their schedules are described in the
 ["System
-Crons"](https://github.com/joyent/manta-mola/blob/6f3b46703d9c906ee76ae884755acd377c815b1f/docs/system-crons.md)
+Crons"](https://github.com/TritonDataCenter/manta-mola/blob/6f3b46703d9c906ee76ae884755acd377c815b1f/docs/system-crons.md)
 documentation.
 
 It's probably worth reading through the Mola documentation to better understand
@@ -128,7 +128,7 @@ Solutions to these problems can be grouped into a few broad categories:
 
 * Items (1) (the brittle execution pipeline) and (4) (recent job observability)
   can be addressed using a system like
-  [Chronos](https://github.com/joyent/chronos), possibly coupled with triggers,
+  [Chronos](https://github.com/TritonDataCenter/chronos), possibly coupled with triggers,
   to manage job execution and dependencies.
 * Items (2) (error handling) and (3) (error reporting) likely require
   considerable re-work of the bodies of the metering jobs.  Each task should

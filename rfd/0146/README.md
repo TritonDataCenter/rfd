@@ -144,7 +144,7 @@ as attributes.
 
 As DCOPS, CloudOps, or a customer, I want the ability to take rack BOMs and
 design a full datacenter deployment. This is discussed in [RFD
-140](https://github.com/joyent/rfd/blob/master/rfd/0140/README.md). All the
+140](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0140/README.md). All the
 core data the designer does would again be stored back in the inventory system
 as a BOM.
 

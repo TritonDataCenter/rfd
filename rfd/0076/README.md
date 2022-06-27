@@ -133,7 +133,7 @@ No need for copying this data across AZs. Upload it once to master SAPI, all AZs
 can make use of it (thanks to SAPI's "master" mode). Fabrics also make use of
 SAPI to store the datacenter's fabric configuration [See here for more
 information {want doc link, not code}]
-(https://github.com/joyent/sdcadm/blob/master/lib/post-setup/fabrics.js#L667).
+(https://github.com/TritonDataCenter/sdcadm/blob/master/lib/post-setup/fabrics.js#L667).
 
 NB: The network definitions for other AZs are only required for making sure the
 routes to these other AZs exist in the local NAPI's network definitions. This
@@ -237,7 +237,7 @@ warnings/errors if need be.
 
 One piece of crossover is with `manta-init`, where that command will add the
 poseidon user to the manta, mantanat and admin networks' owner_uuids (see [here]
-(https://github.com/joyent/sdc-manta/blob/master/cmd/manta-init.js#L493-L505)).
+(https://github.com/TritonDataCenter/sdc-manta/blob/master/cmd/manta-init.js#L493-L505)).
 Should/can this be removed from `manta-init` and rolled into the proposed
 `manta-adm` networking process? Is this out of scope?
 

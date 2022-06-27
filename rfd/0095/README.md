@@ -1,7 +1,7 @@
 ---
 authors: Joshua M. Clulow <jmc@joyent.com>, John Levon <john.levon@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues/50
+discussion: https://github.com/TritonDataCenter/rfd/issues/50
 ---
 
 <!--
@@ -133,7 +133,7 @@ rather than in aggregate, so the alarm seems sufficient as is.
 Apart from a mild increase in implementation complexity, there should be no
 significant degradation in the operability of the system.  As discussed, the fault management
 properties of SMF are unaffected, and HAProxy logging remains much the same with
-the new version and new configuration (including staying compatible with [haplog](https://github.com/joyent/node-haproxy-log). `haproxystat`, used in Manta alarming, remains functional as
+the new version and new configuration (including staying compatible with [haplog](https://github.com/TritonDataCenter/node-haproxy-log). `haproxystat`, used in Manta alarming, remains functional as
 the statistics domain socket is served by the current child process. This does *not*
 provide visibility into old, active, workers however.
 

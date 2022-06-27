@@ -641,7 +641,7 @@ in this document, with some small changes.
  * The removal hysteresis function has not yet been implemented.
  * The `triton.cns.services` tag has had its syntax enhanced to support
    additional metadata, such as a port number for generating SRV records.
-   See [the relevant documentation](https://github.com/joyent/triton-cns/blob/master/docs/metadata.md) for details.
+   See [the relevant documentation](https://github.com/TritonDataCenter/triton-cns/blob/master/docs/metadata.md) for details.
  * Support for generating SRV records was added.
  * Some support for custom PTR record generation was added, but has not been
    fully documented and deployed as yet.

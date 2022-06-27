@@ -176,7 +176,7 @@ using a multiarch-*@15.4.1 image.  See sdc-imgapi.git for an example
 The following binary modules use v8plus: zonename, lockfd, zutil, zsock,
 illumos_contract, zsock-async. v8plus doesn't work with node v4 yet.
 jclulow mentioned in chat that he could look at making v8plus work with v4.
-A start at that work: https://github.com/joyent/v8plus/commits/jclulow
+A start at that work: https://github.com/TritonDataCenter/v8plus/commits/jclulow
 It was agreed that updating v8plus is worth at least looking at first:
 <https://smartos.org/bugview/TOOLS-1586>.
 
@@ -271,7 +271,7 @@ update notes:
 
 1. Restify v4 introduced a breaking change in the function signature for custom
    `formatters`. For example, if you pass custom formatters to `restify.createServer`
-   like this code in VMAPI (https://github.com/joyent/sdc-vmapi/blob/af77e72ae7b26f51d4ac3b5cb9484cd8d04b27dc/lib/vmapi.js#L179):
+   like this code in VMAPI (https://github.com/TritonDataCenter/sdc-vmapi/blob/af77e72ae7b26f51d4ac3b5cb9484cd8d04b27dc/lib/vmapi.js#L179):
 
     ```
     this.server = restify.createServer({
@@ -284,7 +284,7 @@ update notes:
 
     then you will need to change your formatter function to take and call
     a callback. For example, this VMAPI change did that:
-    <https://github.com/joyent/sdc-vmapi/commit/3f90d04>
+    <https://github.com/TritonDataCenter/sdc-vmapi/commit/3f90d04>
 
    See this restify issue for details:
    <https://github.com/restify/node-restify/pull/851#issuecomment-251541881>
@@ -372,7 +372,7 @@ Move to the "1.2.0" release if you can.
 ### wf-client
 
 Move to "wf-client@0.2.0" or later.
-https://github.com/joyent/sdc-wf-client
+https://github.com/TritonDataCenter/sdc-wf-client
 
 
 ## How to update a zone to node v4
@@ -417,7 +417,7 @@ https://github.com/joyent/sdc-wf-client
 
 3. Update your Node modules deps and code per the "Node modules" section notes
    above. For a complete example see the change to IMGAPI for this:
-   <https://github.com/joyent/sdc-imgapi/commit/7d0b4b7dedc7c36ba1eec23394d009567b6ef35a>
+   <https://github.com/TritonDataCenter/sdc-imgapi/commit/7d0b4b7dedc7c36ba1eec23394d009567b6ef35a>
 
 4. To test your changes, one way is to use Jenkins' `TRY_BRANCH` builds:
 

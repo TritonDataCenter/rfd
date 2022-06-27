@@ -127,10 +127,10 @@ interface.
 
 ## Repositories affected
 
-* Create https://github.com/joyent/moray-test-suite with all tests from "moray"
+* Create https://github.com/TritonDataCenter/moray-test-suite with all tests from "moray"
   and "node-moray", plus documentation, tools, and Makefile targets to run the
   tests.
-* Update https://github.com/joyent/moray: remove existing test suite and update
+* Update https://github.com/TritonDataCenter/moray: remove existing test suite and update
   README.md and possibly Makefile to point to moray-test-suite repo.
-* Update https://github.com/joyent/node-moray: remove existing tests (which are
+* Update https://github.com/TritonDataCenter/node-moray: remove existing tests (which are
   mostly ad-hoc) and update README.md to point to moray-test-suite repo.

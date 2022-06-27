@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: publish
-discussion: 'https://github.com/joyent/rfd/issues?q=%22RFD+154%22'
+discussion: 'https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+154%22'
 ---
 <!--
     This Source Code Form is subject to the terms of the Mozilla Public
@@ -104,7 +104,7 @@ This new functionality will be added with CloudAPI version 9.4.3
 >
 > **disks**
 >
-> New in API version 9.4.3. The use of `disks` is only supported if the package has [flexible disk](https://github.com/joyent/sdc-papi/blob/master/docs/index.md#package-flexible_disk). The `disks` input parameter allows the user to specify a list of disks to provision for the new machine. The first disk is the boot disk. A maximum of 8 disks per VM are supported.
+> New in API version 9.4.3. The use of `disks` is only supported if the package has [flexible disk](https://github.com/TritonDataCenter/sdc-papi/blob/master/docs/index.md#package-flexible_disk). The `disks` input parameter allows the user to specify a list of disks to provision for the new machine. The first disk is the boot disk. A maximum of 8 disks per VM are supported.
 >
 > ```json
 > {

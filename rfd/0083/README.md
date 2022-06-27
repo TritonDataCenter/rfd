@@ -47,16 +47,16 @@ SAPI app metadata var. Various core services use that value:
 
 - The 'imgapi' service uses the `http_proxy` for all access to remote IMGAPI
   clients.
-  <https://github.com/joyent/sdc-imgapi/blob/f6c069cfb438086206ef34206e322e8dab18973a/sapi_manifests/imgapi/template#L62>
+  <https://github.com/TritonDataCenter/sdc-imgapi/blob/f6c069cfb438086206ef34206e322e8dab18973a/sapi_manifests/imgapi/template#L62>
 - The 'sdc' service writes a ["/opt/smartdc/sdc/etc/http_proxy.env"
-  file](https://github.com/joyent/sdc-sdc/blob/86137f5743c5ade5a10d09faaf0ebc21c332572d/sapi_manifests/http_proxy_env/template)
+  file](https://github.com/TritonDataCenter/sdc-sdc/blob/86137f5743c5ade5a10d09faaf0ebc21c332572d/sapi_manifests/http_proxy_env/template)
   with the `http_proxy` value. That .env file is `source`d by the
   `updates-imgadm` and
-  [`joyent-imgadm`](https://github.com/joyent/sdc-sdc/blob/86137f5743c5ade5a10d09faaf0ebc21c332572d/bin/joyent-imgadm#L14)
+  [`joyent-imgadm`](https://github.com/TritonDataCenter/sdc-sdc/blob/86137f5743c5ade5a10d09faaf0ebc21c332572d/bin/joyent-imgadm#L14)
   scripts that live in that zone.
 - The 'adminui' service uses the `http_proxy` for access to images.joyent.com
   to show available images.
-  <https://github.com/joyent/sdc-adminui/blob/a3cd71de3bed3c7870048301968222d6c05108d4/sapi_manifests/adminui/template#L35>
+  <https://github.com/TritonDataCenter/sdc-adminui/blob/a3cd71de3bed3c7870048301968222d6c05108d4/sapi_manifests/adminui/template#L35>
 
 ## Testing HTTP proxy support
 

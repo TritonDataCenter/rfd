@@ -334,7 +334,7 @@ Broadly, we'd break this up into:
   supported, but expensive.  Users would configure queries they'd like to be
   answer quickly, and dashboards and reports that are made up of these queries.
   The historical part of EVAPI is embodied today as a command-line tool called
-  [Dragnet](http://github.com/joyent/dragnet).
+  [Dragnet](http://github.com/TritonDataCenter/dragnet).
 * Integration into a portal and alarming system.
 
 There are prototype end user docs and design docs for both IAPI and EVAPI:
@@ -350,7 +350,7 @@ At this time, it's not expected that we'll necessarily tackle much of this
 project, but in order to alleviate the critical monitoring problems we have
 today, we'd suggest implementing pieces in this order:
 
-* [Dragnet](http://github.com/joyent/dragnet), a system for historical analysis
+* [Dragnet](http://github.com/TritonDataCenter/dragnet), a system for historical analysis
   of data stored in Manta.  This is largely functional today, but with very
   limited support for data formats and queries.
 * A Node.js library for reporting metrics that are automatically uploaded to

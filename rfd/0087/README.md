@@ -438,7 +438,7 @@ not possible since we're not tracking all state changes.
 
 As what we'd like for the `docker run` use of `/events` is a feed of the
 changes to a given container or set of containers, the Changefeed mechanism
-described in [RFD 5](https://github.com/joyent/rfd/blob/master/rfd/0005/README.md) and
+described in [RFD 5](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0005/README.md) and
 implemented in VMAPI seems like a logical place to start. However there are a
 few things to consider here.
 
@@ -483,7 +483,7 @@ unless some major changes are made.
 
 One potential way to implement this would be to rely on `vminfod` ala
 [OS-2647](https://smartos.org/bugview/OS-2647) / [RFD
-39](https://github.com/joyent/rfd/blob/master/rfd/0039/README.md) when that is
+39](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0039/README.md) when that is
 complete. Since vminfod will be the consistent view of VMs that Triton sees.
 Until vminfod sees a change, `vmadm get` and the Triton APIs will also not have
 seen that change. Therefore if we have vminfod write out the log of changes,
@@ -619,4 +619,4 @@ But there will probably be more options that come out in discussion.
 ## See also
 
  * [DOCKER-996](https://smartos.org/bugview/DOCKER-996) (ticket for the 1.13.0 breakage)
- * [RFD 30](https://github.com/joyent/rfd/blob/master/rfd/0030/README.md) (handling lastexited in case of CN crash)
+ * [RFD 30](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0030/README.md) (handling lastexited in case of CN crash)

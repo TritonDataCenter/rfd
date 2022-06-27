@@ -1,7 +1,7 @@
 ---
 authors: John Levon <john.levon@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues/143
+discussion: https://github.com/TritonDataCenter/rfd/issues/143
 ---
 
 <!--
@@ -102,7 +102,7 @@ branch, or use the handy "update branch" button in the `github` PR directly.
 Never rebase a PR: this will necessitate a force-push to your PR branch, which means all
 the previous changes get deleted, alongside all review comments.
 
-There is a CLI utility [joyent/prr](https://github.com/joyent/prr) that can help automate
+There is a CLI utility [joyent/prr](https://github.com/TritonDataCenter/prr) that can help automate
 the final squash and merge, collecting the necessary ticket IDs and attributions from the
 PR and building a suitable commit message.
 

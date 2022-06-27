@@ -64,7 +64,7 @@ present, and in development environments with all three kinds of resolvers
 present.
 
 To address this, cueball supports a [Dynamic Resolver
-mode](https://github.com/joyent/node-cueball#dynamic-resolver-mode) (also called
+mode](https://github.com/TritonDataCenter/node-cueball#dynamic-resolver-mode) (also called
 bootstrap resolver mode).  In this mode, cueball is configured with a DNS domain
 for the nameservers themselves (e.g., "binder.emy-10.joyent.us" for the Triton
 nameservers).  It queries _all_ configured resolvers for this domain and then
@@ -441,7 +441,7 @@ following the instructions provided by this work.
 
 ## See also
 
-* [RFD 33 Moray client v2](https://github.com/joyent/rfd/blob/master/rfd/0033/README.md)
+* [RFD 33 Moray client v2](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0033/README.md)
 * [MORAY-380 translateLegacyOptions not setting "service"](https://devhub.joyent.com/jira/browse/MORAY-380)
 
 

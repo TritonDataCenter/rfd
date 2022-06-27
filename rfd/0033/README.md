@@ -125,7 +125,7 @@ below), and we expect to make two incompatibles change to the Moray client
 
 The starting points for these components are:
 
-* [node-moray](https://github.com/joyent/node-moray): moray client library and
+* [node-moray](https://github.com/TritonDataCenter/node-moray): moray client library and
   command-line client tools
 * [node-fast](https://github.com/mcavage/node-fast): fast client and server
   library (used by node-moray; consumers do not use these directly).
@@ -337,7 +337,7 @@ should:
 * Update the project's package.json to depend on node-moray via the npm
   registry rather than a git URL.
 * Review the [breaking
-  changes](https://github.com/joyent/node-moray/blob/master/CHANGES.md) and deal
+  changes](https://github.com/TritonDataCenter/node-moray/blob/master/CHANGES.md) and deal
   with them appropriately in the project.
 * Consider updating the way the Moray client is constructed to take advantage
   of the better control afforded by the new constructor options.

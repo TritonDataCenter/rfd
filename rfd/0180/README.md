@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+180%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+180%22
 ---
 
 <!--
@@ -67,7 +67,7 @@ that are important to this document are:
 - *Image* has multiple meanings, depending on the context.  In Triton, an image
   is a machine image that may be cloned to create a machine.  It is typically
   obtained through
-  [IMGAPI](https://github.com/joyent/sdc-imgapi/blob/master/docs/index.md).
+  [IMGAPI](https://github.com/TritonDataCenter/sdc-imgapi/blob/master/docs/index.md).
   `machinectl` expands on this definition by considering the on-disk bits used
   by a specific machine to be that machine's image.  In contrast, Triton would
   normally consider a specific machine's image to be the storage that was cloned
@@ -86,9 +86,9 @@ dictates.  Partially for this reason, the implementation will be leverage
 for most aspects of container management.  Notable exceptions include:
 
 - Images will be managed using
-  [node-imgadm](https://github.com/joyent/node-imgadm).
+  [node-imgadm](https://github.com/TritonDataCenter/node-imgadm).
 - Instance installation will be performed by
-  [node-vmadm](https://github.com/joyent/node-vmadm).
+  [node-vmadm](https://github.com/TritonDataCenter/node-vmadm).
 
 As much as possible, native tools will be usable to observe and control
 machines.
@@ -238,11 +238,11 @@ exported.
 
 Higher level functions are composed of primitive functions.  For example:
 
-- [`create()`](https://github.com/joyent/node-vmadm/#createopts-callback)
+- [`create()`](https://github.com/TritonDataCenter/node-vmadm/#createopts-callback)
   invokes `configure()` and `install()`.
-- [`delete()`](https://github.com/joyent/node-vmadm/#deleteopts-callback)
+- [`delete()`](https://github.com/TritonDataCenter/node-vmadm/#deleteopts-callback)
   may invoke `stop()`, `uninstall()`, and `unconfigure()`.
-- [`reboot()`](https://github.com/joyent/node-vmadm/#rebootopts-callback)
+- [`reboot()`](https://github.com/TritonDataCenter/node-vmadm/#rebootopts-callback)
   invokes `stop()` and `start()`.
 
 Unlike with SmartOS, `vmadm.install()` will be called on each boot by a systemd
@@ -254,7 +254,7 @@ name found on SmartOS.
 
 #### VMAPI mapping
 
-With a few exceptions, the [VMAPI properties](https://github.com/joyent/sdc-vmapi/blob/master/lib/common/vm-common.js#L115)
+With a few exceptions, the [VMAPI properties](https://github.com/TritonDataCenter/sdc-vmapi/blob/master/lib/common/vm-common.js#L115)
 will be stored in `/var/triton/vmadm/machines/<uuid>.json`.  The exceptions are:
 
 - `customer_metadata` is stored in `/<pool>/<uuid>/config/metadata.json` in the
@@ -276,7 +276,7 @@ will be stored in `/var/triton/vmadm/machines/<uuid>.json`.  The exceptions are:
 - `zone_state` does not exist.
 - `zonepath` is `/<zfs_filesystem>`.
 
-Various [VMAPI properties](https://github.com/joyent/sdc-vmapi/blob/master/lib/common/vm-common.js#L115)
+Various [VMAPI properties](https://github.com/TritonDataCenter/sdc-vmapi/blob/master/lib/common/vm-common.js#L115)
 map to run time state, as described below:
 
 | Property            | Maps To                                               |
@@ -314,19 +314,19 @@ options:
 
 #### CN Agent
 
-[CN Agent](https://github.com/joyent/sdc-cn-agent) has backends for SmartOS and
+[CN Agent](https://github.com/TritonDataCenter/sdc-cn-agent) has backends for SmartOS and
 dummy (mockcloud).  The backends make use of `imgadm`,
-[node-vmadm](https://github.com/joyent/node-vmadm), and other modules.  This
+[node-vmadm](https://github.com/TritonDataCenter/node-vmadm), and other modules.  This
 document is primarily concerned with `node-vmadm`.
 
 `node-vmadm` also has per-platform backends.  A backend will be added that
-implements the [API](https://github.com/joyent/node-vmadm#api) by interacting
+implements the [API](https://github.com/TritonDataCenter/node-vmadm#api) by interacting
 with dbus as much as possible.  There are parts of `create`, `delete`, and
 update that will require manipulation of datasets and files.
 
 ##### create(opts, callback)
 
-The [create](https://github.com/joyent/node-vmadm#createopts-callback) function
+The [create](https://github.com/TritonDataCenter/node-vmadm#createopts-callback) function
 will:
 
 - Create `/var/triton/vmadm/machines/<uuid>` link.
@@ -344,18 +344,18 @@ completed.
 
 ##### delete(opts, callback)
 
-The [delete](https://github.com/joyent/node-vmadm#deleteopts-callback) function
+The [delete](https://github.com/TritonDataCenter/node-vmadm#deleteopts-callback) function
 will undo the operations performed by `create()`, in the reverse order from
 create.
 
 ##### kill(opts, callback)
 
-The [kill](https://github.com/joyent/node-vmadm#killopts-callback) function will
+The [kill](https://github.com/TritonDataCenter/node-vmadm#killopts-callback) function will
 send the specified signal to the init process.
 
 ##### reboot(opts, callback)
 
-The [reboot](https://github.com/joyent/node-vmadm#rebootopts-callback) function
+The [reboot](https://github.com/TritonDataCenter/node-vmadm#rebootopts-callback) function
 will reboot the instance, similar to `machinectl reboot`.
 
 ##### reprovision(opts, callback)
@@ -364,7 +364,7 @@ Not implemented initially.
 
 ##### start(opts, callback)
 
-The [start](https://github.com/joyent/node-vmadm#startopts-callback) function
+The [start](https://github.com/TritonDataCenter/node-vmadm#startopts-callback) function
 will start `systemd-nspawn@<uuid>.service`.
 
 XXX It remains to be determined if that is sufficient: there may be additional
@@ -374,7 +374,7 @@ XXX How does this related to `machinectl enable`?
 
 ##### stop(opts, callback)
 
-The [stop](https://github.com/joyent/node-vmadm#stopopts-callback) function
+The [stop](https://github.com/TritonDataCenter/node-vmadm#stopopts-callback) function
 will perform the equivalent of `machinectl stop` (without force) or `machinectl
 terminate` (with force).
 
@@ -382,24 +382,24 @@ XXX How does this related to `machinectl disable`?
 
 ##### sysrq(opts, callback)
 
-The [sysrq](https://github.com/joyent/node-vmadm#sysrqopts-callback) function
+The [sysrq](https://github.com/TritonDataCenter/node-vmadm#sysrqopts-callback) function
 will be a no-op.
 
 ##### update(opts, callback)
 
-The [update](https://github.com/joyent/node-vmadm#updateopts-callback) function
+The [update](https://github.com/TritonDataCenter/node-vmadm#updateopts-callback) function
 will be make the modifications to the machine in a manner using the same
 mechanisms used during `create` and perhaps `delete`.
 
 ##### load(opts, callback)
 
-The [load](https://github.com/joyent/node-vmadm#loadopts-callback) function
+The [load](https://github.com/TritonDataCenter/node-vmadm#loadopts-callback) function
 will load the machine's properties from the authoritative sources described
 above in [VMAPI mapping](#vmapi-mapping).
 
 ##### lookup(search, opts, callback)
 
-The [lookup](https://github.com/joyent/node-vmadm#lookupsearch-opts-callback)
+The [lookup](https://github.com/TritonDataCenter/node-vmadm#lookupsearch-opts-callback)
 function will perform a `load` on every VM, removing those that do not match the
 filter specified by `search`.  If `opts.fields` is specified, fields not listed
 are elided.
@@ -430,7 +430,7 @@ It is anticipated that this will be built on watching for relevant dbus events.
 #### VM Agent
 
 The responsibilities and theory of operation of VM agent are described in
-[`vm-agent.js`](https://github.com/joyent/sdc-vm-agent/blob/master/lib/vm-agent.js#L11-L113).
+[`vm-agent.js`](https://github.com/TritonDataCenter/sdc-vm-agent/blob/master/lib/vm-agent.js#L11-L113).
 On the Linux port will follow the same general operation, but the implementation
 will leverage dbus and inotify to get updates about machine and file system
 state changes.  It is likely that `node-vmadm` will be useful.

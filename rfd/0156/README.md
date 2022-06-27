@@ -1,7 +1,7 @@
 ---
 authors: Rob Johnston <rob.johnston@joyent.com>, John Levon <john.levon@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q=RFD+156
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=RFD+156
 ---
 
 <!--
@@ -256,7 +256,7 @@ These sections will be modified to include screenshots and documentation
 specific to Loader.  At this point, the following docs have been identified as
 needing updates:
 
-https://github.com/joyent/triton/blob/master/docs/developer-guide/coal-setup.md
+https://github.com/TritonDataCenter/triton/blob/master/docs/developer-guide/coal-setup.md
 
 https://docs.joyent.com/private-cloud/install/headnode-installation
 
@@ -301,7 +301,7 @@ Unfortunately, there is no standardized version location we can use in a disk im
 However, we can formulate our own. We first look in the MBR for its magic value `0xaa55`.
 Then, if we see grub's version `3.2` at offset `0x3e`, we have a grub-based key.
 Otherwise, if we see `2` at offset `0xfa`, that corresponds to the [version slot placed
-inside the loader MBR](https://github.com/joyent/illumos-joyent/blob/master/usr/src/boot/sys/boot/i386/pmbr/pmbr.s#L164).
+inside the loader MBR](https://github.com/TritonDataCenter/illumos-joyent/blob/master/usr/src/boot/sys/boot/i386/pmbr/pmbr.s#L164).
 If we ever need another major revision, we can bump that slot.
 
 ### Versioning and updating the key contents
@@ -471,6 +471,6 @@ Verify RICHMOND-16 systems
 
 [4] https://en.wikipedia.org/wiki/GUID_Partition_Table
 
-[5] https://github.com/joyent/rfd/tree/master/rfd/0077
+[5] https://github.com/TritonDataCenter/rfd/tree/master/rfd/0077
 
 [6] https://github.com/tsoome/illumos-gate/tree/loader

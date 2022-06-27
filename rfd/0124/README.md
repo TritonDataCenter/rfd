@@ -1,7 +1,7 @@
 ---
 authors: Jordan Hendricks <jhendricks@joyent.com>, David Pacheco <dap@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q="RFD+124"
+discussion: https://github.com/TritonDataCenter/rfd/issues?q="RFD+124"
 ---
 
 <!--
@@ -22,7 +22,7 @@ production systems, including user-facing errors, high request latency, and
 unavailability of various components of the system.  Typically engineering is
 only recruited to help after the symptoms of the incident have reached a certain
 threshold of severity: [RFD
-101](https://github.com/joyent/rfd/blob/master/rfd/0101/README.md) discusses
+101](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0101/README.md) discusses
 models for escalating incident response into the engineering team.
 
 Effectively assisting with debugging an ongoing incident is a skill orthogonal
@@ -34,7 +34,7 @@ further in their careers but new to Joyent, there are be other challenges: a
 different set of tools, system topologies, set of documentation, and social
 norms surrounding incident response.  To help Manta engineers grow more
 comfortable participating in real incidents, [RFD
-111](https://github.com/joyent/rfd/blob/master/rfd/0111/README.md) proposed
+111](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0111/README.md) proposed
 simulating incidents in a controlled non-production environment, where engineers
 wishing to practice incident response could develop their incident response
 skills in a low-risk environment.
@@ -47,7 +47,7 @@ change from the current process, which is the introduction of the role of
 guidelines for incident response.  This is intended as an accompanying document
 for RFD 111 that can be used for training engineers in incident response.
 Eventually, it may also be a useful addition to the Joyent engineering guide
-([RFD 104](https://github.com/joyent/rfd/blob/master/rfd/0104/README.md)) to
+([RFD 104](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0104/README.md)) to
 codify engineering's best practices for incident response.
 
 The changes proposed here are aimed primarily at how the engineering team

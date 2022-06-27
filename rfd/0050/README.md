@@ -79,7 +79,7 @@ the use of one or multiple of the following filters:
 - event time window
 - instance ID
 - subuser ID or login
-- project ID or name (when the [Project](https://github.com/joyent/rfd/tree/master/rfd/0013) feature is available)
+- project ID or name (when the [Project](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0013) feature is available)
 - machine tag key/value pair
 - event/action type
 
@@ -96,7 +96,7 @@ attribute values modified. These details are often useful for debugging and anal
 
 (**Note:** The ability to capture and return the error message for a failed
 request ties into a long-standing request for improved error handling discussed
-in [RFD 22](https://github.com/joyent/rfd/blob/master/rfd/0022/README.md). This
+in [RFD 22](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0022/README.md). This
 work is known to be non-trivial and may have to be handled as a separate project.
 As a start, we can extract the error messages that are readily available at the
 moment.)
@@ -128,7 +128,7 @@ become prohibitive for scalability.
 ### Event tracking for other cloud objects
 
 Ideally, all other user-owned objects such as networks, images and volumes
-(introduced in [RFD 26](https://github.com/joyent/rfd/tree/master/rfd/0026))
+(introduced in [RFD 26](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0026))
 should have similar change tracking for audit purposes. These requirements can
 be considered as part of the future scope based on user demand. 
 
@@ -139,9 +139,9 @@ be considered as part of the future scope based on user demand.
 
 This will depend on whether we want to stay with the current `MachineAudit`
 CloudAPI consumption pattern or allow this to be served in a way similar to
-[container metrics](https://github.com/joyent/rfd/tree/master/rfd/0027).
+[container metrics](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0027).
 There is also the desire of having an event management framework, as part of
-[Mariposa](https://github.com/joyent/rfd/tree/master/rfd/0036) where event
+[Mariposa](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0036) where event
 callback may become the new paradigm for end-user API interactions.
 
 The current bias is to keep the API as a new revision of `MachineAudit` for

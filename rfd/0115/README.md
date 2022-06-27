@@ -1,7 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+115%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+115%22
 ---
 
 <!--
@@ -204,7 +204,7 @@ performance, which was caused by a number of issues:
   threads, replay operations on downstream peers are serviced by a single
   thread.  This is a deep issue with the PostgreSQL replication design.  We
   worked around this (fairly successfully) by creating our own prefetcher,
-  called [pg\_prefaulter](https://github.com/joyent/pg_prefaulter).
+  called [pg\_prefaulter](https://github.com/TritonDataCenter/pg_prefaulter).
 - Databases were initially deployed with a 16K recordsize (see
   [MANATEE-330](https://smartos.org/bugview/MANATEE-330)).  Because PostgreSQL
   writes 8K blocks, a large number of PostgreSQL write operations required a
@@ -290,7 +290,7 @@ caused by [MORAY-422](https://smartos.org/bugview/MORAY-422) (now fixed).
 
 **Resharding.**  Resharding operations currently require individual shards to be
 offline for writes while hash rings are updated in all electric-moray instances.
-(See [RFD 103](https://github.com/joyent/rfd/blob/master/rfd/0103/README.md).)
+(See [RFD 103](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0103/README.md).)
 The severity of this is not very clear because immediate plans only involve
 resharding regions that are already out of capacity, and future reshard
 operations are not yet clear.

@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues/82
+discussion: https://github.com/TritonDataCenter/rfd/issues/82
 ---
 
 <!--
@@ -14,7 +14,7 @@ discussion: https://github.com/joyent/rfd/issues/82
     Copyright (c) 2018, Joyent, Inc.
 -->
 
-**Please post comments in [Issue 82](https://github.com/joyent/rfd/issues/82).**
+**Please post comments in [Issue 82](https://github.com/TritonDataCenter/rfd/issues/82).**
 
 # RFD 126 Zone Configuration Conversions
 

@@ -281,7 +281,7 @@ feel for the hierarchy and rules for these things:
 - Projects have membership: an *account and a role*. The role defines the
   access level.
 - Roles are basically the same as now: A role has a set of polices, which have a
-  list of [aperture](https://github.com/joyent/node-aperture) rules like "CAN
+  list of [aperture](https://github.com/TritonDataCenter/node-aperture) rules like "CAN
   CreateInstance" to define what actions (called "RBAC Actions") can be
   performed.
 
@@ -443,7 +443,7 @@ role has a set of *policies*. A policy looks like this:
     },
 
 `CAN createmachine` is a **rule** (defined by the
-[aperture](https://github.com/joyent/node-aperture) policy language).
+[aperture](https://github.com/TritonDataCenter/node-aperture) policy language).
 `createmachine` is an example of an RBAC **action**. In RBAC v1 the RBAC actions
 (mostly) map one-to-one to CloudAPI and Muskie endpoint names.
 
@@ -720,5 +720,5 @@ currently because the docker request payload to vmapi is missing the
 ```
 
 The caller info for docker operations are returned as "operator" in
-[MachineAudit](https://github.com/joyent/sdc-cloudapi/blob/master/lib/audit.js#L74-L81).
+[MachineAudit](https://github.com/TritonDataCenter/sdc-cloudapi/blob/master/lib/audit.js#L74-L81).
 This needs to be fixed as part of the RBAC feature.
