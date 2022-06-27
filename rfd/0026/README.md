@@ -2858,7 +2858,7 @@ VMs. This means that non-docker VMs that are set to depend on shared volumes
 when they're created mount those volumes automatically on startup. Turning on
 this feature flag will depend on all servers running a platform at a version
 `>= 20170925T211846Z` (see
-[PUBAPI-1420](https://devhub.joyent.com/jira/browse/PUBAPI-1420)). If this
+[PUBAPI-1420](https://mnx.atlassian.net/browse/PUBAPI-1420)). If this
 requirement is not met, then a warning message is outputted, but the feature
 flag is still enabled.
 

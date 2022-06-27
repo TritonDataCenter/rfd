@@ -331,7 +331,7 @@ update notes:
     restifyPlugins.queryParser({allowDots: false, plainObjects: false})
     ```
 
-   See <https://devhub.joyent.com/jira/browse/ZAPI-744> for gory details.
+   See <https://mnx.atlassian.net/browse/ZAPI-744> for gory details.
 
 
 ### restify-clients

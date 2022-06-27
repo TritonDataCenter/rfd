@@ -173,7 +173,7 @@ Notes:
   This is to attempt to align the differing semantics of this and
   `UpdateMachineMetadata`.
 - NICS: See sdc-nics from node-smartdc for some inspiration.
-  <https://devhub.joyent.com/jira/browse/PUBAPI-1292> for this.
+  <https://mnx.atlassian.net/browse/PUBAPI-1292> for this.
 
 
 ## RBAC

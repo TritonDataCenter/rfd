@@ -220,7 +220,7 @@ latter. There are a couple surprises with using pre-release versions that I see:
   in version fields, and because this is part of `imgadm` in the platform we'd
   need to get it in imgadm *and* get the Triton-supported `min_platform` past
   that version. Wanh wanh. This kills using build metadata for now.
-  FWIW, <https://devhub.joyent.com/jira/browse/OS-5798> will be allowing '+'.
+  FWIW, <https://mnx.atlassian.net/browse/OS-5798> will be allowing '+'.
 
 
 ### build time or published_at

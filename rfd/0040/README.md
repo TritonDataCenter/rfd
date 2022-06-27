@@ -107,7 +107,7 @@ IMGAPI instance updates/deployments.
 
 Issues:
 
-- [IMGAPI-567](https://devhub.joyent.com/jira/browse/IMGAPI-567)
+- [IMGAPI-567](https://mnx.atlassian.net/browse/IMGAPI-567)
 
 The milestones below are nice and I'd still like to do them. However, priorities
 call, so I need to get images.jo and updates.jo on a modern base and updateable
@@ -131,7 +131,7 @@ only backed up to durable storage (Manta) hourly.
 
 Issues:
 
-- [IMGAPI-571](https://devhub.joyent.com/jira/browse/IMGAPI-571): re-do
+- [IMGAPI-571](https://mnx.atlassian.net/browse/IMGAPI-571): re-do
   images.jo/updates.jo deployment to be able use stock 'imgapi' images
 
 

@@ -112,7 +112,7 @@ scheduled on a per-rack basis.
   They should allow user to specify locality hints in provisioning requests.
 - **Exposing locality information in List/GetMachine CloudAPI:**
   It is a nice-to-have feature and has been brought up by one customer ([PUBAPI-1175]
-  (https://devhub.joyent.com/jira/browse/PUBAPI-1175)).
+  (https://mnx.atlassian.net/browse/PUBAPI-1175)).
   Server UUID is already exposed in CloudAPI. Rack identifiers, which may contain
   physical location information and allow end users to map/size our DCs, are best hidden
   from the end users. We may consider providing some kind of locality index instead.

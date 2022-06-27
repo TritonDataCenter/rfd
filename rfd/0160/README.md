@@ -1688,7 +1688,7 @@ Assuming we have something that can expose the required metrics (e.g. muskie)
 when they're needed, CMON will be able to poll and collect them as it would from
 other zones. This could happen via the metricPorts functionality and
 cmon-agent. Support for this is being added for Manta with
-[TRITON-1114](https://jira.joyent.us/browse/TRITON-1114).
+[TRITON-1114](https://mnx.atlassian.net/browse/TRITON-1114).
 
 The data then would be collected in CMON for each DC. We'd need something else
 (a new API, or perhaps something that ties into the LTS data) that can grab the

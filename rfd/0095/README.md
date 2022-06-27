@@ -44,7 +44,7 @@ Muppet connects to ZooKeeper, reacting to changes in the set of registered
 Muskie instances.  Whenever the membership of the set of Muskies changes,
 Muppet immediately writes an updated HAProxy configuration and restarts the
 HAProxy service. Only recently was Muppet changed to provide some hysteresis
-and throttling in this process via [MANTA-4337](https://jira.joyent.us/browse/MANTA-4337).
+and throttling in this process via [MANTA-4337](https://mnx.atlassian.net/browse/MANTA-4337).
 For example, a simple reboot of a Muskie should no longer cause a restart of HAProxy.
 
 This restart terminates all in-flight connections.  There is also a brief

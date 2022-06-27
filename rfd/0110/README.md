@@ -25,7 +25,7 @@ handle. When manta load is too high, it is desirable to respond to
 clients in a way that will make them back-off until outstanding requests
 are handled.
 
-A motivating [example](https://devhub.joyent.com/jira/browse/MANTA-3283)
+A motivating [example](https://mnx.atlassian.net/browse/MANTA-3283)
 for throttling in manta is the observation that
 during Manta stress tests, the asynchronous peer in a Manatee cluster can
 fall arbitrarily far behind the primary because the application rate of
@@ -35,7 +35,7 @@ asynchronous peer to throttle incoming requests, but also for the sending
 peer to recognize this and either back off or queue outgoing requests to
 reduce the send rate.
 
-Another motivating [example](https://devhub.joyent.com/jira/browse/MANTA-3261)
+Another motivating [example](https://mnx.atlassian.net/browse/MANTA-3261)
 is the availability lapse that occurs when
 users publish URLs to Manta objects on social media with using a CDN.
 In this situation a muskie throttle probably makes the most sense.
@@ -186,9 +186,9 @@ be beneficial to throttle only PUTs and maintain a high GET throughput as oppose
 to blocking GETs because some client is generating a lot of PUTs. An even more
 fine-grained throttle might differentiate between different types of operations
 (putobject vs putdirectory) and could even use tools such as the one outlined in
-[MANTA-3426](https://devhub.joyent.com/jira/browse/MANTA-3426) to throttle requests
+[MANTA-3426](https://mnx.atlassian.net/browse/MANTA-3426) to throttle requests
 that put a lot of stress an a particular metadata shard, which seemed to be
-a contributing factor to [SCI-293](https://devhub.joyent.com/jira/browse/SCI-293).
+a contributing factor to [SCI-293](https://mnx.atlassian.net/browse/SCI-293).
 
 As mentioned in the discussion of the restify throttle plugin, it could also be
 useful to throttle requests on a per-IP basis. In general, it does not make

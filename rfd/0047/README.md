@@ -171,7 +171,7 @@ Deletion requirements:
   so that an accidentally delete image is recoverable up to some period after
   it is removed from access via the updates API.
 
-Ticket: <https://devhub.joyent.com/jira/browse/IMGAPI-572>
+Ticket: <https://mnx.atlassian.net/browse/IMGAPI-572>
 
 
 
@@ -319,9 +319,9 @@ TODO: dig into size usage for these
 Some relevant tickets in the course of discussing and implementing some
 Engineering cleanup of Manta usage:
 
-- [MANTA-2961](https://devhub.joyent.com/jira/browse/MANTA-2961) "poseidon" using too much Manta space
-- [TOOLS-1508](https://devhub.joyent.com/jira/browse/TOOLS-1508) prep_dataset_in_jpc.sh using wrong "mantapath" dir for built image export
-- [RELENG-703](https://devhub.joyent.com/jira/browse/RELENG-703) clean out headnode builds in Manta per RFD 47
-- [RELENG-704](https://devhub.joyent.com/jira/browse/RELENG-704) clean out non-headnode builds in Manta per RFD 47
-- [TOOLS-1523](https://devhub.joyent.com/jira/browse/TOOLS-1523) switch nightly-1 to staging Manta, and get nightly's IMGAPI to use Manta
-- [CMON-9](https://devhub.joyent.com/jira/browse/CMON-9) add cmon builds to purge-mg-builds process
+- [MANTA-2961](https://mnx.atlassian.net/browse/MANTA-2961) "poseidon" using too much Manta space
+- [TOOLS-1508](https://mnx.atlassian.net/browse/TOOLS-1508) prep_dataset_in_jpc.sh using wrong "mantapath" dir for built image export
+- [RELENG-703](https://mnx.atlassian.net/browse/RELENG-703) clean out headnode builds in Manta per RFD 47
+- [RELENG-704](https://mnx.atlassian.net/browse/RELENG-704) clean out non-headnode builds in Manta per RFD 47
+- [TOOLS-1523](https://mnx.atlassian.net/browse/TOOLS-1523) switch nightly-1 to staging Manta, and get nightly's IMGAPI to use Manta
+- [CMON-9](https://mnx.atlassian.net/browse/CMON-9) add cmon builds to purge-mg-builds process

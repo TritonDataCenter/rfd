@@ -101,7 +101,7 @@ comparing the values of `_txn_snap` for two rows in a bucket. The actual
 implementation doesn't allow such deductions because the Moray query that is
 used assign values in this column makes no garuantees about the order in which
 two parallel transactions are started or the order in which they were committed.
-[MORAY-13](https://jira.joyent.us/browse/MORAY-13) has some discussion related
+[MORAY-13](https://mnx.atlassian.net/browse/MORAY-13) has some discussion related
 to this feature that suggests it doesn't support its intended use-case in Marlin.
 
 #### Triggers
@@ -227,23 +227,23 @@ defines the schemas for all jobs-tier buckets.
 
 There have been a number of circumstances in which we have found it necessary to
 modify data schemata in our production environment:
-* [MANTA-3399](https://jira.joyent.us/browse/MANTA-3399) describes the
+* [MANTA-3399](https://mnx.atlassian.net/browse/MANTA-3399) describes the
 performance impact of low-cardinality indexes such as
 `manta_directory_counts_entries_idx`. Low-cardinality `BTREE` indexes become
 flat, resulting in little search-time improvement and significant update cost.
 Under such circumstances, it would have been beneficial to have a tested system
 for dropping indexes.
-* [MANTA-3401](https://jira.joyent.us/browse/MANTA-3401) addresses the potential
+* [MANTA-3401](https://mnx.atlassian.net/browse/MANTA-3401) addresses the potential
 for the `manta_dirname_idx` index to become a low-cardinality index due to the
 lack of MPU GC. The ticket also references
-[MANTA-3169](https://jira.joyent.us/browse/MANTA-3169), which documents a
+[MANTA-3169](https://mnx.atlassian.net/browse/MANTA-3169), which documents a
 pathological directory listing performance due to query plans that scan
 `manta_dirname_idx` and then sort the resulting set based on another field. We
 might address such cases by creating composite indexes that support sorted
 traversal.
-* [MORAY-425](https://jira.joyent.us/browse/MORAY-425) proposes support for
+* [MORAY-425](https://mnx.atlassian.net/browse/MORAY-425) proposes support for
 composite indexes to adress the use-case described in the previous ticket.
-* [MORAY-424](https://jira.joyent.us/browse/MORAY-424) proposes support for
+* [MORAY-424](https://mnx.atlassian.net/browse/MORAY-424) proposes support for
 disabling Moray indexes to adress the use-case described in MANTA-3399.
 It is clear from these examples that we can expect to change our database schema
 over time.

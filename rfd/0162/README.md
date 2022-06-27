@@ -107,7 +107,7 @@ status of the storage nodes in the region.  The final approach here will depend
 on the outcome of RFD 170, but as a last resort this thread can query the
 `manta_storage` bucket on the shard 1 moray directly.  There are some risks
 associated with this approach, specifically
-[MANTA-4091](https://jira.joyent.us/browse/MANTA-4091)
+[MANTA-4091](https://mnx.atlassian.net/browse/MANTA-4091)
 
 #### Assignment Manager Thread
 * Get a snapshot from the picker thread

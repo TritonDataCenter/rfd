@@ -25,7 +25,7 @@ enormously in severity and scope.  They may be:
 - major issues affecting the data path or jobs path
 - minor issues that don't affect the data path yet, but which might induce
   errors if left unresolved (e.g.,
-  [QA-196](https://devhub.joyent.com/jira/browse/QA-196)).
+  [QA-196](https://mnx.atlassian.net/browse/QA-196)).
 - transient blips that may have affected a small number of requests, but are
   not ongoing
 - issues with non-customer-visible background activities (e.g., GC failures)

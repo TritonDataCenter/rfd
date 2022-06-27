@@ -442,7 +442,7 @@ following the instructions provided by this work.
 ## See also
 
 * [RFD 33 Moray client v2](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0033/README.md)
-* [MORAY-380 translateLegacyOptions not setting "service"](https://devhub.joyent.com/jira/browse/MORAY-380)
+* [MORAY-380 translateLegacyOptions not setting "service"](https://mnx.atlassian.net/browse/MORAY-380)
 
 
 ## Appendix: Moray client constructor arguments

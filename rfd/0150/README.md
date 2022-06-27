@@ -65,7 +65,7 @@ M3:
 
 See "Status" subsections under each component for more detail.
 
-See [RFD-150 labelled issues](https://jira.joyent.us/issues/?jql=labels%20%3D%20RFD-150), if any.
+See [RFD-150 labelled issues](https://mnx.atlassian.net/issues/?jql=labels%20%3D%20RFD-150), if any.
 
 
 ## Overview
@@ -127,8 +127,8 @@ instances in production to explore Triton service metrics.
 - **[DONE]** Ensure Prometheus and Grafana work sufficiently on SmartOS.
   Isaac is investigating this. E.g. see
   <https://github.com/fsnotify/fsnotify/pull/263>
-- **[IN PROGRESS]** Create a Triton Prometheus image - see [MANTA-3552](https://jira.joyent.us/browse/MANTA-3552)
-- **[IN PROGRESS]** Create a Triton Grafana image - see [MANTA-3992](https://jira.joyent.us/browse/MANTA-3992)
+- **[IN PROGRESS]** Create a Triton Prometheus image - see [MANTA-3552](https://mnx.atlassian.net/browse/MANTA-3552)
+- **[IN PROGRESS]** Create a Triton Grafana image - see [MANTA-3992](https://mnx.atlassian.net/browse/MANTA-3992)
 - sdcadm setup and upgrade support, being done as part of the above tickets
 - UFDS-based reverse proxy auth for the grafana zone.
 - No HA, no sharding
@@ -136,7 +136,7 @@ instances in production to explore Triton service metrics.
 ### M2: Manta service design
 
 - **[DONE]** discovery filtering support
-- **[IN PROGRESS]** Expand the Triton Prometheus image to support Manta - see [MANTA-4008](https://jira.joyent.us/browse/MANTA-4008)
+- **[IN PROGRESS]** Expand the Triton Prometheus image to support Manta - see [MANTA-4008](https://mnx.atlassian.net/browse/MANTA-4008)
 - determine if Manta eng wants a core *grafana* instance
 - sharding plan
 - manta deployment tooling updates for the new services
@@ -193,7 +193,7 @@ name resolution using an arbitrary number of CNS resolvers.
 Prometheus will store metrics for one month by default -- this will be a (SAPI)
 tunable -- on a delegate dataset to preserve across reprovisions. Long term
 storage of Prometheus metrics is the subject of
-[separate work by Richard](https://jira.joyent.us/browse/MANTA-3881). That work
+[separate work by Richard](https://mnx.atlassian.net/browse/MANTA-3881). That work
 will be integrated into the Thanos image.
 
 ### Sharding

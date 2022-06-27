@@ -44,7 +44,7 @@ here](#guidelines-for-using-node-tap-in-triton-repos).
 
 Yet to be widely discussed and agreed upon.
 
-See [RFD-139 labelled issues](https://jira.joyent.us/issues/?jql=labels%20%3D%20RFD-139), if any.
+See [RFD-139 labelled issues](https://mnx.atlassian.net/issues/?jql=labels%20%3D%20RFD-139), if any.
 
 
 ## History, Current State, and Goals

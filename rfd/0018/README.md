@@ -157,8 +157,8 @@ networks when it comes to specifying networks in these network arguments.
 
 ## Tickets
 
- * [DOCKER-502](https://devhub.joyent.com/jira/browse/DOCKER-502) -- adding support for selecting packages
- * [DOCKER-585](https://devhub.joyent.com/jira/browse/DOCKER-585) -- adding support for selecting networks
- * [DOCKER-897](https://devhub.joyent.com/jira/browse/DOCKER-897) -- expanding support to non-fabric networks
- * [DOCKER-936](https://devhub.joyent.com/jira/browse/DOCKER-936) -- expanding support to multiple networks
- * [DOCKER-1020](https://devhub.joyent.com/jira/browse/DOCKER-1020) -- adding support for selecting network for exposed ports
+ * [DOCKER-502](https://mnx.atlassian.net/browse/DOCKER-502) -- adding support for selecting packages
+ * [DOCKER-585](https://mnx.atlassian.net/browse/DOCKER-585) -- adding support for selecting networks
+ * [DOCKER-897](https://mnx.atlassian.net/browse/DOCKER-897) -- expanding support to non-fabric networks
+ * [DOCKER-936](https://mnx.atlassian.net/browse/DOCKER-936) -- expanding support to multiple networks
+ * [DOCKER-1020](https://mnx.atlassian.net/browse/DOCKER-1020) -- adding support for selecting network for exposed ports

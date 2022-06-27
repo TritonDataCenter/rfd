@@ -179,7 +179,7 @@ Future plans/ideas.
 
 ### state as of Jan 2016
 
-[DOC-642](https://devhub.joyent.com/jira/browse/DOC-642) will get us back
+[DOC-642](https://mnx.atlassian.net/browse/DOC-642) will get us back
 to being able to update from primary sources.
 
 
@@ -242,5 +242,5 @@ in apidocs.joyent.com.git.  I want to cut out repo (b).
 
 ## Tickets
 
-- [DOC-642](https://devhub.joyent.com/jira/browse/DOC-642)
-- [DOC-646](https://devhub.joyent.com/jira/browse/DOC-646)
+- [DOC-642](https://mnx.atlassian.net/browse/DOC-642)
+- [DOC-646](https://mnx.atlassian.net/browse/DOC-646)

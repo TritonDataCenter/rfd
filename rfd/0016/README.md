@@ -91,7 +91,7 @@ These are listed in rough order of impact today:
    takes too long or experiences an error, then all of the other jobs fail or
    produce bad data.  If the daily metering jobs fail, the subsequent summary
    jobs also fail.  See
-   [MANTA-2531](https://devhub.joyent.com/jira/browse/MANTA-2531).
+   [MANTA-2531](https://mnx.atlassian.net/browse/MANTA-2531).
 2. **Error handling, particularly for metering jobs, is not clear.**  Metering
    jobs can experience a variety of issues of varying severity.  They mostly
    exit non-zero when these happen, causing the job to produce an error.  But
@@ -99,8 +99,8 @@ These are listed in rough order of impact today:
    clear to subsequent stages (e.g., summary jobs and monitoring systems)
    whether the output of that job is valid.  When debugging them, it's not easy
    to identify the issues.  See
-   [MANTA-2759](https://devhub.joyent.com/jira/browse/MANTA-2759) and
-   [MANTA-2756](https://devhub.joyent.com/jira/browse/MANTA-2756).
+   [MANTA-2759](https://mnx.atlassian.net/browse/MANTA-2759) and
+   [MANTA-2756](https://mnx.atlassian.net/browse/MANTA-2756).
 3. **The results of each job are not very observable.**  Questions that are
    impossible to answer include: how many objects were scanned?  How many users?
    How many objects were processed normally?  How many experienced a non-fatal
@@ -108,14 +108,14 @@ These are listed in rough order of impact today:
 4. **The jobs themselves are not very observable.**  This applies to all of
    these jobs.  It's not easy to look at the last N days' worth of each kind of
    job and see what happened.  See
-   [MANTA-2593](https://devhub.joyent.com/jira/browse/MANTA-2593).
+   [MANTA-2593](https://mnx.atlassian.net/browse/MANTA-2593).
 5. There are some unproven concerns about **scalability of some of the metering
    processes**.  In various cases in the past, we've observed metering processes
    running out of memory without an obvious leak, where the process itself was
    just attempting to keep track of an enormous amount of data (e.g., metadata
    for each object owned by a given account).  We can conceivably address this
    by tuning up the number of reducers, but that only goes so far.  See
-   [MANTA-2780](https://devhub.joyent.com/jira/browse/MANTA-2780).
+   [MANTA-2780](https://mnx.atlassian.net/browse/MANTA-2780).
 6. **Many of the tasks used by these jobs are very long-running.**  Manta jobs
    were designed around tasks that would complete in a few seconds to a few
    minutes.  When very large tasks are used, jobs get less parallelization,

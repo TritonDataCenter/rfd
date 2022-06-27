@@ -138,18 +138,18 @@ to ignore the quota.
 A quota is not automatically applied when an operator deploys a new storage
 zone. After a new storage zone is deployed the operator must go back and apply
 a quota. This is usually done using `vmadm update` invoked by `manta-oneach`,
-like in [CM-1448](https://jira.joyent.us/browse/CM-1448).
+like in [CM-1448](https://mnx.atlassian.net/browse/CM-1448).
 
 Occasionally we forget to run this command and end up with a number of storage
 nodes that don't have _any_ quota. This is problematic, and could lead to a
 zone completely filling the zpool. Some examples of this problem can be found in
-[OPS-4338](https://jira.joyent.us/browse/OPS-4338) and
-[MANTA-3827](https://jira.joyent.us/browse/MANTA-3827).
+[OPS-4338](https://mnx.atlassian.net/browse/OPS-4338) and
+[MANTA-3827](https://mnx.atlassian.net/browse/MANTA-3827).
 
 Further complicating things, if we realize that we forgot to apply a quota to a
 storage zone and apply one later, it might be too late. Quotas will not
 be enforced if the zone has already surpassed the quota when it is applied
-([OS-4302](https://jira.joyent.us/browse/OS-4302)).
+([OS-4302](https://mnx.atlassian.net/browse/OS-4302)).
 
 Another potential problem is that operators must know the correct quota to set
 for each storage zone. As discussed earlier, this is based on the zpool capacity
@@ -167,16 +167,16 @@ zone. This limit is currently set to 96%, but there is some relevant
 history behind this which we'll briefly summarize.
 
 In the past, we had the limit set to 93%. The investigation on
-[MANTA-3571](https://jira.joyent.us/browse/MANTA-3571)
+[MANTA-3571](https://mnx.atlassian.net/browse/MANTA-3571)
 identified that ZFS performed well up to the 96% - 96.67% full level. Based
 upon that investigation, we raised the limit to 95%. However, after doing
 that, we hit
-[OS-7151](https://jira.joyent.us/browse/OS-7151)
+[OS-7151](https://mnx.atlassian.net/browse/OS-7151)
 where we saw metaslabs being loaded and unloaded at
 high frequency. This in turn led to long spa sync and zil commit times,
 which in turn led to bad latency hiccups for object writes. In addition,
 we observed other zil commit latency issues
-([OS-7314](https://jira.joyent.us/browse/OS-7314)), but those have since
+([OS-7314](https://mnx.atlassian.net/browse/OS-7314)), but those have since
 been fixed in the upstream ZFS code.
 
 As a short-term fix for this problem, had set the ZFS tunable
@@ -210,9 +210,9 @@ less than or equal to MUSKIE_MAX_UTILIZATION_PCT (95%). Only when Minnow reports
 ### Setting the Muskie Limit
 
 The feature to allow the Muskie storage utilization threshold be configurable
-was added in [MANTA-2947](https://jira.joyent.us/browse/MANTA-2947). This
+was added in [MANTA-2947](https://mnx.atlassian.net/browse/MANTA-2947). This
 introduced the `MUSKIE_MAX_UTILIZATION_PCT` tunable for the `manta` application
-in SAPI. Relatedly, [MANTA-3488](https://jira.joyent.us/browse/MANTA-3488)
+in SAPI. Relatedly, [MANTA-3488](https://mnx.atlassian.net/browse/MANTA-3488)
 allows the 'poseidon' user to write to Manta after it has reached the
 Muskie storage utilization threshold.
 

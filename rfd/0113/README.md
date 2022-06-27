@@ -63,8 +63,8 @@ shouldn't *have* to manage separate image identifiers for the image in each DC.
 ## Related discussions
 
 - [The discussion on GitHub](https://github.com/TritonDataCenter/rfd/issues/71)
-- [Some internal discussion](https://devhub.joyent.com/jira/browse/SWSUP-903)
-- [RFD-113 labelled issues](https://devhub.joyent.com/jira/issues/?jql=labels%3DRFD-113).
+- [Some internal discussion](https://mnx.atlassian.net/browse/SWSUP-903)
+- [RFD-113 labelled issues](https://mnx.atlassian.net/issues/?jql=labels%3DRFD-113).
 
 
 ## IMGAPI refresher
@@ -239,7 +239,7 @@ config has changed, at which point imgapi will then restart itself).
 
 ### M1: x-account image share
 
-<https://jira.joyent.us/browse/TRITON-116>
+<https://mnx.atlassian.net/browse/TRITON-116>
 
 - `triton image share $image $account` new command in node-triton.
     - This command uses the existing CloudAPI.UpdateImage API to add the given
@@ -256,7 +256,7 @@ config has changed, at which point imgapi will then restart itself).
 
 ### M2: x-account image clone
 
-<https://jira.joyent.us/browse/TRITON-53>
+<https://mnx.atlassian.net/browse/TRITON-53>
 
 - `triton image clone $image` new command and node-triton library support.
     - Only shared images can be cloned
@@ -303,7 +303,7 @@ config has changed, at which point imgapi will then restart itself).
 
 ### M3: x-DC image copy
 
-<https://jira.joyent.us/browse/TRITON-52>
+<https://mnx.atlassian.net/browse/TRITON-52>
 
 Implementation notes:
 

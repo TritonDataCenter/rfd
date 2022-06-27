@@ -486,7 +486,7 @@ a bit more thought and experimentation.
 
 While looking into the possibilities here I found that the current
 putObjectHandler has poor behavior when there are errors talking to "sharks"
-[MANTA-4286](https://jira.joyent.us/browse/MANTA-4286). If there is any error
+[MANTA-4286](https://mnx.atlassian.net/browse/MANTA-4286). If there is any error
 after data has been written to disk, it will leave garbage around on the storage
 zones that will never be cleaned up. We should avoid having that same bug with
 this change and ensure that if we fail to create links on any of the "sharks",

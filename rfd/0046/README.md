@@ -278,7 +278,7 @@ image:
 - rsyslog: Exclude it. Not used currently.
     - CloudAPI has boot script code for haproxy syslog setup. However the
       'rsyslog' service is not running in the zone in nightly. See
-      [PUBAPI-776](https://devhub.joyent.com/jira/browse/PUBAPI-776) for when
+      [PUBAPI-776](https://mnx.atlassian.net/browse/PUBAPI-776) for when
       rsyslog usage for the cloudapi SMF service was dropped.
     - Other Triton zones don't have the rsyslog service running:
         ```

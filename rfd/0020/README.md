@@ -15,7 +15,7 @@ state: draft
 
 # RFD 20 Manta Slop-Aware Zone Scheduling
 
-Tickets: [MANTA-2801](https://devhub.joyent.com/jira/browse/MANTA-2801)
+Tickets: [MANTA-2801](https://mnx.atlassian.net/browse/MANTA-2801)
 
 ## Problem summary (for background, see below)
 

@@ -118,7 +118,7 @@ remove VMs.
 
 <!-- Issue links -->
 [CNS-170]: http://smartos.org/bugview/CNS-170
-[CNS-208]: https://jira.joyent.us/browse/CNS-208
+[CNS-208]: https://mnx.atlassian.net/browse/CNS-208
 [AGENT-1086]: https://smartos.org/bugview/AGENT-1086
 
 <!-- Other RFDs -->

@@ -35,7 +35,7 @@ that cause, exacerbate, or prolong service outages:
   connection issues, it scales poorly with the number of connections because of
   its use of poll(2), and we have observed significant performance problems
   resulting from poor distribution of load across the backend processes.  See
-  [MORAY-263](https://devhub.joyent.com/jira/browse/MORAY-263) for details.
+  [MORAY-263](https://mnx.atlassian.net/browse/MORAY-263) for details.
   This is similar to problems we have using haproxy to front with several other
   services, including muskie and electric-moray.  The
   [cueball](https://github.com/arekinath/node-cueball) module aims to provide
@@ -54,7 +54,7 @@ that cause, exacerbate, or prolong service outages:
   Moray client.  It's incorrect for most server programs to be watching for
   'error' from the Moray client (since there's no reason the Moray client should
   come to rest in a failed state), so this crashes correctly-written servers.
-  See [MORAY-309](https://devhub.joyent.com/jira/browse/MORAY-309).
+  See [MORAY-309](https://mnx.atlassian.net/browse/MORAY-309).
 * Connection scalability: the Moray client currently establishes a fixed number
   of connections to every IP address found in DNS.  This results in
   O(N<sup>2</sup>) connections, which is not just unhelpful, but problematic in
@@ -228,7 +228,7 @@ would be responsible for both identifying the version of each server instance
 and funneling requests to appropriate server instances.  (Electric-moray would
 have to provide similar behavior.)  Identifying the version for each service
 instance is itself extremely tricky because of
-[MORAY-336](https://devhub.joyent.com/jira/browse/MORAY-336).  Details on that
+[MORAY-336](https://mnx.atlassian.net/browse/MORAY-336).  Details on that
 are below.
 
 The only consumer in SDC or Manta that appears to use this option is NAPI, which

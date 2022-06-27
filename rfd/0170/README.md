@@ -76,6 +76,6 @@ use with the Rebalancer's selection of a destination storage node.
 
 
 
-[MANTA-4091]: https://jira.joyent.us/browse/MANTA-4091
-[MANTA-4821]: https://jira.joyent.us/browse/MANTA-4821
+[MANTA-4091]: https://mnx.atlassian.net/browse/MANTA-4091
+[MANTA-4821]: https://mnx.atlassian.net/browse/MANTA-4821
 [RFD 162]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0162/README.md

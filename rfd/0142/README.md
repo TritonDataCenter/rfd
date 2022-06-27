@@ -33,8 +33,8 @@ The motivations for this change are:
 
 1. To standardize logging across manta services. Currently, there are some
    services using SMF logging and other using syslog logging.
-1. To avoid [cases](https://jira.joyent.us/browse/MANTA-1936?focusedCommentId=176160&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-176160) where log messages that are important to debugging issues may be dropped due to the use of syslog.
-1. To avoid [issues](https://jira.joyent.us/browse/MANTA-1936?focusedCommentId=176160&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-176160) when updating the services to more recent versions of
+1. To avoid [cases](https://mnx.atlassian.net/browse/MANTA-1936?focusedCommentId=176160&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-176160) where log messages that are important to debugging issues may be dropped due to the use of syslog.
+1. To avoid [issues](https://mnx.atlassian.net/browse/MANTA-1936?focusedCommentId=176160&page=com.atlassian.jira.plugin.system.issuetabpanels:comment-tabpanel#comment-176160) when updating the services to more recent versions of
    node. Many of the services that use syslog for logging do so via UDP. This
    leads to issues with more recent versions of node (v4 and up) where the
    service processes will frequently crash due to log messages larger than the
