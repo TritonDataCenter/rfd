@@ -68,7 +68,7 @@ that are due for EOL or reboot.
   exact instance UUIDs to provision near to or away from. The burden is on the user
   to keep track of UUIDs. Also when a provisioning request failed, CloudAPI does
   not return any error code to indicate if it was due to the locality constraint
-  or some other problems (more on this in [RFD 22](https://github.com/joyent/rfd/tree/master/rfd/0022)).
+  or some other problems (more on this in [RFD 22](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0022)).
 
 How much rack locality hints should play a role in DAPI is still subject to debate.
 The likelihood for a rack-level failure is largely dependent on the data center
@@ -112,7 +112,7 @@ scheduled on a per-rack basis.
   They should allow user to specify locality hints in provisioning requests.
 - **Exposing locality information in List/GetMachine CloudAPI:**
   It is a nice-to-have feature and has been brought up by one customer ([PUBAPI-1175]
-  (https://devhub.joyent.com/jira/browse/PUBAPI-1175)).
+  (https://mnx.atlassian.net/browse/PUBAPI-1175)).
   Server UUID is already exposed in CloudAPI. Rack identifiers, which may contain
   physical location information and allow end users to map/size our DCs, are best hidden
   from the end users. We may consider providing some kind of locality index instead.

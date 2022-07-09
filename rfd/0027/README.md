@@ -48,7 +48,7 @@ subset of it at a minimum).
 
 ## Note
 This RFD is a precursor to
-[RFD 0017](https://github.com/joyent/rfd/blob/master/rfd/0017/README.md) and it
+[RFD 0017](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0017/README.md) and it
 is likely that it will both complimentary and foundational.
 
 ## Inspirational Reading
@@ -216,7 +216,7 @@ frequency. This will allow an operator to dial back metric collection on an
 overloaded compute node and potentially avoid stopping the Metric Agent.
 
 Pre-defined metrics will be collected using the Metric Instrumenter defined in
-[RFD 37](https://github.com/joyent/rfd/blob/master/rfd/0037/README.md), which
+[RFD 37](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0037/README.md), which
 will leverage modules like [node-kstat](https://github.com/bcantrill/node-kstat)
 .
 
@@ -572,7 +572,7 @@ time | Exposes the current system time. | gettimeofday(3C) | system's notion of 
 
 ## [Prometheus Response Definition](https://prometheus.io/docs/instrumenting/exposition_formats/#exposition-formats)
 
-## [Example agent code](https://github.com/joyent/sdc-cn-agent/blob/rfd27/lib/monitor-agent.js)
+## [Example agent code](https://github.com/TritonDataCenter/sdc-cn-agent/blob/rfd27/lib/monitor-agent.js)
 
 ## Forwarder
 For customers that need to have data pushed to them, and can't use an existing

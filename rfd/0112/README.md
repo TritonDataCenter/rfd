@@ -1,7 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+112%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+112%22
 ---
 
 <!--
@@ -32,7 +32,7 @@ this together.
 ## Background
 
 Today, Manta employs several housekeeping processes, all encapsulated in the
-[Mola](https://github.com/joyent/manta-mola) repository.
+[Mola](https://github.com/TritonDataCenter/manta-mola) repository.
 
 - **Auditing**: Data integrity is the single most critical goal for Manta.  Each
   day, the audit process looks for any files that are missing from the storage
@@ -63,7 +63,7 @@ for however long this data is retained.  (Physical space usage is very different
 than the logical space usage reported by Manta's metering subsystem primarily
 because of built-in ZFS compression.)  Manta does not support physical storage
 reporting out-of-the-box today, but the
-[manta-physusage](https://github.com/joyent/manta-physusage) tools are sometimes
+[manta-physusage](https://github.com/TritonDataCenter/manta-physusage) tools are sometimes
 used to generate limited reports on an _ad hoc_ basis.
 
 Each of these processes (auditing, garbage collection, cruft identification, and
@@ -126,7 +126,7 @@ becoming increasingly clear that daily backups of the metadata tier are not
 tenable for two reasons:
 
 - Database backups, which today are executed on the async peer of a
-  [Manatee](https://github.com/joyent/manatee) cluster, significantly impact the
+  [Manatee](https://github.com/TritonDataCenter/manatee) cluster, significantly impact the
   performance of the database and can compromise its ability to keep up with
   incoming replication data.  When the async peer falls behind, the availability
   of the shard is compromised because any takeover operation would be blocked on

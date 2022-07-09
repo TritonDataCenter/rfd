@@ -1,7 +1,7 @@
 ---
 authors: Jan Wyszynski <jan.wyszynski@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/84
+discussion: https://github.com/TritonDataCenter/rfd/issues/84
 ---
 
 <!--
@@ -54,13 +54,13 @@ key in this object maps to a column name, and the body is an object that specifi
 the type of values in the column, in addition to other properties such as whether
 the index should enforce uniqueness. The full AJV schema for Moray indexes is
 defined
-[here](https://github.com/joyent/moray/blob/master/lib/schema.js#L277-L292).
+[here](https://github.com/TritonDataCenter/moray/blob/master/lib/schema.js#L277-L292).
 Moray maintains a mapping from 'Moray
 types' such as 'string', 'ip', and 'number', to 'Postgres types' such as 'TEXT',
 'INET', and 'NUMERIC'. These type mappings also specify what index
 implementation to use for fields of the corresponding types. The mapping is
 defined
-[here](https://github.com/joyent/moray/blob/master/lib/types.js#L20-L71).
+[here](https://github.com/TritonDataCenter/moray/blob/master/lib/types.js#L20-L71).
 
 Another important distinction should be drawn between Moray and Postgres
 're-indexing'. In Postgres, re-indexing is implemented as a the SQL command
@@ -101,7 +101,7 @@ comparing the values of `_txn_snap` for two rows in a bucket. The actual
 implementation doesn't allow such deductions because the Moray query that is
 used assign values in this column makes no garuantees about the order in which
 two parallel transactions are started or the order in which they were committed.
-[MORAY-13](https://jira.joyent.us/browse/MORAY-13) has some discussion related
+[MORAY-13](https://mnx.atlassian.net/browse/MORAY-13) has some discussion related
 to this feature that suggests it doesn't support its intended use-case in Marlin.
 
 #### Triggers
@@ -189,7 +189,7 @@ involving such modification fall into two categories:
 
 The first category includes requests that alter the structure of buckets
 created by the operator via the Moray buckets
-[API](https://github.com/joyent/moray/blob/master/docs/index.md#buckets). Such
+[API](https://github.com/TritonDataCenter/moray/blob/master/docs/index.md#buckets). Such
 changes can be targeted at any element of the database schema, and will
 generally be invoked from an operator script, or on the command line with the
 tools provided in the Moray repository.
@@ -204,46 +204,46 @@ loadbalancers are targeted at the Manta table.
 Currently, database schemata are defined in a number of places in Manta. These
 include:
 * 'node-libmanta', which
-[defines](https://github.com/joyent/node-libmanta/blob/master/lib/moray.js#L37-L91)
+[defines](https://github.com/TritonDataCenter/node-libmanta/blob/master/lib/moray.js#L37-L91)
 the layout of the 'manta', 'manta_delete_log', 'manta_upload', and
 'manta_directory_counts' tables and their indexes.
 * The 'manta-minnow' configuration file, which
-[specifies](https://github.com/joyent/manta-minnow/blob/master/etc/config.coal.json#L3-L15)
+[specifies](https://github.com/TritonDataCenter/manta-minnow/blob/master/etc/config.coal.json#L3-L15)
 sourcethe layout of the 'manta_storage' table and its indexes.
 * 'manta-reshard', the automated resharding system for Manta, which
-[defines](https://github.com/joyent/manta-reshard/blob/master/lib/data_access.js#L13-L39)
+[defines](https://github.com/TritonDataCenter/manta-reshard/blob/master/lib/data_access.js#L13-L39)
 the 'manta_reshard_plans' and 'manta_reshard_locks' tables.
 * 'manta-medusa' which
-[defines](https://github.com/joyent/manta-medusa/blob/master/lib/control.js#L379-L390)
+[defines](https://github.com/TritonDataCenter/manta-medusa/blob/master/lib/control.js#L379-L390)
 the 'medusa_sessions' table to track active mlogin sessions.
 * The Moray setup script, which
-[creates](https://github.com/joyent/moray/blob/master/boot/setup.sh#L297-L299)
+[creates](https://github.com/TritonDataCenter/moray/blob/master/boot/setup.sh#L297-L299)
 the 'buckets_config' table.
 * 'manta-marlin', which
-[defines](https://github.com/joyent/manta-marlin/blob/master/common/lib/schema.js)
+[defines](https://github.com/TritonDataCenter/manta-marlin/blob/master/common/lib/schema.js)
 defines the schemas for all jobs-tier buckets.
 
 ### Tickets and Prior Work
 
 There have been a number of circumstances in which we have found it necessary to
 modify data schemata in our production environment:
-* [MANTA-3399](https://jira.joyent.us/browse/MANTA-3399) describes the
+* [MANTA-3399](https://mnx.atlassian.net/browse/MANTA-3399) describes the
 performance impact of low-cardinality indexes such as
 `manta_directory_counts_entries_idx`. Low-cardinality `BTREE` indexes become
 flat, resulting in little search-time improvement and significant update cost.
 Under such circumstances, it would have been beneficial to have a tested system
 for dropping indexes.
-* [MANTA-3401](https://jira.joyent.us/browse/MANTA-3401) addresses the potential
+* [MANTA-3401](https://mnx.atlassian.net/browse/MANTA-3401) addresses the potential
 for the `manta_dirname_idx` index to become a low-cardinality index due to the
 lack of MPU GC. The ticket also references
-[MANTA-3169](https://jira.joyent.us/browse/MANTA-3169), which documents a
+[MANTA-3169](https://mnx.atlassian.net/browse/MANTA-3169), which documents a
 pathological directory listing performance due to query plans that scan
 `manta_dirname_idx` and then sort the resulting set based on another field. We
 might address such cases by creating composite indexes that support sorted
 traversal.
-* [MORAY-425](https://jira.joyent.us/browse/MORAY-425) proposes support for
+* [MORAY-425](https://mnx.atlassian.net/browse/MORAY-425) proposes support for
 composite indexes to adress the use-case described in the previous ticket.
-* [MORAY-424](https://jira.joyent.us/browse/MORAY-424) proposes support for
+* [MORAY-424](https://mnx.atlassian.net/browse/MORAY-424) proposes support for
 disabling Moray indexes to adress the use-case described in MANTA-3399.
 It is clear from these examples that we can expect to change our database schema
 over time.
@@ -255,7 +255,7 @@ The following proposal is limited in scope to the implementation of Moray and
 Postgres. We understand a 'schema change' to be any update in the schema
 configuration for a bucket that Moray is aware of. In the discussion, we use the
 term 'schema' to refer to the abstract
-[definition](https://github.com/joyent/moray/blob/master/lib/schema.js#L277-L327)
+[definition](https://github.com/TritonDataCenter/moray/blob/master/lib/schema.js#L277-L327)
 of a bucket from Morays perspective. In Manta, these definitions
 correspond to rows in the `buckets_config` table in a Postgres database.
 
@@ -414,23 +414,23 @@ might potentially be able to make. Some of these may overlap with the above.
       [9.6](https://www.postgresql.org/docs/9.6/static/sql-createindex.html#SQL-CREATEINDEX-CONCURRENTLY).
 * Dropping a table column.
     * Dropping a table column
-      [requires](https://github.com/joyent/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2899)
+      [requires](https://github.com/TritonDataCenter/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2899)
       an `ACCESS EXCLUSIVE` lock.
     * Without running a `VACUUM FULL` this operation doesn't get rid of the heap
       space taken up by the column, it just marks the column as invisible.
 * Adding a table column.
     * Adding a table column
-      [requires](https://github.com/joyent/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2866)
+      [requires](https://github.com/TritonDataCenter/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2866)
       an `ACCESS EXCLUSIVE` lock.
     * Whereas Postgres 9.6 supports the `IF NOT EXISTS` modifier for adding a
       column, 9.2 does not.
     * Despite grabbing an access exclusive lock, this operation is supposed to
       be efficient provided that the new column has either no default, or a
       default value of NULL
-      ([source](https://github.com/joyent/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L4914-L4918)
+      ([source](https://github.com/TritonDataCenter/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L4914-L4918)
       -- 'phase three' refers to the phase of the alter table pipeline that
 checks constaints and potentially
-      [re-writes](https://github.com/joyent/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2736-L2737)
+      [re-writes](https://github.com/TritonDataCenter/postgres/blob/joyent/9.6.3/src/backend/commands/tablecmds.c#L2736-L2737)
       data)
 * Changing a column type.
     * This requires an `ACCESS EXCLUSIVE` lock.
@@ -543,7 +543,7 @@ for each potential schema change option:
 2. Are there schema change options that Morays cannot afford to be unaware of?
 
 Object operations on buckets in Moray [only require valid
-json](https://github.com/joyent/moray/blob/master/lib/objects/common.js#L806-L813).
+json](https://github.com/TritonDataCenter/moray/blob/master/lib/objects/common.js#L806-L813).
 The Moray index schema is currently only validated in the `createBucket` and
 `updateBucket` paths, which means that the Moray source only needs to be updated
 for Morays that intend to initiate schema changes while the others may continue
@@ -765,7 +765,7 @@ constraints for these tools:
 To run load against the loadbalancers, we can use a simple node program that
 uses the node-manta APIs to send requests with a configurable concurrency. This
 could be a simple modification over
-[manta-mlive](https://github.com/joyent/manta-mlive) that doesn't write any
+[manta-mlive](https://github.com/TritonDataCenter/manta-mlive) that doesn't write any
 object data. Load generators targeted at each the loadbalancers or Muskie should
 ensure that PUTs are for zero-byte objects, as Muskie is a shark client.
 
@@ -776,13 +776,13 @@ Muskie as well. Previous metadata tier evaluations have found that load
 generators directed at Muskie are susceptible to performance hits for a variety
 of reasons:
 1. Muskie must
-   [enforce](https://github.com/joyent/manta-muskie/blob/master/lib/obj.js#L940)
+   [enforce](https://github.com/TritonDataCenter/manta-muskie/blob/master/lib/obj.js#L940)
    proper directory counts for all object PUTs
 2. Muskie will,
-   [query](https://github.com/joyent/manta-muskie/blob/master/lib/picker.js#L195)
+   [query](https://github.com/TritonDataCenter/manta-muskie/blob/master/lib/picker.js#L195)
    the `manta_storage` table to refresh the set of storage zones it knows about.
 3. Muskie must perform an
-   [additional read](https://github.com/joyent/manta-muskie/blob/master/lib/server.js#L338)
+   [additional read](https://github.com/TritonDataCenter/manta-muskie/blob/master/lib/server.js#L338)
    of the parent key for each GET and PUT it recieves.
 
 For these reasons, Muskie should not be used with workloads that aim to saturate
@@ -790,7 +790,7 @@ the metadata tier.
 
 ##### Electric-moray
 
-[manta-mdshovel](https://github.com/joyent/manta-mdshovel) has been used as an
+[manta-mdshovel](https://github.com/TritonDataCenter/manta-mdshovel) has been used as an
 electric-moray client in previous metadata tier evaluations. Using
 electric-moray ensures that all metadata records have appropriately assigned
 vnode numbers. There are a couple of concerns associated with the use of
@@ -811,13 +811,13 @@ manta-mdshovel for general load-generation:
    In some cases, it may be useful to target a particular shard (mdshovel has,
    again, been modified to serve this purpose -- see the `single-shard` branch).
 4. manta-mdshovel does perform directory count
-   [checks](https://github.com/joyent/manta-mdshovel/blob/one-shard/bin/mdshovel#L354)
+   [checks](https://github.com/TritonDataCenter/manta-mdshovel/blob/one-shard/bin/mdshovel#L354)
    which can impact load generation intended to simply to fill the `manta`
    table.
 
 ##### Moray
 
-[manta-mdshovel](https://github.com/joyent/manta-mdshovel) can also point
+[manta-mdshovel](https://github.com/TritonDataCenter/manta-mdshovel) can also point
 directly at a Moray zone, bypassing electric-moray. However, manta-mdshovel was
 not intended to generate valid metadata, so surprising behavior may ensue if
 reads are issued for objects that are written with mdshovel. There may be some
@@ -876,7 +876,7 @@ processes) or lazy synchronization (triggers on each new request for records
 living in objects with outdated schemata).
 
 With buckets on the horizon ([RFD
-  116](https://github.com/joyent/rfd/blob/master/rfd/0116/README.md)), we may
+  116](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0116/README.md)), we may
 want to consider whether we can generalize the approaches described here to
 different datastores. We may also want to factor in schema change feasibility
 when evaluating new datastores.

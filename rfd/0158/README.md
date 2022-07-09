@@ -1,7 +1,7 @@
 ---
 authors: Dan McDonald <danmcd@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=RFD+158
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=RFD+158
 ---
 
 <!--
@@ -790,12 +790,12 @@ NAT Reform Zone.
 
 * [RFD 32]
 
-[RFD 32]: https://github.com/joyent/rfd/blob/master/rfd/0032/README.md
+[RFD 32]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0032/README.md
 
 * [RFD 119]
 
-[RFD 119]: https://github.com/joyent/rfd/blob/master/rfd/0152/README.md
+[RFD 119]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0152/README.md
 
 * [RFD 152]
 
-[RFD 152]: https://github.com/joyent/rfd/blob/master/rfd/0152/README.md
+[RFD 152]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0152/README.md

@@ -226,7 +226,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 180 Linux Compute Node Containers](./rfd/0180/README.md) |
 | draft | [RFD 181 Improving Manta Storage Unit Cost (MinIO)](./rfd/0181/README.md) |
 | draft | [RFD 182 Altering system pool detection in SmartOS/Triton](./rfd/0182/README.md) |
-| predraft | [RFD 183 Triton Volume Replication and Back up](./rfd/0183/README.md) |
+| predraft | [RFD 183 Triton Volume Replication and Backup](./rfd/0183/README.md) |
 
 ## Contents of an RFD
 
@@ -406,7 +406,7 @@ then the subject would be `RFD 169 Overlay Networks for Triton`.
 In the body, make sure to include a link to the RFD.
 
 If an RFD is in the `predraft` or `draft` state, you should also [open an
-issue](https://github.com/joyent/rfd/issues) to allow for additional
+issue](https://github.com/TritonDataCenter/rfd/issues) to allow for additional
 opportunity for discussion of the RFD.  This issue should have the synopsis
 that reflects its purpose (e.g. "RFD 169: Discussion") and the body should
 explain its intent (e.g. "This issue represents an opportunity for discussion
@@ -418,7 +418,7 @@ points to an issue query for the RFD number.  For example:
 ---
 authors: Chewbacca <chewie77@falcon.org>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q="RFD+169"
+discussion: https://github.com/TritonDataCenter/rfd/issues?q="RFD+169"
 ---
 ```
 

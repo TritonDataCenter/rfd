@@ -75,7 +75,7 @@ This document was written while implementing a new feature in VMAPI needed to
 support [NFS shared volumes][RFD 26].
 
 As described in the corresponding [RFD][RFD 26], [new indexes need to be added
-to one of VMAPI's moray buckets' schema](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#new-internal_role-property-on-vm-objects).
+to one of VMAPI's moray buckets' schema](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0026/README.md#new-internal_role-property-on-vm-objects).
 A [ticket was created][ZAPI-747] to describe and track the work needed to be
 able to add these new indexes.
 
@@ -198,11 +198,11 @@ The reason is that the filter used to make sure that all objects returned
 actually match the provided filter use a filter that is not aware of the indexed
 fields' type _for all unindexed fields_.
 
-The [`compileQuery` function](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L126-L304)
+The [`compileQuery` function](https://github.com/TritonDataCenter/moray/blob/52d7669f/lib/objects/common.js#L126-L304)
 is the one responsible for [updating the type of the values specified in the
-`findobjects` request's filter](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L44-L123).
+`findobjects` request's filter](https://github.com/TritonDataCenter/moray/blob/52d7669f/lib/objects/common.js#L44-L123).
 
-However, it [only considers indexes that are fully reindexed as valid](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L481-L500),
+However, it [only considers indexes that are fully reindexed as valid](https://github.com/TritonDataCenter/moray/blob/52d7669f/lib/objects/common.js#L481-L500),
 and thus will update the types of filters' values only for
 fields that correspond to fully reindexed indexes.
 
@@ -225,7 +225,7 @@ Filtering on any field of type `'string'` results as expected (with the caveat
 described in the other sections regarding pagination).
 
 This limitation with search filters using non-string values is [already
-mentioned in the moray-test-suite repository](https://github.com/joyent/moray-test-suite/blob/ad95d757/test/objects.test.js#L2055).
+mentioned in the moray-test-suite repository](https://github.com/TritonDataCenter/moray-test-suite/blob/ad95d757/test/objects.test.js#L2055).
 
 However, I have not yet been able to find an existing JIRA ticket that tracks
 this problem.
@@ -291,10 +291,10 @@ searching for objects in this bucket with the filter
 The reason this `findobjects` request doesn't only return the object that
 matches the filter is that, when the database table's column that is storing the
 values for the newly indexed property _does not_ contain any value for that
-property, [the values on which the filter is applied have that property deleted](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L843-L857).
+property, [the values on which the filter is applied have that property deleted](https://github.com/TritonDataCenter/moray/blob/52d7669f/lib/objects/common.js#L843-L857).
 
 Thus, [the filter that is applied after all records are filtered from the
-database](https://github.com/joyent/moray/blob/52d7669f/lib/objects/find.js#L147)
+database](https://github.com/TritonDataCenter/moray/blob/52d7669f/lib/objects/find.js#L147)
 does not filter on the `boolean_field` property, and the objects that do not
 match the filter for that field pass through (without the reindexing field,
 even if it should be present).
@@ -334,7 +334,7 @@ handled.
 
 For instance, sdc-napi [uses a restify handler that checks for a flag
 representing whether or not all moray schema migrations have
-completed](https://github.com/joyent/sdc-napi/blob/4b413d47/lib/napi.js#L94-L97).
+completed](https://github.com/TritonDataCenter/sdc-napi/blob/4b413d47/lib/napi.js#L94-L97).
 
 It works for sdc-napi because I believe its maintainers determined that the
 current reindexing time for any of its moray buckets falls within the acceptable
@@ -546,8 +546,8 @@ allowing clients to send JSON-formatted filters which would include type
 information.
 
 3. The issue with not-yet-reindexed fields could be solved by fixing [the
-`rowToObject` function](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L816-L860)
-to not [delete values for fields that are being reindexed](https://github.com/joyent/moray/blob/52d7669f/lib/objects/common.js#L849-L852).
+`rowToObject` function](https://github.com/TritonDataCenter/moray/blob/52d7669f/lib/objects/common.js#L816-L860)
+to not [delete values for fields that are being reindexed](https://github.com/TritonDataCenter/moray/blob/52d7669f/lib/objects/common.js#L849-L852).
 
 However, only applying the changes to solve issues #2 and #3 would still not
 guarantee reliable results for all `findobjects` requests, and solving issue #1
@@ -789,7 +789,7 @@ moray*:::findobjects-done
 }
 ```
 
-which is basically [the `find_latency` DTrace script shipped with moray](https://github.com/joyent/moray/blob/d23510d05c04a7f4da5e061965c4c351d3246e77/bin/find_latency.d),
+which is basically [the `find_latency` DTrace script shipped with moray](https://github.com/TritonDataCenter/moray/blob/d23510d05c04a7f4da5e061965c4c351d3246e77/bin/find_latency.d),
 with a small change that displays minimum, maximum and average latencies in
 addition to a quantized distribution.
 

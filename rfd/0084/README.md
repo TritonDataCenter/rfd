@@ -123,8 +123,8 @@ which will include any IPv6 addresses assigned to the NIC.
 unspecified address `::`.
 
 <!-- GitHub repositories -->
-[Marlin]: https://github.com/joyent/manta-marlin
-[Muppet]: https://github.com/joyent/muppet
+[Marlin]: https://github.com/TritonDataCenter/manta-marlin
+[Muppet]: https://github.com/TritonDataCenter/muppet
 
 <!-- RFCs -->
 [RFC 1918]: https://tools.ietf.org/html/rfc1918
@@ -134,4 +134,4 @@ unspecified address `::`.
 
 <!-- Other links -->
 [sdc:nics]: https://eng.joyent.com/mdata/datadict.html#sdcnics
-[interface-centric style]: https://github.com/joyent/sdc-vmapi/blob/master/docs/index.md#specifying-networks-for-a-vm
+[interface-centric style]: https://github.com/TritonDataCenter/sdc-vmapi/blob/master/docs/index.md#specifying-networks-for-a-vm

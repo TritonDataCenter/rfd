@@ -1,7 +1,7 @@
 ---
 authors: Trent Mick <trent.mick@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+67%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+67%22
 ---
 
 # RFD 67 Triton headnode resilience
@@ -62,7 +62,7 @@ want someting workable sooner.
 
 ## Status
 
-See [rfd67 labelled issues](https://devhub.joyent.com/jira/issues/?jql=labels%20%3D%20rfd67).
+See [rfd67 labelled issues](https://mnx.atlassian.net/issues/?jql=labels%20%3D%20rfd67).
 Note, however, that not all of these are requirements for this RFD. See details
 on particular [milestones](#milestones). Currently partial support for M0 is in
 #master (updates so that components can support multiple headnodes) and tooling

@@ -1,7 +1,7 @@
 ---
 authors: Bryan Horstmann-Allen <bdha@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+140%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+140%22
 ---
 
 <!--
@@ -18,7 +18,7 @@ discussion: https://github.com/joyent/rfd/issues?q=%22RFD+140%22
 
 ## Overview
 
-[Conch](https://github.com/joyent/conch/) is a datacenter management service. It supports validating various aspects of a datacenter deployment. However, it is currently difficult to manage regions, datacenters, and racks.
+[Conch](https://github.com/TritonDataCenter/conch/) is a datacenter management service. It supports validating various aspects of a datacenter deployment. However, it is currently difficult to manage regions, datacenters, and racks.
 
 It would be extremely helpful if we had the ability to visually design a datacenter floor. We will need to provide new primitives and add new attributes to existing ones.
 
@@ -163,7 +163,7 @@ A new field will need to be added to the `datacenter_rack` table `datacenter_rac
 
 ## Validations
 
-As we build the UI out, there will no doubt be a number of validations we will want to provide. Whether these should be defined in the UI app, or fed through the [Conch Validation Engine](https://github.com/joyent/rfd/blob/master/rfd/0133/README.md) is an open question.
+As we build the UI out, there will no doubt be a number of validations we will want to provide. Whether these should be defined in the UI app, or fed through the [Conch Validation Engine](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0133/README.md) is an open question.
 
 Examples of Validations we want the Designer to provide
 
@@ -173,5 +173,5 @@ Examples of Validations we want the Designer to provide
 
 ## Related Work
 
-* [RFD 132 Conch: Unified Rack Integration Process](https://github.com/joyent/rfd/blob/master/rfd/0132/README.md)
-* [RFD 133 Conch: Improved Device Validation](https://github.com/joyent/rfd/blob/master/rfd/0133/README.md)
+* [RFD 132 Conch: Unified Rack Integration Process](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0132/README.md)
+* [RFD 133 Conch: Improved Device Validation](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0133/README.md)

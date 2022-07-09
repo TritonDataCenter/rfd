@@ -50,16 +50,16 @@ internal request to IMGAPI to create an image from a particular VM.
 
 IMGAPI itself ships the operator scripts; e.g., for SmartOS zones:
 
-    https://github.com/joyent/sdc-imgapi/blob/master/tools/prepare-image/smartos-prepare-image
+    https://github.com/TritonDataCenter/sdc-imgapi/blob/master/tools/prepare-image/smartos-prepare-image
 
 It loads them from disk during the image creation API call:
 
-    https://github.com/joyent/sdc-imgapi/blob/master/lib/images.js#L1928-L1973
+    https://github.com/TritonDataCenter/sdc-imgapi/blob/master/lib/images.js#L1928-L1973
 
 And then includes them wholesale in the workflow job which actually
 talks to the compute node to create the image:
 
-    https://github.com/joyent/sdc-imgapi/blob/master/lib/images.js#L2017
+    https://github.com/TritonDataCenter/sdc-imgapi/blob/master/lib/images.js#L2017
 
 ---------
 
@@ -84,12 +84,12 @@ properties and then execute the "sdc:operator-script" are:
 The XML definition of these services is shipped in the SmartOS
 platform image (ramdisk) from:
 
-    https://github.com/joyent/smartos-live/blob/master/overlay/generic/lib/svc/manifest/system/mdata.xml
+    https://github.com/TritonDataCenter/smartos-live/blob/master/overlay/generic/lib/svc/manifest/system/mdata.xml
 
 The scripts run by the services are there also:
 
-    https://github.com/joyent/smartos-live/blob/master/overlay/generic/lib/svc/method/mdata-fetch
-    https://github.com/joyent/smartos-live/blob/master/overlay/generic/lib/svc/method/mdata-execute
+    https://github.com/TritonDataCenter/smartos-live/blob/master/overlay/generic/lib/svc/method/mdata-fetch
+    https://github.com/TritonDataCenter/smartos-live/blob/master/overlay/generic/lib/svc/method/mdata-execute
 
 ---------
 

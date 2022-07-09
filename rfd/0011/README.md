@@ -286,9 +286,9 @@ how to properly boot.
 [OS-4802]: https://smartos.org/bugview/OS-4802
 [FWAPI-212]: https://smartos.org/bugview/FWAPI-212
 [FWAPI-225]: https://smartos.org/bugview/FWAPI-225
-[NAPI-308]: https://devhub.joyent.com/jira/browse/NAPI-308
-[NAPI-395]: https://devhub.joyent.com/jira/browse/NAPI-395
-[NAPI-414]: https://devhub.joyent.com/jira/browse/NAPI-414
+[NAPI-308]: https://mnx.atlassian.net/browse/NAPI-308
+[NAPI-395]: https://mnx.atlassian.net/browse/NAPI-395
+[NAPI-414]: https://mnx.atlassian.net/browse/NAPI-414
 [ZAPI-598]: https://smartos.org/bugview/ZAPI-598
 
 <!-- RFCs -->

@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/76
+discussion: https://github.com/TritonDataCenter/rfd/issues/76
 ---
 
 <!--
@@ -65,7 +65,7 @@ discussion: https://github.com/joyent/rfd/issues/76
   * [Configuration mapping](#configuration-mapping)
 
 **NOTE**  This is a draft.  Your feedback and that of others will likely
-cause things to change. Open [issues](https://github.com/joyent/rfd/issues/76)
+cause things to change. Open [issues](https://github.com/TritonDataCenter/rfd/issues/76)
 are tagged with @githubusername.
 
 The FreeBSD hypervisor, bhyve (pronounced "beehive"), is being ported to SmartOS

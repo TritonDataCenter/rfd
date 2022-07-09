@@ -1,7 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+111%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+111%22
 ---
 
 <!--
@@ -64,7 +64,7 @@ are two relatively extreme options:
 2. **More realistic case:** we announce that an outage will be induced during
    business hours during a particular week (time zone TBD).  At that time,
    all of engineering gets a [Code
-   Blue](https://github.com/joyent/rfd/blob/master/rfd/0101/README.md) and
+   Blue](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0101/README.md) and
    responds to the incident as though it were a normal production incident.
    Support is engaged to manage simulated customer notifications.  After the
    incident is complete, the team writes a postmortem, including a detailed
@@ -251,21 +251,21 @@ Documentation:
 - [Manta Operator's Guide](https://joyent.github.io/manta/).  There are several
   specific sections around locating components, accessing them, translating
   between various ids, locating objects, and so on.
-- [Service discovery documentation (Registrar/Binder)](https://github.com/joyent/registrar/blob/master/README.md)
+- [Service discovery documentation (Registrar/Binder)](https://github.com/TritonDataCenter/registrar/blob/master/README.md)
 
 Tools:
 
-- [manta-adm(1)](https://github.com/joyent/sdc-manta/blob/master/docs/man/man1/manta-adm.md) tool
-- [manta-oneach(1)](https://github.com/joyent/sdc-manta/blob/master/docs/man/man1/manta-oneach.md) tool
+- [manta-adm(1)](https://github.com/TritonDataCenter/sdc-manta/blob/master/docs/man/man1/manta-adm.md) tool
+- [manta-oneach(1)](https://github.com/TritonDataCenter/sdc-manta/blob/master/docs/man/man1/manta-oneach.md) tool
 - [madtom](https://joyent.github.io/manta/#madtom-dashboard-service-health) dashboard
 - [marlin-dashboard](https://joyent.github.io/manta/#marlin-dashboard-compute-activity)
-- [mlive](https://github.com/joyent/manta-mlive) tool
+- [mlive](https://github.com/TritonDataCenter/manta-mlive) tool
 - [mlocate](https://joyent.github.io/manta/#locating-object-data) tool
-- [moray command-line tools](https://github.com/joyent/node-moray/blob/master/docs/man/man1/moray.md)
+- [moray command-line tools](https://github.com/TritonDataCenter/node-moray/blob/master/docs/man/man1/moray.md)
 - [mrjob](https://joyent.github.io/manta/#marlin-tools)
-- [pgsqlstat](https://github.com/joyent/pgsqlstat)
-- [moraystat.d](https://github.com/joyent/moray/blob/master/bin/moraystat.d)
-- [mdb_v8 guide](https://github.com/joyent/mdb_v8/blob/master/docs/usage.md)
+- [pgsqlstat](https://github.com/TritonDataCenter/pgsqlstat)
+- [moraystat.d](https://github.com/TritonDataCenter/moray/blob/master/bin/moraystat.d)
+- [mdb_v8 guide](https://github.com/TritonDataCenter/mdb_v8/blob/master/docs/usage.md)
 - [`bunyan -p` ("runtime log snooping")](https://www.joyent.com/blog/node-js-in-production-runtime-log-snooping)
 - OS tools:
   - svcs(1) (including `svcs -L`)

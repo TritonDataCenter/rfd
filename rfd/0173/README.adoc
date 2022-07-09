@@ -1891,6 +1891,6 @@ kbmd does the following before replying to the final response:
 
 ### Boxes and eboxes
 
-:ebox-docs: https://github.com/joyent/pivy/blob/master/docs/box-ebox-formats.adoc
+:ebox-docs: https://github.com/TritonDataCenter/pivy/blob/master/docs/box-ebox-formats.adoc
 
 {ebox-docs}[PIVY ebox formats].

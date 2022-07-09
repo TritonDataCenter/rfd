@@ -1,7 +1,7 @@
 ---
 authors: Robert Mustacchi <rm@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+147%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+147%22
 ---
 
 <!--

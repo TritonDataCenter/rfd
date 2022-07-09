@@ -1,7 +1,7 @@
 ---
 authors: Chris Burroughs <chris.burroughs@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+70%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+70%22
 ---
 
 # RFD 70 Joyent Repository Metadata
@@ -177,11 +177,11 @@ A: The use case that include non-public repositories are unclear.  Bringing toge
 
 ## Resources and other Prior Art
 
-The [triton](https://github.com/joyent/triton/blob/master/docs/developer-guide/repos.md), [triton-dev](https://github.com/joyent/triton-dev), and [manta](https://github.com/joyent/manta) docs have a manually curated list of relevant repositories. `triton` even has a second list in [json](https://github.com/joyent/triton/blob/master/etc/repos.json)
+The [triton](https://github.com/TritonDataCenter/triton/blob/master/docs/developer-guide/repos.md), [triton-dev](https://github.com/TritonDataCenter/triton-dev), and [manta](https://github.com/TritonDataCenter/manta) docs have a manually curated list of relevant repositories. `triton` even has a second list in [json](https://github.com/TritonDataCenter/triton/blob/master/etc/repos.json)
 
 Internal `RELENG` tooling has a `repos.json` with partial coverage.
 
-Some of the doc building tools (ie apidocs) have a [smaller list](https://github.com/joyent/apidocs.joyent.com/blob/master/etc/config.json) of repos to pull from.
+Some of the doc building tools (ie apidocs) have a [smaller list](https://github.com/TritonDataCenter/apidocs.joyent.com/blob/master/etc/config.json) of repos to pull from.
 
 ## Archiving
 
@@ -279,7 +279,7 @@ Archiving provides a clear UI banner to humans and is a machine readable field i
     "remotes": {
         "joyent": {
             "enable": true,
-            "template": "https://github.com/joyent/{{reponame}}.git"
+            "template": "https://github.com/TritonDataCenter/{{reponame}}.git"
         },
         "trentm": {
             "enable": true,

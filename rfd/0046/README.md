@@ -41,7 +41,7 @@ by Triton and Manta.
 ## Current Status
 
 Triton-origin images are now being created from the [triton-origin-image
-repo](https://github.com/joyent/triton-origin-image) (done as
+repo](https://github.com/TritonDataCenter/triton-origin-image) (done as
 [TOOLS-1752](https://smartos.org/bugview/TOOLS-1752)). The README there
 describes how authors of Triton and Manta components should use the
 `triton-origin-*` images, and to triton-origin image authors how to build and
@@ -205,7 +205,7 @@ The minimal images are much smaller, so it bears looking into what pkgsrc
 packages added to "base" might no be necessary for Triton/Manta core images.
 
 The set of packages in base, but not minimal is:
-https://github.com/joyent/imagetools/blob/3e45aeb713b794d3a5584ae39f5514aec2c81a56/install-base#L88-L102
+https://github.com/TritonDataCenter/imagetools/blob/3e45aeb713b794d3a5584ae39f5514aec2c81a56/install-base#L88-L102
 I gathered some numbers for incremental image sizes, adding each of those
 packages in turn. Some of them share deps so the numbers aren't totally clear
 (e.g. excluding curl results in the bump for "postfix" being large).
@@ -278,7 +278,7 @@ image:
 - rsyslog: Exclude it. Not used currently.
     - CloudAPI has boot script code for haproxy syslog setup. However the
       'rsyslog' service is not running in the zone in nightly. See
-      [PUBAPI-776](https://devhub.joyent.com/jira/browse/PUBAPI-776) for when
+      [PUBAPI-776](https://mnx.atlassian.net/browse/PUBAPI-776) for when
       rsyslog usage for the cloudapi SMF service was dropped.
     - Other Triton zones don't have the rsyslog service running:
         ```
@@ -319,7 +319,7 @@ sudo`.
 
 ### Q4: Still need sdcnode builds for each image?
 
-Currently we do "sdcnode" builds (see https://github.com/joyent/sdcnode) for
+Currently we do "sdcnode" builds (see https://github.com/TritonDataCenter/sdcnode) for
 all origin images and for a number of versions. Initially this was to save
 build time for each image (every build of, say, vmapi used to rebuilt node from
 source), to allow floating patches, and custom configure flags (relevant for

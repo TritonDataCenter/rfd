@@ -12,13 +12,13 @@ global zone of all servers) get packaged and installed in Triton DataCenter is
 via a thing called the "agentsshar". This is a
 [shar](https://en.wikipedia.org/wiki/Shar) package that bundles all the global
 zone core agents (e.g. vm-agent, cn-agent, etc.). It is built from the
-[sdc-agents-installer](https://github.com/joyent/sdc-agents-installer) and
+[sdc-agents-installer](https://github.com/TritonDataCenter/sdc-agents-installer) and
 included in the USB key used for datacenter install.
 
 1. Initial headnode (HN) setup runs this shar, initiated by the
-   [headnode.sh](https://github.com/joyent/sdc-headnode/blob/master/scripts/headnode.sh) script.
-2. Compute node (CN) setup -- initiated by the CNAPI [server-setup.js](https://github.com/joyent/sdc-cnapi/blob/master/lib/workflows/server-setup.js) job
-   calling the [agentsetup.sh](https://github.com/joyent/sdc-headnode/blob/master/scripts/agentsetup.sh) script -- downloads this shar (from the
+   [headnode.sh](https://github.com/TritonDataCenter/sdc-headnode/blob/master/scripts/headnode.sh) script.
+2. Compute node (CN) setup -- initiated by the CNAPI [server-setup.js](https://github.com/TritonDataCenter/sdc-cnapi/blob/master/lib/workflows/server-setup.js) job
+   calling the [agentsetup.sh](https://github.com/TritonDataCenter/sdc-headnode/blob/master/scripts/agentsetup.sh) script -- downloads this shar (from the
    assets zone) and runs it.
 3. For *updates* to newer agents, the operator uses `sdcadm experimental
    update-agents` which pulls down the latest agentsshar from updates.joyent.com,
@@ -394,7 +394,7 @@ ticketed:
 - cn-agent agent_install should refresh sysinfo for that server.
   TODO: *Is* it already refreshing sysinfo? Note that because we propose to
   deprecate `sysinfo['SDC Agents']`, we don't really need this change.
-  DONE: It is already refreshing server sysinfo here: https://github.com/joyent/sdc-cn-agent/blob/master/lib/tasks/agent_install.js#L427-L437
+  DONE: It is already refreshing server sysinfo here: https://github.com/TritonDataCenter/sdc-cn-agent/blob/master/lib/tasks/agent_install.js#L427-L437
   And, indeed, it's not using a WF job for it.
 - sysinfo-refresh shouldn't use a WF job. Is there a benefit to using WF
   for this? Perhaps queueing when refreshing for every server in the DC?

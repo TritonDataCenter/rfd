@@ -1,7 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+105%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+105%22
 ---
 
 <!--
@@ -73,7 +73,7 @@ JavaScript repositories **must** use
 
 See the "General Principles" section for basic information.
 
-New repositories typically use either [catest](https://github.com/joyent/catest)
+New repositories typically use either [catest](https://github.com/TritonDataCenter/catest)
 or `tape`.  Historically, repositories have also used the `tap` and `nodeunit`
 modules, but these are both considered deprecated.
 
@@ -81,7 +81,7 @@ modules, but these are both considered deprecated.
 ### Node add-ons and Node binaries
 
 For building our own add-ons, we typically use
-[v8plus](https://github.com/joyent/v8plus).
+[v8plus](https://github.com/TritonDataCenter/v8plus).
 
 Repositories that build their own add-ons (which is nearly all of ours because
 of our heavy use of "node-dtrace-provider") **must** bundle their own Node
@@ -105,7 +105,7 @@ There are two ways you can get a Node build for your repo:
    "tools/mk/Makefile.node.targ". You'll also need a git submodule of the node
    sources:
 
-        $ git submodule add https://github.com/joyent/node.git deps/node
+        $ git submodule add https://github.com/TritonDataCenter/node.git deps/node
         $ cd deps/node
         $ git checkout v0.6.18   # select whichever version you want
 
@@ -143,15 +143,15 @@ branches).
 ### Debugging
 
 For fatal failures and many types of non-fatal failures, we use core files and
-[mdb\_v8](https://github.com/joyent/mdb_v8).  The [mdb\_v8 user
-guide](https://github.com/joyent/mdb_v8/blob/master/docs/usage.md) has a basic
+[mdb\_v8](https://github.com/TritonDataCenter/mdb_v8).  The [mdb\_v8 user
+guide](https://github.com/TritonDataCenter/mdb_v8/blob/master/docs/usage.md) has a basic
 tutorial for understanding the state of a JavaScript program from a core file.
 This tool can be used for pulling out state from the stack, any other JavaScript
 state on the heap (including closures), and memory leaks.
 
 For CPU profiling, we typically [profile with DTrace using Node's built-in
 ustack helper](https://nodejs.org/en/blog/uncategorized/profiling-node-js/) and
-then use [stackvis](https://github.com/joyent/node-stackvis) to generate flame
+then use [stackvis](https://github.com/TritonDataCenter/node-stackvis) to generate flame
 graphs.
 
 We also use the ustack helper and
@@ -168,7 +168,7 @@ See also: logging.
 
 ### Metrics
 
-[node-artedi](https://github.com/joyent/node-artedi) is recommended for exposing
+[node-artedi](https://github.com/TritonDataCenter/node-artedi) is recommended for exposing
 metrics from components.  These metrics can be consumed by Prometheus and other
 systems that support the Prometheus format.
 
@@ -180,7 +180,7 @@ Node.js](https://www.joyent.com/node-js/production/design/errors).  The basic
 concepts described there are extremely important, particularly around
 operational errors and programmer errors and the way each type is handled.
 
-We use [verror](https://github.com/joyent/node-verror) widely to support:
+We use [verror](https://github.com/TritonDataCenter/node-verror) widely to support:
 
 - printf-style format strings
 - chaining errors with causes (including stack traces)
@@ -248,7 +248,7 @@ individual handlers and routes.
 
 ### Input validation
 
-See [jsprim](https://github.com/joyent/node-jsprim), which has a function for
+See [jsprim](https://github.com/TritonDataCenter/node-jsprim), which has a function for
 validating that a simple object matches a JSON schema, as well as a robust
 `parseInteger()` that beats the various built-in approaches.
 
@@ -261,14 +261,14 @@ tools, especially those with subcommands or multiple levels of subcommand.
 If you opt out of a framework for building a CLI, you may find these modules
 useful:
 
-- [cmdutil](https://github.com/joyent/node-cmdutil): provides analogs to the C
+- [cmdutil](https://github.com/TritonDataCenter/node-cmdutil): provides analogs to the C
   functions `err(3c)` and `warn(3c)` (for printing out fatal and non-fatal
   messages in reasonably consistent ways) and usage messages
 - [dashdash](https://github.com/trentm/node-dashdash): declarative-style
   command-line option parsing, with types
 - [posix-getopt](https://github.com/davepacheco/node-getopt): traditional
   getopt-style option parsing
-- [tab](https://github.com/joyent/node-tab): a little dated, but makes it
+- [tab](https://github.com/TritonDataCenter/node-tab): a little dated, but makes it
   relatively easy to emit tables of output with selectable columns
 
 Tools should generally provide both human-readable summaries and, when
@@ -282,10 +282,10 @@ in a way that's easy to keep backwards-compatible.
 
 ### Other useful modules
 
-* [forkexec](https://github.com/joyent/node-forkexec): useful when shelling
+* [forkexec](https://github.com/TritonDataCenter/node-forkexec): useful when shelling
   out to run other commands, because the Node.js standard library functions are
   awkward and somewhat difficult to use correctly
-* [jsprim](https://github.com/joyent/node-jsprim) provides a bunch of useful
+* [jsprim](https://github.com/TritonDataCenter/node-jsprim) provides a bunch of useful
   operations for primitive JavaScript types, including checking whether objects
   are empty, iterating the key-value pairs of an object, and parsing integers
   robustly.
@@ -294,6 +294,6 @@ in a way that's easy to keep backwards-compatible.
 ### Useful command-line tools
 
 * [json](https://github.com/trentm/json): for formatting and transforming JSON
-* [nhttpsnoop](https://github.com/joyent/nhttpsnoop): allows you to dynamically
+* [nhttpsnoop](https://github.com/TritonDataCenter/nhttpsnoop): allows you to dynamically
   trace garbage collection or HTTP client or server requests for any Node
   program using the standard library

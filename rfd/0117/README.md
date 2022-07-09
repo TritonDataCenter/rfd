@@ -1,7 +1,7 @@
 ---
 authors: Cody Mello <cody.mello@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/122
+discussion: https://github.com/TritonDataCenter/rfd/issues/122
 ---
 
 # RFD 117 Network Traits
@@ -110,7 +110,7 @@ to gain commands for storing network information locally, like it does today for
 remove VMs.
 
 <!--- GitHub repositories -->
-[firewaller]: https://github.com/joyent/sdc-firewaller-agent/
+[firewaller]: https://github.com/TritonDataCenter/sdc-firewaller-agent/
 
 <!--- Manual page links -->
 [fwadm(1M)]: https://smartos.org/man/1M/fwadm
@@ -118,7 +118,7 @@ remove VMs.
 
 <!-- Issue links -->
 [CNS-170]: http://smartos.org/bugview/CNS-170
-[CNS-208]: https://jira.joyent.us/browse/CNS-208
+[CNS-208]: https://mnx.atlassian.net/browse/CNS-208
 [AGENT-1086]: https://smartos.org/bugview/AGENT-1086
 
 <!-- Other RFDs -->

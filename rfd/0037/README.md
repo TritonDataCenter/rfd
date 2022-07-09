@@ -24,7 +24,7 @@ this RFD is to provide a single interface for instrumenting a large set of
 SmartOS metrics.
 
 ## Motivation
-[RFD 27](https://github.com/joyent/rfd/blob/master/rfd/0027/README.md)
+[RFD 27](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0027/README.md)
 introduces the concept of a global zone Metric Agent which exposes metrics on a
 per container, per request basis. The Metric Agent will need to interface
 directly with native libraries in order to return the necessary metrics. Rather

@@ -96,7 +96,7 @@ file, we must perform garbage collection after the fact.
 
 Manta supports an additional interface to create objects via the multipart
 upload API, described in detail in
-[RFD 65](https://github.com/joyent/rfd/tree/master/rfd/0065).  In short,
+[RFD 65](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0065).  In short,
 multipart uploads allow users to upload an object in parts, then "commit" the
 object when all parts have been uploaded, exposing the object in Manta at the
 path of the user's choice.
@@ -141,11 +141,11 @@ garbage collection.
 ### Existing Offline Garbage Collection
 
 Garbage collection is performed, at present, by software in the
-[Mola](https://github.com/joyent/manta-mola) consolidation.  That repository
+[Mola](https://github.com/TritonDataCenter/manta-mola) consolidation.  That repository
 contains an
-[overview](https://github.com/joyent/manta-mola/blob/master/docs/gc-overview.md)
+[overview](https://github.com/TritonDataCenter/manta-mola/blob/master/docs/gc-overview.md)
 of garbage collection and some deeper discussion of the
-[design](https://github.com/joyent/manta-mola/blob/master/docs/gc-design-alternatives.md)
+[design](https://github.com/TritonDataCenter/manta-mola/blob/master/docs/gc-design-alternatives.md)
 and possible alternatives.
 
 #### Object Garbage Collection
@@ -204,7 +204,7 @@ perspective.
 
 The existing garbage collection system has many problems, much of which have
 been documented in other resources.  RFD 16
-[notes](https://github.com/joyent/rfd/blob/master/rfd/0016/README.md#problems-with-the-existing-implementation)
+[notes](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0016/README.md#problems-with-the-existing-implementation)
 that the pipeline is brittle, not very observable, and doesn't handle all errors
 well.
 
@@ -246,7 +246,7 @@ TODO: reference eng guide for ideas here?
 
 This RFD proposes a new long-running program, deployed as an SMF service, either
 in a new zone or the same zone as the online auditing system proposed in [RFD
-112](https://github.com/joyent/rfd/blob/master/rfd/0112/README.md).  (If the
+112](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0112/README.md).  (If the
 service were to be deployed in a new, separate zone, then it should be a SAPI
 service; see the "Open Questions" section below TODO).  The program should be
 designed such that it is safe to deploy more than one instance of the service
@@ -372,7 +372,7 @@ references to an object is the distributed nature of it; there is not an atomic
 way to capture a global snapshot of the metadata.  The fact that links can
 "walk" between shards without being captured in the GC's systems snapshot view
 of all all shards is referred to as
-["The Walking Link Problem"](https://github.com/joyent/manta-mola/blob/master/docs/gc-design-alternatives.md#the-walking-link-problem)
+["The Walking Link Problem"](https://github.com/TritonDataCenter/manta-mola/blob/master/docs/gc-design-alternatives.md#the-walking-link-problem)
 in the GC Design Alternatives document.
 
 So we need a way for a shard to indicate to the GC process that an object that
@@ -606,7 +606,7 @@ TODO
 ### Metrics
 
 The garbage collection program will expose metrics using the
-[node-artedi](https://github.com/joyent/node-artedi) library.  In particular, we
+[node-artedi](https://github.com/TritonDataCenter/node-artedi) library.  In particular, we
 should collect:
 
 TODO

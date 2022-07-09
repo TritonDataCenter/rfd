@@ -133,7 +133,7 @@ No need for copying this data across AZs. Upload it once to master SAPI, all AZs
 can make use of it (thanks to SAPI's "master" mode). Fabrics also make use of
 SAPI to store the datacenter's fabric configuration [See here for more
 information {want doc link, not code}]
-(https://github.com/joyent/sdcadm/blob/master/lib/post-setup/fabrics.js#L667).
+(https://github.com/TritonDataCenter/sdcadm/blob/master/lib/post-setup/fabrics.js#L667).
 
 NB: The network definitions for other AZs are only required for making sure the
 routes to these other AZs exist in the local NAPI's network definitions. This
@@ -141,7 +141,7 @@ might also be something we push to the operator for the same reasons as not
 doing NIC tags, which means SAPI is not required.
 
 **Servers should be traited for their Manta role ("metadata" or "storage")
-[[MANTA-2047](https://devhub.joyent.com/jira/browse/MANTA-2047)]**
+[[MANTA-2047](https://mnx.atlassian.net/browse/MANTA-2047)]**
 
 This will act as a filter to determine what servers require the manta VNIC, but
 also as verification that all servers have the correct nic tags (e.g. metadata
@@ -159,7 +159,7 @@ capability prior to fabrics.
 
 **SMF service removal should not be rolled into `manta-adm` and should remain
 as a self-contained script for this purpose
-[[MANTA-3014](https://devhub.joyent.com/jira/browse/MANTA-3014)]**
+[[MANTA-3014](https://mnx.atlassian.net/browse/MANTA-3014)]**
 
 These services are deployed via `sdc-oneachnode`, and removing them will need to
 use this tool, too. Keeping this as a separate command will mean that we can
@@ -227,7 +227,7 @@ as follows.
 ## Additional questions
 
 **Should we also handle the master SAPI changes
-([MANTA-3053](https://devhub.joyent.com/jira/browse/MANTA-3053))?**
+([MANTA-3053](https://mnx.atlassian.net/browse/MANTA-3053))?**
 
 **Does this process cross paths with any other part of Manta deployment?** For
 example, this process could be used as a form of verification that we have the
@@ -237,7 +237,7 @@ warnings/errors if need be.
 
 One piece of crossover is with `manta-init`, where that command will add the
 poseidon user to the manta, mantanat and admin networks' owner_uuids (see [here]
-(https://github.com/joyent/sdc-manta/blob/master/cmd/manta-init.js#L493-L505)).
+(https://github.com/TritonDataCenter/sdc-manta/blob/master/cmd/manta-init.js#L493-L505)).
 Should/can this be removed from `manta-init` and rolled into the proposed
 `manta-adm` networking process? Is this out of scope?
 
@@ -258,7 +258,7 @@ Manta services have been properly removed from this node.
 ## Blockers
 
 - Triton has no method of tagging aggregations without rebooting the server
-([CNAPI-673](https://devhub.joyent.com/jira/browse/CNAPI-673))
+([CNAPI-673](https://mnx.atlassian.net/browse/CNAPI-673))
     - Individual MAC addresses can make use of CNAPI's update-nics endpoint
     which triggers a workflow to tag the relevant NICs on the server. This does
     not apply to aggregations
@@ -268,11 +268,11 @@ the server
     This also applies to fabrics
 - VNICs will be deleted from NAPI if they don't exist on the server when
 sysinfo-refresh is run ([NET-367]
-(https://devhub.joyent.com/jira/browse/NET-367))
+(https://mnx.atlassian.net/browse/NET-367))
     - Fabrics make use of GZ VNICs, too, but they get special treatment during
     this process and are not deleted
 - Boot-time networking is currently gated on fabrics ([NET-366]
-(https://devhub.joyent.com/jira/browse/NET-366))
+(https://mnx.atlassian.net/browse/NET-366))
     - Fabrics must be enabled in the datacenter for boot-time networking to be
     enabled, which is the method that is used to create a VNIC in the global
     zone of a compute node without the SMF services (among other things). Manta

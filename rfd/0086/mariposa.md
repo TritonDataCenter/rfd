@@ -1,6 +1,6 @@
 ## Mariposa integration
 
-There are a number of cases where we've wanted for lifecycle hooks to be able to communicate information back to ContainerPilot, or to be otherwise able to alter the ContainerPilot environment for purposes of future handler events or the main application itself. Additionally, it's likely that we at Joyent will want the [RFD36](https://github.com/joyent/rfd/blob/master/rfd/0036/README.md) scheduler for Triton to be able to have an interface to communicate with containers and ContainerPilot itself, for which we can provide an example in ContainerPilot.
+There are a number of cases where we've wanted for lifecycle hooks to be able to communicate information back to ContainerPilot, or to be otherwise able to alter the ContainerPilot environment for purposes of future handler events or the main application itself. Additionally, it's likely that we at Joyent will want the [RFD36](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0036/README.md) scheduler for Triton to be able to have an interface to communicate with containers and ContainerPilot itself, for which we can provide an example in ContainerPilot.
 
 This control plane would be useful for event hooks as well. Telemetry sensor outputs will be consumed via a robust API instead of the existing brittle text scraping. Event hooks will also be able to set environment variables for other services and event hooks.
 
@@ -101,7 +101,7 @@ Content-Length: 21
 
 
 Related GitHub issues:
-- [Expose ContainerPilot state thru telemetry](https://github.com/joyent/containerpilot/issues/154)
-- [HTTP control plane](https://github.com/joyent/containerpilot/issues/244)
-- [Ability to pass SIGUSR1 and SIGHUP to main app](https://github.com/joyent/containerpilot/issues/195)
-- [SIGINT termination and coprocess suspension](https://github.com/joyent/containerpilot/pull/186)
+- [Expose ContainerPilot state thru telemetry](https://github.com/TritonDataCenter/containerpilot/issues/154)
+- [HTTP control plane](https://github.com/TritonDataCenter/containerpilot/issues/244)
+- [Ability to pass SIGUSR1 and SIGHUP to main app](https://github.com/TritonDataCenter/containerpilot/issues/195)
+- [SIGINT termination and coprocess suspension](https://github.com/TritonDataCenter/containerpilot/pull/186)

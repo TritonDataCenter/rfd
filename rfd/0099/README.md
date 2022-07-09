@@ -45,7 +45,7 @@ from other metric client libraries.
 
 This RFD is no longer being updated. All of this information (and more!) is
 available in the
-[node-artedi GitHub repository](https://github.com/joyent/node-artedi) in the
+[node-artedi GitHub repository](https://github.com/TritonDataCenter/node-artedi) in the
 `docs/` directory. node-artedi is an implementation of this RFD.
 
 ## Intro and Background

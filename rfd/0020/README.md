@@ -15,7 +15,7 @@ state: draft
 
 # RFD 20 Manta Slop-Aware Zone Scheduling
 
-Tickets: [MANTA-2801](https://devhub.joyent.com/jira/browse/MANTA-2801)
+Tickets: [MANTA-2801](https://mnx.atlassian.net/browse/MANTA-2801)
 
 ## Problem summary (for background, see below)
 
@@ -69,7 +69,7 @@ There are several points where a scheduling decision is made:
 
 The details of the algorithm are explained in the [Big Theory Statement for the
 Marlin
-agent](https://github.com/joyent/manta-marlin/blob/3203685ae50c9f8941e9c05c721f5c36b50e602e/agent/lib/agent/agent.js#L27-L183).
+agent](https://github.com/TritonDataCenter/manta-marlin/blob/3203685ae50c9f8941e9c05c721f5c36b50e602e/agent/lib/agent/agent.js#L27-L183).
 That explanation describes the competing design goals (maximizing resource
 utilization while maintaining fairness), how our approach achieves that, and
 several examples worked out to show how it works.

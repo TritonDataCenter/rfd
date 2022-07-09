@@ -1,7 +1,7 @@
 ---
 authors: Jerry Jelinek <jerry@joyent.com>, Kody Kantor <kody.kantor@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+174%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+174%22
 ---
 
 <!--

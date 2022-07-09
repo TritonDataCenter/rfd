@@ -249,7 +249,7 @@ reports about Gerrit and a negative report about Phabricator.
 ## Gerrit Deeper Dive
 
 This section has been replaced with the [cr.joyent.us user
-guide](https://github.com/joyent/joyent-gerrit/blob/master/docs/user/README.md).
+guide](https://github.com/TritonDataCenter/joyent-gerrit/blob/master/docs/user/README.md).
 
 Besides code review, there are a few other nice things about Gerrit for our
 use-case:
@@ -429,7 +429,7 @@ commit message validation, `make check` and more.  It may be redeployed and
 updated frequently.  The plan is to avoid blowing away any state there.
 
 There are [instructions for getting set up with cr.joyent.us and importing
-projects](https://github.com/joyent/joyent-gerrit/tree/master/docs/user).
+projects](https://github.com/TritonDataCenter/joyent-gerrit/tree/master/docs/user).
 
 That repository also has a summary of what features have been implemented (e.g.,
 email notification, GitHub replication) and which are on the TODO list.

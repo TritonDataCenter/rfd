@@ -82,8 +82,8 @@ These will be merged as follows:
 Details about configuration semantics changes can be found in the discussion of [first-class support for multi-process containers](multiprocess.md).
 
 _Related GitHub issues:_
-- [support containerpilot.d config directory](https://github.com/joyent/containerpilot/issues/236)
-- [onEvent hook](https://github.com/joyent/containerpilot/issues/227)
-- [environment section for config](https://github.com/joyent/containerpilot/issues/232)
-- [more env vars](https://github.com/joyent/containerpilot/issues/229)
-- [configurable service names](https://github.com/joyent/containerpilot/issues/193)
+- [support containerpilot.d config directory](https://github.com/TritonDataCenter/containerpilot/issues/236)
+- [onEvent hook](https://github.com/TritonDataCenter/containerpilot/issues/227)
+- [environment section for config](https://github.com/TritonDataCenter/containerpilot/issues/232)
+- [more env vars](https://github.com/TritonDataCenter/containerpilot/issues/229)
+- [configurable service names](https://github.com/TritonDataCenter/containerpilot/issues/193)

@@ -1,7 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com> Kelly McLaughlin <kelly.mclaughlin@joyent.com> Jared Morrow <jm@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/77
+discussion: https://github.com/TritonDataCenter/rfd/issues/77
 ---
 
 <!--
@@ -322,7 +322,7 @@ the entry point for all tests. The number of testing candidates and effort
 involved will dictate if this is feasible. A stress testing tool such as
 cosbench or [tsung](http://tsung.erlang-projects.org/) could then be a used to test each option with the same
 workloads and would make for straightforward comparison of results. Another
-option is to adapt [mdshovel](https://github.com/joyent/manta-mdshovel) as a test entry point.
+option is to adapt [mdshovel](https://github.com/TritonDataCenter/manta-mdshovel) as a test entry point.
 
 We also need to determine what machines can be used for the testing and ensure
 there are enough resources available to properly evaluate each of the options.

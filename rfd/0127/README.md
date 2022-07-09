@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/83
+discussion: https://github.com/TritonDataCenter/rfd/issues/83
 ---
 
 <!--
@@ -21,10 +21,10 @@ discussion: https://github.com/joyent/rfd/issues/83
 Some zone brands, in particular bhyve (see [RFD 121](../0121/README.md)), could
 benefit from tighter coupling.  For example use cases, see
 
-- [OS-6717](https://jira.joyent.us/browse/OS-6717) bhyve brand boot should not
+- [OS-6717](https://mnx.atlassian.net/browse/OS-6717) bhyve brand boot should not
   succeed until bhyve allocates resources
-- [OS-6718](https://jira.joyent.us/browse/OS-6718) need console and other logs
-- [OS-6760](https://jira.joyent.us/browse/OS-6760) bhyve brand should create ppt
+- [OS-6718](https://mnx.atlassian.net/browse/OS-6718) need console and other logs
+- [OS-6760](https://mnx.atlassian.net/browse/OS-6760) bhyve brand should create ppt
   devices
 
 It is proposed that each brand is able to provide a set of callbacks that may
@@ -85,7 +85,7 @@ Only those brand hooks that are called from zoneadmd are relevant to this RFD.
 
 It is expected that over time this list of in-process brand hooks will grow.
 For example, while implementing
-[logging](https://jira.joyent.us/browse/OS-6718), a new brand hook will likely
+[logging](https://mnx.atlassian.net/browse/OS-6718), a new brand hook will likely
 be added that is called whenever zoneadmd starts.  The addition of a new
 in-process brand hook like this does not automatically trigger the creation of a
 legacy brand hook.

@@ -141,7 +141,7 @@ should be equivalent to making a call out to NAPI.
 
 [vmadm(1M)]: https://smartos.org/man/1M/vmadm
 [sysinfo(1M)]: https://smartos.org/man/1M/sysinfo
-[net-agent]: https://github.com/joyent/sdc-net-agent/
-[sdc-changefeed]: https://github.com/joyent/node-sdc-changefeed/
+[net-agent]: https://github.com/TritonDataCenter/sdc-net-agent/
+[sdc-changefeed]: https://github.com/TritonDataCenter/node-sdc-changefeed/
 [RFD 120]: ../0120
 [TRITON-253]: https://smartos.org/bugview/TRITON-253

@@ -38,7 +38,7 @@ Some points that this document will cover:
 ## Tools Available
 These are some of the tools that are useful when adding metrics to a
 applications:
-* [node-artedi](https://github.com/joyent/node-artedi)
+* [node-artedi](https://github.com/TritonDataCenter/node-artedi)
   * We made node-artedi to make instrumenting our node services easier. It acts
   in a way similar to Bunyan, where 'child' metric collectors can be created
   from a 'parent' collector. It's easy to pass artedi collector into libraries,
@@ -55,9 +55,9 @@ applications:
   dashboard that's useful for one-off graphs and queries, which makes it great
   for development.
 
-Additionally, [CMON](https://github.com/joyent/triton-cmon/),
-[RFD 27](https://github.com/joyent/rfd/blob/master/rfd/0027/README.md), and
-[RFD 99](https://github.com/joyent/rfd/blob/master/rfd/0099/README.md) are good
+Additionally, [CMON](https://github.com/TritonDataCenter/triton-cmon/),
+[RFD 27](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0027/README.md), and
+[RFD 99](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0099/README.md) are good
 resources for learning more about metrics at Joyent.
 
 ## Application Pattern

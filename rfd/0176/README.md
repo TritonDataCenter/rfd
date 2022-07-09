@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>, Dan McDonald <danmcd@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+176%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+176%22
 ---
 
 <!--
@@ -144,7 +144,7 @@ pools, including:
   removal.
 
 With the commit of
-[OS-8198](https://github.com/joyent/smartos-live/commit/2c792f83ac6e31db6ee00655a084320e56ca518b),
+[OS-8198](https://github.com/TritonDataCenter/smartos-live/commit/2c792f83ac6e31db6ee00655a084320e56ca518b),
 Phase I is complete.
 
 ### Phase II - USB-less Triton Compute Node
@@ -181,13 +181,13 @@ bootable pools are not required, and if a system is known to work with
 network-booting from BIOS or EFI, the pool on that system can be arbitrary.
 
 The commit of
-[OS-8206](https://github.com/joyent/smartos-live/commit/d2f7462039e2375fb67b961992b8b69439da5681)
+[OS-8206](https://github.com/TritonDataCenter/smartos-live/commit/d2f7462039e2375fb67b961992b8b69439da5681)
 addresses iPXE boot from disk specifically for Triton Compute Nodes.  The
 commit of
-[TRITON-2175](https://github.com/joyent/sdc-headnode/commit/6d6b7ae1a5ac0b655b0a6f05d7f3dd0a4a069d59)
+[TRITON-2175](https://github.com/TritonDataCenter/sdc-headnode/commit/6d6b7ae1a5ac0b655b0a6f05d7f3dd0a4a069d59)
 addresses the new-Compute-Nodes getting ESP-ready pools if possible. With the
 documentation commit of
-[TRITON-2202](https://github.com/joyent/triton/commit/3f424b6dc37e130de79deaa30bd0d443b60f68b2)Phase
+[TRITON-2202](https://github.com/TritonDataCenter/triton/commit/3f424b6dc37e130de79deaa30bd0d443b60f68b2)Phase
 II is now complete.
 
 ### Phase III -- USB-less Triton Head Node
@@ -241,13 +241,13 @@ $POOL` will perform the transition, and issue a warning to reboot
 immediately.
 
 The commits of TRITON-2188 both in:
-[smartos-live](https://github.com/joyent/smartos-live/commit/fe68f9f45c5f49e768bd91a9200de1c866e089f8),
-[sdc-headnode](https://github.com/joyent/sdc-headnode/commit/8ceeeea559ded0fb5c8c5963bd40bb07ff6e880d),
+[smartos-live](https://github.com/TritonDataCenter/smartos-live/commit/fe68f9f45c5f49e768bd91a9200de1c866e089f8),
+[sdc-headnode](https://github.com/TritonDataCenter/sdc-headnode/commit/8ceeeea559ded0fb5c8c5963bd40bb07ff6e880d),
 and SmartOS followup
-[OS-8261](https://github.com/joyent/smartos-live/commit/7784b2913b53b7527db4611b4fe60ae3ca004cd1),
+[OS-8261](https://github.com/TritonDataCenter/smartos-live/commit/7784b2913b53b7527db4611b4fe60ae3ca004cd1),
 addresses the pool-bootable Triton Head Node.  With the documentation commit
 of
-[TRITON-2202](https://github.com/joyent/triton/commit/3f424b6dc37e130de79deaa30bd0d443b60f68b2)
+[TRITON-2202](https://github.com/TritonDataCenter/triton/commit/3f424b6dc37e130de79deaa30bd0d443b60f68b2)
 Phase III is now complete.
 
 ## Specific additional problems to solve

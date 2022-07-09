@@ -100,7 +100,7 @@ zone.cpu-shares
 
 This comment gives part of the story for how this mechanism actually works:
 
-https://github.com/joyent/illumos-joyent/blob/cffceb43dae21922039e7df6115340cd3b978a78/usr/src/uts/common/disp/fss.c#L57-L257
+https://github.com/TritonDataCenter/illumos-joyent/blob/cffceb43dae21922039e7df6115340cd3b978a78/usr/src/uts/common/disp/fss.c#L57-L257
 
 but there are still more factors at play than what's described there. Note
 especially that it says the cpu-shares rctl is "one of the inputs" used to
@@ -289,7 +289,7 @@ than the one with the `cpu_cap` of 800.
 ### Manta
 
 Until Manta, all zones in Triton have had `cpu_cap`, but Manta zones have always
-been [placed manually](https://github.com/joyent/manta/blob/5a6f6401fbccb83222c675dfe2f9834447dacdb7/docs/operator-guide/index.md#choosing-how-to-lay-out-zones)
+been [placed manually](https://github.com/TritonDataCenter/manta/blob/5a6f6401fbccb83222c675dfe2f9834447dacdb7/docs/operator-guide/index.md#choosing-how-to-lay-out-zones)
 without relying on the Triton placement tools or following the package
 requirements that all other Triton zones follow. As such, the consistency checks
 such as requiring a `cpu_cap` or a package/billing\_id are skipped. This has

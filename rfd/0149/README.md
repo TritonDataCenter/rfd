@@ -1,7 +1,7 @@
 ---
 authors: Kelly McLaughlin <kelly.mclaughlin@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues/112
+discussion: https://github.com/TritonDataCenter/rfd/issues/112
 ---
 
 <!--

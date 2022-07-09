@@ -417,7 +417,7 @@ must also be removed.
 
 A more comprehensive overview of how this process occurs can be found in
 [documentation within the manta-mola
-repository](https://github.com/joyent/manta-mola/blob/master/docs/mpu-gc-overview.md).
+repository](https://github.com/TritonDataCenter/manta-mola/blob/master/docs/mpu-gc-overview.md).
 
 
 ## 2. Final Design
@@ -673,7 +673,7 @@ other object. We also will not be timing out uploads that have been inactive
 
 ## Command Line Tooling
 
-The [node-manta](https://github.com/joyent/node-manta) repository contains a
+The [node-manta](https://github.com/TritonDataCenter/node-manta) repository contains a
 node SDK and CLI to use the multipart upload API. Multipart upload operations
 can be exercised as an end user using the command line tool `mmpu`.
 

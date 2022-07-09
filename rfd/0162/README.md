@@ -107,7 +107,7 @@ status of the storage nodes in the region.  The final approach here will depend
 on the outcome of RFD 170, but as a last resort this thread can query the
 `manta_storage` bucket on the shard 1 moray directly.  There are some risks
 associated with this approach, specifically
-[MANTA-4091](https://jira.joyent.us/browse/MANTA-4091)
+[MANTA-4091](https://mnx.atlassian.net/browse/MANTA-4091)
 
 #### Assignment Manager Thread
 * Get a snapshot from the picker thread
@@ -564,7 +564,7 @@ The per-object repair process is the crux of this system.  It works roughly like
 5. Verify each of the new copies.  (See step 2.)
 6. Update each of the metadata items found in step 1.  This should use a put-with-etag to update any metadata that hasn't changed since step 1.  If metadata has changed, and the objectid has changed or been removed, then this metadata entry can be ignored entirely.  If metadata has changed and the objectid and sharks are the same, we should be able to merge our changes.  If metadata has changed and the objectid is the same but the sharks have changed, some other process is repairing this object.  We should emit a persistent error for this object.  This should not happen.
 7. In parallel, execute the plan to remove any old copies as needed.  See below.
-8. Repeat step 1 to scan for any new references to the object in the metadata tier that were not updated.  (The only way this can happen today is if a user creates a snaplink from one of the original paths into a shard that had already been scanned.)  If any are found, repeat the repair process from step 3.  If not, this object has been repaired.  **Note: this step is not guaranteed to catch all cases where an end user has created a snaplink that references the original copies!**  A correct implementation would have to be more careful. One scheme for dealing with this is described in [RFD 123: Online Manta Garbage Collection](https://github.com/joyent/rfd/tree/master/rfd/0123).  Another option would be to create a lock on each path while we complete the repair, but this is not great for end users.  For now, we consider this case sufficiently unlikely that ignore it.  (We could also repeat this scan a number of times, possibly some time later.  The race not handled here is when a snaplink is created but missed during the scan, as a result of the so-called "walking link" problem.)
+8. Repeat step 1 to scan for any new references to the object in the metadata tier that were not updated.  (The only way this can happen today is if a user creates a snaplink from one of the original paths into a shard that had already been scanned.)  If any are found, repeat the repair process from step 3.  If not, this object has been repaired.  **Note: this step is not guaranteed to catch all cases where an end user has created a snaplink that references the original copies!**  A correct implementation would have to be more careful. One scheme for dealing with this is described in [RFD 123: Online Manta Garbage Collection](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0123).  Another option would be to create a lock on each path while we complete the repair, but this is not great for end users.  For now, we consider this case sufficiently unlikely that ignore it.  (We could also repeat this scan a number of times, possibly some time later.  The race not handled here is when a snaplink is created but missed during the scan, as a result of the so-called "walking link" problem.)
 
 These steps gloss over a few details:
 

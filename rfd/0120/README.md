@@ -1,7 +1,7 @@
 ---
 authors: Dan McDonald <danmcd@joyent.com>
 state: abandoned
-discussion: https://github.com/joyent/rfd/issues/73
+discussion: https://github.com/TritonDataCenter/rfd/issues/73
 ---
 
 <!--

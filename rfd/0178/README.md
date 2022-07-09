@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+179%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+179%22
 ---
 
 <!--
@@ -75,9 +75,9 @@ implementation details to evolve over time without requiring complex
 configuration migrations.
 
 The initial work is being done with Debian 10 in the
-[linux-live](https://github.com/joyent/linux-live/tree/linuxcn) repository.
+[linux-live](https://github.com/TritonDataCenter/linux-live/tree/linuxcn) repository.
 
 See the [platform image
-document](https://github.com/joyent/linux-live/blob/linuxcn/docs/2-platform-image.md)
+document](https://github.com/TritonDataCenter/linux-live/blob/linuxcn/docs/2-platform-image.md)
 in the linux-live repository for the status of in-flight work on the platform
 image.

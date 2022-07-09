@@ -1,7 +1,7 @@
 ---
 authors: Angela Fong <angela.fong@joyent.com>, Casey Bisson <casey.bisson@joyent.com>, Jerry Jelinek <jerry@joyent.com>, Josh Wilsdon <jwilsdon@joyent.com>, Julien Gilli <julien.gilli@joyent.com>, Trent Mick <trent.mick@joyent.com>, Marsell Kukuljevic <marsell@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+26%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+26%22
 ---
 
 <!-- to update doctoc, use: `doctoc.js --maxlevel 5 rfd/0026/README.md` -->
@@ -216,7 +216,7 @@ configurations where the Triton zones are deployed on different compute nodes.
 ## Current prototype
 
 A prototype for what this RFD describes is available at
-https://github.com/joyent/sdc-volapi. It implements all the new features and
+https://github.com/TritonDataCenter/sdc-volapi. It implements all the new features and
 changes described in this document that belong to the default (master
 integration) milestone.
 
@@ -229,10 +229,10 @@ It provides:
 
 * the `sdcadm` tool that implements [the "experimental" commands that can be
   used to enable/disable features related to NFS
-  volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#setting-up-a-triton-dc-to-support-nfs-volumes).
+  volumes](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0026/README.md#setting-up-a-triton-dc-to-support-nfs-volumes).
 
 * a [`tools/setup/setup.sh`
-  script](https://github.com/joyent/sdc-volapi/blob/master/tools/setup/setup.sh)
+  script](https://github.com/TritonDataCenter/sdc-volapi/blob/master/tools/setup/setup.sh)
   that installs all of these components in a given DC.
 
 In addition to that, node-triton at version 5.3.1 added support for creating and
@@ -242,9 +242,9 @@ subcommands are hidden for now, and thus don't show up when running `triton --he
 Please note that this prototype is _not_ meant to be used in a production
 environment, or any environment where data integrity matters.
 
-See its [README](https://github.com/joyent/sdc-volapi/blob/master/README.md) for
+See its [README](https://github.com/TritonDataCenter/sdc-volapi/blob/master/README.md) for
 more details on [how to
-install](https://github.com/joyent/sdc-volapi/blob/master/README.md#installation)
+install](https://github.com/TritonDataCenter/sdc-volapi/blob/master/README.md#installation)
 and use it.
 
 ## Use cases
@@ -968,7 +968,7 @@ instance create` subcommand to create instances from KVM images will always
 generate an error.
 
 Eventually, this limitation might be addressed by updating the
-[sdc-vmtools](https://github.com/joyent/sdc-vmtools/) programs to automatically
+[sdc-vmtools](https://github.com/TritonDataCenter/sdc-vmtools/) programs to automatically
 mount volumes when creating instances from KVM images provided by Joyent.
 
 KVM instances created from custom KVM images would still not support
@@ -1124,9 +1124,9 @@ Using dedicated hardware will be achieved by setting traits on NFS shared
 volumes' storage VMs packages that match the traits of CNs where these storage
 VMs should be provisioned.
 
-In practice, this can be done by sending [`UpdatePackage` requests](https://github.com/joyent/sdc-papi/blob/master/docs/index.md#updatepackage-put-packagesuuid)
+In practice, this can be done by sending [`UpdatePackage` requests](https://github.com/TritonDataCenter/sdc-papi/blob/master/docs/index.md#updatepackage-put-packagesuuid)
 to PAPI to set the desired traits on NFS volume packages, and sending
-[`ServerUpdate` requests](https://github.com/joyent/sdc-cnapi/blob/master/docs/index.md#serverupdate-post-serversserver_uuid) to set those traits on the CNs that should act as dedicated
+[`ServerUpdate` requests](https://github.com/TritonDataCenter/sdc-cnapi/blob/master/docs/index.md#serverupdate-post-serversserver_uuid) to set those traits on the CNs that should act as dedicated
 hardware for NFS volumes.
 
 Using dedicated hardware has disadvantages:
@@ -2858,7 +2858,7 @@ VMs. This means that non-docker VMs that are set to depend on shared volumes
 when they're created mount those volumes automatically on startup. Turning on
 this feature flag will depend on all servers running a platform at a version
 `>= 20170925T211846Z` (see
-[PUBAPI-1420](https://devhub.joyent.com/jira/browse/PUBAPI-1420)). If this
+[PUBAPI-1420](https://mnx.atlassian.net/browse/PUBAPI-1420)). If this
 requirement is not met, then a warning message is outputted, but the feature
 flag is still enabled.
 

@@ -199,11 +199,11 @@ it with any Error object, not just VErrors.
 ## Implementation, examples, and consumers
 
 The proposed implementation is basically complete, and provided in this branch:
-[https://github.com/davepacheco/node-verror/tree/dev-issue-10](https://github.com/joyent/node-fast2/blob/master/lib/fast_client.js).
+[https://github.com/davepacheco/node-verror/tree/dev-issue-10](https://github.com/TritonDataCenter/node-fast2/blob/master/lib/fast_client.js).
 
 The new interfaces are used heavily in the new node-fast implementation,
 particularly in the client:
-[https://github.com/joyent/node-fast2/blob/master/lib/fast_client.js](https://github.com/joyent/node-fast2/blob/master/lib/fast_client.js).
+[https://github.com/TritonDataCenter/node-fast2/blob/master/lib/fast_client.js](https://github.com/TritonDataCenter/node-fast2/blob/master/lib/fast_client.js).
 
 Server errors are always wrapped as mentioned above:
 

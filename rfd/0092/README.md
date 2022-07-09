@@ -76,7 +76,7 @@ upgrade is essential.
 - rabbitmq
 - ufds. Note that if we need to keep ufds around for a while, we could
   just move ufds-replicator into `sdc` zone and move forward. Everything
-  else is HA-ready and has been tested [CAPI-414](https://jira.joyent.us/browse/CAPI-414)
+  else is HA-ready and has been tested [CAPI-414](https://mnx.atlassian.net/browse/CAPI-414)
 
 Transitioning the entire stack to the HA deployment model is a major
 undertaking. With some careful planning and focus based on criticality would
@@ -101,8 +101,8 @@ The broad steps to break up the work are:
 - Enhance sdcadm to support a simpler way of provisioning and upgrading
   multiple instances for stateless services. Done `sdcadm create` support
   all the stateless services. For some of the services not yet HA-ready
-  there are pending issues like [TOOLS-1966](https://jira.joyent.us/browse/TOOLS-1966)
-  and [TOOLS-1963](https://jira.joyent.us/browse/TOOLS-1963)
+  there are pending issues like [TOOLS-1966](https://mnx.atlassian.net/browse/TOOLS-1966)
+  and [TOOLS-1963](https://mnx.atlassian.net/browse/TOOLS-1963)
 - Through analysis and testing, identify HA-ready services and those that
   are considered low-hanging fruits to be HA-capable. We've already tested
   that `papi`, `portolan` and `workflow` are HA-ready and have been running
@@ -131,15 +131,15 @@ Feature not in scope (existing `binder` gaps)
   the instance).
 
 Related tickets:
-[TOOLS-1644](https://devhub.joyent.com/jira/browse/TOOLS-1644) done,
-[TOOLS-1682](https://devhub.joyent.com/jira/browse/TOOLS-1682) done
+[TOOLS-1644](https://mnx.atlassian.net/browse/TOOLS-1644) done,
+[TOOLS-1682](https://mnx.atlassian.net/browse/TOOLS-1682) done
 
 ### Cueball changes for better connection management
 
 Sdcadm itself needs to be ready to work with HA setups, which means being able
 to properly talk to services hosted by different VMs on several nodes using
 HTTP. This is exactly the kind of functionality cueball's HTTP Agent library
-has been designed for. (See [TOOLS-1642](https://devhub.joyent.com/jira/browse/TOOLS-1642))
+has been designed for. (See [TOOLS-1642](https://mnx.atlassian.net/browse/TOOLS-1642))
 
 Additionally, sdcadm uses DNS lookups during the updates of moray and SAPI VMs
 when we're just updating a single instance of each one of them. Right now those
@@ -150,11 +150,11 @@ binder, ...
 While it's not clear if we will be able or not to get rid of these functions,
 in the short term those should use Cueball's resolvers interface, and take
 advantage of all the DNS related functionalities that it provides in order to
-simplify sdcadm itself. (See [TOOLS-1643](https://devhub.joyent.com/jira/browse/TOOLS-1643))
+simplify sdcadm itself. (See [TOOLS-1643](https://mnx.atlassian.net/browse/TOOLS-1643))
 
 Related tickets:
-[TOOLS-1642](https://devhub.joyent.com/jira/browse/TOOLS-1642) done,
-[TOOLS-1643](https://devhub.joyent.com/jira/browse/TOOLS-1643) waiting for review
+[TOOLS-1642](https://mnx.atlassian.net/browse/TOOLS-1642) done,
+[TOOLS-1643](https://mnx.atlassian.net/browse/TOOLS-1643) waiting for review
 
 ### Analyze and test HA-ready candidates
 
@@ -225,7 +225,7 @@ RFD or bug ticket will be required to outline the approach for remediation.
 There are no potential race conditions in assigning IP addresses.
 
 The main issue is the upcoming changefeed implementation which can result in
-dropped updates. (TRITON-284)[https://jira.joyent.us/browse/TRITON-284]
+dropped updates. (TRITON-284)[https://mnx.atlassian.net/browse/TRITON-284]
 
 There may be other issues that need to be resolved to allow NAPI tasks to be
 distributed without any contention. A RFD will be required for NAPI HA work.
@@ -240,7 +240,7 @@ a changefeed too.
 ### HA-changefeed
 Work has been started to add changefeed support for multiple publishers, i.e.
 HA support for services publishing changefeed updates from different instances
-(TRITON-276)[https://jira.joyent.us/browse/TRITON-276]
+(TRITON-276)[https://mnx.atlassian.net/browse/TRITON-276]
 
 
 ### AMON/AMONREDIS

@@ -1259,6 +1259,6 @@ This is mostly a dev notes section to run tests on these items:
 # References
 
 - [Joyent Migration Docs](https://docs.joyent.com/private-cloud/instances/compute-nodes)
-- [Legacy migrator](https://github.com/joyent/legacy-migrator/)
+- [Legacy migrator](https://github.com/TritonDataCenter/legacy-migrator/)
 - [Someday-maybe push button migration](https://mo.joyent.com/docs/engdoc/master/roadmap/someday-maybe/push-button-migration.html)
-- [vmbundle](https://github.com/joyent/smartos-live/blob/master/src/vmunbundle.c)
+- [vmbundle](https://github.com/TritonDataCenter/smartos-live/blob/master/src/vmunbundle.c)

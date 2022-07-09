@@ -154,5 +154,5 @@ chunk out the implementation. Here are the top ones to consider:
 
 ## Related Tickets
 
-- [PUBAPI-1201](https://devhub.joyent.com/jira/browse/PUBAPI-1201) -- Expose error details for failed requests
-- [PORTAL-1530](https://devhub.joyent.com/jira/browse/PORTAL-1530) -- A way to assist user to handle errors
+- [PUBAPI-1201](https://mnx.atlassian.net/browse/PUBAPI-1201) -- Expose error details for failed requests
+- [PORTAL-1530](https://mnx.atlassian.net/browse/PORTAL-1530) -- A way to assist user to handle errors

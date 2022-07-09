@@ -1368,7 +1368,7 @@ state of any managed boxes on disk).
 :OS-7183: https://smartos.org/bugview/OS-7183
 :OS-7633: https://smartos.org/bugview/OS-7633
 :TRITON-779: https://smartos.org/bugview/TRITON-779
-:RFD-34: https://github.com/joyent/rfd/blob/master/rfd/0034/README.md
+:RFD-34: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0034/README.md
 
 kbmd will have a dependency on an SMF service that brings up the "admin"
 network early in boot ONLY when we booted with a networking.json (the

@@ -357,7 +357,7 @@ The primary way we'd suggest to get this information is to leverage LLDP
 connected in the DC. This is also important as part of affinity
 decisions as we often want to try and avoid the failure of a given
 networking domain from bringing down applications. [RFD
-7](https://github.com/joyent/rfd/tree/master/rfd/0007) provides some
+7](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0007) provides some
 more concrete details of how we might manage this approach.
  
 ##### Physical View
@@ -467,7 +467,7 @@ wouldn't want to expose the need to load or manage this driver to
 consumers of the GLD directly.
 
 * We'd also like to have data link state tracking as discussed roughly
-in [RFD 7](https://github.com/joyent/rfd/tree/master/rfd/0007). Ideally
+in [RFD 7](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0007). Ideally
 we can also augment the tree with some of this connection information.
 
 * We'd like to be able to toggle and flash location LEDs and the like
@@ -636,8 +636,8 @@ managing the DC, particularly servers.
 This is probably the most important part of the system. This is well
 treaded ground, particularly by the following RFDs:
 
-* [RFD 6](https://github.com/joyent/rfd/tree/master/rfd/0006)
-* [RFD 17](https://github.com/joyent/rfd/tree/master/rfd/0017)
+* [RFD 6](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0006)
+* [RFD 17](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0017)
 
 Being able to collect and visualize this information, as well as notify
 on it, is paramount to the long term success. From a hardware

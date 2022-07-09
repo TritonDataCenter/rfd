@@ -1,7 +1,7 @@
 ---
 authors: Chris Burroughs <chris.burroughs@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+165%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+165%22
 ---
 
 # RFD 165 Security Updates for Triton/Manta Core Images
@@ -11,7 +11,7 @@ The RFD proposes changes to how updates are handled for the origin images introd
 
 ## Current Status
 
-[triton-origin-image](https://github.com/joyent/triton-origin-image) are used by many -- but not all -- components.  The most popular is tied to the 2015Q4 pkgsrc branch which recently left LTS.  To use it one places something like:
+[triton-origin-image](https://github.com/TritonDataCenter/triton-origin-image) are used by many -- but not all -- components.  The most popular is tied to the 2015Q4 pkgsrc branch which recently left LTS.  To use it one places something like:
 
 ```
 BASE_IMAGE_UUID = 04a48d7d-6bb5-4e83-8c3b-e60a99e0f48f
@@ -72,7 +72,7 @@ This does exacerbate a slight complication for some downstream components.  Norm
 
 ### origin-image version string
 
-Currently the image version of the origin-image is yoinked out of the `package.json` field in [triton-origin-image](https://github.com/joyent/triton-origin-image).  As of this writing there are 5 `triton-origin-multiarch-15.4.1@1.0.1` images on updates.joyent.com.  To push out updated images with non-conflicting versions we would need a new scheme.
+Currently the image version of the origin-image is yoinked out of the `package.json` field in [triton-origin-image](https://github.com/TritonDataCenter/triton-origin-image).  As of this writing there are 5 `triton-origin-multiarch-15.4.1@1.0.1` images on updates.joyent.com.  To push out updated images with non-conflicting versions we would need a new scheme.
 
 For example `x.y.z` where `x.y` is from `package.json` and `z` is a timestamp.
 

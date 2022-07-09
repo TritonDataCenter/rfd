@@ -1,7 +1,7 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
 state: predraft
-discussion: https://github.com/joyent/rfd/issues/72
+discussion: https://github.com/TritonDataCenter/rfd/issues/72
 ---
 
 <!--
@@ -37,7 +37,7 @@ Additionally, for "Option A":
  * Changes to vmadm to support GPGPU instances and new (bhyve) cmdline
    arguments.
  * See also:
-   [RFD 121](https://github.com/joyent/rfd/blob/master/rfd/0121/README.md)
+   [RFD 121](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0121/README.md)
 
 And additionally, for "Option B":
 

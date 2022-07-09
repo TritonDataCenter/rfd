@@ -1,7 +1,7 @@
 ---
 authors: Mike Gerdts <mike.gerdts@joyent.com>, Pedro Palazón Candel <pedro@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+163%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+163%22
 ---
 
 <!--
@@ -131,7 +131,7 @@ In the event of insufficient disk space or other conditions, log entries may be 
 
 ### SMF Services
 
-The Cloud Firewall Log Daemon will be delivered with the [firewall-logger-agent](https://github.com/joyent/firewall-logger-agent) agent.  That is, it will not be part of the platform image.  It runs in the global zone on each compute node under the watchful eye of SMF in the `svc:/smartdc/agent/firewall-logger-agent:default` service.  Setup of this agent will be handled by the `svc:/smartdc/agent/firewall-logger-setup:default` service.  See the *FWAPI* section below.
+The Cloud Firewall Log Daemon will be delivered with the [firewall-logger-agent](https://github.com/TritonDataCenter/firewall-logger-agent) agent.  That is, it will not be part of the platform image.  It runs in the global zone on each compute node under the watchful eye of SMF in the `svc:/smartdc/agent/firewall-logger-agent:default` service.  Setup of this agent will be handled by the `svc:/smartdc/agent/firewall-logger-setup:default` service.  See the *FWAPI* section below.
 
 ### Record Format
 
@@ -219,13 +219,13 @@ Dependencies will be established in the services mentioned above to ensure the f
 
 ## Log Archiver Service
 
-A new Triton service, `triton-logarchiver`, will be created.  This service will have a core VM `logarchiver0` that will run a hermes master and a hermes proxy. This service will be responsible for creating an SMF service, `svc:/smartdc/agent/logarchiver-agent:default`, that will run the hermes actor.  See [sdc-hermes](https://github.com/joyent/sdc-hermes) for more information related to hermes.
+A new Triton service, `triton-logarchiver`, will be created.  This service will have a core VM `logarchiver0` that will run a hermes master and a hermes proxy. This service will be responsible for creating an SMF service, `svc:/smartdc/agent/logarchiver-agent:default`, that will run the hermes actor.  See [sdc-hermes](https://github.com/TritonDataCenter/sdc-hermes) for more information related to hermes.
 
 Logarchiver-agent will be configured to collect all of the `/var/log/firewall/:customer_uuid/:vm_uuid/:iso8601stamp.log.gz` files and place them in Manta at `/:customer_login/reports/firewall-logs/:year/:month/:day/:vm_uuid/:iso8601stamp.log.gz`.  Once hermes has stored the file in Manta, hermes will remove it from the compute node.  Note that `/var/log/firewall` is a distinct directory from `/var/log/fw`, the location for the global zone's firewaller agent.
 
 ### Customer UUID to Manta account translation
 
-The [`logsets.json`](https://github.com/joyent/sdc-hermes/blob/master/etc/logsets.json.sample) file format will be extended to allow `%U` to represent a manta username.  The value of `%U` may be obtained by translating an account UUID using mahi.  The `customer_uuid` is the source UUID for this translation.
+The [`logsets.json`](https://github.com/TritonDataCenter/sdc-hermes/blob/master/etc/logsets.json.sample) file format will be extended to allow `%U` to represent a manta username.  The value of `%U` may be obtained by translating an account UUID using mahi.  The `customer_uuid` is the source UUID for this translation.
 
 The following serves as an example of how this may be configured.
 

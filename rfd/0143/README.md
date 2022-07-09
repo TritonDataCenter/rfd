@@ -1,7 +1,7 @@
 ---
 authors: David Pacheco <dap@joyent.com>, Jan Wyszynski <jan.wyszynski@joyent.com> with input from Joshua Clulow, Alex Wilson
 state: draft
-discussion: https://github.com/joyent/rfd/issues/107
+discussion: https://github.com/TritonDataCenter/rfd/issues/107
 ---
 
 <!--
@@ -207,7 +207,7 @@ Though the two checks may seem redundant, having a preemptive check early on in
 the `putlink` handler saves at least two metadata tier roundtrips.
 
 Work done for this item is tracked in
-[MANTA-3768](https://jira.joyent.us/browse/MANTA-3768).
+[MANTA-3768](https://mnx.atlassian.net/browse/MANTA-3768).
 
 #### Accelerated Delete Table
 
@@ -276,15 +276,15 @@ away at the contents `_value` column would likely be minimal.
 
 Setting up the new bucket will require a Muskie restart to run node-libmanta's
 bucklets setup
-[routine](https://github.com/joyent/node-libmanta/blob/master/lib/moray.js#L99).
+[routine](https://github.com/TritonDataCenter/node-libmanta/blob/master/lib/moray.js#L99).
 
 Work which introduces this new Moray bucket is tracked in
-[MANTA-3764](https://jira.joyent.us/browse/MANTA-3764).
+[MANTA-3764](https://mnx.atlassian.net/browse/MANTA-3764).
 
 #### Modifying the Object Delete Path
 
 Currently, object delete records are added to the `manta_delete_log` from a
-Moray-level [trigger](https://github.com/joyent/node-libmanta/blob/master/lib/moray.js#L267-L316)
+Moray-level [trigger](https://github.com/TritonDataCenter/node-libmanta/blob/master/lib/moray.js#L267-L316)
 defined in the node-libmanta. Today, Moray invokes this trigger for
 `putobject`, `delobject`, and `delMany` operations. Both delete operations and
 overwriting put operations are distinguished from non-replacing puts via a header
@@ -311,17 +311,17 @@ delete/overwritten has the `singlePath` property set, but this change will not
 require modifying any private interfaces, since the `recordDeleteLog` trigger
 already has access to metadata of the delete object. Work to introduce and
 manage the `singlePath` property on objects is tracked in
-[MANTA-3779](https://jira.joyent.us/browse/MANTA-3779).
+[MANTA-3779](https://mnx.atlassian.net/browse/MANTA-3779).
 
 This change relies on Muskie updating the Moray `recordDeleteLog` post trigger,
 which will be done by updating the Manta bucket
-[schema](https://github.com/joyent/node-libmanta/blob/master/lib/moray.js#L103-L111)
+[schema](https://github.com/TritonDataCenter/node-libmanta/blob/master/lib/moray.js#L103-L111)
 (this will include version bump). The Muskie restart needed for this change to
 take effect can be rolled into the same restart used to make Muskie aware of the
 array of snaplink-disabled accounts.
 
 Work to update the object delete and replacement path is tracked in
-[MANTA-3774](https://jira.joyent.us/browse/MANTA-3774).
+[MANTA-3774](https://mnx.atlassian.net/browse/MANTA-3774).
 
 #### Moray Fast Delete Component
 
@@ -379,7 +379,7 @@ existing offline GC job. Maintaining this compatibility will allow us to
 leverage the existing `mako_gc.sh` cron script in the fast delete mechanism.
 
 Work involved in the implementation of the new component described in this
-section is tracked in [MANTA-3776](https://jira.joyent.us/browse/MANTA-3776).
+section is tracked in [MANTA-3776](https://mnx.atlassian.net/browse/MANTA-3776).
 
 ##### Tuning/Control
 
@@ -414,23 +414,23 @@ We'll determine the default configuration of the tunables with performance
 impact testing on SPC-like hardware.
 
 Work to develop the new fast delete component is tracked in
-[MANTA-3776](https://jira.joyent.us/browse/MANTA-3776). The new component has
-its own [repository](https://github.com/joyent/manta-garbage-collector) and will
+[MANTA-3776](https://mnx.atlassian.net/browse/MANTA-3776). The new component has
+its own [repository](https://github.com/TritonDataCenter/manta-garbage-collector) and will
 be deployed and run in a manner similar to the Manta Resharding system.
 
 ## Component Change Summary
 
 The master ticket for all work described in this RFD is
-[MANTA-3769](https://jira.joyent.us/browse/MANTA-3769).
+[MANTA-3769](https://mnx.atlassian.net/browse/MANTA-3769).
 
-- [manta-muskie](https://github.com/joyent/manta-muskie)
-	- [MANTA-3764](https://jira.joyent.us/browse/MANTA-3764)
-	- [MANTA-3768](https://jira.joyent.us/browse/MANTA-3768)
-	- [MANTA-3779](https://jira.joyent.us/browse/MANTA-3779)
-- [node-libmanta](https://github.com/joyent/node-libmanta)
-	- [MANTA-3774](https://jira.joyent.us/browse/MANTA-3774)
-- [manta-garbage-collector](https://github.com/joyent/manta-garbage-collector)
-	- [MANTA-3776](https://jira.joyent.us/browse/MANTA-3776)
+- [manta-muskie](https://github.com/TritonDataCenter/manta-muskie)
+	- [MANTA-3764](https://mnx.atlassian.net/browse/MANTA-3764)
+	- [MANTA-3768](https://mnx.atlassian.net/browse/MANTA-3768)
+	- [MANTA-3779](https://mnx.atlassian.net/browse/MANTA-3779)
+- [node-libmanta](https://github.com/TritonDataCenter/node-libmanta)
+	- [MANTA-3774](https://mnx.atlassian.net/browse/MANTA-3774)
+- [manta-garbage-collector](https://github.com/TritonDataCenter/manta-garbage-collector)
+	- [MANTA-3776](https://mnx.atlassian.net/browse/MANTA-3776)
 
 
 ## Security Impact

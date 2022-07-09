@@ -137,7 +137,7 @@ See "Implementation details" below.
 
 ### Use case 1: plugging in a custom data source
 
-We use [pgstatsmon](https://github.com/joyent/pgstatsmon) as a representative
+We use [pgstatsmon](https://github.com/TritonDataCenter/pgstatsmon) as a representative
 example of an agent that users may already be using that uses a totally custom
 instrumentation mechanism and reports it in the widely-used statsd format.  We
 assume that our data service already has a way to ingest statsd data over the

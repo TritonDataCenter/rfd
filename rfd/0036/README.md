@@ -405,9 +405,9 @@ Despite some of the operational advantages to applications that internalize the 
 Triton provides limited mechanisms for this now:
 
 - [sdc-docker supports `--volumes-from`](https://apidocs.joyent.com/docker/features/volumes), which allows one container to be used as the storage volume for another
-- [RFD26 proposes NFS shared volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) which are implemented as zones
-- [ZFS datasets can be delegated to an instance](https://docs.joyent.com/private-cloud/instances/delegated-data-sets), though it is [not safe to delegate datasets to untrusted users](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md#safety-considerations)
-- [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, but that feature largely requires a delegated dataset (see above), and is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141)
+- [RFD26 proposes NFS shared volumes](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0026/README.md#introduction) which are implemented as zones
+- [ZFS datasets can be delegated to an instance](https://docs.joyent.com/private-cloud/instances/delegated-data-sets), though it is [not safe to delegate datasets to untrusted users](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0044/README.md#safety-considerations)
+- [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, but that feature largely requires a delegated dataset (see above), and is [not exposed publicly via CloudAPI](https://github.com/TritonDataCenter/node-triton/issues/141)
 
 For the most part, however, instances are provisioned and left running indefinitely while operators update their software using traditional workflows. This RFD will discuss some potential features that may be added to improve support for these applications below.
 
@@ -469,7 +469,7 @@ The models for deployment groups are [CloudFormation, Terraform](#cloudformation
 
 Interacting with a set of resources as a group can include duplicating the deployment to create a staging environment, or to create a new instance of a single-tenant application that's presented as a service to another customer. Recognizing the user's need to deploy things as a group provides semantic context that makes it easier to support both those workflows.
 
-In addition to [services](#service), other Triton resources that might be included in a deployment group could include [compute instances](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), and [RFD26 volumes](https://github.com/joyent/rfd/tree/master/rfd/0026), as well as other resources we might create in the future.
+In addition to [services](#service), other Triton resources that might be included in a deployment group could include [compute instances](https://docs.joyent.com/public-cloud/instances), [network fabrics](https://docs.joyent.com/public-cloud/network/sdn), [firewall rules](https://docs.joyent.com/public-cloud/network/firewall), and [RFD26 volumes](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0026), as well as other resources we might create in the future.
 
 
 
@@ -521,7 +521,7 @@ Though this RFD refuses to attempt a universal definition of "health" for a serv
 
 Before continuing, we need to acknowledge that the presence of an instance in a discovery service is never a guarantee that it is operating correctly. Modern applications must accept that any given request may fail due to a number of uncontrollable factors. So, discovery is not a guarantee of availability, but it can help limit the number of instances that an application attempts to interact with to those that are _expected_ to be available. This is important to improving performance in any substantially scaled application.
 
-Given these constraints, it is reasonable that services as defined in this RFD and their health definitions interact with [Triton Container Name Service](https://www.joyent.com/blog/tritoncns-and-docker) and that CNS not include instances of a service that have failed their health checks, though the full details and implications this has on [CNS](https://github.com/joyent/rfd/blob/master/rfd/0001/README.md) need further definition.
+Given these constraints, it is reasonable that services as defined in this RFD and their health definitions interact with [Triton Container Name Service](https://www.joyent.com/blog/tritoncns-and-docker) and that CNS not include instances of a service that have failed their health checks, though the full details and implications this has on [CNS](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0001/README.md) need further definition.
 
 
 
@@ -584,7 +584,7 @@ Keyword: lifecycle management
 
 ### Relationship between these resources and RBACv2
 
-Though this document does not define any aspect of RBACv2 ([see RFD48 for that](https://github.com/joyent/rfd/blob/master/rfd/0048/README.md)), the abstractions defined here need to be considered in that context. Certainly, users will expect to be able to control permissions on [services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets).
+Though this document does not define any aspect of RBACv2 ([see RFD48 for that](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0048/README.md)), the abstractions defined here need to be considered in that context. Certainly, users will expect to be able to control permissions on [services](#service), [deployment groups](#deployment-group), and [deployment metadata](#deployment-meta-including-secrets).
 
 Deployment groups are just one of a number of different logical groupings of resources. As with billing groups, a single object, be it a service, network, volume, or any other, may only be a member of a single deployment group. This differs from more general resource groups that may be used for security purposes or to arrange resources in terms that match the org structure.
 
@@ -623,7 +623,7 @@ Fault domains include individual compute nodes (CNs), entire data centers (DCs),
 - Network
 - Rack
 
-For many users, a "rack" implies power and network domains, but that assumption is not necessarily true in all cases, especially in private cloud installations that may not conform to the same architecture and topology as our public cloud DCs. However, "rack" is also a very convenient term, and its implications are being increasingly codified in Triton ([see RFD43, for example](https://github.com/joyent/rfd/blob/master/rfd/0043/README.md)).
+For many users, a "rack" implies power and network domains, but that assumption is not necessarily true in all cases, especially in private cloud installations that may not conform to the same architecture and topology as our public cloud DCs. However, "rack" is also a very convenient term, and its implications are being increasingly codified in Triton ([see RFD43, for example](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0043/README.md)).
 
 
 
@@ -708,7 +708,7 @@ Notes on the strawperson:
 
 ### Auditing
 
-Automation without auditability is dangerous. [RFD50](https://github.com/joyent/rfd/blob/master/rfd/0050/README.md) focuses on improving audit logs for individual instances, but we must recognize the need to audit the resources and automation proposed in this RFD. These logs will be critical for both data center operators and end users. Events that must be auditable include create, update, and delete operations on a service, the automatic scheduling and rescheduling of instances, as well as failed health checks and other events.
+Automation without auditability is dangerous. [RFD50](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0050/README.md) focuses on improving audit logs for individual instances, but we must recognize the need to audit the resources and automation proposed in this RFD. These logs will be critical for both data center operators and end users. Events that must be auditable include create, update, and delete operations on a service, the automatic scheduling and rescheduling of instances, as well as failed health checks and other events.
 
 
 
@@ -718,9 +718,9 @@ These are being rewritten from examples of the service manifest and Triton CLI c
 
 Previous examples:
 
-- [Service manifest](https://github.com/joyent/rfd/blob/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/services/manifest.md)
-- [Managing services (via projects) in Triton CLI](https://github.com/joyent/rfd/blob/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/projects/triton-projects-cli.md)
-- [Metadata and variable interpolation in the service manifest](https://github.com/joyent/rfd/tree/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/meta)
+- [Service manifest](https://github.com/TritonDataCenter/rfd/blob/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/services/manifest.md)
+- [Managing services (via projects) in Triton CLI](https://github.com/TritonDataCenter/rfd/blob/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/projects/triton-projects-cli.md)
+- [Metadata and variable interpolation in the service manifest](https://github.com/TritonDataCenter/rfd/tree/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036/meta)
 
 *NEEDS REVISION*
 
@@ -736,9 +736,9 @@ Also, because this RFD assumes the ability to define services running Docker ima
 
 ### Reprovisioning via public APIs
 
-Though [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, the feature is [not exposed publicly via CloudAPI](https://github.com/joyent/node-triton/issues/141). Triton and Manta upgrades are done via this private reprovisioning feature. The instance's primary volume is overwritten with a new image while stateful data in the instance is preserved on another volume in the dataset. This process depends on privileged access, either with a delegated dataset in the instance or with privileges in the global zone.
+Though [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, the feature is [not exposed publicly via CloudAPI](https://github.com/TritonDataCenter/node-triton/issues/141). Triton and Manta upgrades are done via this private reprovisioning feature. The instance's primary volume is overwritten with a new image while stateful data in the instance is preserved on another volume in the dataset. This process depends on privileged access, either with a delegated dataset in the instance or with privileges in the global zone.
 
-Though many customers would [happily enjoy the benefits of a delegated ZFS dataset](https://github.com/joyent/rfd/blob/master/rfd/0044/README.md), offering support for reprovisioning depends instead on API mechanisms to manage volumes. Users need to be able to specify what volumes to preserve while the others are overwritten with the new image. CloudAPI provides no mechanism to manage volumes in an instance. AWS' API provides only crude support for mapping EBS block devices to instances, but managing the volumes must be done within the instance itself. Interestingly, [Dockerfiles](https://docs.docker.com/engine/reference/builder/#volume) and the [Docker client](https://docs.docker.com/engine/tutorials/dockervolumes/#adding-a-data-volume) provide straightforward means to define and mount volumes in an instance.
+Though many customers would [happily enjoy the benefits of a delegated ZFS dataset](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0044/README.md), offering support for reprovisioning depends instead on API mechanisms to manage volumes. Users need to be able to specify what volumes to preserve while the others are overwritten with the new image. CloudAPI provides no mechanism to manage volumes in an instance. AWS' API provides only crude support for mapping EBS block devices to instances, but managing the volumes must be done within the instance itself. Interestingly, [Dockerfiles](https://docs.docker.com/engine/reference/builder/#volume) and the [Docker client](https://docs.docker.com/engine/tutorials/dockervolumes/#adding-a-data-volume) provide straightforward means to define and mount volumes in an instance.
 
 This feature would be one solution to separating the lifecycle of an instance's data from the application, as is needed for [stateful applications that require external state management](#stateful-with-external-state-management). This would make it easier to upgrade applications while preserving their filesystem(s), but would offer no protection against the loss of data if the compute node or its storage subsystems fail.
 
@@ -756,9 +756,9 @@ More interesting might be to define a mechanism for an instance to be provisione
 
 ### Volume objects (non-NFS)
 
-The section on [reprovisioning via public APIs](#reprovisioning-via-public-apis) offers some help for separating the lifecycle of the application from its data, while [RFD26](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction), nearing completion at the time of this writing, adds support for NFS-shared volumes.
+The section on [reprovisioning via public APIs](#reprovisioning-via-public-apis) offers some help for separating the lifecycle of the application from its data, while [RFD26](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0026/README.md#introduction), nearing completion at the time of this writing, adds support for NFS-shared volumes.
 
-The volume objects of RFD26 provide a more explicit means of separating those lifecycles, but the implementation makes [intentional trade-offs to support shared network access to those volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#non-requirements). While RFD26 volumes will be helpful for a number of use cases, they will not be a good choice for the primary storage for high performance applications such as databases.
+The volume objects of RFD26 provide a more explicit means of separating those lifecycles, but the implementation makes [intentional trade-offs to support shared network access to those volumes](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0026/README.md#non-requirements). While RFD26 volumes will be helpful for a number of use cases, they will not be a good choice for the primary storage for high performance applications such as databases.
 
 Given that, we might also consider adding support for non-shared volumes that live on a compute node and which customers can mount to their instances on that compute node. An example of this can be seen when [using `--volumes-from` with Docker](https://docs.docker.com/engine/tutorials/dockervolumes/#creating-and-mounting-a-data-volume-container). In that case, the user first creates a Docker instance, then maps the volume from that container into a new container.
 
@@ -794,7 +794,7 @@ Host volumes aren't supported on Triton because the customer doesn't own the und
 
 ### Remote block stores
 
-Though Joyent has deep experience with remote storage and its limitations (see [one](https://www.joyent.com/blog/magical-block-store-when-abstractions-fail-us), [two](https://www.joyent.com/blog/network-storage-in-the-cloud-delicious-but-deadly), [three](https://ops.faithlife.com/?p=6), it's an expected abstraction in clouds. This is different from [RFD26's shared NFS volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) in that they're single-tenant (though [Google's offering](https://cloud.google.com/compute/docs/disks/) in [this space](https://cloud.google.com/docs/compare/aws/storage#block_storage) offers [read+write access for a single host and read-only access for many hosts](https://cloud.google.com/compute/docs/disks/add-persistent-disk#use_multi_instances)), demonstrate reasonably high performance, and are tolerable as the backing store for many database applications.
+Though Joyent has deep experience with remote storage and its limitations (see [one](https://www.joyent.com/blog/magical-block-store-when-abstractions-fail-us), [two](https://www.joyent.com/blog/network-storage-in-the-cloud-delicious-but-deadly), [three](https://ops.faithlife.com/?p=6), it's an expected abstraction in clouds. This is different from [RFD26's shared NFS volumes](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0026/README.md#introduction) in that they're single-tenant (though [Google's offering](https://cloud.google.com/compute/docs/disks/) in [this space](https://cloud.google.com/docs/compare/aws/storage#block_storage) offers [read+write access for a single host and read-only access for many hosts](https://cloud.google.com/compute/docs/disks/add-persistent-disk#use_multi_instances)), demonstrate reasonably high performance, and are tolerable as the backing store for many database applications.
 
 Remote block stores are the most broadly used solution to the critical problem that application operators face of separating the lifecycle of compute instances from the data they create and consume in a way that fits the needs of [stateful applications that require external state management](#stateful-with-external-state-management). It should be emphasized that this does not eliminate the risk of data loss due to equipment failures (centralization of data increases that risk in many ways). Joyent has demonstrated alternatives that include [adding internal state management to application images](#stateful-with-internal-state-management). It should be said that state management that goes beyond remote block storage, such as is [demonstrated above](#compose), is absolutely required in any truly resilient and scalable application. But, not offering a solution in this space has critical implications to market acceptance.
 
@@ -822,7 +822,7 @@ This doesn't mean virtual or persistent IPs are not valuable, however. They are 
 
 ### Docker features we should add to CloudAPI and node-triton
 
-Triton implements a Docker API-compatible interface to manage infrastructure in each data center. This Docker API interface (provided by [sdc-docker](https://github.com/joyent/sdc-docker)) operates in parallel to [CloudAPI](https://apidocs.joyent.com/cloudapi/). Users can accomplish some operations using either API, but others are specific to a single API. Consider the following:
+Triton implements a Docker API-compatible interface to manage infrastructure in each data center. This Docker API interface (provided by [sdc-docker](https://github.com/TritonDataCenter/sdc-docker)) operates in parallel to [CloudAPI](https://apidocs.joyent.com/cloudapi/). Users can accomplish some operations using either API, but others are specific to a single API. Consider the following:
 
 ![Docker API and CloudAPI side-by-side on Triton](./_assets/docker-api-and-cloudapi-side-by-side.jpg)
 
@@ -833,7 +833,7 @@ Some common and useful Docker API/CLI operations not supported via CloudAPI and 
 - [Starting Docker instances](https://docs.docker.com/engine/reference/commandline/run/) via CloudAPI and the Triton CLI; this implies support for [pulling Docker images](https://docs.docker.com/engine/reference/commandline/pull/), including [logging in to private registries](https://docs.docker.com/engine/reference/commandline/login/)
 - [`docker exec...`](https://docs.docker.com/engine/reference/commandline/exec/)
 - Setting a timeout when stopping an instance via CloudAPI, as in [`docker stop <container name> --time <seconds>`](https://docs.docker.com/engine/reference/commandline/stop/), including an indefinite timeout
-- Mapping volumes from another container, as in [`--volumes-from`](https://docs.docker.com/engine/reference/commandline/run/), as well as mapping [RFD26 volumes](https://github.com/joyent/rfd/blob/master/rfd/0026/README.md#introduction) via `-v` or `--volume`
+- Mapping volumes from another container, as in [`--volumes-from`](https://docs.docker.com/engine/reference/commandline/run/), as well as mapping [RFD26 volumes](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0026/README.md#introduction) via `-v` or `--volume`
 
 
 
@@ -847,7 +847,7 @@ This section shall be updated as the development roadmap is determined.
 ## Revision history
 
 - [Current version: rewritten post-meetup](./)
-- [27 March, 2017: kick-off content](https://github.com/joyent/rfd/tree/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036)
-- [9 March, 2017: reorganized and added implementation straw man](https://github.com/joyent/rfd/tree/e38e0b02776a286db47c9fccea1e90646b5f31ef/rfd/0036)
-- [13 December, 2016: added user stories](https://github.com/joyent/rfd/tree/e1b4b05a236e084de065b0765510ec5069210f30/rfd/0036)
-- [13 June, 2016: initial draft focusing on end-user experience](https://github.com/joyent/rfd/blob/8529d2d2f6f386d977c66fbf08bab928b3fc91ba/rfd/0036)
+- [27 March, 2017: kick-off content](https://github.com/TritonDataCenter/rfd/tree/e4a66d6b5754a045502f971deaedef1c8b8be138/rfd/0036)
+- [9 March, 2017: reorganized and added implementation straw man](https://github.com/TritonDataCenter/rfd/tree/e38e0b02776a286db47c9fccea1e90646b5f31ef/rfd/0036)
+- [13 December, 2016: added user stories](https://github.com/TritonDataCenter/rfd/tree/e1b4b05a236e084de065b0765510ec5069210f30/rfd/0036)
+- [13 June, 2016: initial draft focusing on end-user experience](https://github.com/TritonDataCenter/rfd/blob/8529d2d2f6f386d977c66fbf08bab928b3fc91ba/rfd/0036)

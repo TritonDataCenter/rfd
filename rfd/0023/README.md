@@ -26,10 +26,10 @@ The primary Manta docs are Markdown files in a number of git repositories.
 
 | Repo | Description |
 | ---- | ----------- |
-| [manta.git](https://github.com/joyent/manta) | General Manta intro/landing-page is the repo [README.md](https://github.com/joyent/manta/blob/master/README.md). [Operator Guide](https://github.com/joyent/manta/tree/master/docs/operator-guide). [User Guide](https://github.com/joyent/manta/tree/master/docs/user-guide). |
-| [manta-muskie.git](https://github.com/joyent/manta-muskie) | Manta [REST API](https://github.com/joyent/manta-muskie/tree/master/docs) docs |
-| [node-manta.git](https://github.com/joyent/node-manta) | ["Node.js SDK"](https://github.com/joyent/node-manta/tree/master/docs) docs: man pages and node.js library docs |
-| [manta-compute-bin.git](https://github.com/joyent/node-manta) | [Man pages](https://github.com/joyent/manta-compute-bin/tree/master/docs/man) for Manta compute job utilities, e.g. `maggr`, `mcat`. |
+| [manta.git](https://github.com/TritonDataCenter/manta) | General Manta intro/landing-page is the repo [README.md](https://github.com/TritonDataCenter/manta/blob/master/README.md). [Operator Guide](https://github.com/TritonDataCenter/manta/tree/master/docs/operator-guide). [User Guide](https://github.com/TritonDataCenter/manta/tree/master/docs/user-guide). |
+| [manta-muskie.git](https://github.com/TritonDataCenter/manta-muskie) | Manta [REST API](https://github.com/TritonDataCenter/manta-muskie/tree/master/docs) docs |
+| [node-manta.git](https://github.com/TritonDataCenter/node-manta) | ["Node.js SDK"](https://github.com/TritonDataCenter/node-manta/tree/master/docs) docs: man pages and node.js library docs |
+| [manta-compute-bin.git](https://github.com/TritonDataCenter/node-manta) | [Man pages](https://github.com/TritonDataCenter/manta-compute-bin/tree/master/docs/man) for Manta compute job utilities, e.g. `maggr`, `mcat`. |
 
 
 ### Publish Targets
@@ -37,7 +37,7 @@ The primary Manta docs are Markdown files in a number of git repositories.
 | URL | How to update | Description |
 | --- | ------------- | ----------- |
 | <https://apidocs.joyent.com/manta> | [How to update](#how-to-update-the-manta-user-guide) | Manta user guide |
-| <https://github.com/joyent/manta> | [How to update](#how-to-update-the-manta-landing-page) | Manta project landing page for those with a code/operator interest |
+| <https://github.com/TritonDataCenter/manta> | [How to update](#how-to-update-the-manta-landing-page) | Manta project landing page for those with a code/operator interest |
 | <http://joyent.github.io/manta/> | [How to update](#how-to-update-the-manta-operator-guide) | (The somewhat hard to find) publishing of the manta operator guide |
 | <https://joyent.com/manta> | - | **Out of scope.** Currently redirects to <joyent.com/object-storage>. |
 
@@ -51,11 +51,11 @@ but not yet.
 
 | Name | URL pattern | Source |
 | ---- | ----------- | ------ |
-| api | api.html | <https://github.com/joyent/manta-muskie/blob/master/docs/index.md> |
-| nodesdk | nodesdk.html, m\*.html | <https://github.com/joyent/node-manta/blob/master/docs>, note some "m\*.html" man pages in manta-compute-bin.git |
-| compute-man-pages | m\*.html | <https://github.com/joyent/manta-compute-bin/tree/master/docs/man>, note some "m\*.html" man pages in node-manta.git |
-| compute-examples | example-\*.html | <https://github.com/joyent/manta/tree/master/docs/user-guide/examples> |
-| base | \*.html (everything else) | <https://github.com/joyent/manta/tree/master/docs/user-guide> |
+| api | api.html | <https://github.com/TritonDataCenter/manta-muskie/blob/master/docs/index.md> |
+| nodesdk | nodesdk.html, m\*.html | <https://github.com/TritonDataCenter/node-manta/blob/master/docs>, note some "m\*.html" man pages in manta-compute-bin.git |
+| compute-man-pages | m\*.html | <https://github.com/TritonDataCenter/manta-compute-bin/tree/master/docs/man>, note some "m\*.html" man pages in node-manta.git |
+| compute-examples | example-\*.html | <https://github.com/TritonDataCenter/manta/tree/master/docs/user-guide/examples> |
+| base | \*.html (everything else) | <https://github.com/TritonDataCenter/manta/tree/master/docs/user-guide> |
 
 
 
@@ -66,7 +66,7 @@ but not yet.
    GitHub PR, or `#joyent` IRC).
 
    Currently the build and publishing of the User Guide is done in a
-   private [apidocs.joyent.com.git repository](https://github.com/joyent/apidocs.joyent.com),
+   private [apidocs.joyent.com.git repository](https://github.com/TritonDataCenter/apidocs.joyent.com),
    so non-Joyent employees will have to stop at this step.
 
 3. (For "compute-examples" group only.) The example-FOO.html files are built
@@ -79,7 +79,7 @@ but not yet.
         make docs-regenerate-examples
 
    See [the examples
-   README](https://github.com/joyent/manta/tree/rfd23/docs/user-guide/examples)
+   README](https://github.com/TritonDataCenter/manta/tree/rfd23/docs/user-guide/examples)
    for details.
 
    Review and commit any HTML changes. Note: Because a re-run of a job changes
@@ -96,7 +96,7 @@ but not yet.
 
    You can optionally configure separate branches or git SHA revs for
    doc imports in [the "etc/config.json"
-   file](https://github.com/joyent/apidocs.joyent.com/blob/master/etc/config.json).
+   file](https://github.com/TritonDataCenter/apidocs.joyent.com/blob/master/etc/config.json).
 
 5. Talk to the master o' the docs (current MattF) to re-publish
    apidocs.joyent.com.
@@ -105,7 +105,7 @@ but not yet.
 #### How to update the Manta Landing Page
 
 1. Update the manta.git README.md:
-   <https://github.com/joyent/manta/blob/master/README.md>.
+   <https://github.com/TritonDataCenter/manta/blob/master/README.md>.
 
    Get a review from  Manta developers (whether via 'manta@' internal chat,
    MANTA internal Jira ticket, email to Manta developers,
@@ -115,7 +115,7 @@ but not yet.
 #### How to update the Manta Operator Guide
 
 1. Update the Markdown sources at
-   <https://github.com/joyent/manta/tree/master/docs/operator-guide>.
+   <https://github.com/TritonDataCenter/manta/tree/master/docs/operator-guide>.
 
    Get a review from  Manta developers (whether via 'manta@' internal chat,
    MANTA internal Jira ticket, email to Manta developers,
@@ -136,9 +136,9 @@ The Operator Guide *styling* is currently the default "ohthejoy" "brand" for the
 Restdown is a light-weight wrapper for single-page Markdown docs (mostly just
 adding a TOC and some styling). The change the styling one would need to
 provide a custom restdown "brand". E.g. [the restdown brand for Manta docs
-in apidocs.joyent.com](https://github.com/joyent/apidocs.joyent.com/tree/master/etc/manta-brand),
+in apidocs.joyent.com](https://github.com/TritonDataCenter/apidocs.joyent.com/tree/master/etc/manta-brand),
 or the ["remora" restdown brand currently used for cloudapi
-docs](https://github.com/joyent/restdown-brand-remora).
+docs](https://github.com/TritonDataCenter/restdown-brand-remora).
 
 
 ## Future
@@ -179,7 +179,7 @@ Future plans/ideas.
 
 ### state as of Jan 2016
 
-[DOC-642](https://devhub.joyent.com/jira/browse/DOC-642) will get us back
+[DOC-642](https://mnx.atlassian.net/browse/DOC-642) will get us back
 to being able to update from primary sources.
 
 
@@ -201,7 +201,7 @@ Sources:
 - <joyent.com/manta> currently redirects to <joyent.com/object-storage>. This
   is marketing controlled area -- out of scope for this RFD.
 - <https://apidocs.joyent.com/manta/> Primary Manta user doc area.
-- <https://github.com/joyent/manta> Landing page for those with a
+- <https://github.com/TritonDataCenter/manta> Landing page for those with a
   code/operator interest Manta.
 - <http://joyent.github.io/manta/> A somewhat hard to find publishing of
   the manta operator guide.
@@ -214,7 +214,7 @@ Update content for <joyent.github.io/manta>:
 Updating content for <apidocs.joyent.com/manta>:
 
 - Manually edit the HTML previous snapshotted to
-  <https://github.com/joyent/apidocs.joyent.com/tree/master/htdocs/manta> !
+  <https://github.com/TritonDataCenter/apidocs.joyent.com/tree/master/htdocs/manta> !
   Yuck. This is the main doc pipeline thing to fix in the shorterm
 
 Sources:
@@ -242,5 +242,5 @@ in apidocs.joyent.com.git.  I want to cut out repo (b).
 
 ## Tickets
 
-- [DOC-642](https://devhub.joyent.com/jira/browse/DOC-642)
-- [DOC-646](https://devhub.joyent.com/jira/browse/DOC-646)
+- [DOC-642](https://mnx.atlassian.net/browse/DOC-642)
+- [DOC-646](https://mnx.atlassian.net/browse/DOC-646)

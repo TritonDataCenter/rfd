@@ -244,8 +244,8 @@ plan.
 
 ## Code and Related Links
 
-* [Conch Repositority](https://github.com/joyent/conch)
-* [Issue discussing data reduction](https://github.com/joyent/conch/issues/140)
+* [Conch Repositority](https://github.com/TritonDataCenter/conch)
+* [Issue discussing data reduction](https://github.com/TritonDataCenter/conch/issues/140)
 * [JSON Schema](http://json-schema.org)
 * [JSON Schema Validation Draft](https://datatracker.ietf.org/doc/draft-wright-json-schema-validation/?include_text=1)
 * [JSON::Validator Perl module](https://metacpan.org/pod/JSON::Validator)

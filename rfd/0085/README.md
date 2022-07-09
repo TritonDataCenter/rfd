@@ -25,7 +25,7 @@ enormously in severity and scope.  They may be:
 - major issues affecting the data path or jobs path
 - minor issues that don't affect the data path yet, but which might induce
   errors if left unresolved (e.g.,
-  [QA-196](https://devhub.joyent.com/jira/browse/QA-196)).
+  [QA-196](https://mnx.atlassian.net/browse/QA-196)).
 - transient blips that may have affected a small number of requests, but are
   not ongoing
 - issues with non-customer-visible background activities (e.g., GC failures)
@@ -48,7 +48,7 @@ burning issues, it's worth examining the usability problems in some detail to
 make sure we actually address them.
 
 The underlying goals and design principles are described in [RFD
-6](https://github.com/joyent/rfd/blob/master/rfd/0006/README.md).
+6](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0006/README.md).
 
 
 ## Manta alarms today
@@ -67,10 +67,10 @@ In amon terms:
   not.
 
 For details on these terms, see the [amon
-docs](https://github.com/joyent/sdc-amon/blob/master/docs/index.md).
+docs](https://github.com/TritonDataCenter/sdc-amon/blob/master/docs/index.md).
 
 Manta alarms are defined as a bunch of **probe templates** in the
-[mantamon](https://github.com/joyent/mantamon/tree/master/probes) repository.
+[mantamon](https://github.com/TritonDataCenter/mantamon/tree/master/probes) repository.
 (They're not called probe templates explicitly, but that's what they are.)
 Here's an example that runs a script to check on Manatee every minute:
 
@@ -91,7 +91,7 @@ Here's an example that runs a script to check on Manatee every minute:
     }
 
 This looks just like an [amon probe (see docs for what the fields
-mean)](https://github.com/joyent/sdc-amon/blob/master/docs/index.md#probe-types),
+mean)](https://github.com/TritonDataCenter/sdc-amon/blob/master/docs/index.md#probe-types),
 except that it doesn't specify a specific container (technically, a specific
 amon agent).  Instead, the Manta tooling will take this template, see that it's
 in a file associated with "postgres" zones, and stamp out an amon probe _for
@@ -291,7 +291,7 @@ information like the following:
   rebooted or lost power or the heartbeating service may have failed.
 
 This format is intended to match the [knowledge
-articles](https://github.com/joyent/rfd/tree/master/rfd/0006#knowledge-articles)
+articles](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0006#knowledge-articles)
 that are part of the operating system's FMA.  As with FMA, each knowledge
 article could be assigned a unique ID that we could include in the probe's name.
 That way, it's in the amon notification message.  The chat bot could notice this
@@ -608,7 +608,7 @@ a new set of commands under `manta-adm alarm`.
 Below is the proposed change to the manual page to describe these changes.  You
 can currently see the latest version of the proposal in [the feature branch for
 this
-work](https://github.com/joyent/sdc-manta/compare/master...davepacheco:dev-RFD-85).
+work](https://github.com/TritonDataCenter/sdc-manta/compare/master...davepacheco:dev-RFD-85).
 Look at "docs/man/man1/manta-adm.md", and select the "rich diff" to see a
 rendered version.
 
@@ -932,7 +932,7 @@ it.
 
 ## See also
 
-* [RFD 6](https://github.com/joyent/rfd/tree/master/rfd/0006) Improving Triton
+* [RFD 6](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0006) Improving Triton
   and Manta RAS Infrastructure
-* [Amon](https://github.com/joyent/sdc-amon/blob/master/docs/index.md)
-* [mantamon](https://github.com/joyent/mantamon)
+* [Amon](https://github.com/TritonDataCenter/sdc-amon/blob/master/docs/index.md)
+* [mantamon](https://github.com/TritonDataCenter/mantamon)

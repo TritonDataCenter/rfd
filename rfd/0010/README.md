@@ -7,7 +7,7 @@ state: publish
 
 ## Overview
 
-With [RFD 0002](https://github.com/joyent/rfd/tree/master/rfd/0002), we've added
+With [RFD 0002](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0002), we've added
 support for docker logging modes which for the most part leave log files in the:
 
 ```
@@ -28,7 +28,7 @@ most recent log. In order to deal with these problems, we wanted to instead
 rotate the logs to Manta so that customers could access all their logs (using
 any Manta tools) and so that these logs will not fill up their container.
 
-Per [RFD 0002](https://github.com/joyent/rfd/tree/master/rfd/0002),
+Per [RFD 0002](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0002),
 these will be the main source of "reliable" logs, as such we would also like to
 get them into Manta in a timely manner.
 

@@ -15,7 +15,7 @@ core services for a Triton DataCenter.
 
 M0 is implemented and updates.jo and images.jo are deployed using the
 newer images and process. An [Operator
-Guide](https://github.com/joyent/sdc-imgapi/blob/master/docs/operator-guide.md#standalone-setup)
+Guide](https://github.com/TritonDataCenter/sdc-imgapi/blob/master/docs/operator-guide.md#standalone-setup)
 documents setup/reprovision/backup/restore processes for a standalone IMGAPI.
 
 Remaining milestones are incomplete and not currently scheduled. M0 implements a
@@ -38,14 +38,14 @@ standalone IMGAPI deployments.
 
 ## IMGAPI primer
 
-IMGAPI source is in <https://github.com/joyent/sdc-imgapi>.
+IMGAPI source is in <https://github.com/TritonDataCenter/sdc-imgapi>.
 
 IMGAPI is an API to serve Triton images. The server stores two main kinds
 of things: image manifests (JSON documents) and image files (large binary
 blobs). The code's name for the component that handles manifests is
-"the database" ([code](https://github.com/joyent/sdc-imgapi/blob/master/lib/database.js))
+"the database" ([code](https://github.com/TritonDataCenter/sdc-imgapi/blob/master/lib/database.js))
 and for image files, the "storage"
-([code](https://github.com/joyent/sdc-imgapi/blob/master/lib/storage.js)).
+([code](https://github.com/TritonDataCenter/sdc-imgapi/blob/master/lib/storage.js)).
 An IMGAPI server can be
 [configured](https://images.joyent.com/docs/#configuration)
 with one "database.type" and one or more ["storage"
@@ -58,7 +58,7 @@ enable custom image creation in the datacenter for durability of custom
 image data.
 
 Standalone IMGAPI deployments use a "local" database (generally there isn't
-a [Moray](https://github.com/joyent/moray) to use) and typically use a "local"
+a [Moray](https://github.com/TritonDataCenter/moray) to use) and typically use a "local"
 and, optionally, a "manta" storage. "local" storage is just files on the local
 disk (no replication).
 
@@ -66,7 +66,7 @@ Auth and TLS also differ: A in-Triton DataCenter IMGAPI doesn't use auth (it
 only accepts connections on the admin interface) and uses HTTP. A standalone
 IMGAPI of course requires auth for endpoints that change data (CreateImage et
 al). Basic auth is/was supported, but is deprecated. HTTP Signature auth (the
-same as [CloudAPI](https://github.com/joyent/sdc-cloudapi)) is preferred. TLS
+same as [CloudAPI](https://github.com/TritonDataCenter/sdc-cloudapi)) is preferred. TLS
 termination is currently done via stud (stud -> haproxy -> imgapi) per [these
 setup docs](https://images.joyent.com/docs/#configuring-imgapi-for-https). The
 use of HAproxy was a copy from Manta's muskie and CloudAPI. Currently only a
@@ -107,7 +107,7 @@ IMGAPI instance updates/deployments.
 
 Issues:
 
-- [IMGAPI-567](https://devhub.joyent.com/jira/browse/IMGAPI-567)
+- [IMGAPI-567](https://mnx.atlassian.net/browse/IMGAPI-567)
 
 The milestones below are nice and I'd still like to do them. However, priorities
 call, so I need to get images.jo and updates.jo on a modern base and updateable
@@ -131,7 +131,7 @@ only backed up to durable storage (Manta) hourly.
 
 Issues:
 
-- [IMGAPI-571](https://devhub.joyent.com/jira/browse/IMGAPI-571): re-do
+- [IMGAPI-571](https://mnx.atlassian.net/browse/IMGAPI-571): re-do
   images.jo/updates.jo deployment to be able use stock 'imgapi' images
 
 

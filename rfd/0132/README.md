@@ -65,7 +65,7 @@ It would be ideal if we had *one* process which was vendor agnostic.
 ## Previous Art
 
 We have built a network booted [preflight
-service](https://github.com/joyent/conch) that validates system inventory,
+service](https://github.com/TritonDataCenter/conch) that validates system inventory,
 raising errors when we find the following:
 
 * Incorrect network cabling

@@ -1,7 +1,7 @@
 ---
 authors: Josh Wilsdon <jwilsdon@joyent.com>
 state: abandoned
-discussion: https://github.com/joyent/rfd/issues/135
+discussion: https://github.com/TritonDataCenter/rfd/issues/135
 ---
 
 <!--
@@ -39,7 +39,7 @@ to create a new name to an existing object in manta. Similar to how hard links
 work in UNIX and UNIX-like systems.
 
 In order to make a SnapLink to an existing object, one calls the
-[PutSnapLink](https://github.com/joyent/manta-muskie/blob/master/docs/index.md#putsnaplink-put-loginstordirectorylink)
+[PutSnapLink](https://github.com/TritonDataCenter/manta-muskie/blob/master/docs/index.md#putsnaplink-put-loginstordirectorylink)
 endpoint on muskie:
 
 ```
@@ -61,9 +61,9 @@ content-type: application/json; type=link
 
 header which indicates that what we're PUTing is a SnapLink.
 
-In [muskie](https://github.com/joyent/manta-muskie/) the code that handles this
+In [muskie](https://github.com/TritonDataCenter/manta-muskie/) the code that handles this
 operation is in [the
-link.putLinkHandler](https://github.com/joyent/manta-muskie/blob/810d30f043a3c3ee5717146fe7bbb85484cfe0ef/lib/link.js#L242-L257)
+link.putLinkHandler](https://github.com/TritonDataCenter/manta-muskie/blob/810d30f043a3c3ee5717146fe7bbb85484cfe0ef/lib/link.js#L242-L257)
 function.
 
 This will:
@@ -108,15 +108,15 @@ Both of these use-cases are preserved with this proposal.
 ### Garbage Collection
 
 There is discussion in [RFD
-123](https://github.com/joyent/rfd/blob/master/rfd/0123/README.md#snap-links)
-and [RFD 143](https://github.com/joyent/rfd/blob/master/rfd/0143/README.md)
+123](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0123/README.md#snap-links)
+and [RFD 143](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0143/README.md)
 about SnapLinks and workarounds proposed (some of which have been made) to deal
 with the fact that SnapLinks don't work well with the [old garbage collection
-system](https://github.com/joyent/manta/blob/mantav1/docs/operator-guide.md#garbage-collection-auditing-and-metering)
+system](https://github.com/TritonDataCenter/manta/blob/mantav1/docs/operator-guide.md#garbage-collection-auditing-and-metering)
 (that uses `manta_delete_log`). There's also discussion in [this
-document](https://github.com/joyent/manta-mola/blob/master/docs/gc-design-alternatives.md)
+document](https://github.com/TritonDataCenter/manta-mola/blob/master/docs/gc-design-alternatives.md)
 of problems including ["The Walking Link
-Problem"](https://github.com/joyent/manta-mola/blob/master/docs/gc-design-alternatives.md#the-walking-link-problem)
+Problem"](https://github.com/TritonDataCenter/manta-mola/blob/master/docs/gc-design-alternatives.md#the-walking-link-problem)
 which is a theoretical problem that's solely due to the design here where links
 share object ids between source and target.
 
@@ -136,7 +136,7 @@ deleted from the metadata tier, they remain on disk in the mako/storage zones.
 
 ### Rebalancing
 
-[RFD 162](https://github.com/joyent/rfd/blob/master/rfd/0162/README.md) and
+[RFD 162](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0162/README.md) and
 other discussion of rebalancing have also necessarily been required to talk
 about SnapLinks. The reason here is that if we have multiple pointers in the
 metadata tier to the same objects on the makos, we need to update *all* of those
@@ -223,7 +223,7 @@ this:
 
  * We've changed an O(n) operation into an O(1) operation which brings the
    system closer to the [stated design
-   principle](https://github.com/joyent/manta/#design-principles) of scaling
+   principle](https://github.com/TritonDataCenter/manta/#design-principles) of scaling
    horizontally in "every dimension".
 
 ## Other Considerations
@@ -232,7 +232,7 @@ this:
 
 Based on the author's current understanding, this should not really have much
 impact on [RFD 155
-buckets](https://github.com/joyent/rfd/blob/master/rfd/0155/README.md).
+buckets](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0155/README.md).
 
 The current plan as listed in that RFD is to not support SnapLinks for now
 anyway.
@@ -259,10 +259,10 @@ The primary changes here as far as other components are concerned would be:
 ### Billing
 
 It was [pointed out in the GH
-issue](https://github.com/joyent/rfd/issues/135#issuecomment-500566030) that
+issue](https://github.com/TritonDataCenter/rfd/issues/135#issuecomment-500566030) that
 customers that use the Manta job-based billing are [not charged for space used
 by secondary links to their
-objects](https://github.com/joyent/manta-mackerel/blob/6e55545e6040a3270dd4b8c9ac83d41d4201d41f/assets/lib/storage-reduce1.js#L142-L150).
+objects](https://github.com/TritonDataCenter/manta-mackerel/blob/6e55545e6040a3270dd4b8c9ac83d41d4201d41f/assets/lib/storage-reduce1.js#L142-L150).
 If we wanted to keep this behavior, we'd need some mechanism to identify links
 at the point where billing reports are generated.
 
@@ -273,7 +273,7 @@ this discussion.
 
 ### ETags
 
-[A question was raised about ETags](https://github.com/joyent/rfd/issues/135#issuecomment-501367643)
+[A question was raised about ETags](https://github.com/TritonDataCenter/rfd/issues/135#issuecomment-501367643)
 
 Currently when you create a SnapLink, in moray the two links will have
 different `_etag` values in Moray:
@@ -345,12 +345,12 @@ behavior, so it is unclear what might break if suddenly the `etag:` header for a
 linked object now has a different UUID (the UUID of the new object) where
 previously a link had the same UUID.
 
-With [Buckets](https://github.com/joyent/rfd/blob/master/rfd/0155/README.md) I
+With [Buckets](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0155/README.md) I
 have been informed that we are also going to be using the objectId as the etag.
 So this would at least be consistent.
 
 [The discussion in the GH
-issue](https://github.com/joyent/rfd/issues/135#issuecomment-501394987) suggests
+issue](https://github.com/TritonDataCenter/rfd/issues/135#issuecomment-501394987) suggests
 that the intention here was for the ETag to indicate when: "two objects refer
 not just to the same contents but the same instance of uploading those contents
 -- even across snaplinks". In that case, it seems that it would be correct for
@@ -370,7 +370,7 @@ critical.
 
 #### Additional Concerns with ETags and Upgrades
 
-It [was raised](https://github.com/joyent/rfd/issues/135#issuecomment-501458279)
+It [was raised](https://github.com/TritonDataCenter/rfd/issues/135#issuecomment-501458279)
 that when we are doing the upgrade from old SnapLinks (same objectId) to new
 SnapLinks (different objectIds), that if someone did a GET or HEAD call before
 the upgrade and stored that ETag somewhere for the duration of the upgrade and
@@ -382,7 +382,7 @@ described above as an option.
 
 ### Capacity Questions
 
-Several [issues related to capacity](https://github.com/joyent/rfd/issues/135#issuecomment-501458279)
+Several [issues related to capacity](https://github.com/TritonDataCenter/rfd/issues/135#issuecomment-501458279)
 were raised in the discussion issue. This section attempts to summarize those.
 
 #### Additional Usage Due to Rebalance
@@ -429,7 +429,7 @@ used. So if you do:
 the `createdFrom` for object3 will show object2's path.
 
 It was [suggested that we should have a mechanism for identifying
-links](https://github.com/joyent/rfd/issues/135#issuecomment-501458279)
+links](https://github.com/TritonDataCenter/rfd/issues/135#issuecomment-501458279)
 
 I think it might be sufficient here to track the original objectId when making a
 SnapLink. Though another question is whether we should track both the very first
@@ -452,7 +452,7 @@ Since there are likely *existing* SnapLinks in some installations, we should
 have a process for "fixing" pre-existing SnapLinks as part of this change.
 
 Similar to what was [proposed among the steps in RFD
-143](https://github.com/joyent/rfd/blob/master/rfd/0143/README.md#a-concrete-plan),
+143](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0143/README.md#a-concrete-plan),
 we will need to do an "audit" to find all existing objects that are SnapLinks. If
 any are found, we'll want to:
 
@@ -486,7 +486,7 @@ a bit more thought and experimentation.
 
 While looking into the possibilities here I found that the current
 putObjectHandler has poor behavior when there are errors talking to "sharks"
-[MANTA-4286](https://jira.joyent.us/browse/MANTA-4286). If there is any error
+[MANTA-4286](https://mnx.atlassian.net/browse/MANTA-4286). If there is any error
 after data has been written to disk, it will leave garbage around on the storage
 zones that will never be cleaned up. We should avoid having that same bug with
 this change and ensure that if we fail to create links on any of the "sharks",
@@ -497,8 +497,8 @@ we're going to return an error after we've talked to any "sharks".
 
 ## See Also
 
-* [RFD 123](https://github.com/joyent/rfd/blob/master/rfd/0123/README.md)
-* [RFD 143](https://github.com/joyent/rfd/blob/master/rfd/0143/README.md)
-* [RFD 162](https://github.com/joyent/rfd/blob/master/rfd/0162/README.md)
-* [Mola design notes](https://github.com/joyent/manta-mola/blob/master/docs/gc-design-alternatives.md#the-walking-link-problem)
-* [Manta design principles](https://github.com/joyent/manta/#design-principles)
+* [RFD 123](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0123/README.md)
+* [RFD 143](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0143/README.md)
+* [RFD 162](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0162/README.md)
+* [Mola design notes](https://github.com/TritonDataCenter/manta-mola/blob/master/docs/gc-design-alternatives.md#the-walking-link-problem)
+* [Manta design principles](https://github.com/TritonDataCenter/manta/#design-principles)

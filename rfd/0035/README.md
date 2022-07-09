@@ -487,7 +487,7 @@ behalf of requests with the required data to include it in the trace.
 
 ### Modification of node-vmadm
 
-The [node-vmadm](https://github.com/joyent/node-vmadm) library is used by
+The [node-vmadm](https://github.com/TritonDataCenter/node-vmadm) library is used by
 cn-agent to wrap the vmadm tool. It will be modified so that it logs all calls
 to vmadm and passes through the trace ids so that vmadm output that contains
 traces can be captured and put in the correct format to include in the trace.
@@ -890,7 +890,7 @@ lookup this data in that external system soon after the request has completed.
 
 As part of the prototype, I've written a very quick tool called "ziploader":
 
-https://github.com/joyent/ziploader
+https://github.com/TritonDataCenter/ziploader
 
 which can upload traces with a small delay to a zipkin server. This works by
 running in the GZ after being pointed at a zipkin instance and watching the logs
@@ -991,7 +991,7 @@ be whether the traces get written out when span.finish() is called.
 
 ### Translating existing vmadm messages
 
-With [OS-3902](https://github.com/joyent/smartos-live/commit/d73d040) some
+With [OS-3902](https://github.com/TritonDataCenter/smartos-live/commit/d73d040) some
 initial experimental support was added to vmadm to log event messages. We will
 investigate whether there's some way to include some of these messages from old
 platforms in traces while we modify vmadm to log in the new format.

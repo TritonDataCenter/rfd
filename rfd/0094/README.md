@@ -1,7 +1,7 @@
 ---
 authors: Richard Kiene <richard.kiene@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+94%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+94%22
 ---
 
 <!--
@@ -33,9 +33,9 @@ other tasks, etc..
 ### Goal
 
 Provide a consistent view of available SmartOS metrics via the
-[CMON API](https://github.com/joyent/triton-cmon), as well as provide a way to
+[CMON API](https://github.com/TritonDataCenter/triton-cmon), as well as provide a way to
 discover each available metric endpoint via the
-[CMON API](https://github.com/joyent/triton-cmon) so that operators can consume
+[CMON API](https://github.com/TritonDataCenter/triton-cmon) so that operators can consume
 a fleet of CN metrics as they would kstats from a single CN. Additionally, we
 should provide thorough documentation for each metric provided so that operators
 do not need to guess or consult source code.
@@ -48,7 +48,7 @@ do not need to guess or consult source code.
 * Must provide an easy path for future metrics formats to be added (e.g. Influx)
 * Must not introduce any new components (e.g. agents, vms, etc.) to CMON
 * Must follow the same rules and requirements detailed in
-[RFD 27](https://github.com/joyent/rfd/tree/master/rfd/0027)
+[RFD 27](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0027)
 
 ### Assumption
 
@@ -60,7 +60,7 @@ please refer to RFD 27.
 
 ## Proposed Solution
 
-### The following routes will be added to [triton-cmon](https://github.com/joyent/triton-cmon/)
+### The following routes will be added to [triton-cmon](https://github.com/TritonDataCenter/triton-cmon/)
 
 * Compute node metrics discovery:
 
@@ -94,7 +94,7 @@ cpu_info_model 42
 ...
 ```
 
-### The following route will be added to [triton-cmon-agent](https://github.com/joyent/triton-cmon-agent)
+### The following route will be added to [triton-cmon-agent](https://github.com/TritonDataCenter/triton-cmon-agent)
 
 * Compute node metrics:
 
@@ -113,7 +113,7 @@ cpu_info_model 42
 ...
 ```
 
-### The following functionality will be added to [triton-cns](https://github.com/joyent/triton-cns)
+### The following functionality will be added to [triton-cns](https://github.com/TritonDataCenter/triton-cns)
 
 * When compute nodes come and go, CNS will detect the change and create a DNS
 CNAME record which points to the CMON proxy A RECORD.

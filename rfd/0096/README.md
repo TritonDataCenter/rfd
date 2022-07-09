@@ -1,7 +1,7 @@
 ---
 authors: Jason King <jason.king@joyent.com>, John Levon <john.levon@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues/61
+discussion: https://github.com/TritonDataCenter/rfd/issues/61
 ---
 
 <!--

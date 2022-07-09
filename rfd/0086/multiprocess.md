@@ -2,7 +2,7 @@
 
 ContainerPilot v2 "shims" a single application -- it blocks until this main application exits and spins up concurrent threads to perform the various lifecycle hooks. ContainerPilot was originally dedicated to the control of a single persistent application, and this differentiated it from a typical init system.
 
-Later in v2 we expanded the polling behaviors of `health` checks and `onChange` handlers to include periodic `tasks` [#27](https://github.com/joyent/containerpilot/issues/27). Correctly supporting Consul or etcd on Triton (or any CaaS/PaaS) means requiring an agent running inside the container, and so we also expanded to include persistent `coprocesses`. Users have reported problems with ContainerPilot (via GitHub issues) that stem from three areas of confusion around these features:
+Later in v2 we expanded the polling behaviors of `health` checks and `onChange` handlers to include periodic `tasks` [#27](https://github.com/TritonDataCenter/containerpilot/issues/27). Correctly supporting Consul or etcd on Triton (or any CaaS/PaaS) means requiring an agent running inside the container, and so we also expanded to include persistent `coprocesses`. Users have reported problems with ContainerPilot (via GitHub issues) that stem from three areas of confusion around these features:
 
 - The configuration of the main process is via the command line whereas the configuration of the various supporting processes is via the config file.
 - The timing of when each process starts is specific to which configuration block it's in (main vs `task` vs `coprocess`) rather than its dependencies.
@@ -16,12 +16,12 @@ In v3 we'll eliminate the concept of a "main" application and embrace the notion
 For each application managed, the command will be included in the ContainerPilot `jobs` block. This change merges the `services`, `task`, and `coprocess` config sections. For running the applications we can largely reuse the existing process running code, which includes `SIGCHLD` handlers for process reaping.
 
 _Related GitHub issues:_
-- [Support containerpilot.d config directory](https://github.com/joyent/containerpilot/issues/236)
-- [Allow multiple commands for preStart](https://github.com/joyent/containerpilot/issues/253)
-- [Prevent polling/coprocesses from being started multiple times](https://github.com/joyent/containerpilot/pull/198)
-- [Coprocess hooks](https://github.com/joyent/containerpilot/issues/175)
-- [preStart a background process](https://github.com/joyent/containerpilot/issues/157)
-- [registering containers as separate nodes on Consul](https://github.com/joyent/containerpilot/issues/162)
+- [Support containerpilot.d config directory](https://github.com/TritonDataCenter/containerpilot/issues/236)
+- [Allow multiple commands for preStart](https://github.com/TritonDataCenter/containerpilot/issues/253)
+- [Prevent polling/coprocesses from being started multiple times](https://github.com/TritonDataCenter/containerpilot/pull/198)
+- [Coprocess hooks](https://github.com/TritonDataCenter/containerpilot/issues/175)
+- [preStart a background process](https://github.com/TritonDataCenter/containerpilot/issues/157)
+- [registering containers as separate nodes on Consul](https://github.com/TritonDataCenter/containerpilot/issues/162)
 
 
 #### Dependency management
@@ -45,14 +45,14 @@ That being said, a more expressive configuration of event handlers may more grac
 ContainerPilot will provide events and each service can opt-in to starting on a `when` condition on one of these events. Because the life-cycle of each service triggers new events, the user can create a dependency chain among all the services in a container (and their external dependencies). This effectively replaces the `preStart`, `preStop`, and `postStop` behaviors.
 
 _Related GitHub issues:_
-- [Startup dependency sequencing](https://github.com/joyent/containerpilot/issues/273)
-- [Proposal for onEvent hook](https://github.com/joyent/containerpilot/issues/227)
-- [Allow preStart to set environment of application](https://github.com/joyent/containerpilot/issues/205)
-- [Questions about backend service status](https://github.com/joyent/containerpilot/issues/160)
-- [Handling apps that can't reload config](https://github.com/joyent/containerpilot/issues/126)
-- [Yet another proposal for "post start"](https://github.com/joyent/containerpilot/issues/196)
-- [Yet another proposal for "post start"](https://github.com/joyent/containerpilot/issues/173)
-- [Yet another proposal for "post start"](https://github.com/joyent/containerpilot/issues/204)
+- [Startup dependency sequencing](https://github.com/TritonDataCenter/containerpilot/issues/273)
+- [Proposal for onEvent hook](https://github.com/TritonDataCenter/containerpilot/issues/227)
+- [Allow preStart to set environment of application](https://github.com/TritonDataCenter/containerpilot/issues/205)
+- [Questions about backend service status](https://github.com/TritonDataCenter/containerpilot/issues/160)
+- [Handling apps that can't reload config](https://github.com/TritonDataCenter/containerpilot/issues/126)
+- [Yet another proposal for "post start"](https://github.com/TritonDataCenter/containerpilot/issues/196)
+- [Yet another proposal for "post start"](https://github.com/TritonDataCenter/containerpilot/issues/173)
+- [Yet another proposal for "post start"](https://github.com/TritonDataCenter/containerpilot/issues/204)
 
 
 #### Non-advertising jobs
@@ -60,8 +60,8 @@ _Related GitHub issues:_
 Some applications are intended only for internal consumption by other applications in the container and not should not be advertised to the discovery backend (ex. Consul agent). These applications can mark themselves as "non-advertising" simply by not providing a `port` configuration. ContainerPilot will track the state of non-advertising applications but not register them with service discovery, so jobs that are waiting for `healthy` or `unhealthy` events can react to those events. In the example above, the Consul Agent will not be advertised but Nginx can still have it marked as a dependency.
 
 _Related GitHub issues:_
-- [Coprocess hooks](https://github.com/joyent/containerpilot/issues/175)
-- [registering services w/o ports](https://github.com/joyent/containerpilot/issues/117)
+- [Coprocess hooks](https://github.com/TritonDataCenter/containerpilot/issues/175)
+- [registering services w/o ports](https://github.com/TritonDataCenter/containerpilot/issues/117)
 
 
 #### Health checking for non-advertised jobs

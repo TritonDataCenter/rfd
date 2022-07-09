@@ -1,7 +1,7 @@
 ---
 authors: Kody Kantor <kody.kantor@joyent.com>, Jerry Jelinek <jerry@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+181%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+181%22
 ---
 
 <!--
@@ -278,7 +278,7 @@ MANTA-4591 with minor modifications and no changes to MinIO:
 ### Performance (throughput and latency) testing
 
 Test plan and results will continue to be made available in
-[manta-eng](https://github.com/joyent/manta-eng/tree/master/minio_poc).
+[manta-eng](https://github.com/TritonDataCenter/manta-eng/tree/master/minio_poc).
 
 ## MinIO implementation details
 

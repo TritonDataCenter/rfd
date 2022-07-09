@@ -18,7 +18,7 @@ state: draft
 This draft is provided to support upcoming changes to the bhyve brand draft,
 described in [RFD 121](../0121/README.md).
 
-Discussion is being held in [issue 78](https://github.com/joyent/rfd/issues/78).
+Discussion is being held in [issue 78](https://github.com/TritonDataCenter/rfd/issues/78).
 
 ## Problem Statement
 

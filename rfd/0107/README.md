@@ -1,7 +1,7 @@
 ---
 authors: Mike Zeller <mike.zeller@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues/49
+discussion: https://github.com/TritonDataCenter/rfd/issues/49
 ---
 
 <!--
@@ -36,7 +36,7 @@ This section describes some known customer scenarios.
 	fabric network with a route object. This route object will apply the
 	defined routes to new zones when they are created on the fabric.
 	However, until [rfd
-	28](https://github.com/joyent/rfd/blob/master/rfd/0028/README.md) is
+	28](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0028/README.md) is
 	implemented there is no way for a user to update the route object on a
 	fabric.  Even if the route object was updated the new routes would not
 	be synced to exisiting zones. This often leads to users wanting to
@@ -72,7 +72,7 @@ This section describes some known customer scenarios.
 The solution needs to handle both the `CloudAPI`/Portal as well as the Docker
 interface into Triton.  `NAPI` currently allows the assigning of an IP on a
 network which is documented
-[here](https://github.com/joyent/sdc-napi/blob/master/docs/index.md#createnic-post-nics).
+[here](https://github.com/TritonDataCenter/sdc-napi/blob/master/docs/index.md#createnic-post-nics).
 In the future, when a Triton user wants to specify a specific IP address they
 will need to pass in the desired network UUID and ip as an object. However, in
 our current API deployment you can only pass in the desired network UUID. To
@@ -84,7 +84,7 @@ tl;dr No changes will be made to `VMAPI` for this RFD. Some notes below about
 future directions.
 
 The `VMAPI` endpoint already accepts a new Network Object type that is outlined
-[here](https://github.com/joyent/sdc-vmapi/blob/master/docs/index.md#specifying-networks-for-a-vm),
+[here](https://github.com/TritonDataCenter/sdc-vmapi/blob/master/docs/index.md#specifying-networks-for-a-vm),
 in addition to being backwards compatible with a list of network UUID's.
 
 ###### Network Object
@@ -118,7 +118,7 @@ proposal.
 ```
 
 The ongoing IPv6 work as well as [RFD 32 Multiple IP Addresses in
-NAPI](https://github.com/joyent/rfd/tree/master/rfd/0032) may introduce
+NAPI](https://github.com/TritonDataCenter/rfd/tree/master/rfd/0032) may introduce
 additional changes to `VMAPI` at some point in the future.
 
 ### primaryIp changes

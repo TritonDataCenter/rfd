@@ -1,7 +1,7 @@
 ---
 authors: Brittany Wald <brittany.wald@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues?q=%22RFD+103%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+103%22
 ---
 
 <!--
@@ -26,7 +26,7 @@ can reference however many new objects are being created without being limited
 by storage capacity.  The process for doing this, which is called resharding,
 has been documented in the past here:
 
-https://github.com/joyent/manatee/blob/3771c6fbd979ad41e7a71b19f9e2b7ff99542134/docs/resharding.md
+https://github.com/TritonDataCenter/manatee/blob/3771c6fbd979ad41e7a71b19f9e2b7ff99542134/docs/resharding.md
 
 However, this document is now outdated, and it is not possible that it was
 thoroughly tested at a scale comparable with our current operation.
@@ -379,8 +379,8 @@ will walk through shortly), you will see that the election file has updated from
 one IP to three IPs -- but there is stil no state file. This is partially
 explained by the comments linked here in the code for manatee-state-machine:
 
-https://github.com/joyent/manatee-state-machine/blob/a4d6b51355d69f0bed40bf295f31a7fb7f772f84/lib/manatee-peer.js#L445
-https://github.com/joyent/manatee-state-machine/blob/a4d6b51355d69f0bed40bf295f31a7fb7f772f84/lib/manatee-peer.js#L454
+https://github.com/TritonDataCenter/manatee-state-machine/blob/a4d6b51355d69f0bed40bf295f31a7fb7f772f84/lib/manatee-peer.js#L445
+https://github.com/TritonDataCenter/manatee-state-machine/blob/a4d6b51355d69f0bed40bf295f31a7fb7f772f84/lib/manatee-peer.js#L454
 
 Currently, when we bring up a new shard toplogy, the election is pre-assigned to
 zookeeper.  Meaning, we have already decided which node is the primary, which is
@@ -388,14 +388,14 @@ the sync, etc.  This is to prevent race conditions and other problems that
 occured in the original iteration of manatee.  We can reference this document
 for futher details:
 
-https://github.com/joyent/manatee/blob/34238c257d3cb6fe7eba247c7e40a1dd49c4f3e8/docs/migrate-1-to-2.md
+https://github.com/TritonDataCenter/manatee/blob/34238c257d3cb6fe7eba247c7e40a1dd49c4f3e8/docs/migrate-1-to-2.md
 
 The relevant part of this for our purposes is this: since we are starting out
 with only a single node that has data on it, we are going to be in a state from
 a data perspective, as we bring up nodes, that is a similar to the "legacy"
 mode referenced below:
 
-https://github.com/joyent/manatee/blob/34238c257d3cb6fe7eba247c7e40a1dd49c4f3e8/lib/adm.js#L209
+https://github.com/TritonDataCenter/manatee/blob/34238c257d3cb6fe7eba247c7e40a1dd49c4f3e8/lib/adm.js#L209
 
 In this mode, the first zone created became the primary.  So, in that older
 version of manatee, there would be pre-existing data on the primary that would
@@ -405,7 +405,7 @@ cluster.  This means we will need to backfill data from our new primary into the
 the other two nodes.  If you get into a bad state at some point while doing
 this, this document can help you find your way out:                            
                                                                                 
-https://github.com/joyent/manatee/blob/3771c6fbd979ad41e7a71b19f9e2b7ff99542134/docs/trouble-shooting.md
+https://github.com/TritonDataCenter/manatee/blob/3771c6fbd979ad41e7a71b19f9e2b7ff99542134/docs/trouble-shooting.md
 
 But beware, there is some outdated information in that document.  Check each
 command's man page before using it.  With that said, this is the order of

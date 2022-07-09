@@ -1,7 +1,7 @@
 ---
 authors: Jason King <jbk@joyent.com>, Rui Loura <rui@joyent.com>, Dan McDonald <danmcd@joyent.com>, Cody Mello <melloc@joyent.com>
 state: draft
-discussion: https://github.com/joyent/rfd/issues/88
+discussion: https://github.com/TritonDataCenter/rfd/issues/88
 ---
 
 <!--
@@ -316,8 +316,8 @@ NOTE: Both subnets MUST be in IPv6 form, and IPv4 subnets of the form
 [overlay(5)]: https://smartos.org/man/5/overlay
 
 <!-- GitHub links -->
-[sdc-changefeed]: https://github.com/joyent/node-sdc-changefeed/
-[moray bucket]: https://github.com/joyent/rfd/blob/master/rfd/0119/README.md#moray-buckets
+[sdc-changefeed]: https://github.com/TritonDataCenter/node-sdc-changefeed/
+[moray bucket]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0119/README.md#moray-buckets
 
 
 <!-- Issue links -->
@@ -329,7 +329,7 @@ NOTE: Both subnets MUST be in IPv6 form, and IPv4 subnets of the form
 [TRITON-276]: https://smartos.org/bugview/TRITON-276
 
 <!-- RFE links -->
-[RFE 2]: https://github.com/joyent/rfe/tree/master/rfe/0002
+[RFE 2]: https://github.com/TritonDataCenter/rfe/tree/master/rfe/0002
 
 <!-- Other RFDs -->
 [RFD 28]: ../0028

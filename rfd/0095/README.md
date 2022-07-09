@@ -1,7 +1,7 @@
 ---
 authors: Joshua M. Clulow <jmc@joyent.com>, John Levon <john.levon@joyent.com>
 state: publish
-discussion: https://github.com/joyent/rfd/issues/50
+discussion: https://github.com/TritonDataCenter/rfd/issues/50
 ---
 
 <!--
@@ -44,7 +44,7 @@ Muppet connects to ZooKeeper, reacting to changes in the set of registered
 Muskie instances.  Whenever the membership of the set of Muskies changes,
 Muppet immediately writes an updated HAProxy configuration and restarts the
 HAProxy service. Only recently was Muppet changed to provide some hysteresis
-and throttling in this process via [MANTA-4337](https://jira.joyent.us/browse/MANTA-4337).
+and throttling in this process via [MANTA-4337](https://mnx.atlassian.net/browse/MANTA-4337).
 For example, a simple reboot of a Muskie should no longer cause a restart of HAProxy.
 
 This restart terminates all in-flight connections.  There is also a brief
@@ -133,7 +133,7 @@ rather than in aggregate, so the alarm seems sufficient as is.
 Apart from a mild increase in implementation complexity, there should be no
 significant degradation in the operability of the system.  As discussed, the fault management
 properties of SMF are unaffected, and HAProxy logging remains much the same with
-the new version and new configuration (including staying compatible with [haplog](https://github.com/joyent/node-haproxy-log). `haproxystat`, used in Manta alarming, remains functional as
+the new version and new configuration (including staying compatible with [haplog](https://github.com/TritonDataCenter/node-haproxy-log). `haproxystat`, used in Manta alarming, remains functional as
 the statistics domain socket is served by the current child process. This does *not*
 provide visibility into old, active, workers however.
 
