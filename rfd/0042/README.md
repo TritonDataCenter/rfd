@@ -30,6 +30,11 @@ apcupsd to handle attached UPS, smartctl for SMART diagnostics, or
 configuration management systems such as ansible or saltstack to manage their
 installed VMs.
 
+*sjorge*:
+Package selection should probably be limited to stuff that makes sense.
+The above mentioned categories sound good, config management tools,
+hardware related tools,...
+
 However, the global zone is somewhat hostile to the installation of additional
 software.  Due to the live image design, many system directories cannot be
 written to, and changes to others will be lost on the next boot.  Common
@@ -41,6 +46,16 @@ failure modes include:
   a ramdisk.
 * Software attempting to install to `/usr/local` will fail as it is a read-only
   mount from the live image.
+
+*sjorge*: The SDC headnode seems to put a special dataset under zones/XXX.
+Perhaps having a zones/gztools dataset with a bootstrap pkgsrc install.
+They can potentianlly be pulled in using imgadm, the infrastructure for this
+should already be there from the headnode stuff. The a boot service can check
+for the existance of this dataset and do stuff like lofs mounts for shadows,
+passwd, groups,... it can then also import additional smf manifests.
+
+The above could offer a cleaner update path and easy removal without leaving
+behind clutter.
 
 The official recommendation for users who wish to include additional software
 into their global zone is to build their own SmartOS images which include the
@@ -103,6 +118,10 @@ consider what name this set should have.  The current sets are:
 
 Suggestions include `gztools`, `global`, `gz`.
 
+*sjorge*: Personally I like gztools, I am commenting as I read through the
+document and I came up with zones/gztools above as an example dataset name.
+The naming seems spot on.
+
 Another consideration is whether to simply incorporate the changes proposed in
 this RFD into the existing `tools` set rather than have a distinct new set.
 This would have to continue using the `/opt/tools` prefix due to its use inside
@@ -144,6 +163,8 @@ There are two issues with this approach.
   easy to add, update, and monitor the user variables to ensure it is not an
   onerous task and that new packages are not missed.
 
+*sjorge*: a smf manifest could setup lofs mounts for those files. 
+
 ### SMF handling
 
 The current pkgsrc SMF infrastructure is incompatible with the global zone.  By
@@ -172,6 +193,12 @@ Two immediate issues are:
   decides to enable an SMF service rather than simply install it, this should
   be reflected in the installed manifest so that the service is correctly
   started on next boot.
+
+*sjorge*: smf seems to provided enough flexibility here.
+A helper service that on stop uses svcfg export to update the on disk xml
+files for all services prefixed with pkgsrc should work.
+
+I toyed/experimented a lot with ideas like this while working on ASMD.
 
 ### Packages and build options
 
@@ -210,6 +237,10 @@ wip/zabbix
 ```
 
 #### Package build options
-
 What build options should be modified from the default sets?  Are there any
 packages we should look to strip down?  Input welcome.
+
+*sjorge*: I'm in favor of having the stripped down.
+e.g. running the apcupsd package in the gz would make a sense.
+Dragging in the heavy GD dependancy for the cgi-bin stuff, not so much.
+Without it the package install footprint rolls in around 10mb, with >50mb.
