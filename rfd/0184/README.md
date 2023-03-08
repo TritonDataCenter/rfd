@@ -51,8 +51,6 @@ users.
 
 ## Hazards and Trade-offs
 
-<XXX KEBE ASKS -- Subsection "HAZARDS" and "TRADE-OFFS"?  Or keep as-is?>
-
 ### HAZARD: Available Machine Memory and Other Consumers
 
 The VMM reservoir design currently assigns all physical memory discounted by
@@ -67,9 +65,7 @@ Examples of surprise memory consumers include:
   time. (The `i40e`(4D) driver is a good example, where a lot of VNICs can
   eat a lot of memory.)
 
-- XXX KEBE ASKS MORE?
-
-This hazard will need to be addressed by two of the tradeoffs below.
+Any design will need to consider this hazard.
 
 ### HAZARD: Newly Created BHYVE VMs
 
@@ -79,11 +75,12 @@ will have all kernel memory allocation use the reservoir.  If the reservoir
 allocation fails, the bhyve process exits.
 
 Given dynamic machine assignments, we MAY wish to have newly-created VMs
-first allocate reservoir space before launching with reservoir.  If we do
-that, then if allocation fails we can either error out or proceed without
-reservoir use.  Even if we succeed, there is a chance of a concurrent VM boot
-racing us to boot.  In such race cases, one may get the reservoir and one may
-not, in which case both may continue.
+first check reservoir space before launching with reservoir.  If we do that,
+then if the check fails we can either error out or proceed without reservoir
+use.  Even if we succeed in the check, there is a chance of a concurrent VM
+boot racing us to boot (see below).  In such race cases, one may get the
+reservoir and one may not, in which case both may continue, or one may fail
+if both think reservoir is available to them.
 
 ### HAZARD: Triton BHYVE VM Creation And Assignment
 
@@ -94,12 +91,27 @@ hazards mentioned earlier.  A few large BHYVE VMs with a large number of
 small native or LX zones on a i40e(4D) machine may cause memory exhaustion
 rather quickly.
 
-### TRADE-OFF: Parameterizing Machine Memory for Reservoir Use in Triton CNs
+### TRADE-OFF: bhyve failure if using reservoir
 
-At the end of the day the reservoir sets aside guaranteed-for-BHYVE-VM
-memory.  It means a BHYVE VM does not need to wait for ARC to clear, nor for
-other memory reclamation to take place.  The only re
+In SmartOS, the zhyve command launches bhyve as the zone's init(8) process.
+zhyve can enable/disable use of the reservoir on a bhyve invocation.  The
+tricky part comes if bhyve fails to launch because in spite of any zhyve
+checking, the reservoir becomes unavailable.  We need to determine if bhyve
+failure should cause a relaunch of zhyve with an automatic downgrade to
+no-resevoir, or if it should outright fail, and let the administrator make a
+decision on what to do.
 
 ## Proposed solution
 
+Rough outline:
+
+- Boot-time tunable for setting the reservoir (can be adjusted using
+  /usr/lib/rsrvrctl).  Probably stored in zones SMF configuration somewhere.
+  Default to 75% of the max-reported available-for-reservoir RAM by the vmm
+  subsystem.
+
+- zhyve will do a propolis-style query of the reservoir, and set the
+  use-reservoir configuration accordingly before launching bhyve.
+
+- If launching fails, zhyve will just outright fail, like any other time.
 
