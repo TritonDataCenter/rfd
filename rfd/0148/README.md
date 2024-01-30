@@ -72,7 +72,7 @@ cloudapi.
 
 ### Snapshot Create
 
-[CreateMachineSnapshot](https://apidocs.joyent.com/cloudapi/#CreateMachineSnapshot)
+[CreateMachineSnapshot](https://apidocs.tritondatacenter.com/cloudapi/#CreateMachineSnapshot)
 will be updated as follows.
 
 **Inputs**
@@ -94,12 +94,12 @@ this out after discussion.
 
 ### Snapshot List
 
-[ListMachineSnapshots](https://apidocs.joyent.com/cloudapi/#ListMachineSnapshots)
+[ListMachineSnapshots](https://apidocs.tritondatacenter.com/cloudapi/#ListMachineSnapshots)
 is not changed.
 
 ### Snapshot Get
 
-[GetMachineSnapshot](https://apidocs.joyent.com/cloudapi/#GetMachineSnapshot)
+[GetMachineSnapshot](https://apidocs.tritondatacenter.com/cloudapi/#GetMachineSnapshot)
 will be updated as follows.
 
 **Returns**
@@ -116,7 +116,7 @@ the completion of `zfs send`, what will it be?
 
 ### Snapshot Delete
 
-[DeleteMachineSnapshot](https://apidocs.joyent.com/cloudapi/#DeleteMachineSnapshot)
+[DeleteMachineSnapshot](https://apidocs.tritondatacenter.com/cloudapi/#DeleteMachineSnapshot)
 will be updated as follows.
 
 **Errors**

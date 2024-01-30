@@ -49,7 +49,7 @@ through partial VM Objects (representing just the properties to be changed).
 ### A bit of background
 
 In SDC 6.5 and earlier we had an API named
-[MAPI](https://apidocs.joyent.com/sdcapidoc/mapi/) which was the primary API
+[MAPI](https://apidocs.tritondatacenter.com/sdcapidoc/mapi/) which was the primary API
 interface to the SDC DC. It had endpoints for /vms which allowed you to load
 information about VMs and perform actions (shutdown, startup, etc.) on these
 VMs.
