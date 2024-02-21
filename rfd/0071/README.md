@@ -32,7 +32,7 @@ In [section 3](#3-nodejs-sdk-design-and-implementation), we provide a comprehens
 | Plaintext      | [Unencrypted data](https://en.wikipedia.org/wiki/Plaintext) |
 | Ciphertext     | [Encrypted data](https://en.wikipedia.org/wiki/Ciphertext) |
 | Authentication | [Cryptographic authentication](https://en.wikipedia.org/wiki/Message_authentication) - such as [MAC](https://en.wikipedia.org/wiki/Message_authentication_code) or [AE](https://en.wikipedia.org/wiki/Authenticated_encryption) |
-| Metadata       | [Refers to metadata about objects stored in Manta](https://apidocs.joyent.com/manta/api.html#PutMetadata) |
+| Metadata       | [Refers to metadata about objects stored in Manta](https://apidocs.tritondatacenter.com/manta/api.html#PutMetadata) |
 
 ## 1. Design Discussion
 

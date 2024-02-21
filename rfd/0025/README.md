@@ -53,7 +53,7 @@ A potential way to support this.
   go away.
 
 - Clarify how multiple UUIDs are to be passed. E.g. StopMachine
-  (https://apidocs.joyent.com/cloudapi/#StopMachine) currently is:
+  (https://apidocs.tritondatacenter.com/cloudapi/#StopMachine) currently is:
 
         POST /:login/machines/:id?action=stop
 

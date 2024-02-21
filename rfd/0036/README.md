@@ -404,7 +404,7 @@ Despite some of the operational advantages to applications that internalize the 
 
 Triton provides limited mechanisms for this now:
 
-- [sdc-docker supports `--volumes-from`](https://apidocs.joyent.com/docker/features/volumes), which allows one container to be used as the storage volume for another
+- [sdc-docker supports `--volumes-from`](https://apidocs.tritondatacenter.com/docker/features/volumes), which allows one container to be used as the storage volume for another
 - [RFD26 proposes NFS shared volumes](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0026/README.md#introduction) which are implemented as zones
 - [ZFS datasets can be delegated to an instance](https://docs.joyent.com/private-cloud/instances/delegated-data-sets), though it is [not safe to delegate datasets to untrusted users](https://github.com/TritonDataCenter/rfd/blob/master/rfd/0044/README.md#safety-considerations)
 - [`vmadam`](https://wiki.smartos.org/display/DOC/Using+vmadm+to+manage+virtual+machines#Usingvmadmtomanagevirtualmachines-UpdatingaVM) and the [operator portal](https://docs.joyent.com/private-cloud/instances) support reprovisioning instances, but that feature largely requires a delegated dataset (see above), and is [not exposed publicly via CloudAPI](https://github.com/TritonDataCenter/node-triton/issues/141)
@@ -822,7 +822,7 @@ This doesn't mean virtual or persistent IPs are not valuable, however. They are 
 
 ### Docker features we should add to CloudAPI and node-triton
 
-Triton implements a Docker API-compatible interface to manage infrastructure in each data center. This Docker API interface (provided by [sdc-docker](https://github.com/TritonDataCenter/sdc-docker)) operates in parallel to [CloudAPI](https://apidocs.joyent.com/cloudapi/). Users can accomplish some operations using either API, but others are specific to a single API. Consider the following:
+Triton implements a Docker API-compatible interface to manage infrastructure in each data center. This Docker API interface (provided by [sdc-docker](https://github.com/TritonDataCenter/sdc-docker)) operates in parallel to [CloudAPI](https://apidocs.tritondatacenter.com/cloudapi/). Users can accomplish some operations using either API, but others are specific to a single API. Consider the following:
 
 ![Docker API and CloudAPI side-by-side on Triton](./_assets/docker-api-and-cloudapi-side-by-side.jpg)
 

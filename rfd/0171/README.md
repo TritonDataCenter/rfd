@@ -34,7 +34,7 @@ shards.
 
 ## Very Brief Overview of Snaplinks
 
-[SnapLinks](https://apidocs.joyent.com/manta/#snaplinks) allow Manta customers
+[SnapLinks](https://apidocs.tritondatacenter.com/manta/#snaplinks) allow Manta customers
 to create a new name to an existing object in manta. Similar to how hard links
 work in UNIX and UNIX-like systems.
 
@@ -334,8 +334,8 @@ the objectId as the `etag:` value.
 
 At the time of this writing none of:
 
- * [The Manta API Documentation](https://apidocs.joyent.com/manta/api.html)
- * [The Node SDK Documentation](https://apidocs.joyent.com/manta/nodesdk.html)
+ * [The Manta API Documentation](https://apidocs.tritondatacenter.com/manta/api.html)
+ * [The Node SDK Documentation](https://apidocs.tritondatacenter.com/manta/nodesdk.html)
  * [The java-manta-client Documentation](https://javadoc.io/doc/com.joyent.manta/java-manta-client/3.4.0)
 
 appears to define `HEAD` requests at all (what minfo uses), nor do they define

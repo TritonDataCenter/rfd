@@ -551,7 +551,7 @@ Note: filters limited to X(?) per "bucket", too many filters and it will fail.
 TODO: Other Ideas:
  * allow filter by file extension (since manta has no tags?)
  * filter by contentType?
- * filter by [Manta metadata](https://apidocs.joyent.com/manta/api.html#PutMetadata)?
+ * filter by [Manta metadata](https://apidocs.tritondatacenter.com/manta/api.html#PutMetadata)?
 
 ### DELETE /:account/metrics/filters/:filterId
 

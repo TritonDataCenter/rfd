@@ -94,7 +94,7 @@ This new functionality will be added with CloudAPI version 9.4.3
 
 ### `CreateMachine`
 
-[`CreateMachine`](https://apidocs.joyent.com/cloudapi/#CreateMachine) may pass disk quantity and size information. If `disks` input is not present and the package does not specify `disks`, traditional behavior is preserved. The `CreateMachine` documentation will be updated with:
+[`CreateMachine`](https://apidocs.tritondatacenter.com/cloudapi/#CreateMachine) may pass disk quantity and size information. If `disks` input is not present and the package does not specify `disks`, traditional behavior is preserved. The `CreateMachine` documentation will be updated with:
 
 > **Inputs**
 >

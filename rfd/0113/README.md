@@ -222,7 +222,7 @@ allowed to copy into.
 The configuration will be a JSON object, which contains a mapping of the dc
 short name or the IMGAPI **admin** url where IMGAPI is listening. Note that the
 short dc name should match what us shown via:
-[CloudAPI ListDatacenters](https://apidocs.joyent.com/cloudapi/#ListDatacenters).
+[CloudAPI ListDatacenters](https://apidocs.tritondatacenter.com/cloudapi/#ListDatacenters).
 
 For example, to allow us-east-1 to copy images into both us-sw-1 and us-west-1
 you would run the following SAPI configuration command:
@@ -249,7 +249,7 @@ config has changed, at which point imgapi will then restart itself).
 
 #### API and Triton CLI changes
 
-- CloudAPI already has the [UpdateImage](https://apidocs.joyent.com/cloudapi/#UpdateImage)
+- CloudAPI already has the [UpdateImage](https://apidocs.tritondatacenter.com/cloudapi/#UpdateImage)
   endpoint, which can be used to update the image ACL.
 - Triton CLI will gain the `triton image share` command.
 
@@ -296,7 +296,7 @@ config has changed, at which point imgapi will then restart itself).
 
 #### API and Triton CLI changes
 
-- CloudAPI will gain the [CloneImage](https://apidocs.joyent.com/cloudapi/#CloneImage)
+- CloudAPI will gain the [CloneImage](https://apidocs.tritondatacenter.com/cloudapi/#CloneImage)
   endpoint, which can be used to make a copy of an existing shared image.
 - Triton CLI will gain the `triton image clone` command.
 
@@ -341,6 +341,6 @@ Implementation notes:
 
 #### API and Triton CLI changes
 
-- CloudAPI will gain the [ImportImageFromDatacenter](https://apidocs.joyent.com/cloudapi/#ImportImageFromDatacenter)
+- CloudAPI will gain the [ImportImageFromDatacenter](https://apidocs.tritondatacenter.com/cloudapi/#ImportImageFromDatacenter)
   endpoint, which can be used to import an image into another datacenter.
 - Triton CLI will gain the `triton image copy` command.

@@ -12,7 +12,7 @@ kept this up to date. :)
 The Manta docs are spread across a few repositories, and publishing is to
 more than one site (and sites that also publish docs for other projects).
 For a while (up to Jan 2016) the publishing pipeline was effectively broken:
-the published docs at apidocs.joyent.com were not updatable from primary
+the published docs at apidocs.tritondatacenter.com were not updatable from primary
 sources. Hence this RFD to act as the authority for the plan.
 
 Note that content on <www.joyent.com> for Manta is out of scope for this RFD.
@@ -36,14 +36,14 @@ The primary Manta docs are Markdown files in a number of git repositories.
 
 | URL | How to update | Description |
 | --- | ------------- | ----------- |
-| <https://apidocs.joyent.com/manta> | [How to update](#how-to-update-the-manta-user-guide) | Manta user guide |
+| <https://apidocs.tritondatacenter.com/manta> | [How to update](#how-to-update-the-manta-user-guide) | Manta user guide |
 | <https://github.com/TritonDataCenter/manta> | [How to update](#how-to-update-the-manta-landing-page) | Manta project landing page for those with a code/operator interest |
 | <http://joyent.github.io/manta/> | [How to update](#how-to-update-the-manta-operator-guide) | (The somewhat hard to find) publishing of the manta operator guide |
 | <https://joyent.com/manta> | - | **Out of scope.** Currently redirects to <joyent.com/object-storage>. |
 
 #### How to update the Manta User Guide
 
-The [published User Guide](https://apidocs.joyent.com/manta) is made up of a
+The [published User Guide](https://apidocs.tritondatacenter.com/manta) is made up of a
 number of separate logical groups. The first step is to find out which.
 Currently all results are dumped into one flat directory. Eventually those
 will be spread into logical separate dirs making identifying the source easier,
@@ -66,7 +66,7 @@ but not yet.
    GitHub PR, or `#joyent` IRC).
 
    Currently the build and publishing of the User Guide is done in a
-   private [apidocs.joyent.com.git repository](https://github.com/TritonDataCenter/apidocs.joyent.com),
+   private [apidocs.tritondatacenter.com.git repository](https://github.com/TritonDataCenter/apidocs.tritondatacenter.com),
    so non-Joyent employees will have to stop at this step.
 
 3. (For "compute-examples" group only.) The example-FOO.html files are built
@@ -87,19 +87,19 @@ but not yet.
    change. Try to avoid unnecessary churn.
 
 4. Re-import and build all Manta User Guide changes in a clone of
-   apidocs.joyent.com.git:
+   apidocs.tritondatacenter.com.git:
 
-        git clone git@github.com:joyent/apidocs.joyent.com.git
-        cd apidocs.joyent.com
+        git clone git@github.com:joyent/apidocs.tritondatacenter.com.git
+        cd apidocs.tritondatacenter.com
         make import-docset-manta
         # Follow printed instructions to 'git diff' and 'git commit'.
 
    You can optionally configure separate branches or git SHA revs for
    doc imports in [the "etc/config.json"
-   file](https://github.com/TritonDataCenter/apidocs.joyent.com/blob/master/etc/config.json).
+   file](https://github.com/TritonDataCenter/apidocs.tritondatacenter.com/blob/master/etc/config.json).
 
 5. Talk to the master o' the docs (current MattF) to re-publish
-   apidocs.joyent.com.
+   apidocs.tritondatacenter.com.
 
 
 #### How to update the Manta Landing Page
@@ -136,7 +136,7 @@ The Operator Guide *styling* is currently the default "ohthejoy" "brand" for the
 Restdown is a light-weight wrapper for single-page Markdown docs (mostly just
 adding a TOC and some styling). The change the styling one would need to
 provide a custom restdown "brand". E.g. [the restdown brand for Manta docs
-in apidocs.joyent.com](https://github.com/TritonDataCenter/apidocs.joyent.com/tree/master/etc/manta-brand),
+in apidocs.tritondatacenter.com](https://github.com/TritonDataCenter/apidocs.tritondatacenter.com/tree/master/etc/manta-brand),
 or the ["remora" restdown brand currently used for cloudapi
 docs](https://github.com/TritonDataCenter/restdown-brand-remora).
 
@@ -146,15 +146,15 @@ docs](https://github.com/TritonDataCenter/restdown-brand-remora).
 Future plans/ideas.
 
 - follow up on mantadoc.git/docs/winmanta.md - Created, but never made it to
-  deployment on apidocs.joyent.com that I can see. TODO: Do we want to clean it
+  deployment on apidocs.tritondatacenter.com that I can see. TODO: Do we want to clean it
   up and ship it? My pref would be to drop all/most of the screenshots of node
   install b/c maint burden.
 
 - Switch all manta restdown docs away from 'wiki-tables' to GH style tables
 
 - Consider the restdown-brand-remora (used for cloudapi docs) instead of
-  "apidocs.joyent.com.git:etc/manta-brand" (a copy of the old mantadoc.git's
-  "bluejoy" brand). This would align styles on apidocs.joyent.com. However,
+  "apidocs.tritondatacenter.com.git:etc/manta-brand" (a copy of the old mantadoc.git's
+  "bluejoy" brand). This would align styles on apidocs.tritondatacenter.com. However,
   might also just want to move to the styles on docs.joyent.com.
   See the "longer term" TODO below.
 
@@ -165,11 +165,11 @@ Future plans/ideas.
 - Having an "edit this" link on the footer of each doc automatically added
   which links to the relevant primary doc in GitHub would be pretty nice.
 
-- Longer term: The styling of docs on apidocs.joyent.com should move away
+- Longer term: The styling of docs on apidocs.tritondatacenter.com should move away
   from the current "bluejoy" theme (for manta docs) and "remora" theme (for
   others) to the same style as the docs.joyent.com docs.
 
-- Longer term: I consider apidocs.joyent.com a bug. Joyent is too small to have
+- Longer term: I consider apidocs.tritondatacenter.com a bug. Joyent is too small to have
   two separate doc sites. There whould be one "docs.joyent.com" with organized
   publishing of all our content. Same opinion for the Manta operator docs at
   <joyent.github.io/manta>. IMHO. Anyway, that is for another time.
@@ -200,7 +200,7 @@ Sources:
 
 - <joyent.com/manta> currently redirects to <joyent.com/object-storage>. This
   is marketing controlled area -- out of scope for this RFD.
-- <https://apidocs.joyent.com/manta/> Primary Manta user doc area.
+- <https://apidocs.tritondatacenter.com/manta/> Primary Manta user doc area.
 - <https://github.com/TritonDataCenter/manta> Landing page for those with a
   code/operator interest Manta.
 - <http://joyent.github.io/manta/> A somewhat hard to find publishing of
@@ -211,10 +211,10 @@ Update content for <joyent.github.io/manta>:
 - `make docs`
 - copy the index.html file into the "gh-pages" branch and push that
 
-Updating content for <apidocs.joyent.com/manta>:
+Updating content for <apidocs.tritondatacenter.com/manta>:
 
 - Manually edit the HTML previous snapshotted to
-  <https://github.com/TritonDataCenter/apidocs.joyent.com/tree/master/htdocs/manta> !
+  <https://github.com/TritonDataCenter/apidocs.tritondatacenter.com/tree/master/htdocs/manta> !
   Yuck. This is the main doc pipeline thing to fix in the shorterm
 
 Sources:
@@ -227,16 +227,16 @@ Sources:
   and (proposed) new source for the primary content in mantadoc.git.
 
 Currently we are bound by the organization of the doc files as mantadoc.git has
-them. A downside of this plan is that it *does* mean that apidocs.joyent.com.git
+them. A downside of this plan is that it *does* mean that apidocs.tritondatacenter.com.git
 becomes the repo that knows how to lay things out. I'd hope to eventually make
-apidocs.joyent.com.git "dumb" in this regard: with manta.git being the repo that
+apidocs.tritondatacenter.com.git "dumb" in this regard: with manta.git being the repo that
 has the logical doc organization with places for the muskie and node-manta.git
 docs to slot in.
 
 A reason I want to take mantadoc.git out of the picture is that I want to avoid
 a pipeline for doc fixes that involves three repos: (a) fix source doc in, say,
 manta.git; (b) update collected docs in mantadoc.git; (c) update for publishing
-in apidocs.joyent.com.git.  I want to cut out repo (b).
+in apidocs.tritondatacenter.com.git.  I want to cut out repo (b).
 
 
 

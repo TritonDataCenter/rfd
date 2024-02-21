@@ -280,7 +280,7 @@ faster updates. The procedure for images.joyent.com then will be:
 We don't have multi-instance coordination here. There needs to be a *single*
 IMGAPI instance running out of a given Manta dir (called the "primary").
 How do we coordinate that? My plan is a lock file in Manta using [PutObject's
-test/set semantics](https://apidocs.joyent.com/manta/api.html#PutObject):
+test/set semantics](https://apidocs.tritondatacenter.com/manta/api.html#PutObject):
 
     /bob/stor/myimages/run/primary.lock
 

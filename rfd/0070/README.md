@@ -181,7 +181,7 @@ The [triton](https://github.com/TritonDataCenter/triton/blob/master/docs/develop
 
 Internal `RELENG` tooling has a `repos.json` with partial coverage.
 
-Some of the doc building tools (ie apidocs) have a [smaller list](https://github.com/TritonDataCenter/apidocs.joyent.com/blob/master/etc/config.json) of repos to pull from.
+Some of the doc building tools (ie apidocs) have a [smaller list](https://github.com/TritonDataCenter/apidocs.tritondatacenter.com/blob/master/etc/config.json) of repos to pull from.
 
 ## Archiving
 

@@ -67,12 +67,12 @@ upgrades. The workflow would be:
 ## API Considerations
 
 In SDC, end-users generally interact with their containers either through
-[sdc-docker](https://apidocs.joyent.com/docker) or [cloudapi](https://apidocs.joyent.com/cloudapi/).
+[sdc-docker](https://apidocs.tritondatacenter.com/docker) or [cloudapi](https://apidocs.tritondatacenter.com/cloudapi/).
 For sdc-docker we don't intend to add any additional API features at this point.
 While we can add delegated\_datasets for these containers, there will be no
 options exposed to users.
 
-When using cloudapi, the [\*MachineSnapshot](https://apidocs.joyent.com/cloudapi/#CreateMachineSnapshot)
+When using cloudapi, the [\*MachineSnapshot](https://apidocs.tritondatacenter.com/cloudapi/#CreateMachineSnapshot)
 endpoints may no longer do what a customer expects when they have a delegated
 dataset. The change here is that instead of taking a snapshot of a "machine"
 and rolling back that machine (because the machine only has one dataset), we're
