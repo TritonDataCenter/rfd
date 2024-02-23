@@ -1,0 +1,24 @@
+:revremark: State: {state}
+:attribute-missing: warn
+:docinfo:
+:doctype: article
+:hide-uri-scheme:
+:icons: font
+:idprefix:
+:idseparator: -
+:numbered:
+:sectanchors:
+:sectlinks:
+:sectnums:
+:sectnumlevels: 1
+:showtitle:
+:source-highlighter: pygments
+:toc: left
+:xrefstyle: full
+ifdef::env-github[]
+:tip-caption: :bulb:
+:note-caption: :information_source:
+:important-caption: :heavy_exclamation_mark:
+:caution-caption: :fire:
+:warning-caption: :warning:
+endif::[]
