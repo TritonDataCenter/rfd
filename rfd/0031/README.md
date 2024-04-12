@@ -67,7 +67,7 @@ operations are idempotent during a given period. For example, when
 performing reads and writes of a sector of a device, those operations
 are idempotent, even though you may opt to overwrite that disk sector
 some time in the future, while performing the single I/O it will always
-be the same. 
+be the same.
 
 uscsi(7I) doesn't have this same guarantee. Because uscsi(7I) allows for
 arbitrary SCSI commands to be generated and sent, they may or may not be
@@ -159,11 +159,13 @@ arises.
 #### libscsi Changes
 
 libscsi is a private library that was introduced by Eric Schrock in
-`PSARC 2008/196 libscsi and libses`. The work originally came as part of
+[`PSARC 2008/196 libscsi and libses`][1]. The work originally came as part of
 the work done by Fishworks. While we do not have the same firmware
 upgrade tooling that the team there used (it is lost to the sands of
 time behind closed doors at Oracle), it was built upon libscsi and
 friends.
+
+[1]: https://www.illumos.org/opensolaris/ARChive/PSARC/2008/196/index.html
 
 Importantly, fwflash(1M) uses libscsi to do the heavy lifting in a
 rather useful way. To enable this, a new function will be added to
@@ -203,7 +205,7 @@ int (*lseo_max_transfer)(libscsi_hdl_t *, void *, size_t *);
 As part of this the value of `LIBSCSI_VERSION` will be incremented to
 version 2. Note as this is a private interface, older versions and out
 of gate consumers should not be a problem; however, incrementing the
-interface version should still be done. 
+interface version should still be done.
 
 ### Determining the Maximum Firmware Image Size
 

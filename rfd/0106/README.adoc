@@ -1924,7 +1924,7 @@ SHOULD get you to a functioning "Hello World" in ~5min.
 . https://golang.org/doc/install[Install a stable copy of Go].  This can be done
   in a number of ways, either from the https://golang.org/dl/#stable[official
   Download Page] or via your preferred package management system:
-.. https://pkgsrc.joyent.com/[`pkgsrc`]: `sudo pkgin -y install go`
+.. https://pkgsrc.smartos.org/[`pkgsrc`]: `sudo pkgin -y install go`
 .. https://www.macports.org/[MacpPrts]: `sudo port install go`
 .. https://brew.sh/[Homebrew]: `sudo brew install go`
 . Open a terminal and add the following environment variables to your shell

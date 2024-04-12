@@ -161,20 +161,20 @@ formal writing that it has come to represent.)
 | draft    | [RFD 115 Improving Manta Data Path Availability](./rfd/0115/README.md) |
 | predraft | [RFD 116 Manta Bucket Exploration](./rfd/0116/README.md) |
 | predraft | [RFD 117 Network Traits](./rfd/0117/README.md) |
-| draft    | [RFD 118 MAC Checksum Offload Extensions](./rfd/0118/README.md)
-| draft    | [RFD 119 Routing Between Fabric Networks](./rfd/0119/README.md)
+| draft    | [RFD 118 MAC Checksum Offload Extensions](./rfd/0118/README.md) |
+| draft    | [RFD 119 Routing Between Fabric Networks](./rfd/0119/README.md) |
 | abandoned | ~~[RFD 120 The Triton Router Object, phase 1 (intra-DC, fabric only)](./rfd/0120/README.md)~~ |
-| predraft | [RFD 121 bhyve brand](./rfd/0121/README.md)
-| draft    | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md)
-| predraft | [RFD 123 Online Manta Garbage Collection](./rfd/0123/README.md)
-| draft    | [RFD 124 Manta Incident Response Guide](./rfd/0124/README.md)
-| predraft | [RFD 125 Online Schema Changes in Manta](./rfd/0125/README.md)
-| draft    | [RFD 126 Zone Configuration Conversions](./rfd/0126/README.md)
-| predraft | [RFD 127 In-process Brand Hooks](./rfd/0127/README.md)
-| draft    | [RFD 128 VXLAN Tunneling Performance Improvements](./rfd/0128/README.md)
-| predraft | [RFD 129 Manta Performance Bottleneck Investigation](./rfd/0129/README.md)
-| predraft | [RFD 130 The Triton Remote Network Object](./rfd/0130/README.md)
-| predraft | [RFD 131 The Triton Datacenter API (DCAPI)](./rfd/0131/README.md)
+| predraft | [RFD 121 bhyve brand](./rfd/0121/README.md) |
+| draft    | [RFD 122 Per-brand resource and property customization](./rfd/0122/README.md) |
+| predraft | [RFD 123 Online Manta Garbage Collection](./rfd/0123/README.md) |
+| draft    | [RFD 124 Manta Incident Response Guide](./rfd/0124/README.md) |
+| predraft | [RFD 125 Online Schema Changes in Manta](./rfd/0125/README.md) |
+| draft    | [RFD 126 Zone Configuration Conversions](./rfd/0126/README.md) |
+| predraft | [RFD 127 In-process Brand Hooks](./rfd/0127/README.md) |
+| draft    | [RFD 128 VXLAN Tunneling Performance Improvements](./rfd/0128/README.md) |
+| predraft | [RFD 129 Manta Performance Bottleneck Investigation](./rfd/0129/README.md) |
+| predraft | [RFD 130 The Triton Remote Network Object](./rfd/0130/README.md) |
+| predraft | [RFD 131 The Triton Datacenter API (DCAPI)](./rfd/0131/README.md) |
 | publish  | [RFD 132 Conch: Unified Rack Integration Process](./rfd/0132/README.md) |
 | publish  | [RFD 133 Conch: Improved Device Validation](./rfd/0133/README.md) |
 | publish  | [RFD 134 Conch: User Access Control](./rfd/0134/README.md) |
