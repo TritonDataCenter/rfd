@@ -599,14 +599,14 @@ still work when customers later have both buckets and non-buckets.
 
 ## Where should the API live?
 
-Since customers talk to manta in a "region" e.g. us-east.manta.joyent.com, it
+Since customers talk to manta in a "region" e.g. us-central.manta.mnx.io, it
 makes the most sense that the API would exist at that same level.
 
 The option I'm proposing would be to tie this into muskie such that you can make
 your queries for metrics via:
 
 ```
-http://us-east.manta.joyent.com/<Account>/metrics
+http://us-central.manta.mnx.io/<Account>/metrics
 ```
 
 

@@ -130,7 +130,7 @@ process](https://illumos.org/books/dev/integrating.html). Soon after, those
 changes would be merged *back* up to illumos-joyent as part of the daily merge.
 
 This is clearly not working very well, as can be seen by [comparing our
-trees](https://us-east.manta.joyent.com/Joyent_Dev/public/webrevs/platform-upstream-webrev/index.html).
+trees](https://us-central.manta.mnx.io/Joyent_Dev/public/webrevs/platform-upstream-webrev/index.html).
 It involves an unpleasant amount of busy-work resolving conflicts in both
 directions. It is of little surprise that we are so badly divergent, even in
 areas that don't in any way need to be.

@@ -41,7 +41,7 @@ document other reasons why users should probably move to the 64-bit sets.
 
 Before we look at the specific costs involved, it's useful to get an overview
 of how popular each package set is.  Below is a table with the download
-statistics for each set from pkgsrc.joyent.com as of 2019-04-08.
+statistics for each set from pkgsrc.smartos.org as of 2019-04-08.
 
 | Branch |            x86\_64 |            tools |                i386 |       multiarch |
 |-------:|-------------------:|-----------------:|--------------------:|----------------:|
@@ -62,7 +62,7 @@ Some notes:
   for a few months around January 2013.
 
 * A number of institutions make use of the rsync service available from
-  pkgsrc.joyent.com to provide their own local mirrors of the package
+  pkgsrc.smartos.org to provide their own local mirrors of the package
   repositories.  Any package downloads from these mirrors will naturally not
   be reflected in these numbers.
 
@@ -157,12 +157,12 @@ The disk usage cost is exacted in a number of different places:
 
 * The NFS server used by the bulk build infrastructure.
 
-* The <https://pkgsrc.joyent.com/> servers.
+* The <https://pkgsrc.smartos.org/> servers.
 
-* Any mirrors of <https://pkgsrc.joyent.com/>.
+* Any mirrors of <https://pkgsrc.smartos.org/>.
 
 * The package archive at
-  <https://us-east.manta.joyent.com/pkgsrc/public/packages/>
+  <https://us-central.manta.mnx.io/pkgsrc/public/packages/>
 
 While it might be tempting to dismiss disk usage as irrelevant in this era of
 multi-terabyte desktop hard drives, these numbers grow quickly when you

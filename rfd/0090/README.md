@@ -274,7 +274,7 @@ not rely on current peak performance being anywhere near normal peak
 performance. The ability to provide consistent experience for customers through
 limiting their CPU to what they're paying for was also listed as one of the
 motivations for adding CPU Caps in [PSARC
-2004/402](https://us-east.manta.joyent.com/jmc/public/opensolaris/ARChive/PSARC/2004/402/caps_psarc.pdf).
+2004/402](https://www.illumos.org/opensolaris/ARChive/PSARC/2004/402/caps_psarc.pdf).
 
 In addition to these performance issues, having different packages with
 different amounts of bursting makes instance placement much more difficult. If
@@ -368,5 +368,5 @@ back into this document, possibly with more questions.
 
 ## Related Reading
 
- * [CPU Caps PSARC 2004/402](https://us-east.manta.joyent.com/jmc/public/opensolaris/ARChive/PSARC/2004/402/caps_psarc.pdf)
+ * [CPU Caps PSARC 2004/402](https://www.illumos.org/opensolaris/ARChive/PSARC/2004/402/caps_psarc.pdf).
  * [FSS(7)](https://smartos.org/man/7/FSS)
