@@ -6,6 +6,7 @@
 
 <!--
     Copyright 2020 Joyent, Inc.
+    Copyright 2025 MNX Cloud, Inc.
 -->
 
 # Requests for Discussion
@@ -228,6 +229,7 @@ formal writing that it has come to represent.)
 | draft | [RFD 182 Altering system pool detection in SmartOS/Triton](./rfd/0182/README.md) |
 | predraft | [RFD 183 Triton Volume Replication and Backup](./rfd/0183/README.md) |
 | draft | [RFD 184 SmartOS BHYVE Image Builder Brand](./rfd/0184/README.md) |
+| predraft | [RFD 185 VMM Memory Reservoir Use by SmartOS and Triton](./rfd/0185/README.md) |
 
 ## Contents of an RFD
 
