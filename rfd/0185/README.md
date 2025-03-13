@@ -1,7 +1,7 @@
 ---
 author: Dan McDonald <danmcd@mnx.io>
 state: predraft
-discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+184%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+185%22
 ---
 
 <!--
@@ -11,10 +11,10 @@ discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+184%22
 -->
 
 <!--
-    Copyright 2023 MNX Cloud, Inc.
+    Copyright 2025 MNX Cloud, Inc.
 -->
 
-# RFD 184 VMM Memory Reservoir Use by SmartOS and Triton
+# RFD 185 VMM Memory Reservoir Use by SmartOS and Triton
 
 
 ## Problem statement
