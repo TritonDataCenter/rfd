@@ -1,6 +1,6 @@
 ---
 authors: Nahum Shalman <nahum.shalman@mnx.io>
-state: draft
+state: published
 ---
 
 # RFD 184 SmartOS BHYVE Image Builder Brand
@@ -63,7 +63,7 @@ Before shipping the new brand to SmartOS we must ensure that its presence won't 
 
 ## Proof of Concept
 
-Demo builds for phases 0 and 1 are avaialable. To walk through what this change would look like from the SmartOS perspective, follow along with this test procedure (assumes you are currently running 20250306T000316Z.)
+Demo builds for phases 0 and 1 are available. To walk through what this change would look like from the SmartOS perspective, follow along with this test procedure (assumes you are currently running 20250306T000316Z.)
 
 On a test machine running an up to date SmartOS platform image:
 Install the updated [smartos-ui] build:
