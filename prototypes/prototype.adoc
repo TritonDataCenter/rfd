@@ -1,0 +1,21 @@
+---
+authors: Han Solo <han@example.com>, Frodo Baggins <frodo@example.com>
+state: predraft
+---
+= RFD <NUMBER> <Title>
+:author: Han Solo <han@example.com>; Frodo Baggins <frodo@example.com>
+:state: predraft
+:revnumber: 0.1.0
+:keywords: rfd <NUMBER>, prototype, sample, keywords
+include::front-matter.adoc[]
+
+////
+    This Source Code Form is subject to the terms of the Mozilla Public
+    License, v. 2.0. If a copy of the MPL was not distributed with this
+    file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
+    Copyright 2017 <contribution>
+////
+
+[[introduction]]
+== Introduction
