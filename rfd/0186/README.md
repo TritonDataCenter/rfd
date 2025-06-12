@@ -111,5 +111,7 @@ AWS since [https://aws.amazon.com/es/blogs/aws/amazon_s3/](2006) has been using
 SigV2 to authenticate requests, support for this authentication scheme has been 
 obsoleted in favor of
 [https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv.html](SigV4). 
-
+That aliviates some of the work as we will need just to concentrate in
+implementing SigV4. 
+AWS authentication scheme relies in the use of Access Key ID and  symmetric keys
 
