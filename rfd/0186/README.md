@@ -122,7 +122,7 @@ To achieve S3 compatibility will need to think on how to address the following
 problems.
 
 1. Authentication.
-2. S3 request translation to Manta Storage requests equivalents whenever is
+2. S3 request translation to Manta
    applicable.
 3. Buckets subdomains.
 4. Billing
@@ -147,11 +147,12 @@ towards this goal have already been integrated in TRITON-2152, but more efforts
 are required to access keys to be usable in the mahi authentication cache.
 
 
-##### 2. Convert S3 requests into Manta Object storage requests.
+##### 2. S3 requests translation to Manta
 
 The manta-buckets already possess an API surface alike AWS S3 buckets, with that
 in mind he will convert all incoming requests to the S3 gateway into
 manta-buckets requests.
+The following roughly shows how a S3 gateway should operate.
 
 
 ```
@@ -209,10 +210,21 @@ age equivalents.
 4. The S3 gateway converts the `manta-buckets-api` response to an S3-compatible 
 success or error response.
 
-The 
 
 
 
+#### 3. Buckets subdomains
+
+AWS S3 identifies buckets using subdomains, for this a possible solution 
+will be to a wildcard subdomain and a root domain to map to the address of
+where S3 gateway service is running, and we will need to setup a certificate
+that is able to support wildcard subdomains,for SSL/TLS.
+
+
+
+#### 4. Billing
+
+#### 5. Multipart uploads. 
 ### References
 
 [1] https://github.com/TritonDataCenter/sdc-docker/blob/master/docs/api/features
