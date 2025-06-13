@@ -29,11 +29,10 @@ of that design was that although those operations were supported, we still
 rely on the Manta set of applications that access this new Buckets API.
 
 The purpose of this S3 compatibility layer is to translate S3 object requests
-into Manta buckets API requests, which falls in the category of system call
-emulation. This scheme has been proven successful in the past, relevant
-examples are [1] sdc-docker, [2] Linux Branded Zones. For this specific type
-of emulation (Object storage API emulation) there are already cases where it
-has been implemented successfully, for example [3] MinIO
+into Manta buckets API requests, which falls in the category of emulation.
+This scheme has been proven successful in the past, relevant examples are 
+[1] sdc-docker, [2] Linux Branded Zones. For this specific case there are already
+cases where it has been implemented successfully, for example [3] MinIO.
 
 ## 1. Design Discussion
 
@@ -138,65 +137,36 @@ into manta-buckets requests.
 
 The following diagram shows how a S3 gateway should operate:
 
-```
-              ┌───────────────────────────┐
-              │      🔶 AWS S3 Client     │
-              │   (AWS CLI, SDK, Boto3)   │
-              └─────────────┬─────────────┘
-                            │
-                ┌───────────▼───────────┐
-                │ 🔶 1. AWS S3 Request  │
-                │  GET|PUT|DELETE|HEAD  │
-                │   /{bucket}/{object}  │
-                └───────────┬───────────┘
-                            │
-┌───────────────────────────▼───────────────────────────────────────────────────┐
-│                    🏢 Triton Datacenter                                       │
-│                                                                               │
-│                   ┌─────────────────────────┐                                 │
-│                   │    🔀 S3 Gateway        │                                 │
-│                   │   (S3→Manta Bridge)     │                                 │
-│                   │                         │                                 │
-│                   │  • 🔶 SigV4 Auth        │                                 │
-│                   │  • 🔄 Request Translate │                                 │
-│                   │  • 🔄 Response Mapping  │                                 │
-│                   └──────────┬──────────────┘                                 │
-│                              │                                                │
-│                  ┌───────────▼────────────┐                                   │
-│                  │ 🏢 2. Manta Request    │                                   │
-│                  │   GET|PUT|DELETE|HEAD  │                                   │
-│                  │ /buckets/{bucket}/...  │                                   │
-│                  └───────────┬────────────┘                                   │
-│                              │                                                │
-│                   ┌──────────▼─────────────┐                                  │
-│                   │ 🏢 Manta Buckets API   │                                  │
-│                   │                        │                                  │
-│                   │  • 🗂️ Bucket Ops       │                                  │
-│                   │  • ☁️ Object Storage    │                                  │
-│                   │  • 🏷️ Metadata Store   │                                  │
-│                   └──────────┬─────────────┘                                  │
-│                              │                                                │
-│                  ┌───────────▼────────────┐                                   │
-│                  │ 🏢 3. Manta Response   │                                   │
-│                  │   Success/Error + Data │                                   │
-│                  └───────────┬────────────┘                                   │
-│                              │                                                │
-│                   ┌──────────▲─────────────┐                                  │
-│                   │    🔀 S3 Gateway       │                                  │
-│                   │  (Response Translation)│                                  │
-│                   └──────────┬─────────────┘                                  │
-└──────────────────────────────┼────────────────────────────────────────────────┘
-                               │
-                ┌──────────────▼─────────────┐
-                │ 🔶 4. AWS S3 Response      │
-                │   S3-Compatible Format     │
-                │   Headers, Status, Data    │
-                └───────────────┬────────────┘
-                                │
-              ┌─────────────────▼─────────────┐
-              │      🔶 AWS S3 Client         │
-              │    Receives Response          │
-              └───────────────────────────────┘
+**Sequence Diagram:**
+
+```mermaid
+sequenceDiagram
+    participant Client as 🔶 AWS S3 Client
+    participant Gateway as 🔀 S3 Gateway
+    participant API as 🏢 Manta Buckets API
+
+    Note over Client, API: S3 Request Processing Flow
+    
+    Client->>Gateway: 1. PUT /{bucket}/{object}
+    Note right of Client: SigV4 Authenticated Request
+    
+    activate Gateway
+    Note over Gateway: • Validate SigV4 signature<br/>• Parse S3 request<br/>• Extract metadata
+    
+    Gateway->>API: 2. PUT /buckets/{bucket}/{object}
+    Note right of Gateway: Translated Manta Request
+    
+    activate API
+    Note over API: • Store object<br/>• Update metadata<br/>• Generate response
+    
+    API-->>Gateway: 3. 200 OK + Manta Response
+    deactivate API
+    
+    Note over Gateway: • Map Manta response to S3<br/>• Generate S3-compatible headers<br/>• Create ETag
+    
+    Gateway-->>Client: 4. 200 OK + S3 Response
+    deactivate Gateway
+    Note left of Gateway: S3-Compatible Response
 ```
 
 **Flow Description:**
@@ -220,11 +190,34 @@ that is able to support wildcard subdomains for SSL/TLS.
 
 #### 4. Billing
 
-*[To be completed]*
+*[TBD]*
 
 #### 5. Multipart uploads
 
-*[To be completed]*
+S3 multipart uploads[11] allow clients to upload large objects in multiple parts,
+providing better performance and reliability for large files. This is a
+critical feature for the S3 gateway as many applications rely on it for
+uploading large objects.
+
+**S3 Multipart Upload Workflow:**
+
+1. **Initiate multipart upload** - Client calls `POST /{bucket}/{object}?uploads`
+   - Returns UploadId for tracking the upload session
+2. **Upload parts** - Client uploads parts using `PUT /{bucket}/{object}?partNumber=X&uploadId=Y`
+   - Each part: 5MB minimum (except last part), 5GB maximum
+   - Support for 1-10,000 parts per upload
+   - Each part receives an ETag for verification
+3. **Complete multipart upload** - Client calls `POST /{bucket}/{object}?uploadId=Y`
+   - Provides list of part numbers and ETags
+   - Server assembles final object from parts
+4. **Abort multipart upload** - Client calls `DELETE /{bucket}/{object}?uploadId=Y`
+   - Cleans up incomplete uploads and temporary storage
+
+**Implementation Strategy:**
+
+There is existing work for Manta directory API [9] that we can leverage for
+this implementation. Mako now possesses an API for MPU operations [10], which
+requires the object parts and related metadata to construct the final object.
 
 ## References
 
@@ -236,3 +229,6 @@ that is able to support wildcard subdomains for SSL/TLS.
 [6]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html
 [7]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv.html
 [8]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-00
+[9]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0065/README.md 
+[10]: https://github.com/TritonDataCenter/manta-mako/commit/f6a0721ec99b42e74288cf7d198ef3cd6f032725
+[11]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
