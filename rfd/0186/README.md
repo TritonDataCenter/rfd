@@ -223,5 +223,5 @@ requires the object parts and related metadata to construct the final object.
 [8] https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-00  
 [9] https://github.com/TritonDataCenter/rfd/blob/master/rfd/0065/README.md  
 [10] https://github.com/TritonDataCenter/manta-mako/commit/f6a0721ec99b42e74288cf7d198ef3cd6f032725  
-[11] https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
-[12] https://github.com/TritonDataCenter/s3-manta-bridge
+[11] https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html  
+[12] https://github.com/TritonDataCenter/s3-manta-bridge  
