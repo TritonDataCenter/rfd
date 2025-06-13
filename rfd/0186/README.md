@@ -32,7 +32,8 @@ The purpose of this S3 compatibility layer is to translate S3 object requests
 into Manta buckets API requests, which falls in the category of emulation.
 This scheme has been proven successful in the past, relevant examples are 
 [1] sdc-docker, [2] Linux Branded Zones. For this specific case there are already
-cases where it has been implemented successfully, for example [3] MinIO.
+cases where it has been implemented successfully, for example [3] MinIO, and   
+previous work that is on the same venue like [12] s3-manta-bridge.
 
 ## 1. Design Discussion
 
@@ -223,3 +224,4 @@ requires the object parts and related metadata to construct the final object.
 [9] https://github.com/TritonDataCenter/rfd/blob/master/rfd/0065/README.md  
 [10] https://github.com/TritonDataCenter/manta-mako/commit/f6a0721ec99b42e74288cf7d198ef3cd6f032725  
 [11] https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
+[12] https://github.com/TritonDataCenter/s3-manta-bridge
