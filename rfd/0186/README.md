@@ -168,18 +168,9 @@ sequenceDiagram
     deactivate Gateway
     Note left of Gateway: S3-Compatible Response
 ```
+**Implementation Details **
 
-**Flow Description:**
-
-1. A client sends a request to upload or delete an object to a Triton bucket
-   through the `s3-gateway` service using an existing S3 script.
-2. The `s3-gateway` service processes the request by generating a request for
-   `manta-buckets-api` and converting the S3 request metadata into Manta
-   Object storage equivalents.
-3. The `manta-buckets-api` responds with a success/error back to the
-   `s3-gateway`.
-4. The S3 gateway converts the `manta-buckets-api` response to an
-   S3-compatible success or error response.
+Work in progress
 
 #### 3. Buckets subdomains
 
