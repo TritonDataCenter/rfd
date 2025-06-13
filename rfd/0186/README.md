@@ -212,14 +212,14 @@ requires the object parts and related metadata to construct the final object.
 
 ## References
 
-[1]: https://github.com/TritonDataCenter/sdc-docker/blob/master/docs/api/features/smartos.md
-[2]: https://github.com/TritonDataCenter/illumos-joyent/blob/810178ebcf77c96767a9f5c95f845858c5c6f41c/usr/src/uts/common/brand/lx/os/lx_brand.c#L34
-[3]: https://min.io/docs/minio/linux/reference/s3-api-compatibility.html
-[4]: https://github.com/TritonDataCenter/sdc-ufds/tree/master
-[5]: https://github.com/TritonDataCenter/mahi/tree/master
-[6]: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html
-[7]: https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv.html
-[8]: https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-00
-[9]: https://github.com/TritonDataCenter/rfd/blob/master/rfd/0065/README.md 
-[10]: https://github.com/TritonDataCenter/manta-mako/commit/f6a0721ec99b42e74288cf7d198ef3cd6f032725
-[11]: https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
+[1] https://github.com/TritonDataCenter/sdc-docker/blob/master/docs/api/features/smartos.md  
+[2] https://github.com/TritonDataCenter/illumos-joyent/blob/810178ebcf77c96767a9f5c95f845858c5c6f41c/usr/src/uts/common/brand/lx/os/lx_brand.c#L34  
+[3] https://min.io/docs/minio/linux/reference/s3-api-compatibility.html  
+[4] https://github.com/TritonDataCenter/sdc-ufds/tree/master  
+[5] https://github.com/TritonDataCenter/mahi/tree/master  
+[6] https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_access-keys.html  
+[7] https://docs.aws.amazon.com/IAM/latest/UserGuide/reference_sigv.html  
+[8] https://datatracker.ietf.org/doc/html/draft-cavage-http-signatures-00  
+[9] https://github.com/TritonDataCenter/rfd/blob/master/rfd/0065/README.md  
+[10] https://github.com/TritonDataCenter/manta-mako/commit/f6a0721ec99b42e74288cf7d198ef3cd6f032725  
+[11] https://docs.aws.amazon.com/AmazonS3/latest/userguide/mpuoverview.html
