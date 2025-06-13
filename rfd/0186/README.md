@@ -190,7 +190,7 @@ providing better performance and reliability for large files. This is a
 critical feature for the S3 gateway as many applications rely on it for
 uploading large objects.
 
-**S3 Multipart Upload Workflow:**
+**AWS S3 Multipart Upload Workflow:**
 
 1. **Initiate multipart upload** - Client calls `POST /{bucket}/{object}?uploads`
    - Returns UploadId for tracking the upload session
