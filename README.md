@@ -231,6 +231,10 @@ formal writing that it has come to represent.)
 | published | [RFD 184 SmartOS BHYVE Image Builder Brand](./rfd/0184/README.md) |
 | predraft | [RFD 185 VMM Memory Reservoir Use by SmartOS and Triton](./rfd/0185/README.md) |
 
+XXX Gap to be removed when 186 shows up
+
+| predraft | [RFD 187 AI Contributions to Triton](./rfd/0187/README.md) |
+
 ## Contents of an RFD
 
 The following is a way to help you think about and structure an RFD
