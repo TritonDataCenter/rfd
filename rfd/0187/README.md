@@ -132,6 +132,7 @@ Date:   Thu May 8 09:34:27 2025 -0400
 
     Claude Sonnet was used to assist with the porting.
 ```
+
 - Commit from Claude: https://github.com/TritonDataCenter/triton-moirai/pull/4/commits/87d42eb21886ae2ad9877621bd1144a975ae40db
 ```
 commit 87d42eb21886ae2ad9877621bd1144a975ae40db
@@ -155,6 +156,7 @@ Date:   Tue Jun 10 17:29:52 2025 +0000
 
     Co-Authored-By: Claude <noreply@anthropic.com>
 ```
+
 - Squashed commits from Claude with model details added manually: https://github.com/TritonDataCenter/triton-moirai/pull/4/commits/dd12c0a18b2334fc56926d29659c7923d3c68c63
 ```
 commit dd12c0a18b2334fc56926d29659c7923d3c68c63
@@ -195,30 +197,22 @@ Date:   Wed Jun 18 12:09:59 2025 -0400
 
 #### Counter Example
 
+> [!WARNING]
 Even though the following commit would be fine when viewed on GitHub or when looking at the detailed commit information,
 it would obscure the responsible human in plain `git log` output.
 
-Commit from Claude with Claude as author: https://github.com/TritonDataCenter/rfd/pull/159/commits/a75057c51b8515eb153105ad133b7df7dcee5b3e
+> [!WARNING]
+Commit from Claude with Claude as `Author`: https://github.com/TritonDataCenter/rfd/commit/a75057c51b8515eb153105ad133b7df7dcee5b3e
 ```
-❯ git log -n 1 --pretty=fuller a7505
+### --- THIS IS A COUNTER EXAMPLE --- ###
+$ git log -n 1 --pretty=fuller a7505
 commit a75057c51b8515eb153105ad133b7df7dcee5b3e
 Author:     Claude <noreply@anthropic.com>
 AuthorDate: Wed Jun 18 12:41:31 2025 -0400
 Commit:     Nahum Shalman <nahum.shalman@mnx.io>
 CommitDate: Wed Jun 18 12:42:24 2025 -0400
-
-    RFD 187: Expand AI contributions policy with comprehensive guidance
-
-    - Complete "Unacceptable Use" section with security, legal, quality, architectural, and context-specific categories
-    - Expand "Acceptable Use" with detailed examples for development support, code quality, debugging, and maintenance
-    - Clarify universal attribution requirement for ANY AI-generated content
-    - Add comprehensive "Legal and Licensing Considerations" section covering IP, liability, and compliance
-    - Enhance review requirements emphasizing extra scrutiny for AI-generated content
-    - Add guidance for AI tools without standardized attribution formats
-
-    🤖 Generated with [Claude Code](https://claude.ai/code)
-
-    Co-Authored-By: Claude <noreply@anthropic.com>
+<snip>
+### --- THIS IS A COUNTER EXAMPLE --- ###
 ```
 
 ## References
