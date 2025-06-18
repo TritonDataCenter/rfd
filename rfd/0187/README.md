@@ -25,8 +25,8 @@ to preserve that attribution in the commits that land on our production branches
 
 - The unit of work that we land is a peer-reviewed GitHub pull request.
 - Only humans count as peer reviewers for approving and merging pull requests.
-- A human proposing a PR with AI generated content is expected to fully understand that content.
-- A PR with AI generated content MUST credit the AI tool(s) used.
+- A human proposing a PR with AI generated content is expected to fully understand that content and must review it with extra scrutiny for correctness, security, and adherence to project standards.
+- A PR with ANY AI generated content MUST credit the AI tool(s) used, regardless of the size or significance of the contribution.
 - For repositories where branches are merged preserving the original commits
   - Commits where the tool credits itself are great. As author or co-author are both acceptable.
   - If the commit message is being written by a human, make sure to credit the tool appropriately.
@@ -35,6 +35,8 @@ to preserve that attribution in the commits that land on our production branches
     an appropriate attribution.
   - For tools with standardized name and email-addresses, e.g. Claude Code, we will use the string the tool uses.
     - "Claude <noreply@anthropic.com>"
+  - For tools without standard attribution formats, use the tool name and version when available.
+    Examples could include: "ChatGPT-4" or "ollama/llama3.1" or "GitHub Copilot"
 
 ### Acceptable Use
 
@@ -42,9 +44,80 @@ to preserve that attribution in the commits that land on our production branches
 - Generating documentation
 - Translating existing code from one language to another
 
+**Development Support:**
+- Generating boilerplate code (e.g., struct definitions, basic CRUD operations)
+- Creating mock data or fixtures for testing
+- Generating configuration file templates
+- Writing repetitive code patterns (e.g., error handling, logging)
+
+**Code Quality:**
+- Refactoring existing code for readability (with human review)
+- Adding error handling to existing functions
+- Generating code comments and inline documentation
+- Creating example usage code for APIs or libraries
+
+**Analysis and Debugging:**
+- Generating debugging scripts or diagnostic tools
+- Creating log parsing utilities
+- Writing code analysis scripts (linting rules, metrics collection)
+- Generating sample reproduction cases for bugs
+
+**Maintenance:**
+- Updating deprecated API usage patterns
+- Converting between data formats
+- Creating migration utilities for data structure changes
+- Generating compatibility shims
+
+### Legal and Licensing Considerations
+
+**Licensing Compatibility:**
+- AI-generated code may not have clear copyright ownership
+- Ensure AI-generated content is compatible with existing project licenses
+- Some licenses may require specific attribution or have restrictions on derivative works
+
+**Intellectual Property:**
+- AI models trained on copyrighted code could potentially reproduce similar patterns
+- Risk of inadvertent copyright infringement through AI suggestions
+- Patent implications for AI-generated implementations
+
+**Liability:**
+- Contributors remain responsible for AI-generated code that causes issues
+- Standard warranty and indemnification considerations apply
+- Insurance implications should be considered for AI-assisted development
+
+**Compliance:**
+- Some industries or contracts may prohibit or restrict AI-generated code
+- Export control considerations for AI-generated cryptographic implementations
+- Data sovereignty issues if AI tools process sensitive information
+
+**Recommendation:** Consult with legal counsel when in doubt about AI-generated content, particularly for security-critical components or when working under specific contractual obligations.
+
 ### Unacceptable Use
 
-- TBD
+**Security/Safety:**
+- Generating cryptographic implementations, key generation, or security-critical code
+- Code that handles authentication, authorization, or access control
+- Network security protocols or firewall rules
+
+**Legal/Compliance:**
+- Code that could infringe on patents or copyrights
+- Generating entire functions/modules that might be substantially similar to existing copyrighted code
+- Code that processes personal data without proper privacy considerations
+
+**Quality/Reliability:**
+- Production database migration scripts or schema changes
+- Code that directly manipulates critical system state without human review
+- Performance-critical code paths without benchmarking/validation
+
+**Architectural:**
+- Core system architecture decisions (API design, data models, etc.)
+- Code that establishes new dependencies or external integrations
+- Changes to build systems, CI/CD pipelines, or deployment processes
+
+**Context-Specific:**
+- Code that requires deep domain knowledge of Triton's specific architecture
+- Modifications to existing complex algorithms without understanding the original intent
+- Code that interfaces with hardware or low-level system components
 
 ### Examples
 
