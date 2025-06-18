@@ -3,7 +3,7 @@ authors: Nahum Shalman <nahum.shalman@mnx.io>
 state: draft
 ---
 
-# RFD 187 AI Contributions to Triton
+# RFD 187 Attribution of AI Contributions to Triton
 
 ## Definitions of Terms
 
@@ -133,88 +133,6 @@ CommitDate: Wed Jun 18 12:42:24 2025 -0400
 <snip>
 ### --- THIS IS A COUNTER EXAMPLE --- ###
 ```
-
-### Acceptable Use
-
-- Generating unit tests
-- Generating documentation
-- Translating existing code from one language to another
-
-**Development Support:**
-- Generating boilerplate code (e.g., struct definitions, basic CRUD operations)
-- Creating mock data or fixtures for testing
-- Generating configuration file templates
-- Writing repetitive code patterns (e.g., error handling, logging)
-
-**Code Quality:**
-- Refactoring existing code for readability (with human review)
-- Adding error handling to existing functions
-- Generating code comments and inline documentation
-- Creating example usage code for APIs or libraries
-
-**Analysis and Debugging:**
-- Generating debugging scripts or diagnostic tools
-- Creating log parsing utilities
-- Writing code analysis scripts (linting rules, metrics collection)
-- Generating sample reproduction cases for bugs
-
-**Maintenance:**
-- Updating deprecated API usage patterns
-- Converting between data formats
-- Creating migration utilities for data structure changes
-- Generating compatibility shims
-
-### Legal and Licensing Considerations
-
-**Licensing Compatibility:**
-- AI-generated code may not have clear copyright ownership
-- Ensure AI-generated content is compatible with existing project licenses
-- Some licenses may require specific attribution or have restrictions on derivative works
-
-**Intellectual Property:**
-- AI models trained on copyrighted code could potentially reproduce similar patterns
-- Risk of inadvertent copyright infringement through AI suggestions
-- Patent implications for AI-generated implementations
-
-**Liability:**
-- Contributors remain responsible for AI-generated code that causes issues
-- Standard warranty and indemnification considerations apply
-- Insurance implications should be considered for AI-assisted development
-
-**Compliance:**
-- Some industries or contracts may prohibit or restrict AI-generated code
-- Export control considerations for AI-generated cryptographic implementations
-- Data sovereignty issues if AI tools process sensitive information
-
-**Recommendation:** Consult with legal counsel when in doubt about AI-generated content, particularly for security-critical components or when working under specific contractual obligations.
-
-### Unacceptable Use
-
-**Security/Safety:**
-- Generating cryptographic implementations, key generation, or security-critical code
-- Code that handles authentication, authorization, or access control
-- Network security protocols or firewall rules
-
-**Legal/Compliance:**
-- Code that could infringe on patents or copyrights
-- Generating entire functions/modules that might be substantially similar to existing copyrighted code
-- Code that processes personal data without proper privacy considerations
-
-**Quality/Reliability:**
-- Production database migration scripts or schema changes
-- Code that directly manipulates critical system state without human review
-- Performance-critical code paths without benchmarking/validation
-
-**Architectural:**
-- Core system architecture decisions (API design, data models, etc.)
-- Code that establishes new dependencies or external integrations
-- Changes to build systems, CI/CD pipelines, or deployment processes
-
-**Context-Specific:**
-- Code that requires deep domain knowledge of Triton's specific architecture
-- Modifications to existing complex algorithms without understanding the original intent
-- Code that interfaces with hardware or low-level system components
-
 
 ## References
 

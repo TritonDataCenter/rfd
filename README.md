@@ -233,7 +233,7 @@ formal writing that it has come to represent.)
 
 XXX Gap to be removed when 186 shows up
 
-| predraft | [RFD 187 AI Contributions to Triton](./rfd/0187/README.md) |
+| predraft | [RFD 187 Attribution of AI Contributions to Triton](./rfd/0187/README.md) |
 
 ## Contents of an RFD
 
