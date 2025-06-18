@@ -123,6 +123,7 @@ to preserve that attribution in the commits that land on our production branches
 
 - Commit message of a human crediting Claude: <https://github.com/TritonDataCenter/triton-moirai/pull/4/commits/36ee26c3700cc74aa730489abc1779b0de724c01>
 - Commit from Claude: <https://github.com/TritonDataCenter/triton-moirai/pull/4/commits/87d42eb21886ae2ad9877621bd1144a975ae40db>
+- Commit from Claude with Claude as author: <https://github.com/TritonDataCenter/rfd/pull/159/commits/a75057c51b8515eb153105ad133b7df7dcee5b3e>
 - Squashed commits from Claude with model details added manually: <https://github.com/TritonDataCenter/triton-moirai/pull/4/commits/dd12c0a18b2334fc56926d29659c7923d3c68c63>
 
 Example of a commit message for a squashed commit where Claude was used:
