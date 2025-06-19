@@ -138,6 +138,7 @@ CommitDate: Wed Jun 18 12:42:24 2025 -0400
 ## References
 
 - https://docs.github.com/en/pull-requests/committing-changes-to-your-project/creating-and-editing-commits/creating-a-commit-with-multiple-authors
+- https://illumos.org/books/dev/workflow.html#squashing-commits-and-commit-messages
 - https://simonwillison.net/2025/Feb/3/a-computer-can-never-be-held-accountable/
 ```
          A COMPUTER
