@@ -312,7 +312,7 @@ equivalent experience to the CloudAPI based discovery without having to upgrade
 their Prometheus installation.
 
 ## Architecture Overview
-![Container Monitor Layout](http://us-central.manta.mnx.io/shmeeny/public/ContainerMonitor_rev2.png)
+![Container Monitor Layout](./ContainerMonitor_rev2.png)
 
 ## Happy Path Walk Through
 
