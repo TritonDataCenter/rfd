@@ -1,6 +1,7 @@
 ---
 authors: Nahum Shalman <nahum.shalman@mnx.io>
 state: draft
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+187%22
 ---
 
 # RFD 187 Attribution of AI Contributions to Triton

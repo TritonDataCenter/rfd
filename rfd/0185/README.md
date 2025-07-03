@@ -1,5 +1,5 @@
 ---
-author: Dan McDonald <danmcd@mnx.io>
+authors: Dan McDonald <danmcd@mnx.io>
 state: predraft
 discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+185%22
 ---

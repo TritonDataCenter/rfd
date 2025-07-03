@@ -1,6 +1,6 @@
 ---
 authors: Nahum Shalman <nahum.shalman@mnx.io>
-state: published
+state: publish
 ---
 
 # RFD 184 SmartOS BHYVE Image Builder Brand
