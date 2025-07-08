@@ -9,20 +9,33 @@ discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+188%22
 ## Problem Statement
 
 We currently operate multiple Manatee clusters across different environments
-(Triton itself and Manta) but lack unified monitoring through CMON.
+(Triton itself and Manta) but lack automated monitoring and alerting for
+PostgreSQL cluster health status.
 
-The core issues are:
-1. **Limited monitoring visibility** - CMON cannot uniformly monitor all Manatee clusters
-2. **Inconsistent metrics exposure** - Different or missing metrics endpoints across environments
-3. **Operational blind spots** - Difficulty detecting cluster health issues across all deployments
-4. **Manual monitoring overhead** - Operators must check each cluster individually
+[Manatee](https://github.com/TritonDataCenter/manatee/blob/master/docs/user-guide.md#what-is-manatee)
+is the replicated PostgreSQL cluster that powers TritonDataCenter.
+If a Manatee cluster cannot accept writes due to a degraded cluster state, the
+entire TritonDC becomes non-operational until the cluster is restored to a
+healthy state.
+
+If a Manatee cluster cannot accept writes because of a degraded cluster state,
+its TritonDC is not operational until the Manatee cluster has been restored to a
+healthy state. We already have alerting in place for Manatee instance disk usage
+getting high, which is a common source of issues.
+
+The missing piece for monitoring Manatee is alerting based on cluster health
+status, commonly viewed by entering a terminal, connecting to a Manatee instance
+and entering the command: `manatee-adm pg-status`
+
+Whenever a Manatee cluster status is not healthy, we want to know about it as
+soon as possible to investigate the root cause and resolve issues, before the
+cluster goes into a read-only state or worse.
 
 ## Current State
 
-### Existing Monitoring Infrastructure
+### Existing Tooling
 
-Manatee already has comprehensive cluster monitoring through the `manatee-adm
-pg-status` command, which provides:
+Manatee already has the `manatee-adm pg-status` command, which provides:
 
 - Peer status and replication state
 - Cluster generation and WAL information
@@ -42,6 +55,8 @@ Manatee includes a status server (`lib/statusServer.js`) that exposes:
 ### Add Prometheus Metrics Endpoint
 
 Extend the existing status server to expose cluster health metrics in Prometheus format.
+We can then configure CMON to scrape those metrics and configure alerts
+accordingly.
 
 #### Implementation Approach
 
@@ -182,6 +197,7 @@ manatee_peer_replication_state{shard="...",peer="...",role="..."} 1
 
 ## References
 
+- [Manatee documentation](https://github.com/TritonDataCenter/manatee/blob/master/docs/user-guide.md#what-is-manatee)
 - [Manatee CLI status implementation](https://github.com/TritonDataCenter/manatee/blob/master/lib/adm.js#L577-L582)
 - [Prometheus Metrics Format](https://prometheus.io/docs/instrumenting/exposition_formats/)
 - [CMON Documentation](https://github.com/TritonDataCenter/triton-cmon)
