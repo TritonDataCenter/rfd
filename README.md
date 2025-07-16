@@ -7,6 +7,7 @@
 <!--
     Copyright 2020 Joyent, Inc.
     Copyright 2025 MNX Cloud, Inc.
+    Copyright 2025 Edgecast Cloud LLC.
 -->
 
 # Requests for Discussion
@@ -232,6 +233,7 @@ formal writing that it has come to represent.)
 | predraft | [RFD 185 VMM Memory Reservoir Use by SmartOS and Triton](./rfd/0185/README.md) |
 | predraft | [RFD 186 S3 Compatibility for Manta](https://github.com/TritonDataCenter/rfd/compare/master...RFD-186)<!-- (./rfd/0186/README.md) --> |
 | draft | [RFD 187 Attribution of AI Contributions to Triton](./rfd/0187/README.md) |
+| draft | [RFD 188 Manatee monitoring via CMON](./rfd/0188/README.md) |
 
 ## Contents of an RFD
 
