@@ -1,5 +1,5 @@
 ---
-authors: Nahum Shalman <nshalman@edgecast.io>, Jhonas Wernery <jhonas.wernery@mnx.io>
+authors: Nahum Shalman <nshalman@edgecast.io>, Jhonas Wernery <jwernery@edgecast.io>
 state: draft
 discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+188%22
 ---
