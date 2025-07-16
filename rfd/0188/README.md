@@ -1,5 +1,5 @@
 ---
-authors: Nahum Shalman <nshalman@edgecast.io>
+authors: Nahum Shalman <nshalman@edgecast.io>, Jhonas Wernery <jhonas.wernery@mnx.io>
 state: draft
 discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+188%22
 ---
@@ -43,6 +43,15 @@ Manatee already has the `manatee-adm pg-status` command, which provides:
 - Error and warning conditions
 - Frozen state detection
 - PostgreSQL connectivity status
+
+Example output:
+```
+[root@f8db0911-ec8f-4e18-b1f8-cc4d3e4b559a (examplecloud:manatee0) ~]# manatee-adm pg-status
+ROLE     PEER     PG   REPL  SENT          FLUSH         REPLAY        LAG
+primary  9bcac1bf ok   sync  E/75128BF0    E/75128BF0    E/75127988    -
+sync     5b7e0cda ok   async E/75128BF0    E/75128BF0    E/75127988    0m00s
+async    61e4f9c4 ok   -     -             -             -             0m00s
+```
 
 ### Current Status Server
 
