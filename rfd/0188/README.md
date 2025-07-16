@@ -14,10 +14,6 @@ PostgreSQL cluster health status.
 
 [Manatee](https://github.com/TritonDataCenter/manatee/blob/master/docs/user-guide.md#what-is-manatee)
 is the replicated PostgreSQL cluster that powers TritonDataCenter.
-If a Manatee cluster cannot accept writes due to a degraded cluster state, the
-entire TritonDC becomes non-operational until the cluster is restored to a
-healthy state.
-
 If a Manatee cluster cannot accept writes because of a degraded cluster state,
 its TritonDC is not operational until the Manatee cluster has been restored to a
 healthy state. We already have alerting in place for Manatee instance disk usage
