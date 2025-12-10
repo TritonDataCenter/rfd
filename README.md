@@ -234,6 +234,8 @@ formal writing that it has come to represent.)
 | predraft | [RFD 186 S3 Compatibility for Manta](https://github.com/TritonDataCenter/rfd/compare/master...RFD-186)<!-- (./rfd/0186/README.md) --> |
 | draft | [RFD 187 Attribution of AI Contributions to Triton](./rfd/0187/README.md) |
 | draft | [RFD 188 Manatee monitoring via CMON](./rfd/0188/README.md) |
+| predraft | [RFD 189 Console Access Through CloudAPI](https://github.com/TritonDataCenter/rfd/compare/master...rfd-0189-console-access)<!-- (./rfd/0189/README.md) --> |
+| predraft | [RFD 190 Deprecating NodeJS for Rust](./rfd/0190/README.md) |
 
 ## Contents of an RFD
 
