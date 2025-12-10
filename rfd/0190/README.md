@@ -13,13 +13,9 @@ This presents maintenance and security problems.
 
 The NodeJS project's values are a mismatch with our own.
 
-<!-- TODO: Briefly summarize which values are mismatched (e.g., stability, backwards compatibility, long-term support)? The references cover this but a sentence or two here would help readers. -->
-
 ## Proposed Solution
 
 The Rust project's values are a much closer match to ours.
-
-<!-- TODO: Similarly, which Rust values align with yours? -->
 We have known this for many years.
 
 The time has come to start porting NodeJS applications to Rust.
