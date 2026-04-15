@@ -151,17 +151,29 @@ None of it can be safely regenerated on the destination.
 These are opaque bytes; the guest chose them and the destination must
 present them exactly.
 
-**Control registers.**  CR0, CR2, CR3, CR4, CR8, XCR0.  CR3 in
+**Control registers.**  CR0, CR2, CR3, CR4, XCR0, and EFER.  CR3 in
 particular is the guest's top-level page table pointer; it refers into
 guest physical memory, so as long as the destination presents the same
 guest physical address space, CR3 can be copied verbatim.  CR0.PG, CR4
 feature bits, and EFER.LMA collectively determine the mode the
 destination CPU must enter (long mode, paging enabled, etc.) on the next
 VM entry.  A missed bit causes an immediate VM-entry failure, not a
-subtle later bug.
+subtle later bug.  EFER in particular is worth calling out: it is
+architecturally an MSR, but its role in gating long-mode means it must
+be restored alongside the control registers rather than landing in the
+general MSR transfer, and implementations should explicitly exclude it
+from any enumeration-based MSR list to avoid double-restoration.  CR8
+is not included here because its guest-visible value is the LAPIC Task
+Priority Register; it moves with the LAPIC, not with the control
+registers.
 
-**Debug registers.**  DR0–DR7.  Must be preserved for guests that use
-hardware debug features, even if most guests do not.
+**Debug registers.**  DR0, DR1, DR2, DR3, DR6, DR7, plus the
+`IA32_DEBUGCTL` MSR.  DEBUGCTL is strictly an MSR but belongs in the
+same logical group as the debug registers; as with EFER, it should
+transfer alongside the other debug state rather than be left to
+whatever the MSR enumeration happens to include.  Must be preserved
+for guests that use hardware debug features, even if most guests do
+not.
 
 **Segment descriptors and selectors.**  CS, DS, ES, FS, GS, SS, plus TR,
 LDTR, GDTR, IDTR.  Each carries a base, limit, access rights word, and
@@ -171,17 +183,22 @@ sufficient if the VMCS also expects the selector to match.  This is a
 well-known migration trap (we hit it early as `VMX entry failure
 inst_error=7`).
 
-**Extended state: FPU, SSE, AVX, AVX-512.**  An XSAVE area of up to
-several kilobytes per vCPU, containing floating-point, vector, and MPX
-state.  Must move.  Must also be compatible with the destination's
-supported XCR0 feature bits; migrating an AVX-512 guest onto a host that
-does not support AVX-512 is inherently unsafe and should be rejected up
+**Extended state: FPU, SSE, AVX, AVX-512, AMX.**  An XSAVE area
+containing floating-point, vector, and supervisor-state components.
+Its length is not a compile-time constant; it grows with each new
+state component the CPU supports (AVX YMM hi128, AVX-512 opmask /
+hi256 / hi16-zmm, AMX tile config and tile data).  Implementations
+should query the required buffer size at runtime from the kernel
+(via the equivalent of `VM_DESC_FPU_AREA`) rather than hardcode a
+size that will silently truncate on future microarchitectures.  The
+XSAVE area must also be compatible with the destination's supported
+XCR0 feature bits; migrating an AVX-512 guest onto a host that does
+not support AVX-512 is inherently unsafe and should be rejected up
 front rather than discovered at first guest FPU use.
 
 **Model-specific registers (MSRs).**  A non-exhaustive list of MSRs
 whose value is guest-observable and must migrate:
 
-- `IA32_EFER` (long mode enable, NX, syscall enable).
 - `MSR_STAR`, `MSR_LSTAR`, `MSR_CSTAR`, `MSR_SF_MASK` (syscall entry).
 - `IA32_FS_BASE`, `IA32_GS_BASE`, `IA32_KERNEL_GS_BASE` (TLS pointers
   on Linux and Windows).
@@ -192,21 +209,47 @@ whose value is guest-observable and must migrate:
   the clocks subsection for why this is treacherous).
 - Variable-range and fixed-range MTRRs.
 
-Guest MSR list is effectively defined by the guest operating system.
-The hypervisor should transfer at minimum the set any modern x86-64 OS
-depends on at runtime; it should also either transfer or cleanly reject
-MSRs outside that set so migration does not silently lose state.
+EFER and DEBUGCTL are architecturally MSRs but should transfer with
+the control registers and debug registers respectively (see above).
 
-**Per-vCPU run state.**  RUNNING, HLT, WAITING_FOR_SIPI, SHUTDOWN.  For
+The complete set of guest-observable MSRs is effectively defined by
+the guest operating system, not by the hypervisor.  Implementations
+that match MSRs against a hardcoded list in userspace silently drop
+any MSR added to the kernel's data class later; implementations that
+enumerate the MSR set from the kernel directly (read-all on the
+kernel's MSR data class) absorb new kernel MSRs without userspace
+ABI change.  The latter pattern is strongly preferred.
+
+**Per-vCPU run state.**  RUNNING, HLT, WAITING_FOR_SIPI, SHUTDOWN,
+plus the SIPI vector for APs still in the INIT/SIPI handshake.  For
 a BSP that has started APs, the APs are in specific run states
-determined by whether the guest has issued INIT/SIPI; these run states
-must migrate.  On illumos-joyent bhyve this runs through
-`vm_set_run_state`.
+determined by whether the guest has issued INIT/SIPI; these run
+states and their associated SIPI vectors must migrate as a pair.
+Restoring run state without the vector on an AP that has received
+INIT but not yet SIPI produces a vCPU that will never start.  On
+illumos-joyent bhyve this runs through `vm_set_run_state`.
 
-**Pending injected events.**  Exceptions and interrupts that are
-pending delivery at pause instant (captured via `exit_intinfo`) must be
-re-injected on the destination; dropping them is visible to guests as
-disappeared signals.
+**Pending injected events and interrupt shadow.**  Two distinct
+pieces captured at pause instant, both of which must be re-injected
+on the destination:
+
+- **Pending events.**  Exceptions, NMIs, external interrupts, and
+  intinfo captured at pause.  On illumos-joyent bhyve these surface
+  as the `VAI_PEND_EXCP`, `VAI_PEND_NMI`, `VAI_PEND_EXTINT`, and
+  `VAI_PEND_INTINFO` fields under the `VDC_VMM_ARCH` data class, and
+  represent events the guest has not yet observed.  Dropping them is
+  visible to guests as disappeared signals.
+- **Interrupt shadow.**  The one-instruction VMX shadow window that
+  follows `STI` and `MOV SS`, during which the CPU suppresses
+  interrupt delivery.  Exposed via `VM_REG_GUEST_INTR_SHADOW`.
+  Dropping the shadow on migration can cause the guest to take an
+  interrupt one instruction earlier than it otherwise would, which
+  on carefully-crafted guest critical sections can be visible as
+  a bug.
+
+Both require kernel support (illumos#15143 / bhyve API V10 on
+modern kernels); older kernels must skip the import cleanly rather
+than silently pretend it succeeded.
 
 **TSC continuity.**  Each vCPU has a TSC that the guest treats as
 monotonic within that vCPU and typically treats as roughly monotonic
