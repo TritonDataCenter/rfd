@@ -243,9 +243,9 @@ through custom remote shell logic.
 
 ### Proposed `vmadm` behavior
 
-For bhyve live migration, `vmadm` and `VM.js` should gain an explicit
-migration-target mode.  The exact CLI or payload property names do not
-need to be fixed by this RFD, but the semantics should be:
+This RFD recommends that `vmadm` and `VM.js` grow an explicit
+migration-target mode.  The exact CLI or payload property names are left
+open here, but the semantics should be:
 
 - validate the payload as a normal bhyve creation;
 - create the zone configuration, metadata, SMF state, and disk or
@@ -262,9 +262,9 @@ and can later start in a bhyve listen mode.
 
 ### Proposed bhyve target startup path
 
-`vmadm start` and the bhyve brand should gain a supported startup path
-for a destination migration target.  The exact syntax is not important
-here; the semantics are:
+This RFD also recommends an explicit startup path for a destination
+migration target at the `vmadm` and bhyve brand layer.  The exact
+interface is left open here; the important semantics are:
 
 - start bhyve far enough that it can accept imported guest state;
 - do not perform the normal guest boot path;
@@ -272,8 +272,9 @@ here; the semantics are:
 - make the resulting bhyve process wait for the migration data plane to
   deliver the guest state.
 
-This should be a supported lifecycle operation of the brand and `vmadm`,
-not a public contract built around ad hoc files in `/tmp`.
+One reasonable way to express that is as a dedicated lifecycle
+operation of the bhyve brand and `vmadm`, but that is a recommendation
+rather than a settled interface detail.
 
 ## Proposed bhyve Work
 
