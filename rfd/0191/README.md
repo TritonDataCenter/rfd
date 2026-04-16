@@ -1,5 +1,5 @@
 ---
-authors: Nick Wilkens <nick.wilkens@mnxsolutions.com>
+authors: Nick Wilkens <nick.wilkens@mnxsolutions.com>, Claude Opus 4.6 (1M context) <noreply@anthropic.com>
 state: draft
 discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+191%22
 ---
