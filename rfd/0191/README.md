@@ -1,7 +1,7 @@
 ---
 authors: Nick Wilkens <nick.wilkens@mnxsolutions.com>
 state: draft
-discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+190%22
+discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+191%22
 ---
 
 <!--
@@ -14,7 +14,7 @@ discussion: https://github.com/TritonDataCenter/rfd/issues?q=%22RFD+190%22
     Copyright 2026 MNX Cloud, Inc.
 -->
 
-# RFD 190 Triton bhyve Live Migration Architecture
+# RFD 191 Triton bhyve Live Migration Architecture
 
 ## Problem Statement
 
