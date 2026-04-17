@@ -1170,6 +1170,115 @@ should plan for multiplexed streams or equivalent channel separation
 so bulk storage traffic does not block latency-sensitive control and
 cutover traffic.
 
+## Memory Transfer And Convergence Policy
+
+Guest RAM is the largest thing that moves during a live migration, and
+its transfer is the phase most responsible for guest-visible downtime.
+The hypervisor-side requirements (full coverage, DMA-aware dirty
+tracking, validation on import) are covered earlier in this RFD.  This
+section describes the policy layer on top: how the migration agent
+decides when the pre-copy loop has done enough, what guarantee
+operators get about the resulting downtime, and what happens when
+that guarantee cannot be met.
+
+### The exit criterion should be a downtime budget, not a page count
+
+The pre-copy loop needs a well-defined exit criterion.  Without one, a
+busy guest can wedge the loop forever re-sending pages it re-dirties
+between passes, and an idle guest can be paused later than necessary.
+
+The architecture should express this as a single operator-meaningful
+knob: the target post-pause guest downtime, in milliseconds.
+Everything else — when a pass is "good enough" to exit, how
+divergence is detected, what operators see in the VMAPI record — falls
+out of that one number.
+
+Each pre-copy pass measures its own observable: the wall-clock time
+spent pushing dirty pages, and the number of dirty pages pushed.  From
+those two the pass derives an effective transfer rate, smoothed across
+iterations.  The exit threshold for pass N is then
+
+    threshold_pages  =  downtime_budget_ms  ×  observed_bw_pages_per_ms
+
+i.e. "how many more dirty pages we could still ship during one budget's
+worth of guest freeze, at the rate we have actually been moving
+traffic".  If the current pass's dirty count is at or below that
+threshold, pre-copy has converged in the sense that matters: the
+post-pause flush fits the downtime SLA.  The loop exits, the guest is
+paused, and the final dirty push runs.
+
+The threshold therefore adapts automatically to:
+
+- **Network conditions.**  If effective bandwidth degrades mid-
+  migration (co-tenant traffic, link problems), the threshold
+  tightens.  The loop keeps iterating rather than accepting a dirty
+  count that now translates to a longer-than-agreed downtime.
+- **Guest behavior.**  A quiet guest exits on pass 1 under the
+  absolute floor.  A slowly-converging guest exits on the first pass
+  whose dirty count fits the budget at observed bandwidth.  A
+  sustained write-heavy guest never clears the threshold and runs to
+  the safety ceiling.
+
+A small absolute page-count floor on the threshold should be kept so
+that a guest whose measured bandwidth is transiently inflated by tiny
+payloads still takes the happy-path exit on pass 1.
+
+### Cooldown between passes
+
+Each pass should be preceded by a short cooldown.  Without it, passes
+race and "converge" trivially because the guest has not had time to
+re-dirty anything between measurements.  The cooldown also damps the
+single-iteration jitter that a bandwidth estimator cannot.
+
+### When convergence cannot be reached
+
+There should be a hard safety ceiling on the number of pre-copy
+passes.  A guest whose dirty rate exceeds the effective transfer rate
+will never clear the threshold; iterating indefinitely would pin the
+source's NIC and delay the operator indefinitely.  Past the ceiling,
+the migration proceeds to pause regardless of remaining dirty count.
+
+Two behaviors are required when the ceiling fires:
+
+- The agent must emit a clearly-labelled SLA-miss event — to the
+  local observability event bus and to VMAPI's progress stream —
+  carrying the projected post-pause downtime computed from the last
+  observed bandwidth.  Operators must be able to distinguish a
+  migration that cleanly converged under budget from one that ran
+  to the ceiling.
+- The migration must still complete correctly.  A missed SLA is an
+  operational incident, not a correctness failure.
+
+The default policy should be best-effort: if the budget cannot be met
+inside the ceiling, pause anyway, miss the SLA, but complete the
+migration.  A strict mode — fail the migration rather than exceed the
+budget — should be available as a per-migration option driven from
+the VMAPI request, for workloads that cannot tolerate any downtime
+beyond the SLA.  Strict mode is not required for the first release.
+
+### What operators and users see
+
+A migration with a cleanly converged switch reports a downtime
+estimate and the pass at which it converged.  A migration that ran
+to the ceiling reports the same fields plus the SLA-miss event, and
+VMAPI's progress record should carry a human-readable note to the
+same effect.  Operators should not have to read agent logs to decide
+whether a migration was "good".
+
+### Per-deployment knob
+
+The target downtime budget should be a per-deployment configuration
+value with a conservative default (on the order of a second).
+Operators who run latency-insensitive workloads can raise it to
+reduce total migration wall-clock; operators who run latency-
+sensitive workloads can lower it and accept the risk of more
+migrations hitting the ceiling.
+
+The same value should be overridable per-migration via the VMAPI
+request so customers or automation can express intent for a single
+move (e.g. "this migration must not exceed 200 ms of downtime,
+fail if it would").
+
 ## Storage Transfer
 
 ### Keep ZFS native semantics
