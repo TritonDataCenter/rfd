@@ -477,6 +477,18 @@ The guest's view of its block devices must remain byte-identical.
   guest after resume, which happens automatically for any normal
   guest OS.  In more complex topologies the platform must ensure
   egress traffic from the destination triggers the same re-learning.
+- **Overlay / fabric lookup reconvergence.**  The previous bullet
+  describes reconvergence on a flat L2 network, where a
+  guest-issued gratuitous ARP is sufficient.  On a Triton fabric
+  network the upstream "routing" decision is not L2 flooding but a
+  virtual-MAC-to-underlay-IP lookup made by each peer compute node,
+  and cached.  A guest-issued gratuitous ARP on the destination is
+  itself encapsulated via the peer's cached lookup result and so
+  cannot bootstrap its own invalidation.  Reconvergence therefore
+  becomes a property of the platform rather than of the guest OS:
+  something above the guest must cause peer caches to point at the
+  destination before the destination is treated as the active
+  instance for external traffic.
 - **In-flight packets during pause.**  Packets in the source's viona
   RX queue at pause instant may be lost.  This is acceptable for TCP,
   which will retransmit; it may be visible to UDP-based protocols,
@@ -487,6 +499,20 @@ The guest's view of its block devices must remain byte-identical.
   preserved as a rollback artifact, the platform must either (a)
   leave its vCPUs paused so it cannot transmit, or (b) administratively
   down its vnic.
+
+The overlay case deserves a callout because it is the network
+invariant most easily missed by an L2-mental-model reviewer.  It
+also interacts with cutover timing: passive propagation through
+cache-TTL expiry would put seconds of peer-side packet loss inside
+every migration window.  The shape of the requirement is therefore
+not just "eventually peers learn the new location" but "peers know
+the new location inside the cutover budget, on a timeline the
+architecture can reason about."  This is not strictly a
+bhyve-specific concern; it applies to any Triton live-migration
+implementation on a fabric network.  But bhyve live migration is the
+first Triton hypervisor aimed at sub-second per-VM cutover, so it is
+the first design in which the overlay convergence window cannot be
+absorbed into a larger guest freeze.
 
 ### Guest-visible identity
 
