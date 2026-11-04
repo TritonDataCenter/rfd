@@ -8,601 +8,277 @@ discussion: https://github.com/TritonDataCenter/rfd/issues?q="RFD+189"
 
 ## Problem Statement
 
-Currently, console access to Triton instances is only available through direct compute node access via the `vmadm console` command. This requires operators or users to have SSH access to compute nodes, which is not always desirable or practical.
+Text console access to Triton instances is only available on the compute node,
+through `vmadm console` or `zlogin -C`. Users who lock themselves out of an
+instance (broken network config, failed boot, firewall mistakes) need an
+operator to help them.
 
-VNC console access exists for KVM and Bhyve instances through CloudAPI (added in API v8.4.0), but this only provides graphical console access and is limited to HVM brands. There is no remote text-based console access for:
+CloudAPI has had ConnectMachineVNC since API version 8.4.0, but that only
+covers the graphical console of KVM and bhyve instances. There is no remote
+access to:
 
-- Serial console access to KVM instances (for boot debugging, firmware access)
-- Zone console access to SmartOS native zones (Joyent, Joyent-minimal brands)
-- Zone console access to LX instances
-- Zone console access to Bhyve instances (as an alternative to VNC)
-
-This limitation prevents:
-- Remote troubleshooting without compute node SSH access
-- Early boot debugging (before networking is configured)
-- Recovery from network misconfigurations
-- Access to boot loaders, firmware, and BIOS
-- Integration with web-based console clients
-- Automated console access for monitoring and diagnostics
+- the serial console of KVM and bhyve instances
+- the zone console of SmartOS (joyent, joyent-minimal) instances
+- the zone console of LX instances
 
 ## Proposed Solution
 
-Expose console access through CloudAPI via WebSocket endpoints, similar to the existing VNC implementation. Console access will be available for all VM brands through a unified interface:
+Add a CloudAPI websocket endpoint, ConnectMachineConsole, that relays an
+instance's text console. The compute node never exposes a console without a
+short-lived, single-use ticket.
 
-- **KVM**: Serial console (COM1/ttyS0) via unix socket
-- **Bhyve**: Zone console via zoneadmd console socket
-- **Joyent/Joyent-minimal**: Zone console via zoneadmd console socket
-- **LX**: Zone console via zoneadmd console socket
+1. The client opens a websocket to `GET /:login/machines/:id/console`.
+2. CloudAPI checks that console access is enabled, the brand is supported, and
+   the instance is running.
+3. CloudAPI asks CNAPI for a ticket (`POST /servers/:s/vms/:uuid/console`).
+   CNAPI runs `vmadm info <uuid> console` through cn-agent, and vmadmd issues
+   a ticket: admin IP, port and a random token.
+4. CloudAPI connects to vmadmd, sends the token and waits for `OK`. vmadmd
+   connects to the console and, for zone consoles, does the zoneadmd
+   handshake.
+5. Only then does CloudAPI accept the websocket upgrade and start relaying.
+   Every failure before this point is a normal HTTP error.
 
-The implementation follows the proven VNC architecture:
-1. Client connects to CloudAPI WebSocket endpoint
-2. CloudAPI queries CNAPI for console connection details
-3. CNAPI queries vmadmd (via vm-agent) for host and port
-4. vmadmd maintains TCP proxies to console sockets on compute nodes
-5. CloudAPI establishes TCP connection and proxies bidirectional byte streams
+| Brand          | Console        | Backend socket                       |
+| -------------- | -------------- | ------------------------------------ |
+| kvm            | serial         | `/zones/<uuid>/root/tmp/vm.console`  |
+| bhyve          | serial         | `/var/run/zones/<uuid>.console_sock` |
+| joyent         | zone           | `/var/run/zones/<uuid>.console_sock` |
+| joyent-minimal | zone           | `/var/run/zones/<uuid>.console_sock` |
+| lx             | zone           | `/var/run/zones/<uuid>.console_sock` |
+| docker (lx)    | not supported  |                                      |
 
-## Principles and Constraints
+The bhyve zone console is attached to the guest's first serial port, which is
+why it is reported as `serial`.
 
-### Design Principles
+## Security
 
-1. **Consistency with VNC**: Follow the existing VNC implementation pattern for authentication, authorization, WebSocket handling, and error management
-2. **Brand Agnostic**: Support all VM brands through a unified interface
-3. **Security First**: Require CloudAPI authentication, respect RBAC policies, provide audit logging
-4. **No CN Access Required**: Users should not need compute node SSH access
-5. **Backward Compatibility**: Additive changes only, no breaking changes to existing APIs
-6. **Operational Simplicity**: Minimal operator intervention, self-managing proxies
+### Threat model
 
-## User Interaction
+The console gives interactive access to an instance, often at a login prompt
+and sometimes at a shell that was left logged in. It must never be reachable
+without CloudAPI authentication and authorization for that instance.
 
-### End Users
+The earlier draft of this work had vmadmd keep an unauthenticated TCP listener
+open on the admin network for every running instance. Anything that could
+reach the admin network could attach to any console. That design is replaced
+by the ticket scheme below.
 
-**CloudAPI Endpoint**:
-```
-GET /:account/machines/:machine/console
-```
+### Tickets
 
-Upgrades HTTP connection to WebSocket for bidirectional console access.
+- A ticket is issued only when `console` is requested by name from
+  `vmadm info`. It is never part of `all`.
+- The token is 32 bytes from `crypto.randomBytes`, hex encoded. It is valid
+  for one connection and expires after 30 seconds.
+- vmadmd stores tickets keyed by the SHA-256 of the token and never logs the
+  token.
+- vmadmd has one listener on the admin IP with an ephemeral port. It is only
+  open while unused tickets exist. When the last ticket is used or expires the
+  listener closes and any unauthenticated connections are dropped.
+- A connection has 5 seconds to send its token. At most 16 unauthenticated
+  connections are accepted at once, 4 tickets per VM and 256 per compute node
+  can be outstanding.
+- Tickets and sessions are revoked when the VM leaves the running state, for
+  every brand.
 
-**CLI Usage** (node-triton):
-```bash
-# Connect to instance console
-triton instance console <instance>
-triton inst console <instance>
+### Sessions
 
-# Interactive terminal session
-# Press Ctrl-] to disconnect
-```
+- One session per VM. A second session gets `ERR busy`, which CloudAPI
+  returns as 409 ConsoleBusy.
+- zoneadmd serves a single console client, so a session also fails with
+  `busy` while an operator has `zlogin -C` attached, and an operator's
+  `zlogin -C` is refused while a CloudAPI session is open. For KVM, qemu's
+  serial socket queues a second client rather than refusing it, so an operator
+  using `vmadm console` during a CloudAPI session will see no output until the
+  session ends.
+- Sessions end after 30 minutes without traffic or 8 hours in total.
 
-**Example Session**:
-```
-$ triton inst console my-instance
-Connecting to console... (Ctrl-] to disconnect)
+### Authorization
 
-my-instance console login: root
-Password:
-Last login: Tue Sep 30 22:00:00 2025 on console
-[root@my-instance ~]#
-[root@my-instance ~]# ^]
-[Disconnecting...]
-$
-```
+- The endpoint is disabled unless the operator sets the CloudAPI SAPI
+  metadata `CLOUDAPI_CONSOLE_ACCESS=true`.
+- The RBAC action is `connectmachineconsole`. It is separate from
+  `getmachine` and `connectmachinevnc`, so sub-users need it granted
+  explicitly.
+- CloudAPI audit logs record the request with status 101 when the session
+  starts.
 
-**Verification** (that it's working):
-- Console connects and displays output
-- Keyboard input works
-- Escape sequence (Ctrl-]) disconnects cleanly
-- Multiple concurrent connections supported
+### Known limitations
 
-**Troubleshooting** (if broken):
-- **"Machine is not running"**: Instance must be in 'running' state
-- **"Connection closed immediately"**: Check CloudAPI/CNAPI logs, verify vmadmd is running on CN
-- **"No console output"**: Check vmadmd console proxy logs, verify console socket exists
-- **"Permission denied"**: Verify machine ownership and RBAC policies
+- The token and the console stream cross the admin network in cleartext
+  between CloudAPI and vmadmd. This matches VNC and the other internal Triton
+  APIs: an attacker who can read or modify admin network traffic can already
+  drive CNAPI and cn-agent directly. Encrypting this hop would only help as
+  part of authenticating Triton's internal services in general.
+- watershed buffers a whole websocket frame before handing it to CloudAPI and
+  has no frame size limit, so a client can make CloudAPI allocate a large
+  frame. ConnectMachineVNC has the same exposure. The fix belongs in
+  watershed as a maximum frame size option.
 
-### Operators
-
-**Monitoring**:
-- vmadmd logs show console proxy creation/destruction
-- CloudAPI audit logs show console access attempts
-- CNAPI logs show console endpoint queries
-
-**Troubleshooting**:
-```bash
-# Check if console proxy exists for VM
-vmadm info <uuid> console
-
-# Check vmadmd console proxy logs
-tail -f /var/svc/log/system-smartdc-vmadmd:default.log | grep console
-
-# Check console socket exists
-ls -l /var/run/zones/<uuid>.console_sock  # for joyent/lx/bhyve
-ls -l /zones/<uuid>/root/tmp/vm.console    # for kvm
-
-# Test console proxy directly
-nc <admin-ip> <console-port>
-```
-
-**Deployment**:
-- Update vmadmd on compute nodes (requires platform update or manual deployment)
-- Update CNAPI (via `sdcadm update cnapi`)
-- Update CloudAPI (via `sdcadm update cloudapi`)
-- Update node-triton CLI (via npm or package manager)
-
-## Repositories Being Changed
-
-1. **smartos-live** (`src/vm/sbin/vmadmd.js`, `src/vm/node_modules/proptable.js`)
-   - Add console proxy infrastructure to vmadmd
-   - Add runtime_info support for all brands
-
-2. **sdc-cnapi** (`lib/endpoints/vms.js`)
-   - Add console endpoint to query vmadmd
-
-3. **sdc-cloudapi** (`lib/endpoints/console.js`, `lib/errors.js`, `lib/app.js`)
-   - Add WebSocket console endpoint
-   - Add error types
-   - Mount endpoint
-
-4. **node-triton** (`lib/do_instance/do_console.js`, `lib/tritonapi.js`, `lib/cloudapi2.js`, `lib/do_instance/index.js`)
-   - Add `triton instance console` command
-
-## Public Interface Changes
+## Interfaces
 
 ### CloudAPI
 
-**New Endpoint**:
 ```
-GET /:account/machines/:machine/console
+GET /:login/machines/:id/console
 ```
 
-**API Version**: 9.0.0
+Available from CloudAPI 9.23.0 for API version 9. The websocket carries raw
+console bytes in binary frames both ways. Accepted subprotocols are `console`
+and `binary`. Text frames from the client close the session.
 
-**Request**: WebSocket upgrade
-**Response**: 101 Switching Protocols, WebSocket connection
+| Error                 | Status | When                                        |
+| --------------------- | ------ | ------------------------------------------- |
+| ConsoleAccessDisabled | 403    | `CLOUDAPI_CONSOLE_ACCESS` is not set        |
+| MachineHasNoConsole   | 400    | docker container or unsupported brand       |
+| MachineStopped        | 400    | instance is not running                     |
+| ConsoleBusy           | 409    | another session holds the console           |
+| ConsoleUnavailable    | 503    | no ticket, or vmadmd or the console failed  |
+| UpgradeRequired       | 400    | missing websocket upgrade headers           |
 
-**Errors**:
-- 400 MachineStoppedError - Instance is not running
-- 404 ResourceNotFoundError - Instance not found
-- 401/403 - Authentication/authorization failures
-
-**Protocol**: Binary WebSocket, raw byte stream, no terminal emulation
-
-**Escape Sequence**: Ctrl-] (0x1d) to disconnect (client-side)
+After the upgrade, CloudAPI closes the websocket with a reason when the
+session ends, for example `console closed` when the VM stops.
 
 ### CNAPI
 
-**New Endpoint**:
 ```
-GET /servers/:server_uuid/vms/:uuid/console
+POST /servers/:server_uuid/vms/:uuid/console
 ```
 
-**Response**:
 ```json
 {
-  "host": "10.0.0.5",
-  "port": 45678,
-  "type": "socket"
+  "host": "10.99.99.7",
+  "port": 40123,
+  "token": "<64 hex chars>",
+  "type": "zone",
+  "expires_in": 30
 }
 ```
 
-### CLI (node-triton)
+Returns 404 if the VM does not exist and 409 if it is not running. CNAPI waits
+20 seconds for cn-agent, which keeps it inside the ticket lifetime.
 
-**New Command**:
-```
-triton instance console [OPTIONS] INST
-```
+### vmadm and vmadmd
 
-**Options**:
-- `-h, --help`: Show help
+`vmadm info <uuid> console` returns the ticket above under `console`. The
+`console` info type is now accepted for every brand, and joyent,
+joyent-minimal and lx accept `all`.
 
-**Behavior**:
-- Connects stdin/stdout to WebSocket
-- Sets terminal to raw mode
-- Ctrl-] to disconnect
-- Restores terminal on exit
-
-## Private Interface Changes
-
-### vmadmd
-
-**New Functions**:
-- `spawnConsoleProxy(vmobj)` - Create TCP proxy for console access
-- `clearConsoleProxy(uuid)` - Destroy console proxy
-- `reloadConsoleProxy(vmobj)` - Reload console proxy
-- `infoConsole()` - Return console connection details
-
-**New Object**:
-- `CONSOLE` - Tracks console proxy state (host, port, server, type, path)
-
-**vm.info() Extension**:
-- Add 'console' as valid info type for all brands
-- Returns `{console: {host, port, type}}` structure
-
-**Console Socket Paths**:
-- KVM: `<zonepath>/root/tmp/vm.console` (serial console)
-- Others: `/var/run/zones/<zonename>.console_sock` (zoneadmd console)
-
-**Handshake Protocol** (non-KVM brands):
-- Send: `IDENT C 0\n`
-- Receive: `OK <details>\n`
-- Then: Start bidirectional data flow
-
-**Proxy Lifecycle**:
-- Created when VM starts (alongside VNC proxy)
-- Destroyed when VM stops
-- Ephemeral TCP port on admin network
-- One proxy per VM, multiple connections supported
-
-### Brand Features (proptable.js)
-
-**runtime_info** added to all brands:
-- `kvm`: `['all', 'block', 'blockstats', 'chardev', 'console', 'cpus', 'kvm', 'pci', 'spice', 'status', 'version', 'vnc']`
-- `bhyve`: `['all', 'vnc', 'console']`
-- `joyent`: `['console']`
-- `joyent-minimal`: `['console']`
-- `lx`: `['console']`
-
-This enables `vmadm info <uuid> console` for all brands.
-
-## Implementation Details
-
-### Architecture
+Wire protocol on the ticket port:
 
 ```
-┌─────────┐                    ┌──────────┐                    ┌───────┐
-│  Client │                    │ CloudAPI │                    │ CNAPI │
-│ (triton)│                    │          │                    │       │
-└────┬────┘                    └────┬─────┘                    └───┬───┘
-     │                              │                              │
-     │ GET /console (WebSocket)     │                              │
-     ├─────────────────────────────>│                              │
-     │                              │                              │
-     │                              │ GET /vms/:uuid/console       │
-     │                              ├─────────────────────────────>│
-     │                              │                              │
-     │                              │ {host, port, type}           │
-     │                              │<─────────────────────────────┤
-     │                              │                              │
-     │ 101 Switching Protocols      │                              │
-     │<─────────────────────────────┤                              │
-     │                              │                              │
-     │                              │                              │
-     │    WebSocket ←──────────────→ TCP Proxy ←───────────────────┼─────────┐
-     │                              │                              │         │
-     │                              │                              │         v
-     │                              │                              │   ┌──────────┐
-     │                              │                              │   │  vmadmd  │
-     │                              │                              │   │  (on CN) │
-     │                              │                              │   └─────┬────┘
-     │                              │                              │         │
-     │                              │                              │         │ TCP
-     │                              │                              │         v
-     │                              │                              │   ┌──────────┐
-     │                              │                              │   │ Console  │
-     │                              │                              │   │  Socket  │
-     │                              │                              │   └──────────┘
+client -> vmadmd   <token>\n
+vmadmd -> client   OK\n         then the raw console stream
+                   ERR <reason>\n   then close
 ```
 
-### Console Socket Types
+Reasons are `invalid token`, `busy`, `console unavailable`,
+`console not responding` and `console handshake failed`.
 
-| Brand | Console Type | Socket Path | Handshake Required |
-|-------|--------------|-------------|-------------------|
-| KVM | Serial Console | `/zones/<uuid>/root/tmp/vm.console` | No |
-| Bhyve | Zone Console | `/var/run/zones/<uuid>.console_sock` | Yes (IDENT/OK) |
-| Joyent | Zone Console | `/var/run/zones/<uuid>.console_sock` | Yes (IDENT/OK) |
-| Joyent-minimal | Zone Console | `/var/run/zones/<uuid>.console_sock` | Yes (IDENT/OK) |
-| LX | Zone Console | `/var/run/zones/<uuid>.console_sock` | Yes (IDENT/OK) |
+For zone consoles vmadmd sends `IDENT C 0\n` to the zoneadmd socket, the same
+identification `zlogin -C` sends. zoneadmd answers `OK\n` and immediately
+starts relaying console output, so output can arrive in the same read as the
+`OK`. vmadmd buffers up to the newline and forwards the rest. When another
+client holds the console zoneadmd answers with that client's pid instead,
+which vmadmd reports as `busy`.
 
-### Handshake Protocol (Zoneadmd Console)
+### node-triton
 
-For non-KVM brands, the console_sock requires a handshake:
-
-1. **Client connects** to unix socket
-2. **Client sends**: `IDENT <locale> <flags>\n`
-   - Example: `IDENT C 0\n`
-3. **Server responds**: `OK <zonename> <ttyname>\n`
-   - Example: `OK a0f29ee3-0ec7-4e0c-9eca-f7332391c51d /dev/zconsole\n`
-4. **Data flow begins**: Bidirectional byte stream
-
-This handshake is implemented in vmadmd's console proxy for non-KVM brands.
-
-### Component Changes
-
-#### vmadmd (smartos-live)
-
-**Global State**:
-```javascript
-var CONSOLE = {};  // Tracks console proxy state
+```
+triton instance console INST
 ```
 
-**Core Functions**:
-```javascript
-// Create TCP proxy to console socket
-function spawnConsoleProxy(vmobj)
+Puts the terminal in raw mode and relays it to the console. Ctrl-] anywhere
+in the input disconnects. Exits 0 when the user disconnects or the console
+closes, and non-zero with the close reason when the session is dropped.
 
-// Destroy console proxy
-function clearConsoleProxy(uuid)
+## Repositories
 
-// Reload console proxy (e.g., on VM restart)
-function reloadConsoleProxy(vmobj)
+| Repository   | Change                                                            |
+| ------------ | ----------------------------------------------------------------- |
+| smartos-live | `console_broker.js` ticket broker, vmadmd integration, proptable  |
+| sdc-cnapi    | `VmConsole` endpoint                                              |
+| sdc-cloudapi | `ConnectMachineConsole` endpoint, errors, SAPI flag              |
+| node-triton  | `triton instance console`                                         |
 
-// Return console info via vm.info()
-function infoConsole()
+## Deployment
+
+The pieces can ship in any order. Console access works once all of these are
+in place, and the CloudAPI flag is what turns it on:
+
+1. A platform with the vmadmd change on the compute nodes. Compute nodes on
+   older platforms return a CNAPI error, which CloudAPI reports as
+   ConsoleUnavailable.
+2. CNAPI with `VmConsole`.
+3. CloudAPI 9.23.0, then `sapiadm update $(sdc-sapi /services?name=cloudapi |
+   json -Ha uuid) metadata.CLOUDAPI_CONSOLE_ACCESS=true`.
+4. node-triton with `triton instance console`.
+
+### Operator troubleshooting
+
 ```
+# Issue a ticket by hand and connect to it
+vmadm info <uuid> console
+printf '%s\n' <token> | nc <host> <port>
 
-**Proxy Implementation**:
-```javascript
-server = net.createServer(function (c) {
-    var console = net.Stream();
-
-    if (isKvm) {
-        // KVM: Direct pipe
-        c.pipe(console);
-        console.pipe(c);
-        console.connect(consolePath);
-    } else {
-        // Zoneadmd: Handshake then pipe
-        console.connect(consolePath);
-        console.once('connect', function () {
-            console.write('IDENT C 0\n');
-            console.once('data', function (data) {
-                if (data.toString().indexOf('OK') === 0) {
-                    c.pipe(console);
-                    console.pipe(c);
-                }
-            });
-        });
-    }
-});
+# vmadmd console events (tickets, sessions, failures)
+grep '"component":"console"' $(svcs -L vmadmd) | bunyan
 ```
-
-**Lifecycle Integration**:
-- `spawnConsoleProxy()` called when VM starts (alongside spawnRemoteDisplay)
-- `clearConsoleProxy()` called when VM stops (in clearVM)
-- Proxies survive vmadmd restarts (recreated on startup)
-
-#### CNAPI
-
-**Endpoint Handler**:
-```javascript
-VM.console = function handlerVmConsole(req, res, next) {
-    var types = ['console'];
-    req.stash.vm.info(
-        { req_id: req.getId(), types: types },
-        function (error, infoResponse) {
-            var vminfo = JSON.parse(infoResponse);
-            res.send({
-                host: vminfo.console.host,
-                port: vminfo.console.port,
-                type: vminfo.console.type
-            });
-        }
-    );
-};
-```
-
-**Route Registration**:
-```javascript
-http.get(
-    { path: '/servers/:server_uuid/vms/:uuid/console', name: 'VmConsole' },
-    ensure({...}),
-    VM.console
-);
-```
-
-#### CloudAPI
-
-**WebSocket Endpoint** (`lib/endpoints/console.js`):
-- Based on VNC endpoint implementation
-- Uses Finite State Machine (FSM) pattern via mooremachine
-- States: init → upgrade → getport → connect → connected
-- Binary WebSocket protocol
-- TCP connection to vmadmd console proxy
-
-**Error Types** (`lib/errors.js`):
-```javascript
-function MachineHasNoConsoleError(brand)  // 400
-```
-
-**FSM States**:
-1. **init**: Initial state
-2. **upgrade**: Upgrade HTTP to WebSocket
-3. **getport**: Query CNAPI for console details
-4. **connect**: Establish TCP connection to vmadmd
-5. **connected**: Bidirectional data proxying
-6. **error/closed**: Cleanup and termination
-
-#### node-triton CLI
-
-**Console Command** (`lib/do_instance/do_console.js`):
-- Sets stdin to raw mode for direct terminal access
-- Handles Ctrl-] escape sequence (0x1d)
-- Restores terminal on exit
-- Bidirectional piping: stdin → WebSocket, WebSocket → stdout
-
-**API Methods**:
-- `TritonApi.prototype.getInstanceConsole(id, cb)` - High-level API
-- `CloudApi.prototype.getMachineConsole(uuid, cb)` - WebSocket connection
 
 ## Testing
 
-### Unit Tests
+- smartos-live: `src/vm/tests/test-console-broker.js` covers tickets, single
+  use, expiry, listener shutdown, the zoneadmd handshake (including output
+  sent with `OK` and the busy reply), one session per VM, revocation, idle and
+  maximum session time, and limits. It passes on node 0.10, the platform's
+  node.
+- sdc-cnapi: `test/test-vm-console.js` covers ticket validation and error
+  mapping.
+- sdc-cloudapi: `test/console-unit.test.js` covers the token exchange, busy
+  and failure replies, timeouts, relay flow control, the input backlog limit
+  and text frames.
+- node-triton: `test/unit/consoleEscape.test.js` covers escape detection.
+- Still to do on real hardware: kvm, bhyve, joyent and lx instances end to end,
+  stop and reboot during a session, and `zlogin -C` contention.
 
-1. **vmadmd**: Console proxy creation, lifecycle, handshake
-2. **CNAPI**: Endpoint validation, vm-agent communication
-3. **CloudAPI**: Authentication, WebSocket upgrade, FSM transitions
+## Alternatives Considered
 
-### Integration Tests
+### Always-on listener per VM
 
-1. **End-to-end**: Client → CloudAPI → CNAPI → vmadmd → console
-2. **Multi-brand**: Test with KVM, Bhyve, Joyent, LX instances
-3. **Concurrent connections**: Multiple clients to same console
-4. **Lifecycle**: Connection during VM stop/restart
-5. **Error scenarios**: Invalid machine, stopped machine, network failures
+The first implementation. Rejected because it exposes every console to the
+admin network without authentication.
 
-### Manual Testing
+### A dedicated cn-agent task instead of `vmadm info`
 
-1. **KVM**: Boot messages, GRUB interaction, serial console login
-2. **Bhyve**: UEFI messages, OS boot, zone console login
-3. **Joyent**: Zone boot messages, login prompt, shell access
-4. **LX**: Linux boot messages, login, container shell
+A `machine_console_ticket` task would make the side effect explicit, but needs
+changes to sdc-cn-agent and node-vmadm as well. The CNAPI interface is already
+a POST, so the compute node side can move to a dedicated task later without
+changing CNAPI or CloudAPI.
 
-### Load Testing
+### Reading `/dev/zcons/<zone>/zoneconsole` directly
 
-- Concurrent connections (10, ...)
-- Connection duration (hours)
-- Memory usage per connection (<200KB)
-- CPU usage per connection (<0.5%)
+The zoneadmd socket already handles the console device, and going through it
+keeps zoneadmd's single-client rule, so vmadmd and `zlogin -C` cannot both
+write to a console at once.
 
-## Operational Considerations
+### Spawning `zlogin -C` per session
 
-### Monitoring
+Works, but adds a process per session for no gain over the zoneadmd socket.
 
-**Metrics** (vmadmd):
-- Console proxy count (gauge)
-- Console connections active (gauge)
-- Console connection errors (counter)
-- Proxy creation/destruction rate (counter)
+### Extending ConnectMachineVNC
 
-**Metrics** (CloudAPI):
-- Console endpoint requests (counter)
-- WebSocket upgrade success/failure (counter)
-- Connection duration (histogram)
-- Error rate by type (counter)
+VNC and the text console have different clients and brand support. A separate
+endpoint keeps both simple.
 
-**Alerts**:
-- Console connection failure rate > 1%
-- Console proxy memory usage > 500KB per connection
-- No console connections for 24h (possible issue)
+## Future Work
 
-### Logging
-
-**vmadmd** (INFO level):
-```
-spawning console listener for <uuid> on <ip> (brand: <brand>)
-console proxy for <uuid> listening on <ip>:<port> (type: socket, path: <path>)
-console connection started from [<ip>]:<port> for VM <uuid>
-console connection ended from [<ip>]:<port> for VM <uuid>
-```
-
-**CloudAPI** (audit logs):
-```
-{
-  "action": "ConnectMachineConsole",
-  "machine": "<uuid>",
-  "account": "<account>",
-  "remoteAddress": "<ip>",
-  "timestamp": "..."
-}
-```
-
-### Troubleshooting
-
-**Common Issues**:
-
-1. **Console closes immediately**
-   - Check: vmadmd running on CN?
-   - Check: Console proxy spawned? (`vmadm info <uuid> console`)
-   - Check: CloudAPI/CNAPI logs for errors
-
-2. **No console output**
-   - Check: VM actually running?
-   - Check: Console socket exists? (`ls -l /var/run/zones/<uuid>.console_sock`)
-   - Check: Handshake succeeding? (vmadmd logs)
-
-3. **Permission denied**
-   - Check: Machine ownership
-   - Check: RBAC policies
-   - Check: CloudAPI authentication
-
-4. **Port conflicts**
-   - vmadmd uses ephemeral ports (unlikely)
-   - Check: netstat output for conflicts
-
-## Alternative Approaches Considered
-
-### 1. Direct /dev/zcons Device Access
-
-**Approach**: Proxy `/dev/zcons/<zonename>/zoneconsole` device directly
-
-**Rejected**:
-- Device is a symlink to kernel pseudo-device
-- fs.createReadStream() doesn't work with character devices
-- net.connect() fails with ENOTSOCK
-- Would need complex PTY handling
-
-**Why zoneadmd socket is better**:
-- Already handles device I/O properly
-- Protocol is documented (zlogin behavior)
-- No PTY management needed
-- Existing, proven interface
-
-### 2. Spawn zlogin Process Per Connection
-
-**Approach**: vmadmd spawns `zlogin -C <uuid>` for each connection, proxies stdio
-
-**Rejected**:
-- More complex lifecycle management
-- Additional process overhead
-
-**Why socket proxy is better**:
-- Lower overhead (just TCP proxy)
-- Simpler implementation
-- No process management
-
-### 3. Reuse VNC Endpoint
-
-**Approach**: Overload VNC endpoint to support console
-
-**Rejected**:
-- Different semantics (graphical vs text)
-- Different use cases
-- Confusing API
-- Makes VNC code more complex
-
-## Future Enhancements
-
-### Multiple Serial Ports (KVM)
-
-Support selection of serial port:
-```
-GET /:account/machines/:machine/console?port=0  # serial0 (default)
-GET /:account/machines/:machine/console?port=1  # serial1 (metadata)
-```
-
-### Session Recording
-
-Optional recording of console sessions for audit/compliance:
-- Configurable per account or globally
-- Storage in Manta or local
-- Playback capability
-- Privacy/compliance considerations
-
-### Read-Only Mode
-
-View-only console access without input:
-- Different permission level
-- Monitoring use case
-- Lower privilege requirement
-
-### Connection Sharing
-
-Multiple clients connected to same console:
-- Broadcast mode (all see same output)
-- Requires state management in vmadmd
-- Complex lifecycle handling
-
-### Web-Based Console Client
-
-Browser-based terminal emulator:
-- xterm.js integration
-- No CLI required
-- AdminUI integration
-- Mobile access
+- A maximum frame size option in watershed, used by both console and VNC.
+- Read-only sessions under a separate RBAC action.
+- A browser client using xterm.js and pre-signed URLs.
+- Selecting the second KVM serial port.
 
 ## References
 
-- **VNC Implementation**: RFD discussion (if exists), CloudAPI vnc.js
-- **Metadata Socket**: RFD 69 (explains vm.ttyb usage)
-- **Zone Console**: illumos zcons(4D) man page
-- **zlogin Source**: illumos-joyent/usr/src/cmd/zlogin/zlogin.c
-- **Console Handshake**: zlogin handshake_zone_sock() function
+- illumos `zcons(4D)`, `zlogin(1)`
+- illumos-joyent `usr/src/cmd/zoneadmd/zcons.c` (console socket protocol)
+- sdc-cloudapi `lib/endpoints/vnc.js`
