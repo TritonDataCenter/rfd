@@ -225,22 +225,6 @@ printf '%s\n' <token> | nc <host> <port>
 grep '"component":"console"' $(svcs -L vmadmd) | bunyan
 ```
 
-## Testing
-
-- smartos-live: `src/vm/tests/test-console-broker.js` covers tickets, single
-  use, expiry, listener shutdown, the zoneadmd handshake (including output
-  sent with `OK` and the busy reply), one session per VM, revocation, idle and
-  maximum session time, and limits. It passes on node 0.10, the platform's
-  node.
-- sdc-cnapi: `test/test-vm-console.js` covers ticket validation and error
-  mapping.
-- sdc-cloudapi: `test/console-unit.test.js` covers the token exchange, busy
-  and failure replies, timeouts, relay flow control, the input backlog limit
-  and text frames.
-- node-triton: `test/unit/consoleEscape.test.js` covers escape detection.
-- Still to do on real hardware: kvm, bhyve, joyent and lx instances end to end,
-  stop and reboot during a session, and `zlogin -C` contention.
-
 ## Alternatives Considered
 
 ### Always-on listener per VM
